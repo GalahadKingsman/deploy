@@ -1,0 +1,29 @@
+import { z } from 'zod';
+import type { ExpertMemberRoleV1 } from './expert-member.js';
+import { ExpertMemberRoleV1Schema } from './expert-member.js';
+
+export interface ExpertTeamMemberV1 {
+  userId: string;
+  role: ExpertMemberRoleV1;
+  createdAt: string;
+  username: string | null;
+  firstName: string | null;
+  lastName: string | null;
+}
+
+export interface ListExpertTeamResponseV1 {
+  items: ExpertTeamMemberV1[];
+}
+
+export const ExpertTeamMemberV1Schema = z.object({
+  userId: z.string(),
+  role: ExpertMemberRoleV1Schema,
+  createdAt: z.string(),
+  username: z.string().nullable(),
+  firstName: z.string().nullable(),
+  lastName: z.string().nullable(),
+});
+
+export const ListExpertTeamResponseV1Schema = z.object({
+  items: z.array(ExpertTeamMemberV1Schema),
+});

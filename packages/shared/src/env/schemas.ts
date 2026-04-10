@@ -1,0 +1,84 @@
+import { z } from 'zod';
+
+function emptyToUndefined(val: unknown): unknown {
+  if (val === '' || val === null || val === undefined) return undefined;
+  return val;
+}
+
+export const ApiEnvSchema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  API_PORT: z.coerce.number().default(3001),
+  DATABASE_URL: z.string().optional(),
+  REDIS_URL: z.string().optional(),
+  /** Comma-separated list of allowed origins in production (e.g. https://app.example.com,https://admin.example.com). */
+  CORS_ORIGINS: z.preprocess(emptyToUndefined, z.string().optional()),
+  S3_ENDPOINT: z.string().optional(),
+  S3_ACCESS_KEY: z.string().optional(),
+  S3_SECRET_KEY: z.string().optional(),
+  S3_BUCKET: z.string().optional(),
+  S3_REGION: z.string().optional(),
+  S3_FORCE_PATH_STYLE: z.string().optional(),
+  TELEGRAM_BOT_TOKEN: z.string().default(''),
+  BOT_INTERNAL_TOKEN: z.string().optional(),
+  RATE_LIMIT_MAX: z.coerce.number().optional(),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().optional(),
+  PAYMENTS_ENABLED: z
+    .preprocess((val) => {
+      if (val === undefined || val === null || val === '') return false;
+      if (typeof val === 'boolean') return val;
+      if (typeof val === 'string') {
+        const normalized = val.toLowerCase().trim();
+        return normalized === '1' || normalized === 'true';
+      }
+      return false;
+    }, z.boolean())
+    .default(false),
+  /** Referral commission on paid orders: basis points (100 = 1%). Default 0. */
+  PAYMENTS_REFERRAL_COMMISSION_BPS: z.coerce.number().int().min(0).max(1_000_000).default(0),
+  /** Tinkoff Acquiring (eCom) — TerminalKey from lk */
+  TINKOFF_TERMINAL_KEY: z.string().optional().default(''),
+  TINKOFF_PASSWORD: z.string().optional().default(''),
+  TINKOFF_API_BASE_URL: z.string().url().default('https://securepay.tinkoff.ru'),
+  TINKOFF_NOTIFICATION_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+  TINKOFF_SUCCESS_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+  TINKOFF_FAIL_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+  /** Receipt FFD: Taxation, e.g. usn_income, osn */
+  TINKOFF_RECEIPT_TAXATION: z.string().min(1).default('usn_income'),
+  /** Item VAT: none, vat10, vat22, … */
+  TINKOFF_RECEIPT_TAX: z.string().min(1).default('none'),
+  TELEGRAM_INITDATA_MAX_AGE_SECONDS: z.coerce.number().default(86400),
+  OWNER_TELEGRAM_USER_ID: z.string().optional(),
+  JWT_ACCESS_SECRET: z.string().min(16, 'JWT_ACCESS_SECRET must be at least 16 characters'),
+  JWT_ACCESS_TTL_SECONDS: z.coerce.number().default(900),
+  SWAGGER_ENABLED: z
+    .preprocess((val) => {
+      if (val === undefined || val === null || val === '') return false;
+      if (typeof val === 'boolean') return val;
+      if (typeof val === 'string') {
+        // Only '1' or 'true' (case-insensitive) are truthy
+        // Everything else ('0', 'false', '', etc.) is falsy
+        const normalized = val.toLowerCase().trim();
+        return normalized === '1' || normalized === 'true';
+      }
+      return false;
+    }, z.boolean())
+    .default(false),
+});
+
+export const BotEnvSchema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  BOT_TOKEN: z.string().min(1, 'BOT_TOKEN is required'),
+  BOT_LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+  BOT_API_BASE_URL: z.string().default('http://localhost:3001'),
+  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  BOT_INTERNAL_TOKEN: z.string().optional(),
+});
+
+export const WebappEnvSchema = z.object({
+  VITE_API_BASE_URL: z.string().optional(),
+  VITE_USE_MSW: z.string().optional(),
+});
+
+export type ApiEnv = z.infer<typeof ApiEnvSchema>;
+export type BotEnv = z.infer<typeof BotEnvSchema>;
+export type WebappEnv = z.infer<typeof WebappEnvSchema>;

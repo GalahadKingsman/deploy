@@ -1,0 +1,47 @@
+---
+name: rules
+description: Project rules for tracked-lms (Cursor mandatory)
+---
+
+# Overview
+One Story = One PR
+No scope creep (no refactors/renames/deps)
+Foundation frozen in EPIC 1+
+No structure changes
+Shared is SSoT; no deep imports; no wildcard paths
+UI kit (apps/webapp/src/shared/ui/*) has no fetching/business logic
+Pages/features may use hooks/fetcher
+Run verify/test/audit and attach artifacts
+Stop after DoD
+
+# Протокол анти-зацикливания (обязателен)
+
+**ВСЕ команды в терминале выполняются только через `pnpm run:protocol ...`**
+
+Запрещены пайпы в командах (`| tail/head/grep`) — если нужно, делаем пост-анализ по лог-файлу.
+
+## Примеры использования:
+
+```bash
+# Базовое использование
+pnpm run:protocol pnpm test:foundation
+
+# С кастомным таймаутом
+pnpm run:protocol --timeout-ms=30000 -- pnpm dev:all
+
+# Любая другая команда
+pnpm run:protocol npm run build
+```
+
+## Правила:
+1. Не использовать `tail/head/grep` в командах
+2. Любая команда запускается через `pnpm run:protocol`
+3. После выполнения автоматически показывается `EXIT=$?` и последние 80 строк лога
+4. Если команда идёт > 60 секунд (по умолчанию) — остановить процесс (watchdog)
+5. Никаких повторов одинаковых фраз. Если повторяется — это баг, надо показать лог.
+
+## Технические детали:
+- Утилита: `tools/dev/run-with-protocol.mjs`
+- Лог-файлы: `/tmp/cursor-step.<timestamp>.log`
+- Watchdog убивает process group (включая дочерние процессы)
+- Используется `zsh` для поддержки `set -o pipefail`
