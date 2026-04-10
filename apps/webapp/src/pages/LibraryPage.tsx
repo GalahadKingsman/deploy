@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import type { ContractsV1 } from '@tracked/shared';
 import { Input, Button, Card, Skeleton, EmptyState, ErrorState } from '../shared/ui/index.js';
 import { useLibrary } from '../shared/queries/useLibrary.js';
+import { ApiClientError } from '../shared/api/errors.js';
 
 // Section Header Component
 function SectionHeader({ title, right }: { title: string; right?: React.ReactNode }) {
@@ -314,11 +315,17 @@ export function LibraryPage() {
 
   // Error state
   if (state === 'error' || error) {
+    let description = 'Попробуйте ещё раз';
+    if (error instanceof ApiClientError) {
+      if (error.code === 'INVALID_RESPONSE' || error.code === 'NETWORK_ERROR') {
+        description = error.message;
+      }
+    }
     return (
       <div style={{ padding: 'var(--sp-4)' }}>
         <ErrorState
           title="Не удалось загрузить каталог"
-          description="Попробуйте ещё раз"
+          description={description}
           actionLabel="Повторить"
           onAction={() => {
             if (refetch) refetch();

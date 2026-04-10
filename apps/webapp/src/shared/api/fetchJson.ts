@@ -147,8 +147,8 @@ export async function fetchJson<T = unknown>(options: FetchJsonOptions): Promise
     }
 
     // Parse JSON response
-    const contentType = response.headers.get('content-type');
-    if (contentType?.includes('application/json')) {
+    const contentType = response.headers.get('content-type') ?? '';
+    if (contentType.includes('application/json')) {
       try {
         const json = await response.json();
         return json as T;
@@ -164,7 +164,17 @@ export async function fetchJson<T = unknown>(options: FetchJsonOptions): Promise
       }
     }
 
-    // Empty body for non-JSON 2xx responses
+    // SPA/nginx often returns text/html when requests go to the web host instead of the API
+    if (contentType.includes('text/html')) {
+      throw new ApiClientError(
+        response.status,
+        'INVALID_RESPONSE',
+        'Сервер вернул HTML вместо JSON. Для production укажите VITE_API_BASE_URL=https://api.<домен> и пересоберите webapp.',
+        requestId,
+      );
+    }
+
+    // Other non-JSON 2xx (rare for this app)
     return undefined as T;
   }
 

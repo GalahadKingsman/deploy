@@ -4,6 +4,7 @@ import { Button, Card, Skeleton, EmptyState, ErrorState } from '../shared/ui/ind
 import { useMe } from '../shared/queries/useMe.js';
 import { useLearnSummary } from '../shared/queries/useLearnSummary.js';
 import { useMyCourses } from '../shared/queries/useMyCourses.js';
+import { ApiClientError } from '../shared/api/errors.js';
 import { getTelegramDisplayUser } from '../shared/auth/telegram.js';
 
 // Progress Circle Component
@@ -391,11 +392,22 @@ export function LearnPage() {
   }
 
   if (state === 'error' || summaryError) {
+    let description = 'Проверьте подключение к интернету и попробуйте снова';
+    if (summaryError instanceof ApiClientError) {
+      if (summaryError.status === 401) {
+        description = 'Нет авторизации. Закройте мини-приложение и откройте снова из Telegram.';
+      } else if (summaryError.status === 503) {
+        description =
+          'Авторизация недоступна (часто нет TELEGRAM_BOT_TOKEN на сервере API). Проверьте конфиг и перезапустите API.';
+      } else if (summaryError.code === 'INVALID_RESPONSE' || summaryError.code === 'NETWORK_ERROR') {
+        description = summaryError.message;
+      }
+    }
     return (
       <div style={{ padding: 'var(--sp-4)' }}>
         <ErrorState
           title="Не удалось загрузить данные"
-          description="Проверьте подключение к интернету и попробуйте снова"
+          description={description}
           actionLabel="Повторить"
           onAction={() => {
             refetchSummary();
