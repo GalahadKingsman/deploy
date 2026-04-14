@@ -25,6 +25,7 @@ import { InviteActivatePage } from '../pages/InviteActivatePage.js';
 import { MyOrdersPage } from '../pages/MyOrdersPage.js';
 import { PartnerPayoutsPage } from '../pages/PartnerPayoutsPage.js';
 import { AdminPaymentsPage } from '../pages/AdminPaymentsPage.js';
+import { AdminExpertsPage } from '../pages/AdminExpertsPage.js';
 
 export const router = createBrowserRouter([
   {
@@ -41,6 +42,7 @@ export const router = createBrowserRouter([
       { path: 'account/orders', element: <MyOrdersPage /> },
       { path: 'account/partner-payouts', element: <PartnerPayoutsPage /> },
       { path: 'admin/payments', element: <AdminPaymentsPage /> },
+      { path: 'admin/experts', element: <AdminExpertsPage /> },
       { path: 'course/:id', element: <CourseDetailPage /> },
       { path: 'lesson/:lessonId', element: <LessonPage /> },
       { path: 'update/:id', element: <UpdatePage /> },

@@ -13,8 +13,15 @@ import { useMyExpertApplication } from '../shared/queries/useMyExpertApplication
 import { deriveExpertCtaState } from '../features/account/expertCtaState.js';
 import { getTelegramDisplayUser } from '../shared/auth/telegram.js';
 
-const SUPPORT_LINK = import.meta.env.VITE_SUPPORT_TG_LINK as string | undefined;
-const hasSupportLink = Boolean(SUPPORT_LINK && SUPPORT_LINK.startsWith('http'));
+const rawSupport = import.meta.env.VITE_SUPPORT_TG_LINK as string | undefined;
+const SUPPORT_LINK =
+  typeof rawSupport === 'string' && rawSupport.trim() ? rawSupport.trim() : undefined;
+const hasSupportLink = Boolean(
+  SUPPORT_LINK &&
+    (SUPPORT_LINK.startsWith('http') ||
+      SUPPORT_LINK.startsWith('tg:') ||
+      SUPPORT_LINK.startsWith('//')),
+);
 
 async function copyToClipboard(text: string): Promise<boolean> {
   if (!text) return false;
@@ -269,7 +276,8 @@ export function CreatorOnboardingPage() {
                     color: 'var(--muted-fg)',
                   }}
                 >
-                  Укажи VITE_SUPPORT_TG_LINK в .env (например https://t.me/your_support)
+                  Укажи VITE_SUPPORT_TG_LINK в .env и пересобери webapp (pnpm --filter @tracked/webapp
+                  build), затем обнови статику на сервере. Пример: https://t.me/your_support
                 </div>
               )}
             </>

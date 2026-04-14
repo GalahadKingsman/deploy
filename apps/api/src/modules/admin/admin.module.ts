@@ -4,6 +4,7 @@ import { AdminExpertsController } from './admin.experts.controller.js';
 import { AdminSubscriptionsController } from './admin.subscriptions.controller.js';
 import { AdminAuditController } from './admin-audit.controller.js';
 import { AdminPaymentsController } from './admin.payments.controller.js';
+import { AdminUsersController } from './admin.users.controller.js';
 import { UsersModule } from '../../users/users.module.js';
 import { ExpertsModule } from '../../experts/experts.module.js';
 import { SubscriptionsModule } from '../../subscriptions/subscriptions.module.js';
@@ -30,6 +31,7 @@ import { AccessDataModule } from '../../access/access-data.module.js';
     AdminSubscriptionsController,
     AdminAuditController,
     AdminPaymentsController,
+    AdminUsersController,
   ],
   providers: [JwtAuthGuard, PlatformRoleGuard],
 })

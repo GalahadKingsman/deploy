@@ -21,6 +21,12 @@ import type { ContractsV1 } from '@tracked/shared';
 
 type DisplayUser = ContractsV1.UserV1 | TelegramDisplayUser | null;
 
+const rawSupport = import.meta.env.VITE_SUPPORT_TG_LINK as string | undefined;
+const SUPPORT_LINK =
+  typeof rawSupport === 'string' && rawSupport.trim()
+    ? rawSupport.trim()
+    : 'https://t.me/somefunc';
+
 const mockStats = {
   progress: { completed: 12, total: 30, label: 'Прогресс' },
   streak: { value: 5, label: 'Streak' },
@@ -57,6 +63,15 @@ async function copyToClipboard(text: string): Promise<boolean> {
     return success;
   } catch {
     return false;
+  }
+}
+
+function openSupportLink(): void {
+  const tg = typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined;
+  if (tg?.openTelegramLink) {
+    tg.openTelegramLink(SUPPORT_LINK);
+  } else {
+    window.open(SUPPORT_LINK, '_blank', 'noopener,noreferrer');
   }
 }
 
@@ -504,7 +519,6 @@ function StatsRow() {
 // Actions List Component (expert CTA is in BecomeExpertCard)
 function ActionsList() {
   const navigate = useNavigate();
-  const toast = useToast();
   const { data: me } = useMe();
   const isAdmin = me?.user?.platformRole === 'admin' || me?.user?.platformRole === 'owner';
 
@@ -530,17 +544,19 @@ function ActionsList() {
           onClick={() => navigate('/admin/payments')}
         />
       )}
+      {isAdmin && (
+        <ListItem
+          title="Admin: experts"
+          subtitle="Эксперты / роли / подписка"
+          right="›"
+          onClick={() => navigate('/admin/experts')}
+        />
+      )}
       <ListItem
         title="Поддержка"
         subtitle="Помощь и обратная связь"
         right="›"
-        onClick={() => {
-          toast.show({
-            title: 'Скоро',
-            message: 'Поддержка будет доступна в следующей версии',
-            variant: 'info',
-          });
-        }}
+        onClick={openSupportLink}
       />
       <ListItem
         title="Язык"

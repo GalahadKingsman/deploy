@@ -203,6 +203,57 @@ export class UsersRepository {
     return this.mapRowToUserWithBan(result.rows[0]);
   }
 
+  /**
+   * Admin: list/search users (for selecting users in admin UI)
+   */
+  async adminList(params?: {
+    q?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ items: UserWithBan[] }> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+
+    const q = typeof params?.q === 'string' ? params.q.trim() : '';
+    const limitRaw = params?.limit ?? 50;
+    const offsetRaw = params?.offset ?? 0;
+    const limit =
+      typeof limitRaw === 'number' && Number.isFinite(limitRaw) ? Math.max(1, Math.min(200, Math.floor(limitRaw))) : 50;
+    const offset =
+      typeof offsetRaw === 'number' && Number.isFinite(offsetRaw) ? Math.max(0, Math.floor(offsetRaw)) : 0;
+
+    const values: Array<string | number> = [limit, offset];
+    let where = '';
+    if (q) {
+      // Search by: uuid, telegram id, username, first/last name (case-insensitive)
+      values.push(`%${q}%`);
+      const p = values.length;
+      where = `
+        WHERE
+          id::text ILIKE $${p}
+          OR telegram_user_id ILIKE $${p}
+          OR COALESCE(username, '') ILIKE $${p}
+          OR COALESCE(first_name, '') ILIKE $${p}
+          OR COALESCE(last_name, '') ILIKE $${p}
+      `;
+    }
+
+    const res = await this.pool.query<UserDbModel>(
+      `
+      SELECT *
+      FROM users
+      ${where}
+      ORDER BY updated_at DESC
+      LIMIT $1
+      OFFSET $2
+      `,
+      values,
+    );
+
+    return { items: res.rows.map((r) => this.mapRowToUserWithBan(r)) };
+  }
+
   async updateContact(params: { userId: string; email?: string | null; phone?: string | null }): Promise<void> {
     if (!this.pool) {
       throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
