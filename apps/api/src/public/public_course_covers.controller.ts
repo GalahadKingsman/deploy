@@ -25,6 +25,8 @@ export class PublicCourseCoversController {
     }
 
     const obj = await this.storage.getObject({ key: cleanKey });
+    // Allow embedding this image cross-origin (webapp runs on different host).
+    reply.header('cross-origin-resource-policy', 'cross-origin');
     if (obj.contentType) reply.header('content-type', obj.contentType);
     if (obj.contentLength != null) reply.header('content-length', String(obj.contentLength));
     // Cache for a day; URL contains object key (immutable per upload)
