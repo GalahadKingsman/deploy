@@ -249,7 +249,7 @@ export function AdminExpertsPage() {
       <Card style={{ marginBottom: 'var(--sp-4)' }}>
         <CardHeader>
           <CardTitle>1) Создать expert</CardTitle>
-          <CardDescription>Требуется platformRole=admin. Ответ вернёт `expertId`.</CardDescription>
+          <CardDescription>Требуется platformRole=admin или owner. Ответ вернёт `expertId`.</CardDescription>
         </CardHeader>
         <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
           <Input label="Title" placeholder="Школа Игоря" value={createTitle} onChange={(e) => setCreateTitle(e.target.value)} />
@@ -263,7 +263,7 @@ export function AdminExpertsPage() {
           />
           <Button
             variant="primary"
-            disabled={platformRole !== 'admin' || createExpert.isPending}
+            disabled={!isAdmin || createExpert.isPending}
             onClick={async () => {
               try {
                 const res = await createExpert.mutateAsync({
@@ -285,9 +285,9 @@ export function AdminExpertsPage() {
           >
             Создать expert
           </Button>
-          {platformRole !== 'admin' && (
+          {!isAdmin && (
             <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>
-              У тебя сейчас роль `{platformRole ?? 'unknown'}` — создание expert доступно только admin.
+              У тебя сейчас роль `{platformRole ?? 'unknown'}` — создание expert доступно только admin/owner.
             </div>
           )}
         </CardContent>
@@ -296,7 +296,7 @@ export function AdminExpertsPage() {
       <Card style={{ marginBottom: 'var(--sp-4)' }}>
         <CardHeader>
           <CardTitle>2) Управление участниками expert</CardTitle>
-          <CardDescription>Добавить/изменить/удалить участника (требуется admin).</CardDescription>
+          <CardDescription>Добавить/изменить/удалить участника (требуется admin или owner).</CardDescription>
         </CardHeader>
         <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
           <Input
@@ -316,10 +316,10 @@ export function AdminExpertsPage() {
               onChange={(e) => setMemberUserId(e.target.value)}
               hint={selectedUser ? `Выбранный пользователь: ${formatUserLabel(selectedUser)}` : undefined}
             />
-            <RoleSelect label="Role" value={memberRole} onChange={setMemberRole} disabled={platformRole !== 'admin'} />
+            <RoleSelect label="Role" value={memberRole} onChange={setMemberRole} disabled={!isAdmin} />
             <Button
               variant="primary"
-              disabled={platformRole !== 'admin' || addMember.isPending || !effectiveExpertId || !memberUserId.trim()}
+              disabled={!isAdmin || addMember.isPending || !effectiveExpertId || !memberUserId.trim()}
               onClick={async () => {
                 try {
                   await addMember.mutateAsync({
@@ -350,10 +350,10 @@ export function AdminExpertsPage() {
               onChange={(e) => setRoleUserId(e.target.value)}
               hint={selectedUser ? `Выбранный пользователь: ${formatUserLabel(selectedUser)}` : undefined}
             />
-            <RoleSelect label="New role" value={roleRole} onChange={setRoleRole} disabled={platformRole !== 'admin'} />
+            <RoleSelect label="New role" value={roleRole} onChange={setRoleRole} disabled={!isAdmin} />
             <Button
               variant="secondary"
-              disabled={platformRole !== 'admin' || setMemberRoleMut.isPending || !effectiveExpertId || !roleUserId.trim()}
+              disabled={!isAdmin || setMemberRoleMut.isPending || !effectiveExpertId || !roleUserId.trim()}
               onClick={async () => {
                 try {
                   await setMemberRoleMut.mutateAsync({
@@ -386,7 +386,7 @@ export function AdminExpertsPage() {
             />
             <Button
               variant="danger"
-              disabled={platformRole !== 'admin' || removeMember.isPending || !effectiveExpertId || !removeUserId.trim()}
+              disabled={!isAdmin || removeMember.isPending || !effectiveExpertId || !removeUserId.trim()}
               onClick={async () => {
                 try {
                   await removeMember.mutateAsync({
