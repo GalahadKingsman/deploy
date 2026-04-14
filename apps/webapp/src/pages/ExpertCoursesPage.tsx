@@ -3,6 +3,8 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input } from '../shared/ui/index.js';
 import { useExpertCourses, useCreateExpertCourse } from '../shared/queries/useExpertCourses.js';
 import type { ContractsV1 } from '@tracked/shared';
+import { ApiClientError } from '../shared/api/errors.js';
+import { useToast } from '../shared/ui/feedback/Toast.js';
 
 type TabFilter = 'all' | 'draft' | 'published';
 
@@ -14,6 +16,7 @@ function tabToStatus(tab: TabFilter): ContractsV1.CourseStatusV1 | undefined {
 
 export function ExpertCoursesPage() {
   const { expertId } = useParams<{ expertId: string }>();
+  const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabRaw = (searchParams.get('status') ?? 'all').toLowerCase();
   const tab: TabFilter =
@@ -90,7 +93,25 @@ export function ExpertCoursesPage() {
             </Button>
             <Button
               variant="primary"
-              onClick={() => create.mutate({ title: 'Новый курс', visibility: 'private' })}
+              onClick={() => {
+                create.mutate(
+                  { title: 'Новый курс', visibility: 'private' },
+                  {
+                    onSuccess: () => {
+                      toast.show({ title: 'Курс создан', variant: 'success' });
+                    },
+                    onError: (e) => {
+                      const msg =
+                        e instanceof ApiClientError
+                          ? `${e.message}${e.status ? ` (HTTP ${e.status})` : ''}`
+                          : e instanceof Error
+                            ? e.message
+                            : 'Не удалось создать курс';
+                      toast.show({ title: 'Ошибка', message: msg, variant: 'error' });
+                    },
+                  },
+                );
+              }}
               disabled={!expertId || create.isPending}
             >
               Создать
@@ -104,7 +125,11 @@ export function ExpertCoursesPage() {
         <Card>
           <CardHeader>
             <CardTitle>Ошибка</CardTitle>
-            <CardDescription>Не удалось загрузить список курсов.</CardDescription>
+            <CardDescription>
+              {error instanceof ApiClientError
+                ? `Не удалось загрузить список курсов. ${error.message} (HTTP ${error.status})`
+                : 'Не удалось загрузить список курсов.'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Button variant="secondary" onClick={() => refetch()}>

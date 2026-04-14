@@ -4,6 +4,20 @@ import type { ContractsV1 } from '@tracked/shared';
 import { Input, Button, Card, Skeleton, EmptyState, ErrorState } from '../shared/ui/index.js';
 import { useLibrary } from '../shared/queries/useLibrary.js';
 import { ApiClientError } from '../shared/api/errors.js';
+import { config } from '../shared/config/flags.js';
+
+function resolveCoverUrl(raw: string): string {
+  const u = raw.trim();
+  if (!u) return '';
+  if (u.startsWith('http://') || u.startsWith('https://')) return u;
+  // For values like `/public/course-cover?...` that live on API host.
+  if (u.startsWith('/')) {
+    const base =
+      config.API_BASE_URL || (typeof window !== 'undefined' ? (window.location?.origin ?? '') : '');
+    return `${base}${u}`;
+  }
+  return u;
+}
 
 // Section Header Component
 function SectionHeader({ title, right }: { title: string; right?: React.ReactNode }) {
@@ -58,6 +72,10 @@ function ProgressBar({ progress }: { progress: number }) {
 
 // Catalog Course Card Component
 function CatalogCourseCard({ course }: { course: ContractsV1.CourseV1 }) {
+  const cover =
+    typeof course.coverUrl === 'string' && course.coverUrl.trim()
+      ? resolveCoverUrl(course.coverUrl)
+      : null;
   return (
     <Link
       to={`/course/${course.id}`}
@@ -86,17 +104,29 @@ function CatalogCourseCard({ course }: { course: ContractsV1.CourseV1 }) {
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
+              overflow: 'hidden',
             }}
           >
-            <div
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--accent)',
-                opacity: 0.5,
-              }}
-            />
+            {cover ? (
+              <img
+                src={cover}
+                alt=""
+                width={48}
+                height={48}
+                loading="lazy"
+                style={{ width: 48, height: 48, objectFit: 'cover', opacity: 1 }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--accent)',
+                  opacity: 0.5,
+                }}
+              />
+            )}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div
@@ -149,6 +179,10 @@ function CatalogCourseCard({ course }: { course: ContractsV1.CourseV1 }) {
 
 // Recommended Course Card Component
 function RecommendedCourseCard({ course }: { course: ContractsV1.CourseV1 }) {
+  const cover =
+    typeof course.coverUrl === 'string' && course.coverUrl.trim()
+      ? resolveCoverUrl(course.coverUrl)
+      : null;
   return (
     <Link
       to={`/course/${course.id}`}
@@ -181,17 +215,29 @@ function RecommendedCourseCard({ course }: { course: ContractsV1.CourseV1 }) {
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
+            overflow: 'hidden',
           }}
         >
-          <div
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              backgroundColor: 'var(--accent)',
-              opacity: 0.5,
-            }}
-          />
+          {cover ? (
+            <img
+              src={cover}
+              alt=""
+              width={48}
+              height={48}
+              loading="lazy"
+              style={{ width: 48, height: 48, objectFit: 'cover', opacity: 1 }}
+            />
+          ) : (
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--accent)',
+                opacity: 0.5,
+              }}
+            />
+          )}
         </div>
         <div
           style={{

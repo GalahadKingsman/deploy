@@ -16,6 +16,7 @@ import {
   useExtendEnrollment,
   useRevokeEnrollment,
   useEnrollByTelegram,
+  useEnrollByUsername,
 } from '../shared/queries/useExpertCourseAccess.js';
 
 export function ExpertCourseAccessPage() {
@@ -26,7 +27,9 @@ export function ExpertCourseAccessPage() {
   const extend = useExtendEnrollment(expertId, courseId);
   const revoke = useRevokeEnrollment(expertId, courseId);
   const enrollTg = useEnrollByTelegram(expertId, courseId);
+  const enrollUsername = useEnrollByUsername(expertId, courseId);
   const [tgManual, setTgManual] = React.useState('');
+  const [usernameManual, setUsernameManual] = React.useState('');
   const [grantDaysByRow, setGrantDaysByRow] = React.useState<Record<string, string>>({});
 
   if (!expertId || !courseId) {
@@ -103,6 +106,37 @@ export function ExpertCourseAccessPage() {
               try {
                 await enrollTg.mutateAsync({ telegramUserId: t });
                 setTgManual('');
+                toast.show({ title: 'Зачислено', variant: 'success' });
+              } catch {
+                toast.show({ title: 'Ошибка', message: 'Не удалось зачислить', variant: 'error' });
+              }
+            }}
+          >
+            Зачислить
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle style={{ fontSize: 'var(--text-md)' }}>Зачислить по Telegram username</CardTitle>
+          <CardDescription>@username (пользователь должен хотя бы раз открыть Mini App)</CardDescription>
+        </CardHeader>
+        <CardContent style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <Input
+            placeholder="@someuser"
+            value={usernameManual}
+            onChange={(e) => setUsernameManual(e.target.value)}
+          />
+          <Button
+            variant="primary"
+            disabled={enrollUsername.isPending}
+            onClick={async () => {
+              const u = usernameManual.trim();
+              if (!u) return;
+              try {
+                await enrollUsername.mutateAsync({ username: u });
+                setUsernameManual('');
                 toast.show({ title: 'Зачислено', variant: 'success' });
               } catch {
                 toast.show({ title: 'Ошибка', message: 'Не удалось зачислить', variant: 'error' });

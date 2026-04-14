@@ -74,3 +74,20 @@ export function useEnrollByTelegram(expertId: string, courseId: string) {
     },
   });
 }
+
+export function useEnrollByUsername(expertId: string, courseId: string) {
+  const qc = useQueryClient();
+  return useMutation<ContractsV1.EnrollmentV1, Error, { username: string }>({
+    mutationFn: async ({ username }) => {
+      const clean = username.trim().startsWith('@') ? username.trim().slice(1).trim() : username.trim();
+      return await fetchJson<ContractsV1.EnrollmentV1>({
+        path: `/experts/${encodeURIComponent(expertId)}/courses/${encodeURIComponent(courseId)}/enroll/by-username/${encodeURIComponent(clean)}`,
+        method: 'POST',
+        body: {},
+      });
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: expertEnrollmentsKey(expertId, courseId) });
+    },
+  });
+}

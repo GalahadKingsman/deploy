@@ -241,7 +241,11 @@ export class CoursesRepository {
     const result = await this.pool.query<CourseRow>(
       `
       UPDATE courses
-      SET status = 'published', published_at = COALESCE(published_at, NOW()), updated_at = NOW()
+      SET
+        status = 'published',
+        visibility = 'public',
+        published_at = COALESCE(published_at, NOW()),
+        updated_at = NOW()
       WHERE id = $1 AND expert_id = $2
       RETURNING *
       `,

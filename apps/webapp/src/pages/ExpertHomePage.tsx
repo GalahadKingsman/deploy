@@ -2,6 +2,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button } from '../shared/ui/index.js';
 import { useMyExpertMemberships } from '../shared/queries/useMyExpertMemberships.js';
+import { useMyExpertSubscription } from '../shared/queries/useMyExpertSubscription.js';
+import { deriveExpertCtaState } from '../features/account/expertCtaState.js';
 
 function pickPrimaryExpertId(items: { expertId: string }[]): string | null {
   if (!items || items.length === 0) return null;
@@ -10,7 +12,10 @@ function pickPrimaryExpertId(items: { expertId: string }[]): string | null {
 
 export function ExpertHomePage() {
   const { data, isLoading, error } = useMyExpertMemberships();
-  const expertId = pickPrimaryExpertId(data?.items ?? []);
+  const { data: subData } = useMyExpertSubscription();
+  const subState = deriveExpertCtaState(subData ?? null);
+  const activeExpertId = subState === 'active' ? (subData?.expertId ?? null) : null;
+  const expertId = activeExpertId ?? pickPrimaryExpertId(data?.items ?? []);
 
   if (isLoading) {
     return <div style={{ padding: 'var(--sp-4)' }}>Загрузка…</div>;

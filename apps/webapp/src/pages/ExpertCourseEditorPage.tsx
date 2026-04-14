@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Inpu
 import { fetchJson } from '../shared/api/index.js';
 import type { ContractsV1 } from '@tracked/shared';
 import { useTopics, useCourseTopics, useSetCourseTopics } from '../shared/queries/useTopics.js';
+import { ApiClientError } from '../shared/api/errors.js';
 
 export function ExpertCourseEditorPage() {
   const toast = useToast();
@@ -12,6 +13,10 @@ export function ExpertCourseEditorPage() {
   const [title, setTitle] = React.useState('');
   const [priceRubles, setPriceRubles] = React.useState('0');
   const [currency, setCurrency] = React.useState('RUB');
+  const [visibility, setVisibility] = React.useState<'private' | 'public'>('private');
+  const [coverUrl, setCoverUrl] = React.useState<string>('');
+  const [coverFile, setCoverFile] = React.useState<File | null>(null);
+  const [coverUploading, setCoverUploading] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [course, setCourse] = React.useState<ContractsV1.ExpertCourseV1 | null>(null);
@@ -43,6 +48,8 @@ export function ExpertCourseEditorPage() {
         const rub = (c.priceCents ?? 0) / 100;
         setPriceRubles(Number.isInteger(rub) ? String(rub) : (Math.round(rub * 100) / 100).toString());
         setCurrency(c.currency ?? 'RUB');
+        setVisibility((c.visibility ?? 'private') === 'public' ? 'public' : 'private');
+        setCoverUrl((c.coverUrl ?? '') || '');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -70,6 +77,8 @@ export function ExpertCourseEditorPage() {
           title,
           priceCents,
           currency: currency.trim() || 'RUB',
+          visibility,
+          coverUrl: coverUrl.trim() ? coverUrl.trim() : null,
         },
       });
       setCourse(updated);
@@ -94,6 +103,47 @@ export function ExpertCourseEditorPage() {
       method: 'POST',
     });
     setCourse(updated);
+  };
+
+  const uploadCover = async () => {
+    if (!expertId || !courseId || !coverFile) return;
+    setCoverUploading(true);
+    try {
+      const signed = await fetchJson<{ key: string; url: string; publicPath: string }>({
+        path: `/experts/${expertId}/courses/${courseId}/cover/signed`,
+        method: 'POST',
+        body: { filename: coverFile.name, contentType: coverFile.type || null },
+      });
+
+      const put = await fetch(signed.url, {
+        method: 'PUT',
+        headers: coverFile.type ? { 'content-type': coverFile.type } : undefined,
+        body: coverFile,
+      });
+      if (!put.ok) {
+        throw new Error(`Upload failed: HTTP ${put.status}`);
+      }
+
+      const updated = await fetchJson<ContractsV1.ExpertCourseV1>({
+        path: `/experts/${expertId}/courses/${courseId}`,
+        method: 'PATCH',
+        body: { coverUrl: signed.publicPath },
+      });
+      setCourse(updated);
+      setCoverUrl((updated.coverUrl ?? '') || '');
+      setCoverFile(null);
+      toast.show({ title: 'Обложка загружена', variant: 'success' });
+    } catch (e) {
+      const msg =
+        e instanceof ApiClientError
+          ? `${e.message} (HTTP ${e.status})`
+          : e instanceof Error
+            ? e.message
+            : 'Не удалось загрузить обложку';
+      toast.show({ title: 'Ошибка', message: msg, variant: 'error' });
+    } finally {
+      setCoverUploading(false);
+    }
   };
 
   if (loading) {
@@ -129,6 +179,50 @@ export function ExpertCourseEditorPage() {
         </CardHeader>
         <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
           <Input label="Название" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div style={{ flex: '1 1 220px' }}>
+              <Input
+                label="Обложка (URL, auto)"
+                placeholder="/public/course-cover?key=..."
+                value={coverUrl}
+                onChange={(e) => setCoverUrl(e.target.value)}
+                hint="Это поле заполняется автоматически после загрузки файла."
+              />
+            </div>
+            <div style={{ flex: '0 1 160px' }}>
+              <div style={{ marginBottom: 'var(--sp-2)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-medium)' }}>
+                Видимость
+              </div>
+              <select
+                value={visibility}
+                onChange={(e) => setVisibility(e.target.value === 'public' ? 'public' : 'private')}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: 'var(--r-sm)',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg)',
+                  color: 'var(--fg)',
+                }}
+              >
+                <option value="private">private (только по ссылке)</option>
+                <option value="public">public (в библиотеке)</option>
+              </select>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', alignItems: 'center' }}>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                setCoverFile(f);
+              }}
+            />
+            <Button variant="secondary" onClick={uploadCover} disabled={!coverFile || coverUploading}>
+              {coverUploading ? 'Загрузка…' : 'Загрузить обложку'}
+            </Button>
+          </div>
           <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div style={{ flex: '1 1 160px' }}>
               <Input

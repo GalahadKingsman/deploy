@@ -23,6 +23,7 @@ import { RequireExpertRole } from '../../auth/expert-rbac/require-expert-role.de
 import { CoursesRepository } from '../../authoring/courses.repository.js';
 import { AuditService } from '../../audit/audit.service.js';
 import type { FastifyRequest } from 'fastify';
+import { S3StorageService } from '../../storage/s3-storage.service.js';
 
 function getTraceId(req: FastifyRequest & { traceId?: string }): string | null {
   const h = req.headers?.['x-request-id'];
@@ -37,6 +38,7 @@ export class ExpertCoursesController {
   constructor(
     private readonly coursesRepository: CoursesRepository,
     private readonly auditService: AuditService,
+    private readonly storage: S3StorageService,
   ) {}
 
   @Get()
@@ -114,6 +116,28 @@ export class ExpertCoursesController {
     });
 
     return created;
+  }
+
+  @Post(':courseId/cover/signed')
+  @RequireExpertRole('manager')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Get signed PUT URL for course cover upload (manager+)' })
+  @ApiResponse({ status: 201, description: 'Signed upload URL' })
+  async createSignedCoverUpload(
+    @Param('expertId') expertId: string,
+    @Param('courseId') courseId: string,
+    @Body() body: { filename?: string | null; contentType?: string | null },
+  ): Promise<{ key: string; url: string; publicPath: string }> {
+    await this.coursesRepository.getById({ expertId, courseId });
+
+    const original = typeof body?.filename === 'string' && body.filename ? body.filename : 'cover';
+    const safeName = original.replace(/[^\w.\-]+/g, '_').slice(0, 120);
+    const key = `course-covers/${courseId}/${Date.now()}-${safeName}`;
+    const contentType = typeof body?.contentType === 'string' && body.contentType ? body.contentType : null;
+
+    const signed = await this.storage.getSignedPutUrl({ key, contentType, expiresSeconds: 120 });
+    const publicPath = `/public/course-cover?key=${encodeURIComponent(key)}`;
+    return { key, url: signed.url, publicPath };
   }
 
   @Get(':courseId')

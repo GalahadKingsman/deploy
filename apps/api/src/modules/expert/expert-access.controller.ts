@@ -111,6 +111,30 @@ export class ExpertAccessController {
     return await this.enrollmentsRepository.upsertActive({ userId: user.id, courseId, accessEnd: null });
   }
 
+  @Post('courses/:courseId/enroll/by-username/:username')
+  @RequireExpertRole('manager')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Manual enroll user by Telegram username (manager+)' })
+  @ApiResponse({ status: 200, description: 'Enrollment created/updated' })
+  async enrollByUsername(
+    @Param('expertId') expertId: string,
+    @Param('courseId') courseId: string,
+    @Param('username') username: string,
+  ): Promise<ContractsV1.EnrollmentV1> {
+    await this.coursesRepository.getById({ expertId, courseId });
+    const raw = typeof username === 'string' ? username.trim() : '';
+    const clean = raw.startsWith('@') ? raw.slice(1).trim() : raw;
+    if (!clean) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'username is required' });
+    }
+
+    const user = await this.usersRepository.findByUsername(clean);
+    if (!user) {
+      throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'User not found' });
+    }
+    return await this.enrollmentsRepository.upsertActive({ userId: user.id, courseId, accessEnd: null });
+  }
+
   @Get('courses/:courseId/enrollments')
   @RequireExpertRole('manager')
   @ApiOperation({ summary: 'List enrollments for course (manager+)' })

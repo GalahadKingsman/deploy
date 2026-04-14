@@ -203,6 +203,20 @@ export class UsersRepository {
     return this.mapRowToUserWithBan(result.rows[0]);
   }
 
+  async findByUsername(username: string): Promise<UserWithBan | null> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    const u = typeof username === 'string' ? username.trim() : '';
+    if (!u) return null;
+    const result = await this.pool.query<UserDbModel>(
+      `SELECT * FROM users WHERE lower(username) = lower($1) LIMIT 1`,
+      [u],
+    );
+    if (result.rows.length === 0) return null;
+    return this.mapRowToUserWithBan(result.rows[0]);
+  }
+
   /**
    * Admin: list/search users (for selecting users in admin UI)
    */
