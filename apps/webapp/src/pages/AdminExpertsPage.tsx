@@ -77,7 +77,7 @@ export function AdminExpertsPage() {
 
   const createExpert = useAdminCreateExpert();
   const addMember = useAdminAddExpertMember();
-  const setMemberRole = useAdminSetExpertMemberRole();
+  const setMemberRoleMut = useAdminSetExpertMemberRole();
   const removeMember = useAdminRemoveExpertMember();
   const grantDays = useAdminGrantExpertSubscriptionDays();
   const expireNow = useAdminExpireExpertSubscriptionNow();
@@ -353,10 +353,10 @@ export function AdminExpertsPage() {
             <RoleSelect label="New role" value={roleRole} onChange={setRoleRole} disabled={platformRole !== 'admin'} />
             <Button
               variant="secondary"
-              disabled={platformRole !== 'admin' || setMemberRole.isPending || !effectiveExpertId || !roleUserId.trim()}
+              disabled={platformRole !== 'admin' || setMemberRoleMut.isPending || !effectiveExpertId || !roleUserId.trim()}
               onClick={async () => {
                 try {
-                  await setMemberRole.mutateAsync({
+                  await setMemberRoleMut.mutateAsync({
                     expertId: effectiveExpertId,
                     userId: roleUserId.trim(),
                     role: roleRole,
