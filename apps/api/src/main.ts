@@ -62,7 +62,8 @@ async function bootstrap() {
   // Multipart uploads (used for submission files)
   await (app.getHttpAdapter().getInstance() as any).register(multipart as any, {
     limits: {
-      fileSize: 10 * 1024 * 1024, // 10MB
+      // iPhone photos (jpeg) are often >10MB; keep reasonably high to avoid "Load failed" in WebView.
+      fileSize: 25 * 1024 * 1024, // 25MB
       files: 1,
     },
   });
