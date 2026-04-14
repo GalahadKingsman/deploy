@@ -683,7 +683,7 @@ export function AccountPage() {
   // Default state
   return (
     <div style={{ padding: 'var(--sp-4)' }}>
-      <ProfileCard user={user} isPro={expertState !== 'none'} tgId={tgId} />
+      <ProfileCard user={user} isPro={expertState === 'active'} tgId={tgId} />
 
       <ExpertCtaBlock />
 

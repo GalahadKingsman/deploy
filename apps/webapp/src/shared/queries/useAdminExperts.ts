@@ -33,7 +33,7 @@ export function useAdminAddExpertMember() {
   >({
     mutationFn: async ({ expertId, userId, role }) => {
       return await fetchJson<{ ok: true }>({
-        path: `/admin/experts/${encodeURIComponent(expertId)}/members`,
+        path: `/admin/experts/${encodeURIComponent(expertId.trim())}/members`,
         method: 'POST',
         body: { userId, role },
       });
@@ -55,7 +55,7 @@ export function useAdminSetExpertMemberRole() {
   >({
     mutationFn: async ({ expertId, userId, role }) => {
       return await fetchJson<{ ok: true }>({
-        path: `/admin/experts/${encodeURIComponent(expertId)}/members/${encodeURIComponent(userId)}`,
+        path: `/admin/experts/${encodeURIComponent(expertId.trim())}/members/${encodeURIComponent(userId)}`,
         method: 'PATCH',
         body: { role },
       });
@@ -73,7 +73,7 @@ export function useAdminRemoveExpertMember() {
   return useMutation<{ ok: true }, Error, { expertId: string; userId: string }>({
     mutationFn: async ({ expertId, userId }) => {
       return await fetchJson<{ ok: true }>({
-        path: `/admin/experts/${encodeURIComponent(expertId)}/members/${encodeURIComponent(userId)}`,
+        path: `/admin/experts/${encodeURIComponent(expertId.trim())}/members/${encodeURIComponent(userId)}`,
         method: 'DELETE',
       });
     },
@@ -94,7 +94,7 @@ export function useAdminGrantExpertSubscriptionDays() {
   >({
     mutationFn: async ({ expertId, days }) => {
       return await fetchJson({
-        path: `/admin/experts/${encodeURIComponent(expertId)}/subscription/grant-days`,
+        path: `/admin/experts/${encodeURIComponent(expertId.trim())}/subscription/grant-days`,
         method: 'POST',
         body: { days },
       });
@@ -112,7 +112,7 @@ export function useAdminExpireExpertSubscriptionNow() {
   return useMutation<unknown, Error, { expertId: string }>({
     mutationFn: async ({ expertId }) => {
       return await fetchJson({
-        path: `/admin/experts/${encodeURIComponent(expertId)}/subscription/expire`,
+        path: `/admin/experts/${encodeURIComponent(expertId.trim())}/subscription/expire`,
         method: 'POST',
       });
     },

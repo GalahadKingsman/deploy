@@ -5,6 +5,12 @@ import { JwtAuthGuard } from '../../auth/session/jwt-auth.guard.js';
 import { ExpertMembersRepository } from '../../experts/expert-members.repository.js';
 import { ExpertSubscriptionsRepository } from '../../subscriptions/expert-subscriptions.repository.js';
 
+function isActive(sub: ContractsV1.ExpertSubscriptionV1, nowMs: number): boolean {
+  if (sub.status !== 'active') return false;
+  const endMs = sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd).getTime() : null;
+  return endMs == null || endMs > nowMs;
+}
+
 @ApiTags('User')
 @Controller()
 @UseGuards(JwtAuthGuard)
@@ -31,14 +37,29 @@ export class MeExpertSubscriptionController {
     }
 
     const memberships = await this.expertMembersRepository.listMembershipsByUserId(userId);
-    const expertId = memberships[0]?.expertId;
-    if (!expertId) {
-      return null;
+    if (memberships.length === 0) return null;
+
+    const nowMs = Date.now();
+    const subs: ContractsV1.ExpertSubscriptionV1[] = [];
+
+    for (const m of memberships) {
+      // Ensure row exists so frontend consistently sees inactive/active/expired.
+      await this.expertSubscriptionsRepository.ensureDefault(m.expertId);
+      const s = await this.expertSubscriptionsRepository.findByExpertId(m.expertId);
+      if (s) subs.push(s);
     }
 
-    // Ensure row exists so frontend consistently sees inactive/active/expired.
-    await this.expertSubscriptionsRepository.ensureDefault(expertId);
-    return await this.expertSubscriptionsRepository.findByExpertId(expertId);
+    if (subs.length === 0) return null;
+
+    // Prefer ACTIVE subscription; otherwise return the most recent one by end date.
+    const active = subs.filter((s) => isActive(s, nowMs));
+    const pickFrom = active.length > 0 ? active : subs;
+    pickFrom.sort((a, b) => {
+      const ae = a.currentPeriodEnd ? new Date(a.currentPeriodEnd).getTime() : Number.POSITIVE_INFINITY;
+      const be = b.currentPeriodEnd ? new Date(b.currentPeriodEnd).getTime() : Number.POSITIVE_INFINITY;
+      return be - ae;
+    });
+    return pickFrom[0] ?? null;
   }
 }
 

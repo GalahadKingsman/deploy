@@ -31,6 +31,18 @@ function getTraceId(req: ReqWithUser): string | null {
 const MIN_DAYS = 1;
 const MAX_DAYS = 3650;
 
+function assertUuid(value: string, name: string): string {
+  const v = value.trim();
+  const ok = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+  if (!ok) {
+    throw new BadRequestException({
+      code: ErrorCodes.VALIDATION_ERROR,
+      message: `${name} must be a UUID`,
+    });
+  }
+  return v;
+}
+
 @ApiTags('Admin')
 @Controller('admin/experts')
 @UseGuards(JwtAuthGuard, PlatformRoleGuard)
@@ -61,6 +73,7 @@ export class AdminSubscriptionsController {
     @Body() body: { days?: unknown },
     @Req() req: ReqWithUser,
   ): Promise<ContractsV1.ExpertSubscriptionV1> {
+    const expertIdUuid = assertUuid(expertId, 'expertId');
     const daysRaw = body?.days;
     const days =
       typeof daysRaw === 'number' && Number.isInteger(daysRaw)
@@ -75,17 +88,17 @@ export class AdminSubscriptionsController {
       });
     }
 
-    const before = await this.expertSubscriptionsRepository.findByExpertId(expertId);
-    const subscription = await this.expertSubscriptionsRepository.grantDays(expertId, days);
+    const before = await this.expertSubscriptionsRepository.findByExpertId(expertIdUuid);
+    const subscription = await this.expertSubscriptionsRepository.grantDays(expertIdUuid, days);
     const traceId = getTraceId(req);
 
     await this.auditService.write({
       actorUserId: req.user?.userId ?? null,
       action: 'admin.expert_subscription.grant_days',
       entityType: 'expert_subscription',
-      entityId: expertId,
+      entityId: expertIdUuid,
       meta: {
-        expertId,
+        expertId: expertIdUuid,
         days,
         fromStatus: before?.status ?? null,
         toStatus: subscription.status,
@@ -109,17 +122,18 @@ export class AdminSubscriptionsController {
     @Param('expertId') expertId: string,
     @Req() req: ReqWithUser,
   ): Promise<ContractsV1.ExpertSubscriptionV1> {
-    const before = await this.expertSubscriptionsRepository.findByExpertId(expertId);
-    const subscription = await this.expertSubscriptionsRepository.expireNow(expertId);
+    const expertIdUuid = assertUuid(expertId, 'expertId');
+    const before = await this.expertSubscriptionsRepository.findByExpertId(expertIdUuid);
+    const subscription = await this.expertSubscriptionsRepository.expireNow(expertIdUuid);
     const traceId = getTraceId(req);
 
     await this.auditService.write({
       actorUserId: req.user?.userId ?? null,
       action: 'admin.expert_subscription.expire',
       entityType: 'expert_subscription',
-      entityId: expertId,
+      entityId: expertIdUuid,
       meta: {
-        expertId,
+        expertId: expertIdUuid,
         fromStatus: before?.status ?? null,
         fromEnd: before?.currentPeriodEnd ?? null,
         toStatus: 'expired',
