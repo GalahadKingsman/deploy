@@ -12,6 +12,7 @@ import {
   HttpStatus,
   BadRequestException,
   Req,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { randomUUID } from 'node:crypto';
@@ -138,6 +139,49 @@ export class ExpertCoursesController {
     const signed = await this.storage.getSignedPutUrl({ key, contentType, expiresSeconds: 120 });
     const publicPath = `/public/course-cover?key=${encodeURIComponent(key)}`;
     return { key, url: signed.url, publicPath };
+  }
+
+  @Post(':courseId/cover')
+  @RequireExpertRole('manager')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Upload course cover (multipart, manager+)' })
+  @ApiResponse({ status: 201, description: 'Course updated' })
+  async uploadCover(
+    @Param('expertId') expertId: string,
+    @Param('courseId') courseId: string,
+    @Req()
+    req: FastifyRequest & {
+      user?: { userId: string };
+      file?: (opts?: any) => Promise<any>;
+    },
+  ): Promise<ContractsV1.ExpertCourseV1> {
+    await this.coursesRepository.getById({ expertId, courseId });
+
+    const file = await (req as any).file?.();
+    if (!file) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'file is required' });
+    }
+
+    const buf: Buffer = await file.toBuffer();
+    if (!buf || buf.length === 0) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Empty file' });
+    }
+
+    const original = typeof file.filename === 'string' && file.filename ? file.filename : 'cover';
+    const safeName = original.replace(/[^\w.\-]+/g, '_').slice(0, 120);
+    const key = `course-covers/${courseId}/${Date.now()}-${safeName}`;
+    await this.storage.putObject({
+      key,
+      body: new Uint8Array(buf),
+      contentType: file.mimetype ?? null,
+    });
+
+    const publicPath = `/public/course-cover?key=${encodeURIComponent(key)}`;
+    return await this.coursesRepository.update({
+      expertId,
+      courseId,
+      patch: { coverUrl: publicPath },
+    });
   }
 
   @Get(':courseId')

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, useToast } from '../shared/ui/index.js';
-import { fetchJson } from '../shared/api/index.js';
+import { fetchJson, fetchMultipart } from '../shared/api/index.js';
 import type { ContractsV1 } from '@tracked/shared';
 import { useTopics, useCourseTopics, useSetCourseTopics } from '../shared/queries/useTopics.js';
 import { ApiClientError } from '../shared/api/errors.js';
@@ -109,25 +109,12 @@ export function ExpertCourseEditorPage() {
     if (!expertId || !courseId || !coverFile) return;
     setCoverUploading(true);
     try {
-      const signed = await fetchJson<{ key: string; url: string; publicPath: string }>({
-        path: `/experts/${expertId}/courses/${courseId}/cover/signed`,
-        method: 'POST',
-        body: { filename: coverFile.name, contentType: coverFile.type || null },
-      });
+      const form = new FormData();
+      form.append('file', coverFile, coverFile.name);
 
-      const put = await fetch(signed.url, {
-        method: 'PUT',
-        headers: coverFile.type ? { 'content-type': coverFile.type } : undefined,
-        body: coverFile,
-      });
-      if (!put.ok) {
-        throw new Error(`Upload failed: HTTP ${put.status}`);
-      }
-
-      const updated = await fetchJson<ContractsV1.ExpertCourseV1>({
-        path: `/experts/${expertId}/courses/${courseId}`,
-        method: 'PATCH',
-        body: { coverUrl: signed.publicPath },
+      const updated = await fetchMultipart<ContractsV1.ExpertCourseV1>({
+        path: `/experts/${expertId}/courses/${courseId}/cover`,
+        form,
       });
       setCourse(updated);
       setCoverUrl((updated.coverUrl ?? '') || '');
