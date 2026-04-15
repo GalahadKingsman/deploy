@@ -1,6 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
-import { Outlet, useLocation, useNavigationType } from 'react-router-dom';
-import { TopBar } from '../../ui/shell/TopBar.js';
+import { Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { BottomTabs } from '../../ui/shell/BottomTabs.js';
 import {
   isTabPath,
@@ -13,6 +12,7 @@ import {
 export function AppShell() {
   const mainRef = useRef<HTMLElement>(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const navigationType = useNavigationType();
   const isRestoringRef = useRef(false);
   const lastScrollRef = useRef<number>(0);
@@ -21,6 +21,35 @@ export function AppShell() {
   const pathname = location.pathname;
   const isTab = isTabPath(pathname);
   const prevIsTab = isTabPath(prevPathnameRef.current);
+
+  // Telegram Mini App: replace "Close" with native Back button on nested pages
+  useEffect(() => {
+    const tg = typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined;
+    const bb = tg?.BackButton;
+    if (!bb?.show || !bb?.hide || !bb?.onClick) return;
+
+    const shouldShow = !isTab;
+    const handle = () => {
+      // If opened directly (no history), go to learn instead of doing nothing.
+      if (typeof window !== 'undefined' && window.history.length <= 1) {
+        navigate('/learn', { replace: true });
+        return;
+      }
+      navigate(-1);
+    };
+
+    if (shouldShow) bb.show();
+    else bb.hide();
+    bb.onClick(handle);
+
+    return () => {
+      try {
+        bb.offClick?.(handle);
+      } catch {
+        // ignore
+      }
+    };
+  }, [isTab, navigate]);
 
   // Save scroll position on scroll events
   useEffect(() => {
@@ -129,7 +158,6 @@ export function AppShell() {
         overflow: 'hidden',
       }}
     >
-      <TopBar />
       <main
         ref={mainRef}
         style={{
@@ -142,7 +170,7 @@ export function AppShell() {
           contain: 'paint',
           minHeight: '100%',
           width: '100%',
-          paddingTop: 'calc(var(--topbar-h) + var(--safe-top, 0px))',
+          paddingTop: 'var(--safe-top, 0px)',
           paddingBottom: 'calc(var(--tabs-h) + var(--safe-bottom, 0px))',
         }}
       >

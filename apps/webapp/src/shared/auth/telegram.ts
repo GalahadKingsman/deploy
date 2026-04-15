@@ -37,7 +37,13 @@ interface TelegramWebApp {
   viewportStableHeight?: number;
   headerColor?: string;
   backgroundColor?: string;
-  BackButton?: unknown;
+  BackButton?: {
+    isVisible?: boolean;
+    show?: () => void;
+    hide?: () => void;
+    onClick?: (cb: () => void) => void;
+    offClick?: (cb: () => void) => void;
+  };
   MainButton?: unknown;
   HapticFeedback?: unknown;
   CloudStorage?: unknown;
