@@ -12,8 +12,6 @@ export function ExpertCourseEditorPage() {
   const { expertId, courseId } = useParams<{ expertId: string; courseId: string }>();
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
-  const [priceRubles, setPriceRubles] = React.useState('0');
-  const [currency, setCurrency] = React.useState('RUB');
   const [visibility, setVisibility] = React.useState<'private' | 'public'>('private');
   const [coverUrl, setCoverUrl] = React.useState<string>('');
   const [coverFile, setCoverFile] = React.useState<File | null>(null);
@@ -54,9 +52,6 @@ export function ExpertCourseEditorPage() {
         setCourse(c);
         setTitle(c.title);
         setDescription(c.description ?? '');
-        const rub = (c.priceCents ?? 0) / 100;
-        setPriceRubles(Number.isInteger(rub) ? String(rub) : (Math.round(rub * 100) / 100).toString());
-        setCurrency(c.currency ?? 'RUB');
         setVisibility((c.visibility ?? 'private') === 'public' ? 'public' : 'private');
         setCoverUrl((c.coverUrl ?? '') || '');
       } finally {
@@ -71,12 +66,6 @@ export function ExpertCourseEditorPage() {
 
   const save = async () => {
     if (!expertId || !courseId) return;
-    const rub = parseFloat(String(priceRubles).replace(',', '.'));
-    if (!Number.isFinite(rub) || rub < 0) {
-      toast.show({ title: 'Некорректная цена', message: 'Укажите неотрицательное число рублей.', variant: 'error' });
-      return;
-    }
-    const priceCents = Math.round(rub * 100);
     setSaving(true);
     try {
       const updated = await fetchJson<ContractsV1.ExpertCourseV1>({
@@ -85,8 +74,6 @@ export function ExpertCourseEditorPage() {
         body: {
           title,
           description: description.trim() ? description.trim() : null,
-          priceCents,
-          currency: currency.trim() || 'RUB',
           visibility,
           coverUrl: coverUrl.trim() ? coverUrl.trim() : null,
         },
@@ -244,23 +231,6 @@ export function ExpertCourseEditorPage() {
             <Button variant="secondary" onClick={uploadCover} disabled={!coverFile || coverUploading}>
               {coverUploading ? 'Загрузка…' : 'Загрузить обложку'}
             </Button>
-          </div>
-          <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div style={{ flex: '1 1 160px' }}>
-              <Input
-                label="Цена (руб.)"
-                inputMode="decimal"
-                value={priceRubles}
-                onChange={(e) => setPriceRubles(e.target.value)}
-              />
-            </div>
-            <div style={{ flex: '0 1 100px' }}>
-              <Input
-                label="Валюта"
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-              />
-            </div>
           </div>
           <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
             <Button variant="primary" onClick={save} disabled={saving}>

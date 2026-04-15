@@ -160,9 +160,6 @@ export function ExpertCoursesPage() {
                 <CardTitle style={{ fontSize: 'var(--text-md)' }}>{c.title}</CardTitle>
                 <CardDescription>
                   {c.status} {c.visibility === 'public' ? '• public' : '• private'}
-                  {typeof c.priceCents === 'number' && c.priceCents > 0
-                    ? ` • ${(c.priceCents / 100).toLocaleString('ru-RU')} ${c.currency ?? 'RUB'}`
-                    : ' • бесплатно'}
                 </CardDescription>
               </CardHeader>
             </Card>

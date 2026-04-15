@@ -90,10 +90,6 @@ export function CourseDetailPage() {
   const email = contactData?.contact?.email ?? null;
   const phone = contactData?.contact?.phone ?? null;
   const hasReceiptContact = Boolean((email && email.trim()) || (phone && phone.trim()));
-  const priceLabel =
-    typeof course.priceCents === 'number'
-      ? `${Math.round(course.priceCents / 100).toLocaleString('ru-RU')} ${course.currency ?? 'RUB'}`
-      : null;
   const cover = resolveCoverUrl(course.coverUrl);
 
   return (
@@ -126,12 +122,6 @@ export function CourseDetailPage() {
               <CardTitle>{course.title}</CardTitle>
               <CardDescription>
                 {course.description ?? 'Описание отсутствует'}
-                {priceLabel ? (
-                  <>
-                    <br />
-                    Цена: {priceLabel}
-                  </>
-                ) : null}
               </CardDescription>
             </div>
           </div>
