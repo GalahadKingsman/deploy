@@ -11,6 +11,7 @@ export function ExpertCourseEditorPage() {
   const navigate = useNavigate();
   const { expertId, courseId } = useParams<{ expertId: string; courseId: string }>();
   const [title, setTitle] = React.useState('');
+  const [description, setDescription] = React.useState('');
   const [priceRubles, setPriceRubles] = React.useState('0');
   const [currency, setCurrency] = React.useState('RUB');
   const [visibility, setVisibility] = React.useState<'private' | 'public'>('private');
@@ -45,6 +46,7 @@ export function ExpertCourseEditorPage() {
         if (cancelled) return;
         setCourse(c);
         setTitle(c.title);
+        setDescription(c.description ?? '');
         const rub = (c.priceCents ?? 0) / 100;
         setPriceRubles(Number.isInteger(rub) ? String(rub) : (Math.round(rub * 100) / 100).toString());
         setCurrency(c.currency ?? 'RUB');
@@ -75,6 +77,7 @@ export function ExpertCourseEditorPage() {
         method: 'PATCH',
         body: {
           title,
+          description: description.trim() ? description.trim() : null,
           priceCents,
           currency: currency.trim() || 'RUB',
           visibility,
@@ -166,6 +169,24 @@ export function ExpertCourseEditorPage() {
         </CardHeader>
         <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
           <Input label="Название" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-medium)' }}>Описание</div>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Коротко опишите, что будет в курсе"
+              rows={4}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: 'var(--r-sm)',
+                border: '1px solid var(--border)',
+                background: 'var(--bg)',
+                color: 'var(--fg)',
+                resize: 'vertical',
+              }}
+            />
+          </div>
           <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div style={{ flex: '1 1 220px' }}>
               <Input

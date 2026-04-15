@@ -68,8 +68,8 @@ export function CourseDetailPage() {
   }
 
   const course = data.course;
-  const lessons = data.lessons ?? [];
   const hasAccess = (myCourses?.items ?? []).some((x) => x.course.id === courseId);
+  const lessons = hasAccess ? (data.lessons ?? []) : [];
   const myOrderForCourse =
     (myOrders?.items ?? [])
       .filter((o) => o.courseId === courseId)
@@ -181,17 +181,27 @@ export function CourseDetailPage() {
       <Card>
         <CardHeader>
           <CardTitle style={{ fontSize: 'var(--text-md)' }}>Уроки</CardTitle>
-          <CardDescription>Выберите урок, чтобы открыть.</CardDescription>
+          <CardDescription>
+            {hasAccess ? 'Выберите урок, чтобы открыть.' : 'Доступ появится после зачисления на курс.'}
+          </CardDescription>
         </CardHeader>
         <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
-          {lessons.length === 0 && (
-            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>Пока нет уроков.</div>
+          {!hasAccess ? (
+            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>
+              Чтобы увидеть уроки, нужно быть зачисленным.
+            </div>
+          ) : (
+            <>
+              {lessons.length === 0 && (
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>Пока нет уроков.</div>
+              )}
+              {lessons.map((l) => (
+                <Button key={l.id} variant="secondary" asChild style={{ width: '100%', justifyContent: 'flex-start' }}>
+                  <Link to={`/lesson/${l.id}`}>{l.title}</Link>
+                </Button>
+              ))}
+            </>
           )}
-          {lessons.map((l) => (
-            <Button key={l.id} variant="secondary" asChild style={{ width: '100%', justifyContent: 'flex-start' }}>
-              <Link to={`/lesson/${l.id}`}>{l.title}</Link>
-            </Button>
-          ))}
           <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', marginTop: 'var(--sp-2)' }}>
             <Button variant="ghost" onClick={() => navigate(-1)}>
               Назад

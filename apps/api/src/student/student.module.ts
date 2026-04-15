@@ -12,6 +12,7 @@ import { StudentUploadsController } from './student_uploads.controller.js';
 import { UsersModule } from '../users/users.module.js';
 import { JwtModule } from '../auth/session/jwt.module.js';
 import { JwtAuthGuard } from '../auth/session/jwt-auth.guard.js';
+import { OptionalJwtAuthGuard } from '../auth/session/optional-jwt-auth.guard.js';
 import { AuditModule } from '../audit/audit.module.js';
 import { AccessDataModule } from '../access/access-data.module.js';
 import { AssignmentsModule } from '../assignments/assignments.module.js';
@@ -44,7 +45,7 @@ import { StudentTopicsController } from './student_topics.controller.js';
     StudentUploadsController,
     StudentTopicsController,
   ],
-  providers: [JwtAuthGuard],
+  providers: [JwtAuthGuard, OptionalJwtAuthGuard],
 })
 export class StudentModule {}
 
