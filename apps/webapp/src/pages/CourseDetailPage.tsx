@@ -9,6 +9,19 @@ import { useMyOrders } from '../shared/queries/useMyOrders.js';
 import { config } from '../shared/config/flags.js';
 import { useMyContact, useUpdateMyContact } from '../shared/queries/useMyContact.js';
 import { openExternalHttpsUrl } from '../shared/auth/telegram.js';
+import { config as flagsConfig } from '../shared/config/flags.js';
+
+function resolveCoverUrl(raw: string | null | undefined): string | null {
+  const u = (raw ?? '').trim();
+  if (!u) return null;
+  if (u.startsWith('http://') || u.startsWith('https://')) return u;
+  if (u.startsWith('/')) {
+    const base =
+      flagsConfig.API_BASE_URL || (typeof window !== 'undefined' ? (window.location?.origin ?? '') : '');
+    return `${base}${u}`;
+  }
+  return u;
+}
 
 export function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -84,21 +97,47 @@ export function CourseDetailPage() {
     typeof course.priceCents === 'number'
       ? `${Math.round(course.priceCents / 100).toLocaleString('ru-RU')} ${course.currency ?? 'RUB'}`
       : null;
+  const cover = resolveCoverUrl(course.coverUrl);
 
   return (
     <div style={{ padding: 'var(--sp-4)' }}>
       <Card style={{ marginBottom: 'var(--sp-4)' }}>
         <CardHeader>
-          <CardTitle>{course.title}</CardTitle>
-          <CardDescription>
-            {course.description ?? 'Описание отсутствует'}
-            {priceLabel ? (
-              <>
-                <br />
-                Цена: {priceLabel}
-              </>
-            ) : null}
-          </CardDescription>
+          <div style={{ display: 'flex', gap: 'var(--sp-3)', alignItems: 'flex-start' }}>
+            <div
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 'var(--r-lg)',
+                background: 'rgba(255,255,255,0.06)',
+                overflow: 'hidden',
+                flexShrink: 0,
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              {cover ? (
+                <img
+                  src={cover}
+                  alt=""
+                  width={64}
+                  height={64}
+                  style={{ width: 64, height: 64, objectFit: 'cover', display: 'block' }}
+                />
+              ) : null}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <CardTitle>{course.title}</CardTitle>
+              <CardDescription>
+                {course.description ?? 'Описание отсутствует'}
+                {priceLabel ? (
+                  <>
+                    <br />
+                    Цена: {priceLabel}
+                  </>
+                ) : null}
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
           {hasAccess && (

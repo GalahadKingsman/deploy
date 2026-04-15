@@ -45,33 +45,7 @@ function SectionHeader({ title, right }: { title: string; right?: React.ReactNod
   );
 }
 
-// Progress Bar Component
-function ProgressBar({ progress }: { progress: number }) {
-  return (
-    <div
-      style={{
-        width: '100%',
-        height: '4px',
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-        borderRadius: '2px',
-        overflow: 'hidden',
-        marginTop: 'var(--sp-2)',
-      }}
-    >
-      <div
-        style={{
-          width: `${progress}%`,
-          height: '100%',
-          backgroundColor: 'var(--accent)',
-          transition: 'width 0.3s ease',
-        }}
-      />
-    </div>
-  );
-}
-
-// Catalog Course Card Component
-function CatalogCourseCard({ course }: { course: ContractsV1.CourseV1 }) {
+function SquareCourseCard({ course }: { course: ContractsV1.CourseV1 }) {
   const cover =
     typeof course.coverUrl === 'string' && course.coverUrl.trim()
       ? resolveCoverUrl(course.coverUrl)
@@ -79,200 +53,82 @@ function CatalogCourseCard({ course }: { course: ContractsV1.CourseV1 }) {
   return (
     <Link
       to={`/course/${course.id}`}
-      style={{ textDecoration: 'none', display: 'block', marginBottom: 'var(--sp-3)' }}
+      style={{ textDecoration: 'none', display: 'block' }}
     >
       <Card
         style={{
-          padding: 'var(--sp-4)',
+          padding: 0,
+          overflow: 'hidden',
+          borderRadius: 'var(--r-xl)',
+          border: '1px solid rgba(255,255,255,0.10)',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: 'var(--sp-3)',
-          }}
-        >
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: 'var(--r-md)',
-              backgroundColor: 'var(--accent)',
-              opacity: 0.2,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              overflow: 'hidden',
-            }}
-          >
+        <div style={{ position: 'relative' }}>
+          {/* square cover */}
+          <div style={{ width: '100%', paddingTop: '100%', background: 'rgba(255,255,255,0.06)' }}>
             {cover ? (
               <img
                 src={cover}
                 alt=""
-                width={48}
-                height={48}
                 loading="lazy"
-                style={{ width: 48, height: 48, objectFit: 'cover', opacity: 1 }}
-              />
-            ) : (
-              <div
                 style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  backgroundColor: 'var(--accent)',
-                  opacity: 0.5,
+                  position: 'absolute',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
                 }}
               />
-            )}
+            ) : null}
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 'var(--sp-2)',
-                marginBottom: 'var(--sp-1)',
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 'var(--text-md)',
-                  fontWeight: 'var(--font-weight-semibold)',
-                  color: 'var(--fg)',
-                  flex: 1,
-                }}
-              >
-                {course.title}
-              </div>
-            </div>
-            {course.description && (
-              <div
-                style={{
-                  fontSize: 'var(--text-sm)',
-                  color: 'var(--muted-fg)',
-                  marginBottom: 'var(--sp-2)',
-                }}
-              >
-                {course.description}
-              </div>
-            )}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                fontSize: 'var(--text-xs)',
-                color: 'var(--muted-fg)',
-              }}
-            >
-              <div>{course.visibility ?? 'public'}</div>
-            </div>
-          </div>
-        </div>
-      </Card>
-    </Link>
-  );
-}
 
-// Recommended Course Card Component
-function RecommendedCourseCard({ course }: { course: ContractsV1.CourseV1 }) {
-  const cover =
-    typeof course.coverUrl === 'string' && course.coverUrl.trim()
-      ? resolveCoverUrl(course.coverUrl)
-      : null;
-  return (
-    <Link
-      to={`/course/${course.id}`}
-      style={{
-        textDecoration: 'none',
-        flexShrink: 0,
-        flex: '0 0 auto',
-        scrollSnapAlign: 'start',
-      }}
-    >
-      <Card
-        style={{
-          width: '220px',
-          height: '140px',
-          padding: 'var(--sp-3)',
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <div
-          style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: 'var(--r-md)',
-            backgroundColor: 'var(--accent)',
-            opacity: 0.2,
-            marginBottom: 'var(--sp-3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            overflow: 'hidden',
-          }}
-        >
-          {cover ? (
-            <img
-              src={cover}
-              alt=""
-              width={48}
-              height={48}
-              loading="lazy"
-              style={{ width: 48, height: 48, objectFit: 'cover', opacity: 1 }}
-            />
-          ) : (
-            <div
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--accent)',
-                opacity: 0.5,
-              }}
-            />
-          )}
-        </div>
-        <div
-          style={{
-            fontSize: 'var(--text-sm)',
-            fontWeight: 'var(--font-weight-medium)',
-            color: 'var(--fg)',
-            marginBottom: 'var(--sp-2)',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            lineHeight: '1.4',
-            height: '2.8em',
-            paddingRight: course.isNew ? 'var(--sp-6)' : 0,
-          }}
-        >
-          {course.title}
-        </div>
-        {course.description && (
+          {/* gradient for text legibility */}
           <div
             style={{
-              fontSize: 'var(--text-xs)',
-              color: 'var(--muted-fg)',
-              marginTop: 'auto',
-              display: '-webkit-box',
-              WebkitLineClamp: 1,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: '55%',
+              background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.75) 100%)',
+              pointerEvents: 'none',
+            }}
+          />
+
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              padding: 'var(--sp-3)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--sp-1)',
             }}
           >
-            {course.description}
+            <div
+              style={{
+                color: 'white',
+                fontSize: 'var(--text-md)',
+                fontWeight: 'var(--font-weight-semibold)',
+                lineHeight: 1.2,
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                textShadow: '0 1px 10px rgba(0,0,0,0.6)',
+              }}
+            >
+              {course.title}
+            </div>
+            <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 'var(--text-xs)' }}>
+              {course.visibility ?? 'public'}
+            </div>
           </div>
-        )}
+        </div>
       </Card>
     </Link>
   );
@@ -470,9 +326,15 @@ export function LibraryPage() {
               </div>
             }
           />
-          <div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: 'var(--sp-3)',
+            }}
+          >
             {catalogCourses.map((course) => (
-              <CatalogCourseCard key={course.id} course={course} />
+              <SquareCourseCard key={course.id} course={course} />
             ))}
           </div>
         </div>
@@ -482,9 +344,15 @@ export function LibraryPage() {
       {isSearchActive && hasSearchResults && filteredCatalogCourses.length > 0 && (
         <div style={{ marginBottom: 'var(--sp-6)' }}>
           <SectionHeader title="Каталог курсов" />
-          <div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: 'var(--sp-3)',
+            }}
+          >
             {filteredCatalogCourses.map((course) => (
-              <CatalogCourseCard key={course.id} course={course} />
+              <SquareCourseCard key={course.id} course={course} />
             ))}
           </div>
         </div>
@@ -510,22 +378,13 @@ export function LibraryPage() {
           />
           <div
             style={{
-              display: 'flex',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
               gap: 'var(--sp-3)',
-              overflowX: 'auto',
-              paddingBottom: 'var(--sp-2)',
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-              scrollSnapType: 'x mandatory',
             }}
           >
-            <style>{`
-              div::-webkit-scrollbar {
-                display: none;
-              }
-            `}</style>
             {filteredRecommendedCourses.map((course) => (
-              <RecommendedCourseCard key={course.id} course={course} />
+              <SquareCourseCard key={course.id} course={course} />
             ))}
           </div>
         </div>
