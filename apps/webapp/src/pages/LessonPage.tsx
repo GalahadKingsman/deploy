@@ -79,8 +79,8 @@ export function LessonPage() {
             <Button variant="primary" onClick={() => refetch()}>
               Повторить
             </Button>
-            <Button variant="secondary" onClick={() => navigate(-1)}>
-              Назад
+            <Button variant="secondary" onClick={() => navigate('/learn')}>
+              К обучению
             </Button>
           </CardContent>
         </Card>
@@ -308,9 +308,6 @@ export function LessonPage() {
             </Button>
             <Button variant="secondary" onClick={() => navigate(`/course/${lesson.courseId}`)}>
               К курсу
-            </Button>
-            <Button variant="ghost" onClick={() => navigate(-1)}>
-              Назад
             </Button>
           </div>
         </CardContent>

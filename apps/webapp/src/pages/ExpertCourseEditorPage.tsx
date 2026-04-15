@@ -165,8 +165,8 @@ export function ExpertCourseEditorPage() {
             <CardDescription>Не найден.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="secondary" onClick={() => navigate(-1)}>
-              Назад
+            <Button variant="secondary" onClick={() => navigate('/learn')}>
+              К обучению
             </Button>
           </CardContent>
         </Card>

@@ -65,9 +65,6 @@ export function ExpertModuleLessonsPage() {
                 <Link to={`/expert/${expertId}/courses/${courseId}/modules`}>К модулям</Link>
               </Button>
             )}
-            <Button variant="ghost" onClick={() => navigate(-1)}>
-              Назад
-            </Button>
           </div>
         </CardContent>
       </Card>

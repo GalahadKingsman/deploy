@@ -71,8 +71,8 @@ export function CourseDetailPage() {
             <Button variant="primary" onClick={() => refetch()}>
               Повторить
             </Button>
-            <Button variant="secondary" onClick={() => navigate(-1)}>
-              Назад
+            <Button variant="secondary" onClick={() => navigate('/library')}>
+              К библиотеке
             </Button>
           </CardContent>
         </Card>

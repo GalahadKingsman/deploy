@@ -45,8 +45,8 @@ export function ExpertLessonSubmissionsPage() {
             <CardDescription>Некорректные параметры</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="secondary" onClick={() => navigate(-1)}>
-              Назад
+            <Button variant="secondary" onClick={() => navigate('/learn')}>
+              К обучению
             </Button>
           </CardContent>
         </Card>
@@ -76,8 +76,8 @@ export function ExpertLessonSubmissionsPage() {
             <Button variant="primary" onClick={() => refetch()}>
               Повторить
             </Button>
-            <Button variant="secondary" onClick={() => navigate(-1)}>
-              Назад
+            <Button variant="secondary" onClick={() => navigate('/learn')}>
+              К обучению
             </Button>
           </CardContent>
         </Card>
@@ -97,9 +97,6 @@ export function ExpertLessonSubmissionsPage() {
         <CardContent style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
           <Button variant="secondary" onClick={() => refetch()}>
             Обновить
-          </Button>
-          <Button variant="ghost" onClick={() => navigate(-1)}>
-            Назад
           </Button>
         </CardContent>
       </Card>

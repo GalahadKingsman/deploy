@@ -143,8 +143,8 @@ export function ExpertTeamPage() {
             <Button variant="primary" onClick={() => refetch()}>
               Повторить
             </Button>
-            <Button variant="secondary" onClick={() => navigate(-1)}>
-              Назад
+            <Button variant="secondary" onClick={() => navigate('/expert')}>
+              В кабинет
             </Button>
           </CardContent>
         </Card>
@@ -265,9 +265,7 @@ export function ExpertTeamPage() {
         </CardHeader>
       </Card>
 
-      <Button variant="secondary" onClick={() => navigate(-1)} style={{ width: '100%' }}>
-        Назад
-      </Button>
+      {/* back handled by TopBar */}
     </div>
   );
 }

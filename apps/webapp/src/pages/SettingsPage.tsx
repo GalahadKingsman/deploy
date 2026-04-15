@@ -27,9 +27,6 @@ export function SettingsPage() {
               marginTop: 'var(--sp-4)',
             }}
           >
-            <Button variant="secondary" onClick={() => navigate(-1)}>
-              Назад
-            </Button>
             <Button variant="primary" onClick={() => navigate('/account')}>
               К аккаунту
             </Button>

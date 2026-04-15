@@ -57,9 +57,6 @@ export function ExpertCourseModulesPage() {
             <Button variant="secondary" onClick={() => load()} disabled={loading}>
               Обновить
             </Button>
-            <Button variant="ghost" onClick={() => navigate(-1)}>
-              Назад
-            </Button>
           </div>
         </CardContent>
       </Card>

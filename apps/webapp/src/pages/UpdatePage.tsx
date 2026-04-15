@@ -28,9 +28,6 @@ export function UpdatePage() {
               marginTop: 'var(--sp-4)',
             }}
           >
-            <Button variant="secondary" onClick={() => navigate(-1)}>
-              Назад
-            </Button>
             <Button variant="primary" onClick={() => navigate('/library')}>
               К библиотеке
             </Button>
