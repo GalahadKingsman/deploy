@@ -12,6 +12,7 @@ import {
 } from '../shared/ui/index.js';
 import { fetchJson } from '../shared/api/index.js';
 import { normalizeRutubeEmbedUrl, type ContractsV1 } from '@tracked/shared';
+import { ApiClientError } from '../shared/api/errors.js';
 
 export function ExpertLessonEditorPage() {
   const toast = useToast();
@@ -86,6 +87,15 @@ export function ExpertLessonEditorPage() {
       setLesson(updated);
       const v = updated.video;
       setRutubeUrl(v && v.kind === 'rutube' ? v.url : '');
+      toast.show({ title: 'Сохранено', variant: 'success' });
+    } catch (e) {
+      const msg =
+        e instanceof ApiClientError
+          ? `${e.message} (HTTP ${e.status})`
+          : e instanceof Error
+            ? e.message
+            : 'Не удалось сохранить';
+      toast.show({ title: 'Ошибка', message: msg, variant: 'error' });
     } finally {
       setSaving(false);
     }
@@ -102,8 +112,8 @@ export function ExpertLessonEditorPage() {
             <CardDescription>Не найден.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="secondary" onClick={() => navigate(-1)}>
-              Назад
+            <Button variant="secondary" onClick={() => navigate('/learn')}>
+              К обучению
             </Button>
           </CardContent>
         </Card>
@@ -158,8 +168,8 @@ export function ExpertLessonEditorPage() {
                 Сабмиты
               </Button>
             )}
-            <Button variant="ghost" onClick={() => navigate(-1)}>
-              Назад
+            <Button variant="ghost" onClick={() => navigate('/learn')}>
+              К обучению
             </Button>
           </div>
         </CardContent>

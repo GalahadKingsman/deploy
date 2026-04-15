@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Pool } from 'pg';
 import { ContractsV1, ErrorCodes } from '@tracked/shared';
+import { randomUUID } from 'node:crypto';
 
 interface TopicRow {
   id: string;
@@ -10,6 +11,54 @@ interface TopicRow {
 
 export class TopicsRepository {
   constructor(private readonly pool: Pool | null) {}
+
+  private static slugify(title: string): string {
+    const base = title
+      .trim()
+      .toLowerCase()
+      .replace(/['"]/g, '')
+      .replace(/[^a-z0-9а-яё\s-]/gi, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    return base || 'topic';
+  }
+
+  async createOrGetByTitle(titleRaw: string): Promise<ContractsV1.TopicV1> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    const title = String(titleRaw ?? '').trim();
+    if (!title) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'title must be non-empty' });
+    }
+
+    const existing = await this.pool.query<TopicRow>(
+      `SELECT id, slug, title FROM topics WHERE LOWER(title) = LOWER($1) LIMIT 1`,
+      [title],
+    );
+    if (existing.rows[0]) {
+      const r = existing.rows[0];
+      return { id: r.id, slug: r.slug, title: r.title };
+    }
+
+    const id = randomUUID();
+    const baseSlug = TopicsRepository.slugify(title);
+    for (let i = 0; i < 10; i++) {
+      const slug = i === 0 ? baseSlug : `${baseSlug}-${Math.random().toString(16).slice(2, 6)}`;
+      try {
+        const res = await this.pool.query<TopicRow>(
+          `INSERT INTO topics (id, slug, title) VALUES ($1, $2, $3) RETURNING id, slug, title`,
+          [id, slug, title],
+        );
+        const r = res.rows[0];
+        return { id: r.id, slug: r.slug, title: r.title };
+      } catch {
+        // assume conflict, retry with different slug
+      }
+    }
+    throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Failed to create topic' });
+  }
 
   async listAll(): Promise<ContractsV1.TopicV1[]> {
     if (!this.pool) return [];

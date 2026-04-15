@@ -28,11 +28,18 @@ export function ExpertCourseEditorPage() {
   );
   const setTopics = useSetCourseTopics(expertId ?? '', courseId ?? '');
   const [selectedTopicIds, setSelectedTopicIds] = React.useState<Set<string>>(new Set());
+  const [customTopicTitle, setCustomTopicTitle] = React.useState('');
+  const [customTopicSaving, setCustomTopicSaving] = React.useState(false);
+  const [extraTopics, setExtraTopics] = React.useState<ContractsV1.TopicV1[]>([]);
 
   React.useEffect(() => {
     const ids = new Set((courseTopicsData?.items ?? []).map((t) => t.id));
     setSelectedTopicIds(ids);
   }, [courseTopicsData]);
+
+  React.useEffect(() => {
+    setExtraTopics([]);
+  }, [expertId, courseId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -85,6 +92,15 @@ export function ExpertCourseEditorPage() {
         },
       });
       setCourse(updated);
+      toast.show({ title: 'Сохранено', variant: 'success' });
+    } catch (e) {
+      const msg =
+        e instanceof ApiClientError
+          ? `${e.message} (HTTP ${e.status})`
+          : e instanceof Error
+            ? e.message
+            : 'Не удалось сохранить';
+      toast.show({ title: 'Ошибка', message: msg, variant: 'error' });
     } finally {
       setSaving(false);
     }
@@ -267,9 +283,6 @@ export function ExpertCourseEditorPage() {
             <Button variant="secondary" asChild>
               <Link to={`/expert/${expertId}/courses/${courseId}/access`}>Доступ</Link>
             </Button>
-            <Button variant="ghost" onClick={() => navigate(-1)}>
-              Назад
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -280,10 +293,53 @@ export function ExpertCourseEditorPage() {
           <CardDescription>Мультиселект из справочника тем платформы.</CardDescription>
         </CardHeader>
         <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
-          {(allTopicsData?.items ?? []).length === 0 && (
+          <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 220px' }}>
+              <Input
+                label="Указать тему"
+                placeholder="Например: Маркетинг, Психология..."
+                value={customTopicTitle}
+                onChange={(e) => setCustomTopicTitle(e.target.value)}
+              />
+            </div>
+            <Button
+              variant="secondary"
+              disabled={customTopicSaving || !expertId || !courseId || !customTopicTitle.trim()}
+              onClick={async () => {
+                const title = customTopicTitle.trim();
+                if (!title) return;
+                setCustomTopicSaving(true);
+                try {
+                  const topic = await fetchJson<ContractsV1.TopicV1>({
+                    path: `/experts/${encodeURIComponent(expertId ?? '')}/courses/${encodeURIComponent(courseId ?? '')}/topics/custom`,
+                    method: 'POST',
+                    body: { title },
+                  });
+                  setCustomTopicTitle('');
+                  // Do not refetch topics list; just extend UI locally.
+                  setExtraTopics((prev) => (prev.some((t) => t.id === topic.id) ? prev : [...prev, topic]));
+                  setSelectedTopicIds((prev) => new Set([...prev, topic.id]));
+                  toast.show({ title: 'Тема добавлена', variant: 'success' });
+                } catch (e) {
+                  const msg =
+                    e instanceof ApiClientError
+                      ? `${e.message} (HTTP ${e.status})`
+                      : e instanceof Error
+                        ? e.message
+                        : 'Не удалось добавить тему';
+                  toast.show({ title: 'Ошибка', message: msg, variant: 'error' });
+                } finally {
+                  setCustomTopicSaving(false);
+                }
+              }}
+            >
+              Добавить
+            </Button>
+          </div>
+          {([...(allTopicsData?.items ?? []), ...extraTopics]).length === 0 && (
             <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>Темы не загружены.</div>
           )}
-          {(allTopicsData?.items ?? []).map((t) => (
+          {[...(allTopicsData?.items ?? []), ...extraTopics].map((t) => (
             <label
               key={t.id}
               style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center', fontSize: 'var(--text-sm)' }}

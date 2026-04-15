@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  Post,
   Put,
   Param,
   UseGuards,
@@ -59,5 +60,29 @@ export class ExpertCourseTopicsController {
     });
     const items = await this.topicsRepository.listForCourse(courseId);
     return { items };
+  }
+
+  @Post('custom')
+  @RequireExpertRole('manager')
+  @ApiOperation({ summary: 'Create custom topic and attach to course (manager+)' })
+  @ApiResponse({ status: 201, description: 'Topic created/returned' })
+  async createCustom(
+    @Param('expertId') expertId: string,
+    @Param('courseId') courseId: string,
+    @Body() body: unknown,
+  ): Promise<ContractsV1.TopicV1> {
+    await this.coursesRepository.getById({ expertId, courseId });
+    const title = (body as any)?.title;
+    const topic = await this.topicsRepository.createOrGetByTitle(String(title ?? ''));
+
+    const current = await this.topicsRepository.listForCourse(courseId);
+    if (!current.some((t) => t.id === topic.id)) {
+      await this.topicsRepository.setCourseTopics({
+        expertId,
+        courseId,
+        topicIds: [...current.map((t) => t.id), topic.id],
+      });
+    }
+    return topic;
   }
 }

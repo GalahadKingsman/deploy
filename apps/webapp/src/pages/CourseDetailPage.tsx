@@ -242,9 +242,6 @@ export function CourseDetailPage() {
             </>
           )}
           <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', marginTop: 'var(--sp-2)' }}>
-            <Button variant="ghost" onClick={() => navigate(-1)}>
-              Назад
-            </Button>
             <Button variant="ghost" onClick={() => navigate('/learn')}>
               К обучению
             </Button>

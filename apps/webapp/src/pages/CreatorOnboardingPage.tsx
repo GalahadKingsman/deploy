@@ -287,9 +287,6 @@ export function CreatorOnboardingPage() {
               Скопировать текст заявки
             </Button>
           )}
-          <Button variant="secondary" onClick={() => navigate(-1)} style={{ width: '100%' }}>
-            Назад
-          </Button>
         </CardContent>
       </Card>
     </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import {
   Card,
   CardHeader,
@@ -20,7 +20,6 @@ import {
 } from '../shared/queries/useExpertCourseAccess.js';
 
 export function ExpertCourseAccessPage() {
-  const navigate = useNavigate();
   const toast = useToast();
   const { expertId = '', courseId = '' } = useParams<{ expertId: string; courseId: string }>();
   const { data, isLoading, error, refetch } = useExpertCourseEnrollments(expertId, courseId);
@@ -85,9 +84,7 @@ export function ExpertCourseAccessPage() {
           <Button variant="secondary" asChild>
             <Link to={`/expert/${expertId}/courses/${courseId}`}>Редактор курса</Link>
           </Button>
-          <Button variant="ghost" onClick={() => navigate(-1)}>
-            Назад
-          </Button>
+          {/* back handled by TopBar */}
         </CardContent>
       </Card>
 
