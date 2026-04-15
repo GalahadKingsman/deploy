@@ -162,7 +162,7 @@ function CurrentCourseCard({ title, courseId, completed, total }: { title: strin
                 color: 'var(--fg)',
               }}
             >
-              {mockCurrentCourse.title}
+              {title}
             </div>
           </div>
         </div>
