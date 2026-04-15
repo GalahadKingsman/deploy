@@ -53,9 +53,7 @@ export function AdminPaymentsPage() {
             <CardDescription>Доступ запрещён</CardDescription>
           </CardHeader>
           <CardContent style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
-            <Button variant="secondary" onClick={() => navigate('/account')}>
-              Назад
-            </Button>
+            {/* back handled by Telegram BackButton */}
           </CardContent>
         </Card>
       </div>
@@ -127,9 +125,6 @@ export function AdminPaymentsPage() {
           </Button>
           <Button variant="secondary" onClick={() => commissionsQuery.refetch()} disabled={commissionsQuery.isFetching}>
             Обновить комиссии
-          </Button>
-          <Button variant="ghost" onClick={() => navigate('/account')}>
-            Назад
           </Button>
         </CardContent>
       </Card>

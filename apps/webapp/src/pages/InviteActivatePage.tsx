@@ -63,9 +63,6 @@ export function InviteActivatePage() {
             <Button variant="primary" onClick={() => activate.mutate(c)}>
               Повторить
             </Button>
-            <Button variant="secondary" onClick={() => navigate('/library')}>
-              В библиотеку
-            </Button>
           </CardContent>
         </Card>
       </div>

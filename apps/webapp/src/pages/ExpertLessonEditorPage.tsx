@@ -112,9 +112,7 @@ export function ExpertLessonEditorPage() {
             <CardDescription>Не найден.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="secondary" onClick={() => navigate('/learn')}>
-              К обучению
-            </Button>
+            {/* back handled by Telegram BackButton */}
           </CardContent>
         </Card>
       </div>
@@ -168,9 +166,6 @@ export function ExpertLessonEditorPage() {
                 Сабмиты
               </Button>
             )}
-            <Button variant="ghost" onClick={() => navigate('/learn')}>
-              К обучению
-            </Button>
           </div>
         </CardContent>
       </Card>

@@ -165,9 +165,7 @@ export function ExpertCourseEditorPage() {
             <CardDescription>Не найден.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="secondary" onClick={() => navigate('/learn')}>
-              К обучению
-            </Button>
+            {/* back handled by Telegram BackButton */}
           </CardContent>
         </Card>
       </div>

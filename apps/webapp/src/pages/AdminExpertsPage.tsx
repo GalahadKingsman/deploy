@@ -116,9 +116,7 @@ export function AdminExpertsPage() {
             <CardDescription>Доступ запрещён</CardDescription>
           </CardHeader>
           <CardContent style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
-            <Button variant="secondary" onClick={() => navigate('/account')}>
-              Назад
-            </Button>
+            {/* back handled by Telegram BackButton */}
           </CardContent>
         </Card>
       </div>
@@ -136,11 +134,6 @@ export function AdminExpertsPage() {
             Включение «режима эксперта» = создать expert → добавить участника → активировать подписку (grant-days).
           </CardDescription>
         </CardHeader>
-        <CardContent style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
-          <Button variant="secondary" onClick={() => navigate('/account')}>
-            Назад
-          </Button>
-        </CardContent>
       </Card>
 
       <Card style={{ marginBottom: 'var(--sp-4)' }}>

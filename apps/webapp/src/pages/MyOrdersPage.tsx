@@ -50,9 +50,6 @@ export function MyOrdersPage() {
             <Button variant="primary" onClick={() => refetch()}>
               Повторить
             </Button>
-            <Button variant="secondary" onClick={() => navigate('/account')}>
-              Назад
-            </Button>
           </CardContent>
         </Card>
       </div>
@@ -78,9 +75,6 @@ export function MyOrdersPage() {
         <CardContent style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
           <Button variant="secondary" onClick={() => refetch()}>
             Обновить
-          </Button>
-          <Button variant="ghost" onClick={() => navigate('/account')}>
-            Назад
           </Button>
         </CardContent>
       </Card>

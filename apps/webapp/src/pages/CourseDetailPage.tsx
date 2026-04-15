@@ -71,9 +71,6 @@ export function CourseDetailPage() {
             <Button variant="primary" onClick={() => refetch()}>
               Повторить
             </Button>
-            <Button variant="secondary" onClick={() => navigate('/library')}>
-              К библиотеке
-            </Button>
           </CardContent>
         </Card>
       </div>
@@ -241,11 +238,6 @@ export function CourseDetailPage() {
               ))}
             </>
           )}
-          <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', marginTop: 'var(--sp-2)' }}>
-            <Button variant="ghost" onClick={() => navigate('/learn')}>
-              К обучению
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>

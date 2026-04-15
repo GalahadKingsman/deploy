@@ -79,9 +79,6 @@ export function LessonPage() {
             <Button variant="primary" onClick={() => refetch()}>
               Повторить
             </Button>
-            <Button variant="secondary" onClick={() => navigate('/learn')}>
-              К обучению
-            </Button>
           </CardContent>
         </Card>
       </div>

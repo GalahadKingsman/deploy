@@ -40,9 +40,6 @@ export function PartnerPayoutsPage() {
             <Button variant="primary" onClick={() => refetch()}>
               Повторить
             </Button>
-            <Button variant="secondary" onClick={() => navigate('/account')}>
-              Назад
-            </Button>
           </CardContent>
         </Card>
       </div>
@@ -107,9 +104,6 @@ export function PartnerPayoutsPage() {
               Отправить заявку
             </Button>
           </div>
-          <Button variant="ghost" onClick={() => navigate('/account')}>
-            Назад в аккаунт
-          </Button>
         </CardContent>
       </Card>
 

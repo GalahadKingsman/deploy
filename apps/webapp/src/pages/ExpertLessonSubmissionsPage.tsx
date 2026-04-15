@@ -45,9 +45,7 @@ export function ExpertLessonSubmissionsPage() {
             <CardDescription>Некорректные параметры</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="secondary" onClick={() => navigate('/learn')}>
-              К обучению
-            </Button>
+            {/* back handled by Telegram BackButton */}
           </CardContent>
         </Card>
       </div>
@@ -75,9 +73,6 @@ export function ExpertLessonSubmissionsPage() {
           <CardContent style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
             <Button variant="primary" onClick={() => refetch()}>
               Повторить
-            </Button>
-            <Button variant="secondary" onClick={() => navigate('/learn')}>
-              К обучению
             </Button>
           </CardContent>
         </Card>
