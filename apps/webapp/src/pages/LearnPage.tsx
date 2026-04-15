@@ -193,70 +193,73 @@ function CurrentCourseCard({ title, courseId, completed, total }: { title: strin
 }
 
 // Next Lesson Card
-function NextLessonCard({ title }: { title: string }) {
+function NextLessonCard({ title, lessonId }: { title: string; lessonId: string }) {
   return (
-    <Card
-      style={{
-        marginBottom: 'var(--sp-5)',
-        padding: 'var(--sp-4)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'var(--sp-3)',
-      }}
-    >
-      <div
+    <Link to={`/lesson/${lessonId}`} style={{ textDecoration: 'none', display: 'block' }}>
+      <Card
         style={{
-          width: '32px',
-          height: '32px',
-          borderRadius: 'var(--r-md)',
-          backgroundColor: 'var(--accent)',
-          opacity: 0.2,
+          marginBottom: 'var(--sp-5)',
+          padding: 'var(--sp-4)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
+          gap: 'var(--sp-3)',
+          cursor: 'pointer',
         }}
       >
         <div
           style={{
-            width: '20px',
-            height: '20px',
-            borderRadius: '50%',
+            width: '32px',
+            height: '32px',
+            borderRadius: 'var(--r-md)',
             backgroundColor: 'var(--accent)',
+            opacity: 0.2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              backgroundColor: 'var(--accent)',
+            }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              fontSize: 'var(--text-sm)',
+              color: 'var(--muted-fg)',
+              marginBottom: 'var(--sp-1)',
+            }}
+          >
+            Следующий урок:
+          </div>
+          <div
+            style={{
+              fontSize: 'var(--text-md)',
+              fontWeight: 'var(--font-weight-semibold)',
+              color: 'var(--fg)',
+            }}
+          >
+            {title}
+          </div>
+        </div>
+        <div
+          style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: 'var(--r-md)',
+            backgroundColor: 'var(--accent)',
+            opacity: 0.1,
+            flexShrink: 0,
           }}
         />
-      </div>
-      <div style={{ flex: 1 }}>
-        <div
-          style={{
-            fontSize: 'var(--text-sm)',
-            color: 'var(--muted-fg)',
-            marginBottom: 'var(--sp-1)',
-          }}
-        >
-          Следующий урок:
-        </div>
-        <div
-          style={{
-            fontSize: 'var(--text-md)',
-            fontWeight: 'var(--font-weight-semibold)',
-            color: 'var(--fg)',
-          }}
-        >
-          {title}
-        </div>
-      </div>
-      <div
-        style={{
-          width: '48px',
-          height: '48px',
-          borderRadius: 'var(--r-md)',
-          backgroundColor: 'var(--accent)',
-          opacity: 0.1,
-          flexShrink: 0,
-        }}
-      />
-    </Card>
+      </Card>
+    </Link>
   );
 }
 
@@ -441,7 +444,7 @@ export function LearnPage() {
         />
       )}
 
-      {nextLesson && <NextLessonCard title={nextLesson.title} />}
+      {nextLesson && <NextLessonCard title={nextLesson.title} lessonId={nextLesson.id} />}
 
       <MyCoursesSection
         items={(myCourses?.items ?? []).map((x) => ({
