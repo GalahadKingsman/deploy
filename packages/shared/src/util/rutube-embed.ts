@@ -9,19 +9,22 @@ export function normalizeRutubeEmbedUrl(raw: string): string | null {
     const u = new URL(s);
     if (!u.hostname.endsWith('rutube.ru')) return null;
     const path = u.pathname.replace(/\/$/, '');
+    // Rutube IDs can be hex-like, but also other safe chars depending on link type.
+    // Keep this permissive; server-side access is enforced by Rutube itself.
+    const idRe = /([a-z0-9_-]{10,128})/i;
     if (path.includes('/play/embed/')) {
       const id = path.split('/play/embed/')[1]?.split('/')[0];
-      if (id && /^[a-f0-9-]{20,64}$/i.test(id)) {
+      if (id && idRe.test(id)) {
         return `https://rutube.ru/play/embed/${id}`;
       }
       return null;
     }
     // Public: /video/<id> ; Private (link-only): /video/private/<id>
-    const videoSeg = path.match(/\/video\/(?:private\/)?([a-f0-9-]{20,64})/i);
+    const videoSeg = path.match(/\/video\/(?:private\/)?([a-z0-9_-]{10,128})/i);
     if (videoSeg?.[1]) {
       return `https://rutube.ru/play/embed/${videoSeg[1]}`;
     }
-    const short = path.match(/\/shorts\/([a-f0-9-]{20,64})/i);
+    const short = path.match(/\/shorts\/([a-z0-9_-]{10,128})/i);
     if (short?.[1]) return `https://rutube.ru/play/embed/${short[1]}`;
   } catch {
     return null;
