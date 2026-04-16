@@ -13,8 +13,20 @@ function embedBaseWithQuery(base: string, source: URL): string {
   return q ? `${base}${q}` : base;
 }
 
+/** Strip BOM / zero-width chars; if paste includes text around the link, take the first rutube URL. */
+function sanitizeRutubePaste(raw: string): string {
+  let s = raw
+    .replace(/^\uFEFF/, '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim();
+  if (!s) return s;
+  const embedded = s.match(/https?:\/\/(?:www\.)?rutube\.ru\/[^\s]+/i);
+  if (embedded) s = embedded[0].replace(/[),.;]+$/, '');
+  return s.trim();
+}
+
 export function normalizeRutubeEmbedUrl(raw: string): string | null {
-  let s = raw.trim();
+  let s = sanitizeRutubePaste(raw);
   if (!s) return null;
   // Accept scheme-less URLs pasted from mobile (e.g. "rutube.ru/video/..." or "//rutube.ru/video/...").
   if (s.startsWith('//')) s = `https:${s}`;
