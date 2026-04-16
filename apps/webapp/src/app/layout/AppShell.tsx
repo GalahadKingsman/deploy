@@ -27,6 +27,16 @@ export function AppShell() {
       const tg = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp : undefined;
       if (!tg) return;
 
+      // Official WebApp API (Bot API 7.7+)
+      if (enabled && typeof tg.enableVerticalSwipes === 'function') {
+        tg.enableVerticalSwipes();
+        return;
+      }
+      if (!enabled && typeof tg.disableVerticalSwipes === 'function') {
+        tg.disableVerticalSwipes();
+        return;
+      }
+
       // Preferred (tma.js-like) API: tg.swipeBehavior.enableVertical/disableVertical
       const sb = tg.swipeBehavior as any;
       if (sb) {
@@ -58,6 +68,9 @@ export function AppShell() {
   // Users can close/minimize only via Telegram UI (arrow-down / close button).
   useEffect(() => {
     setTelegramVerticalSwipe(false);
+    // Double-apply on next tick (Telegram sometimes applies after first render / ready)
+    const t = setTimeout(() => setTelegramVerticalSwipe(false), 250);
+    return () => clearTimeout(t);
   }, [pathname]);
 
   // Telegram Mini App: replace "Close" with native Back button on nested pages
