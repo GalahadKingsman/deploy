@@ -3,8 +3,11 @@
  * Returns null if the string is not a recognizable Rutube video URL.
  */
 export function normalizeRutubeEmbedUrl(raw: string): string | null {
-  const s = raw.trim();
+  let s = raw.trim();
   if (!s) return null;
+  // Accept scheme-less URLs pasted from mobile (e.g. "rutube.ru/video/..." or "//rutube.ru/video/...").
+  if (s.startsWith('//')) s = `https:${s}`;
+  if (/^(?:www\.)?rutube\.ru\//i.test(s)) s = `https://${s}`;
   try {
     const u = new URL(s);
     if (!u.hostname.endsWith('rutube.ru')) return null;
