@@ -4,6 +4,7 @@ import { LibraryPage } from '../pages/LibraryPage.js';
 import { LearnPage } from '../pages/LearnPage.js';
 import { AccountPage } from '../pages/AccountPage.js';
 import { CourseDetailPage } from '../pages/CourseDetailPage.js';
+import { CourseModulePage } from '../pages/CourseModulePage.js';
 import { LessonPage } from '../pages/LessonPage.js';
 import { UpdatePage } from '../pages/UpdatePage.js';
 import { SettingsPage } from '../pages/SettingsPage.js';
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
       { path: 'admin/payments', element: <AdminPaymentsPage /> },
       { path: 'admin/experts', element: <AdminExpertsPage /> },
       { path: 'course/:id', element: <CourseDetailPage /> },
+      { path: 'course/:courseId/modules/:moduleId', element: <CourseModulePage /> },
       { path: 'lesson/:lessonId', element: <LessonPage /> },
       { path: 'update/:id', element: <UpdatePage /> },
       { path: 'settings', element: <SettingsPage /> },

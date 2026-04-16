@@ -20,6 +20,7 @@ import { SubmissionsModule } from '../submissions/submissions.module.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { AuthoringModule } from '../authoring/authoring.module.js';
 import { StudentTopicsController } from './student_topics.controller.js';
+import { StudentCourseStructureController } from './student_course_structure.controller.js';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { StudentTopicsController } from './student_topics.controller.js';
     StudentSubmissionsController,
     StudentUploadsController,
     StudentTopicsController,
+    StudentCourseStructureController,
   ],
   providers: [JwtAuthGuard, OptionalJwtAuthGuard],
 })

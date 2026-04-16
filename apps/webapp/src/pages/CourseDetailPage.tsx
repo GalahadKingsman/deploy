@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Skeleton } from '../shared/ui/index.js';
 import { useCourse } from '../shared/queries/useCourse.js';
+import { useCourseModules } from '../shared/queries/useCourseModules.js';
 import { useCreateCourseCheckout } from '../shared/queries/useCheckout.js';
 import { useToast } from '../shared/ui/index.js';
 import { useMyCourses } from '../shared/queries/useMyCourses.js';
@@ -29,6 +30,8 @@ export function CourseDetailPage() {
   const toast = useToast();
   const courseId = id ?? '';
   const { data, isLoading, error, refetch } = useCourse(courseId);
+  const { data: modulesData, isLoading: modulesLoading, error: modulesError, refetch: refetchModules } =
+    useCourseModules(courseId);
   const checkout = useCreateCourseCheckout(courseId);
   const { data: contactData } = useMyContact();
   const updateContact = useUpdateMyContact();
@@ -48,7 +51,7 @@ export function CourseDetailPage() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || modulesLoading) {
     return (
       <div style={{ padding: 'var(--sp-4)' }}>
         <Skeleton width="60%" height="28px" style={{ marginBottom: 'var(--sp-3)' }} />
@@ -59,7 +62,7 @@ export function CourseDetailPage() {
     );
   }
 
-  if (error || !data) {
+  if (error || modulesError || !data) {
     return (
       <div style={{ padding: 'var(--sp-4)' }}>
         <Card>
@@ -71,6 +74,9 @@ export function CourseDetailPage() {
             <Button variant="primary" onClick={() => refetch()}>
               Повторить
             </Button>
+            <Button variant="secondary" onClick={() => refetchModules()}>
+              Повторить модули
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -79,7 +85,7 @@ export function CourseDetailPage() {
 
   const course = data.course;
   const hasAccess = (myCourses?.items ?? []).some((x) => x.course.id === courseId);
-  const lessons = hasAccess ? (data.lessons ?? []) : [];
+  const modules = modulesData?.items ?? [];
   const myOrderForCourse =
     (myOrders?.items ?? [])
       .filter((o) => o.courseId === courseId)
@@ -206,27 +212,27 @@ export function CourseDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle style={{ fontSize: 'var(--text-md)' }}>Уроки</CardTitle>
+          <CardTitle style={{ fontSize: 'var(--text-md)' }}>Модули</CardTitle>
           <CardDescription>
-            {hasAccess ? 'Выберите урок, чтобы открыть.' : 'Доступ появится после зачисления на курс.'}
+            {hasAccess ? 'Выберите модуль, чтобы открыть уроки.' : 'Доступ к урокам появится после зачисления на курс.'}
           </CardDescription>
         </CardHeader>
         <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
-          {!hasAccess ? (
-            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>
-              Чтобы увидеть уроки, нужно быть зачисленным.
-            </div>
+          {modules.length === 0 ? (
+            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>Пока нет модулей.</div>
           ) : (
-            <>
-              {lessons.length === 0 && (
-                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>Пока нет уроков.</div>
-              )}
-              {lessons.map((l) => (
-                <Button key={l.id} variant="secondary" asChild style={{ width: '100%', justifyContent: 'flex-start' }}>
-                  <Link to={`/lesson/${l.id}`}>{l.title}</Link>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
+              {modules.map((m) => (
+                <Button
+                  key={m.id}
+                  variant="secondary"
+                  asChild
+                  style={{ width: '100%', justifyContent: 'flex-start' }}
+                >
+                  <Link to={`/course/${courseId}/modules/${m.id}`}>{m.title}</Link>
                 </Button>
               ))}
-            </>
+            </div>
           )}
         </CardContent>
       </Card>

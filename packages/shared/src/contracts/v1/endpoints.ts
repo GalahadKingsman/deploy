@@ -81,3 +81,17 @@ export interface GetLessonResponseV1 {
 export const GetLessonResponseV1Schema = z.object({
   lesson: LessonV1Schema,
 });
+
+/**
+ * ListModuleLessonsResponse V1
+ */
+export interface ListModuleLessonsResponseV1 {
+  items: LessonV1[];
+}
+
+/**
+ * Zod schema for ListModuleLessonsResponseV1
+ */
+export const ListModuleLessonsResponseV1Schema = z.object({
+  items: z.array(LessonV1Schema),
+});

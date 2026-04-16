@@ -104,6 +104,29 @@ export class StudentCoursesRepository {
     }));
   }
 
+  async listLessonsByModuleId(params: { courseId: string; moduleId: string }): Promise<ContractsV1.LessonV1[]> {
+    if (!this.pool) return [];
+    const res = await this.pool.query<LessonRow>(
+      `
+      SELECT l.id, m.course_id, l.title, l.position, l.content_md, l.updated_at, l.video
+      FROM lessons l
+      JOIN course_modules m ON m.id = l.module_id
+      WHERE m.course_id = $1 AND m.id = $2 AND l.deleted_at IS NULL AND m.deleted_at IS NULL
+      ORDER BY l.position ASC, l.created_at ASC
+      `,
+      [params.courseId, params.moduleId],
+    );
+    return res.rows.map((r) => ({
+      id: r.id,
+      courseId: r.course_id,
+      title: r.title,
+      order: r.position,
+      contentMarkdown: r.content_md ?? null,
+      updatedAt: r.updated_at.toISOString(),
+      video: (r.video as any) ?? undefined,
+    }));
+  }
+
   async getLesson(lessonId: string): Promise<ContractsV1.LessonV1 | null> {
     if (!this.pool) return null;
     const res = await this.pool.query<LessonRow>(

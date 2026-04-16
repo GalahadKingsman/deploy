@@ -121,6 +121,7 @@ export type {
   GetLearnSummaryResponseV1,
   GetCourseResponseV1,
   GetLessonResponseV1,
+  ListModuleLessonsResponseV1,
 } from './endpoints.js';
 
 // Auth types
@@ -184,6 +185,7 @@ export {
   GetLearnSummaryResponseV1Schema,
   GetCourseResponseV1Schema,
   GetLessonResponseV1Schema,
+  ListModuleLessonsResponseV1Schema,
   AuthTelegramRequestV1Schema,
   AuthTelegramResponseV1Schema,
   AuditLogEntryV1Schema,
