@@ -5,7 +5,7 @@
   "version": "0.0.0",
   "scripts": {
     "dev": "pnpm --filter @tracked/shared build && vite",
-    "build": "tsc && vite build",
+    "build": "pnpm --filter @tracked/shared build && tsc && vite build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "preview": "vite preview",

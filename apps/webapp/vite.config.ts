@@ -32,9 +32,9 @@ export default defineConfig(({ mode }) => ({
   },
   resolve: {
     alias: {
-      // Bundle from shared **source** so Rutube/helpers updates are never stale vs dist/
-      // (dist/main is still used by Node API via package.json "main").
-      '@tracked/shared': resolve(__dirname, '../../packages/shared/src/index.ts'),
+      // Must use compiled dist: shared/src mixes .ts and emitted .js; Vite would resolve the
+      // wrong entry and break (e.g. env/index.js → missing validate.js). Run shared build first.
+      '@tracked/shared': resolve(__dirname, '../../packages/shared/dist/index.js'),
     },
   },
   optimizeDeps: {
