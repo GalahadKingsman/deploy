@@ -17,10 +17,43 @@ export function AppShell() {
   const isRestoringRef = useRef(false);
   const lastScrollRef = useRef<number>(0);
   const prevPathnameRef = useRef<string>('');
+  const verticalEnabledRef = useRef<boolean | null>(null);
 
   const pathname = location.pathname;
   const isTab = isTabPath(pathname);
   const prevIsTab = isTabPath(prevPathnameRef.current);
+
+  const setTelegramVerticalSwipe = (enabled: boolean) => {
+    try {
+      const tg = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp : undefined;
+      if (!tg) return;
+
+      // Preferred (tma.js-like) API: tg.swipeBehavior.enableVertical/disableVertical
+      const sb = tg.swipeBehavior as any;
+      if (sb) {
+        if (enabled && typeof sb.enableVertical === 'function') {
+          sb.enableVertical();
+          return;
+        }
+        if (!enabled && typeof sb.disableVertical === 'function') {
+          sb.disableVertical();
+          return;
+        }
+      }
+
+      // Fallback: some clients may expose enableVertical/disableVertical directly on tg.WebApp
+      if (enabled && typeof tg.enableVertical === 'function') {
+        tg.enableVertical();
+        return;
+      }
+      if (!enabled && typeof tg.disableVertical === 'function') {
+        tg.disableVertical();
+        return;
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   // Telegram Mini App: replace "Close" with native Back button on nested pages
   useEffect(() => {
@@ -60,6 +93,14 @@ export function AppShell() {
       if (isRestoringRef.current) return;
       const scrollTop = el.scrollTop;
       lastScrollRef.current = scrollTop;
+
+      // Telegram: allow "swipe down to close" ONLY from the very top.
+      // When user scrolls content down, disable vertical swipes to prevent accidental hide.
+      const shouldEnableVertical = scrollTop <= 0;
+      if (verticalEnabledRef.current !== shouldEnableVertical) {
+        verticalEnabledRef.current = shouldEnableVertical;
+        setTelegramVerticalSwipe(shouldEnableVertical);
+      }
 
       // Determine key to save
       if (isTab) {
@@ -140,6 +181,11 @@ export function AppShell() {
       el.scrollTop = 0;
       lastScrollRef.current = 0;
     }
+
+    // Apply swipe-behavior state after restoring scroll position
+    const shouldEnableVertical = (el.scrollTop ?? 0) <= 0;
+    verticalEnabledRef.current = shouldEnableVertical;
+    setTelegramVerticalSwipe(shouldEnableVertical);
 
     // Release restore flag after browser processes scroll
     requestAnimationFrame(() => {
