@@ -16,7 +16,8 @@ export function normalizeRutubeEmbedUrl(raw: string): string | null {
       }
       return null;
     }
-    const videoSeg = path.match(/\/video\/([a-f0-9-]{20,64})/i);
+    // Public: /video/<id> ; Private (link-only): /video/private/<id>
+    const videoSeg = path.match(/\/video\/(?:private\/)?([a-f0-9-]{20,64})/i);
     if (videoSeg?.[1]) {
       return `https://rutube.ru/play/embed/${videoSeg[1]}`;
     }
