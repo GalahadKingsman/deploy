@@ -135,7 +135,7 @@ export function ExpertLessonEditorPage() {
             onChange={(e) => setRutubeUrl(e.target.value)}
           />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
-            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>Контент (markdown)</div>
+            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>Описание</div>
             <textarea
               value={contentMarkdown}
               onChange={(e) => setContentMarkdown(e.target.value)}
