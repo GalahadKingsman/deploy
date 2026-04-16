@@ -17,7 +17,6 @@ export function AppShell() {
   const isRestoringRef = useRef(false);
   const lastScrollRef = useRef<number>(0);
   const prevPathnameRef = useRef<string>('');
-  const verticalEnabledRef = useRef<boolean | null>(null);
 
   const pathname = location.pathname;
   const isTab = isTabPath(pathname);
@@ -54,6 +53,12 @@ export function AppShell() {
       // ignore
     }
   };
+
+  // Telegram Mini App: disable swipe-down-to-close everywhere.
+  // Users can close/minimize only via Telegram UI (arrow-down / close button).
+  useEffect(() => {
+    setTelegramVerticalSwipe(false);
+  }, [pathname]);
 
   // Telegram Mini App: replace "Close" with native Back button on nested pages
   useEffect(() => {
@@ -93,14 +98,6 @@ export function AppShell() {
       if (isRestoringRef.current) return;
       const scrollTop = el.scrollTop;
       lastScrollRef.current = scrollTop;
-
-      // Telegram: allow "swipe down to close" ONLY from the very top.
-      // When user scrolls content down, disable vertical swipes to prevent accidental hide.
-      const shouldEnableVertical = scrollTop <= 0;
-      if (verticalEnabledRef.current !== shouldEnableVertical) {
-        verticalEnabledRef.current = shouldEnableVertical;
-        setTelegramVerticalSwipe(shouldEnableVertical);
-      }
 
       // Determine key to save
       if (isTab) {
@@ -181,11 +178,6 @@ export function AppShell() {
       el.scrollTop = 0;
       lastScrollRef.current = 0;
     }
-
-    // Apply swipe-behavior state after restoring scroll position
-    const shouldEnableVertical = (el.scrollTop ?? 0) <= 0;
-    verticalEnabledRef.current = shouldEnableVertical;
-    setTelegramVerticalSwipe(shouldEnableVertical);
 
     // Release restore flag after browser processes scroll
     requestAnimationFrame(() => {
