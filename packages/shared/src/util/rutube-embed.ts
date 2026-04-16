@@ -57,10 +57,14 @@ export function normalizeRutubeEmbedUrl(raw: string): string | null {
       return embedBaseWithQuery(`https://rutube.ru/play/embed/${liveSeg[1]}`, u);
     }
 
-    // Public: /video/<id> ; Private (link-only): /video/private/<id> (often with ?p= key)
-    const videoSeg = path.match(new RegExp(`/video/(?:private/)?(${RUTUBE_ID})`, 'i'));
-    if (videoSeg?.[1] && idRe.test(videoSeg[1])) {
-      return embedBaseWithQuery(`https://rutube.ru/play/embed/${videoSeg[1]}`, u);
+    // Watch URL: try /video/private/<id> first so we never treat the word "private" as an id.
+    const privateWatch = path.match(new RegExp(`^/video/private/(${RUTUBE_ID})(?:/|$)`, 'i'));
+    if (privateWatch?.[1] && idRe.test(privateWatch[1])) {
+      return embedBaseWithQuery(`https://rutube.ru/play/embed/${privateWatch[1]}`, u);
+    }
+    const publicWatch = path.match(new RegExp(`^/video/(${RUTUBE_ID})(?:/|$)`, 'i'));
+    if (publicWatch?.[1] && idRe.test(publicWatch[1])) {
+      return embedBaseWithQuery(`https://rutube.ru/play/embed/${publicWatch[1]}`, u);
     }
 
     const short = path.match(new RegExp(`/shorts/(${RUTUBE_ID})`, 'i'));
