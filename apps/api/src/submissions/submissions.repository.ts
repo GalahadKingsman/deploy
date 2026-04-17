@@ -15,8 +15,12 @@ interface SubmissionRow {
   reviewer_comment: string | null;
 }
 
-function mapRow(r: SubmissionRow, lessonId: string): ContractsV1.SubmissionV1 {
-  return {
+function mapRow(
+  r: SubmissionRow,
+  lessonId: string,
+  studentTelegramUsername?: string | null,
+): ContractsV1.SubmissionV1 {
+  const base: ContractsV1.SubmissionV1 = {
     id: r.id,
     assignmentId: r.assignment_id,
     lessonId,
@@ -29,6 +33,10 @@ function mapRow(r: SubmissionRow, lessonId: string): ContractsV1.SubmissionV1 {
     score: typeof r.score === 'number' ? r.score : null,
     reviewerComment: r.reviewer_comment ?? null,
   };
+  if (studentTelegramUsername !== undefined) {
+    base.studentTelegramUsername = studentTelegramUsername ?? null;
+  }
+  return base;
 }
 
 export class SubmissionsRepository {
@@ -48,13 +56,16 @@ export class SubmissionsRepository {
       score: number | null;
       reviewer_comment: string | null;
       lesson_id: string;
+      student_telegram_username: string | null;
     }>(
       `
       SELECT s.id, s.assignment_id, s.student_user_id, s.created_at, s.text, s.link, s.file_key, s.status,
              s.score, s.reviewer_comment,
-             a.lesson_id
+             a.lesson_id,
+             u.username AS student_telegram_username
       FROM submissions s
       JOIN assignments a ON a.id = s.assignment_id
+      JOIN users u ON u.id = s.student_user_id
       WHERE s.student_user_id = $1 AND a.lesson_id = $2
       ORDER BY s.created_at DESC
       LIMIT 50
@@ -76,6 +87,7 @@ export class SubmissionsRepository {
           reviewer_comment: r.reviewer_comment,
         },
         r.lesson_id,
+        r.student_telegram_username,
       ),
     );
   }
@@ -134,11 +146,39 @@ export class SubmissionsRepository {
 
   async listByAssignmentId(params: { assignmentId: string; lessonId: string }): Promise<ContractsV1.SubmissionV1[]> {
     if (!this.pool) return [];
-    const res = await this.pool.query<SubmissionRow>(
-      `SELECT * FROM submissions WHERE assignment_id = $1 ORDER BY created_at DESC LIMIT 200`,
+    const res = await this.pool.query<
+      SubmissionRow & { student_telegram_username: string | null }
+    >(
+      `
+      SELECT s.id, s.assignment_id, s.student_user_id, s.created_at, s.text, s.link, s.file_key, s.status,
+             s.score, s.reviewer_comment,
+             u.username AS student_telegram_username
+      FROM submissions s
+      JOIN users u ON u.id = s.student_user_id
+      WHERE s.assignment_id = $1
+      ORDER BY s.created_at DESC
+      LIMIT 200
+      `,
       [params.assignmentId],
     );
-    return res.rows.map((r) => mapRow(r, params.lessonId));
+    return res.rows.map((r) =>
+      mapRow(
+        {
+          id: r.id,
+          assignment_id: r.assignment_id,
+          student_user_id: r.student_user_id,
+          created_at: r.created_at,
+          text: r.text,
+          link: r.link,
+          file_key: r.file_key,
+          status: r.status,
+          score: r.score,
+          reviewer_comment: r.reviewer_comment,
+        },
+        params.lessonId,
+        r.student_telegram_username,
+      ),
+    );
   }
 
   async decide(params: {

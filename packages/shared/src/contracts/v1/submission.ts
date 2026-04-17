@@ -18,6 +18,8 @@ export interface SubmissionV1 {
   status: SubmissionStatusV1;
   score?: number | null;
   reviewerComment?: string | null;
+  /** Telegram @username from users.username (expert list / optional elsewhere) */
+  studentTelegramUsername?: string | null;
 }
 
 /**
@@ -35,4 +37,5 @@ export const SubmissionV1Schema = z.object({
   status: SubmissionStatusV1Schema,
   score: z.number().int().min(1).max(5).nullable().optional(),
   reviewerComment: z.string().max(4000).nullable().optional(),
+  studentTelegramUsername: z.string().nullable().optional(),
 });
