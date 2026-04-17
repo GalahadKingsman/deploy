@@ -35,7 +35,54 @@ export function ExpertCourseAccessPage() {
   const [usernameManual, setUsernameManual] = React.useState('');
   const [grantDaysByRow, setGrantDaysByRow] = React.useState<Record<string, string>>({});
   const [inviteMaxUses, setInviteMaxUses] = React.useState('1');
-  const [revokedInviteCodes, setRevokedInviteCodes] = React.useState<Record<string, true>>({});
+  const storageKey = `revoked-invite-codes:${expertId}:${courseId}`;
+  const [revokedInviteCodes, setRevokedInviteCodes] = React.useState<Record<string, true>>(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? window.localStorage?.getItem(storageKey) : null;
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) return {};
+      const out: Record<string, true> = {};
+      for (const v of parsed) {
+        if (typeof v === 'string' && v.trim()) out[v] = true;
+      }
+      return out;
+    } catch {
+      return {};
+    }
+  });
+
+  // When navigating between courses/experts, re-hydrate from localStorage.
+  React.useEffect(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? window.localStorage?.getItem(storageKey) : null;
+      if (!raw) {
+        setRevokedInviteCodes({});
+        return;
+      }
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) {
+        setRevokedInviteCodes({});
+        return;
+      }
+      const out: Record<string, true> = {};
+      for (const v of parsed) {
+        if (typeof v === 'string' && v.trim()) out[v] = true;
+      }
+      setRevokedInviteCodes(out);
+    } catch {
+      setRevokedInviteCodes({});
+    }
+  }, [storageKey]);
+
+  React.useEffect(() => {
+    try {
+      const codes = Object.keys(revokedInviteCodes);
+      window.localStorage?.setItem(storageKey, JSON.stringify(codes));
+    } catch {
+      // ignore (private mode / quota)
+    }
+  }, [revokedInviteCodes, storageKey]);
 
   if (!expertId || !courseId) {
     return (
