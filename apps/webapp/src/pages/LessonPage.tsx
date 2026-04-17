@@ -18,7 +18,8 @@ export function LessonPage() {
   const toast = useToast();
   const id = lessonId ?? '';
   const { data, isLoading, error, refetch } = useLesson(id);
-  const { data: assignmentData } = useLessonAssignment(id);
+  const assignmentQuery = useLessonAssignment(id);
+  const assignmentData = assignmentQuery.data;
   const { data: mySubmissionsData, refetch: refetchMySubmissions } = useMyLessonSubmissions(id);
   const [completing, setCompleting] = React.useState(false);
   const [materialsOpen, setMaterialsOpen] = React.useState(false);
@@ -88,6 +89,17 @@ export function LessonPage() {
   const assignmentFiles = assignmentData?.files ?? [];
   const myLatest = (mySubmissionsData?.items ?? [])[0] ?? null;
 
+  const homeworkText = (assignment?.promptMarkdown ?? '').trim();
+  const hasHomeworkText = homeworkText.length > 0;
+  const hasHomeworkFiles = assignmentFiles.length > 0;
+  const publishedHomework =
+    assignmentQuery.isSuccess && !!assignment && (hasHomeworkText || hasHomeworkFiles);
+  const showHomeworkSection =
+    assignmentQuery.isPending ||
+    assignmentQuery.isError ||
+    publishedHomework ||
+    (assignmentQuery.isSuccess && !!myLatest);
+
   const downloadMyFile = async (fileKey: string) => {
     try {
       const headers = await getAuthHeaders();
@@ -140,47 +152,90 @@ export function LessonPage() {
         </Card>
       )}
 
-      {assignment && (
+      {showHomeworkSection && (
         <Card style={{ marginBottom: 'var(--sp-4)' }}>
           <CardHeader>
             <CardTitle style={{ fontSize: 'var(--text-md)' }}>Домашнее задание</CardTitle>
             <CardDescription>Прочитайте задание, скачайте материалы и сдайте ответ.</CardDescription>
           </CardHeader>
           <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
-            <pre
-              style={{
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                fontSize: 'var(--text-sm)',
-                color: 'var(--fg)',
-                margin: 0,
-              }}
-            >
-              {assignment.promptMarkdown ?? ''}
-            </pre>
-
-            <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
-              {assignmentFiles.length > 0 && (
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    if (assignmentFiles.length === 1) {
-                      setMaterialsOpen(true);
-                      return;
-                    }
-                    setMaterialsOpen(true);
-                  }}
-                >
-                  {assignmentFiles.length === 1 ? 'Скачать презентацию' : `Материалы (${assignmentFiles.length})`}
+            {assignmentQuery.isPending ? (
+              <Skeleton width="100%" height="72px" radius="md" />
+            ) : assignmentQuery.isError ? (
+              <>
+                <CardDescription style={{ margin: 0 }}>
+                  Не удалось загрузить домашнее задание. Проверьте сеть и попробуйте снова.
+                </CardDescription>
+                <Button variant="secondary" onClick={() => void assignmentQuery.refetch()}>
+                  Повторить
                 </Button>
-              )}
-              <Button variant="primary" onClick={() => navigate(`/lesson/${id}/homework`)}>
-                Сдать домашнее задание
-              </Button>
-            </div>
+              </>
+            ) : publishedHomework ? (
+              <>
+                {hasHomeworkText && (
+                  <pre
+                    style={{
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                      fontSize: 'var(--text-sm)',
+                      color: 'var(--fg)',
+                      margin: 0,
+                    }}
+                  >
+                    {homeworkText}
+                  </pre>
+                )}
 
-            {myLatest && (
+                <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+                  {hasHomeworkFiles && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setMaterialsOpen(true);
+                      }}
+                    >
+                      {assignmentFiles.length === 1 ? 'Скачать презентацию' : `Материалы (${assignmentFiles.length})`}
+                    </Button>
+                  )}
+                  <Button variant="primary" onClick={() => navigate(`/lesson/${id}/homework`)}>
+                    Сдать домашнее задание
+                  </Button>
+                </div>
+
+                {myLatest && (
+                  <Card style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <CardHeader>
+                      <CardTitle style={{ fontSize: 'var(--text-sm)' }}>Ваш ответ</CardTitle>
+                      <CardDescription>
+                        статус: {myLatest.status}
+                        {typeof myLatest.score === 'number' ? ` • оценка: ${myLatest.score}/5` : ''}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
+                      {myLatest.text && (
+                        <pre style={{ whiteSpace: 'pre-wrap', margin: 0, fontSize: 'var(--text-sm)' }}>{myLatest.text}</pre>
+                      )}
+                      {myLatest.reviewerComment && (
+                        <div style={{ color: 'var(--muted-fg)', fontSize: 'var(--text-sm)' }}>
+                          Комментарий: {myLatest.reviewerComment}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+                        {myLatest.fileKey && (
+                          <Button variant="ghost" size="sm" onClick={() => downloadMyFile(myLatest.fileKey as string)}>
+                            Скачать файл
+                          </Button>
+                        )}
+                        <Button variant="secondary" size="sm" onClick={() => refetchMySubmissions()}>
+                          Обновить
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            ) : myLatest ? (
               <Card style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <CardHeader>
                   <CardTitle style={{ fontSize: 'var(--text-sm)' }}>Ваш ответ</CardTitle>
@@ -210,7 +265,7 @@ export function LessonPage() {
                   </div>
                 </CardContent>
               </Card>
-            )}
+            ) : null}
           </CardContent>
         </Card>
       )}

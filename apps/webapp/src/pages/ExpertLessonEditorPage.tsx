@@ -33,6 +33,7 @@ export function ExpertLessonEditorPage() {
   const [homeworkSaving, setHomeworkSaving] = React.useState(false);
   const [homeworkUploading, setHomeworkUploading] = React.useState(false);
   const [lesson, setLesson] = React.useState<ContractsV1.ExpertLessonV1 | null>(null);
+  const homeworkFileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -279,18 +280,25 @@ export function ExpertLessonEditorPage() {
                 <Button variant="secondary" onClick={saveHomework} disabled={homeworkSaving}>
                   Сохранить задание
                 </Button>
-                <label style={{ display: 'inline-block' }}>
-                  <input
-                    type="file"
-                    multiple
-                    onChange={(e) => uploadHomeworkFiles(e.target.files)}
-                    style={{ display: 'none' }}
-                    disabled={homeworkUploading}
-                  />
-                  <Button variant="secondary" disabled={homeworkUploading}>
-                    {homeworkUploading ? 'Загрузка…' : 'Добавить файлы'}
-                  </Button>
-                </label>
+                <input
+                  ref={homeworkFileInputRef}
+                  type="file"
+                  multiple
+                  onChange={(e) => {
+                    void uploadHomeworkFiles(e.target.files);
+                    e.target.value = '';
+                  }}
+                  style={{ display: 'none' }}
+                  disabled={homeworkUploading}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={homeworkUploading}
+                  onClick={() => homeworkFileInputRef.current?.click()}
+                >
+                  {homeworkUploading ? 'Загрузка…' : 'Добавить файлы'}
+                </Button>
               </div>
 
               {assignmentFiles.length > 0 && (
