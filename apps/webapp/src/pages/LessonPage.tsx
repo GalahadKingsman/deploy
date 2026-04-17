@@ -55,14 +55,21 @@ function StudentHomeworkAnswerCard({
   const comment = (submission.reviewerComment ?? '').trim();
 
   return (
-    <Card style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.08)' }}>
+    <Card style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', minWidth: 0, maxWidth: '100%' }}>
       <CardHeader style={{ paddingBottom: 'var(--sp-2)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--sp-3)' }}>
           <CardTitle style={{ fontSize: 'var(--text-sm)', margin: 0 }}>Ваш ответ</CardTitle>
           {showStars ? <HomeworkScoreStars score={numericScore} /> : null}
         </div>
       </CardHeader>
-      <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
+      <CardContent
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 'var(--sp-3)',
+          minWidth: 0,
+        }}
+      >
         {submission.text ? (
           <div
             style={{
@@ -72,6 +79,8 @@ function StudentHomeworkAnswerCard({
                 'linear-gradient(145deg, rgba(72, 160, 130, 0.16) 0%, rgba(255, 255, 255, 0.035) 52%, rgba(12, 36, 32, 0.42) 100%)',
               padding: 'var(--sp-3)',
               boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+              minWidth: 0,
+              maxWidth: '100%',
             }}
           >
             <div
@@ -94,6 +103,9 @@ function StudentHomeworkAnswerCard({
                 lineHeight: 1.55,
                 margin: 0,
                 fontFamily: 'inherit',
+                overflowWrap: 'anywhere',
+                wordBreak: 'break-word',
+                minWidth: 0,
               }}
             >
               {submission.text}
@@ -108,6 +120,8 @@ function StudentHomeworkAnswerCard({
               background: 'linear-gradient(145deg, rgba(212, 192, 144, 0.14) 0%, rgba(255, 255, 255, 0.04) 55%, rgba(20, 24, 32, 0.35) 100%)',
               padding: 'var(--sp-3)',
               boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.06)',
+              minWidth: 0,
+              maxWidth: '100%',
             }}
           >
             <div
@@ -128,6 +142,9 @@ function StudentHomeworkAnswerCard({
                 color: 'var(--fg)',
                 whiteSpace: 'pre-wrap',
                 lineHeight: 1.55,
+                overflowWrap: 'anywhere',
+                wordBreak: 'break-word',
+                minWidth: 0,
               }}
             >
               {submission.reviewerComment}
