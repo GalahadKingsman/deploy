@@ -39,16 +39,22 @@ export function InviteActivatePage() {
           }
         }
         throw lastErr;
+      } catch (e) {
         if (cancelled) return;
-      } catch {
-        if (cancelled) return;
+        const msg =
+          e instanceof ApiClientError
+            ? `${e.message} (HTTP ${e.status})`
+            : e instanceof Error
+              ? e.message
+              : 'Не удалось активировать';
+        toast.show({ title: 'Не удалось активировать', message: msg, variant: 'error' });
       }
     }
     run();
     return () => {
       cancelled = true;
     };
-  }, [c]);
+  }, [c, navigate, toast]);
 
   if (!c) {
     return (
