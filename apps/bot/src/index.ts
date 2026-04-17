@@ -19,6 +19,15 @@ const WEBAPP_URL = trimmed.replace(/\/+$/, '');
 
 const bot = new Bot(env.BOT_TOKEN);
 
+// Ensure long polling works even if a webhook was previously configured for this bot token.
+// If webhook is set, Telegram will NOT deliver updates via getUpdates (polling), and the bot will appear "silent".
+try {
+  await bot.api.deleteWebhook({ drop_pending_updates: true });
+} catch (e) {
+  // Non-fatal: we can still try to start; but if webhook is set, polling won't work.
+  console.warn('Failed to delete webhook (polling may not receive updates):', e);
+}
+
 const openWebAppKb = new InlineKeyboard().webApp('Open WebApp', WEBAPP_URL);
 
 const pendingSubmissions = new Map<string, { lessonId: string }>();
