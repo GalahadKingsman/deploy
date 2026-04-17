@@ -155,14 +155,16 @@ export function ExpertLessonEditorPage() {
     setHomeworkUploading(true);
     try {
       for (const f of Array.from(files)) {
+        const contentType = (f.type || '').trim() || 'application/octet-stream';
         const signed = await fetchJson<{ fileKey: string; url: string }>({
           path: `/experts/${expertId}/lessons/${lessonId}/assignment/files/signed`,
           method: 'POST',
-          body: { filename: f.name, contentType: f.type || null },
+          body: { filename: f.name, contentType },
         });
         const putRes = await fetch(signed.url, {
           method: 'PUT',
-          headers: f.type ? { 'content-type': f.type } : undefined,
+          credentials: 'omit',
+          headers: { 'content-type': contentType },
           body: f,
         });
         if (!putRes.ok) {
@@ -171,7 +173,7 @@ export function ExpertLessonEditorPage() {
         await fetchJson<ContractsV1.AssignmentFileV1>({
           path: `/experts/${expertId}/lessons/${lessonId}/assignment/files`,
           method: 'POST',
-          body: { fileKey: signed.fileKey, filename: f.name, contentType: f.type || null },
+          body: { fileKey: signed.fileKey, filename: f.name, contentType },
         });
       }
       const a = await fetchJson<ContractsV1.GetLessonAssignmentResponseV1>({
@@ -180,7 +182,12 @@ export function ExpertLessonEditorPage() {
       setAssignmentFiles(a.files ?? []);
       toast.show({ title: 'Файлы добавлены', variant: 'success' });
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Не удалось загрузить файлы';
+      const msg =
+        e instanceof ApiClientError
+          ? `${e.message} (HTTP ${e.status})`
+          : e instanceof Error
+            ? e.message
+            : 'Не удалось загрузить файлы';
       toast.show({ title: 'Ошибка', message: msg, variant: 'error' });
     } finally {
       setHomeworkUploading(false);

@@ -69,18 +69,20 @@ export function LessonHomeworkSubmitPage() {
     }
     setUploading(true);
     try {
+      const contentType = (selectedFile.type || '').trim() || 'application/octet-stream';
       const signed = await fetchJson<{ fileKey: string; url: string }>({
         path: '/uploads/submissions/signed',
         method: 'POST',
         body: {
           lessonId: id,
           filename: selectedFile.name,
-          contentType: selectedFile.type || null,
+          contentType,
         },
       });
       const putRes = await fetch(signed.url, {
         method: 'PUT',
-        headers: selectedFile.type ? { 'content-type': selectedFile.type } : undefined,
+        credentials: 'omit',
+        headers: { 'content-type': contentType },
         body: selectedFile,
       });
       if (!putRes.ok) throw new Error(`HTTP ${putRes.status}`);

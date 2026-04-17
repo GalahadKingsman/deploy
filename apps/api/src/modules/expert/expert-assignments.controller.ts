@@ -107,7 +107,10 @@ export class ExpertAssignmentsController {
     const original = typeof body?.filename === 'string' && body.filename ? body.filename : 'file';
     const safeName = original.replace(/[^\w.\-]+/g, '_').slice(0, 120);
     const key = `assignment-files/${assignment.id}/${Date.now()}-${safeName}`;
-    const contentType = typeof body?.contentType === 'string' && body.contentType ? body.contentType : null;
+    const rawCt = typeof body?.contentType === 'string' ? body.contentType.trim() : '';
+    // Presigned PUT must match the client Content-Type header; browsers often send
+    // application/octet-stream when File.type is empty, so never sign with "no type".
+    const contentType = rawCt || 'application/octet-stream';
     const signed = await this.storage.getSignedPutUrl({ key, contentType, expiresSeconds: 120 });
     return { fileKey: key, url: signed.url };
   }

@@ -111,7 +111,8 @@ export class StudentUploadsController {
     const safeName = original.replace(/[^\w.\-]+/g, '_').slice(0, 120);
     const key = `submissions/${assignment.id}/${userId}/${Date.now()}-${safeName}`;
 
-    const contentType = typeof body?.contentType === 'string' && body.contentType ? body.contentType : null;
+    const rawCt = typeof body?.contentType === 'string' ? body.contentType.trim() : '';
+    const contentType = rawCt || 'application/octet-stream';
     const signed = await this.storage.getSignedPutUrl({ key, contentType, expiresSeconds: 120 });
     return { fileKey: key, url: signed.url };
   }
