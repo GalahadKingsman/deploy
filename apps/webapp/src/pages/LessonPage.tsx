@@ -15,6 +15,10 @@ import { BottomSheet } from '../ui/kit/BottomSheet.js';
 const STAR_GOLD = '#d4c090';
 const STAR_GOLD_DIM = 'rgba(212, 192, 144, 0.28)';
 
+/** Emerald accents for student answer card (pairs with pale gold expert block). */
+const EMERALD_LABEL = 'rgba(120, 214, 190, 0.95)';
+const EMERALD_BORDER = 'rgba(100, 190, 165, 0.42)';
+
 function HomeworkScoreStars({ score }: { score: number }) {
   const filled = Math.max(0, Math.min(5, Math.round(score)));
   return (
@@ -60,7 +64,41 @@ function StudentHomeworkAnswerCard({
       </CardHeader>
       <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
         {submission.text ? (
-          <pre style={{ whiteSpace: 'pre-wrap', margin: 0, fontSize: 'var(--text-sm)' }}>{submission.text}</pre>
+          <div
+            style={{
+              borderRadius: 'var(--r-md)',
+              border: `1px solid ${EMERALD_BORDER}`,
+              background:
+                'linear-gradient(145deg, rgba(72, 160, 130, 0.16) 0%, rgba(255, 255, 255, 0.035) 52%, rgba(12, 36, 32, 0.42) 100%)',
+              padding: 'var(--sp-3)',
+              boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+            }}
+          >
+            <div
+              style={{
+                fontSize: 'var(--text-xs)',
+                fontWeight: 600,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: EMERALD_LABEL,
+                marginBottom: 'var(--sp-2)',
+              }}
+            >
+              Текст ответа
+            </div>
+            <div
+              style={{
+                fontSize: 'var(--text-sm)',
+                color: 'var(--fg)',
+                whiteSpace: 'pre-wrap',
+                lineHeight: 1.55,
+                margin: 0,
+                fontFamily: 'inherit',
+              }}
+            >
+              {submission.text}
+            </div>
+          </div>
         ) : null}
         {comment ? (
           <div
