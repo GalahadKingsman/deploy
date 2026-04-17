@@ -12,6 +12,108 @@ import { normalizeRutubeEmbedUrl } from '@tracked/shared';
 import { downloadAuthenticatedFile } from '../shared/api/index.js';
 import { BottomSheet } from '../ui/kit/BottomSheet.js';
 
+const STAR_GOLD = '#d4c090';
+const STAR_GOLD_DIM = 'rgba(212, 192, 144, 0.28)';
+
+function HomeworkScoreStars({ score }: { score: number }) {
+  const filled = Math.max(0, Math.min(5, Math.round(score)));
+  return (
+    <div
+      role="img"
+      aria-label={`Оценка ${filled} из 5`}
+      style={{ display: 'flex', gap: '3px', flexShrink: 0, lineHeight: 1 }}
+    >
+      {[1, 2, 3, 4, 5].map((i) => (
+        <span
+          key={i}
+          style={{
+            fontSize: '1.15rem',
+            color: i <= filled ? STAR_GOLD : STAR_GOLD_DIM,
+            textShadow: i <= filled ? '0 0 12px rgba(212, 192, 144, 0.35)' : 'none',
+          }}
+        >
+          ★
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function StudentHomeworkAnswerCard({
+  submission,
+  downloadFile,
+}: {
+  submission: ContractsV1.SubmissionV1;
+  downloadFile: (fileKey: string, fallbackFilename: string) => void | Promise<void>;
+}) {
+  const numericScore = typeof submission.score === 'number' ? submission.score : null;
+  const showStars = numericScore != null && numericScore >= 1 && numericScore <= 5;
+  const comment = (submission.reviewerComment ?? '').trim();
+
+  return (
+    <Card style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.08)' }}>
+      <CardHeader style={{ paddingBottom: 'var(--sp-2)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--sp-3)' }}>
+          <CardTitle style={{ fontSize: 'var(--text-sm)', margin: 0 }}>Ваш ответ</CardTitle>
+          {showStars ? <HomeworkScoreStars score={numericScore} /> : null}
+        </div>
+      </CardHeader>
+      <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
+        {submission.text ? (
+          <pre style={{ whiteSpace: 'pre-wrap', margin: 0, fontSize: 'var(--text-sm)' }}>{submission.text}</pre>
+        ) : null}
+        {comment ? (
+          <div
+            style={{
+              borderRadius: 'var(--r-md)',
+              border: '1px solid rgba(212, 192, 144, 0.38)',
+              background: 'linear-gradient(145deg, rgba(212, 192, 144, 0.14) 0%, rgba(255, 255, 255, 0.04) 55%, rgba(20, 24, 32, 0.35) 100%)',
+              padding: 'var(--sp-3)',
+              boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.06)',
+            }}
+          >
+            <div
+              style={{
+                fontSize: 'var(--text-xs)',
+                fontWeight: 600,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: 'rgba(212, 192, 144, 0.95)',
+                marginBottom: 'var(--sp-2)',
+              }}
+            >
+              Комментарий эксперта
+            </div>
+            <div
+              style={{
+                fontSize: 'var(--text-sm)',
+                color: 'var(--fg)',
+                whiteSpace: 'pre-wrap',
+                lineHeight: 1.55,
+              }}
+            >
+              {submission.reviewerComment}
+            </div>
+          </div>
+        ) : null}
+        {submission.fileKey ? (
+          <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                void downloadFile(submission.fileKey as string, submission.fileKey?.split('/').pop() ?? 'file')
+              }
+            >
+              Скачать файл
+            </Button>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function LessonPage() {
   const { lessonId } = useParams<{ lessonId: string }>();
   const navigate = useNavigate();
@@ -20,7 +122,7 @@ export function LessonPage() {
   const { data, isLoading, error, refetch } = useLesson(id);
   const assignmentQuery = useLessonAssignment(id);
   const assignmentData = assignmentQuery.data;
-  const { data: mySubmissionsData, refetch: refetchMySubmissions } = useMyLessonSubmissions(id);
+  const { data: mySubmissionsData } = useMyLessonSubmissions(id);
   const [completing, setCompleting] = React.useState(false);
   const [materialsOpen, setMaterialsOpen] = React.useState(false);
 
@@ -218,83 +320,12 @@ export function LessonPage() {
                   </Button>
                 </div>
 
-                {myLatest && (
-                  <Card style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.08)' }}>
-                    <CardHeader>
-                      <CardTitle style={{ fontSize: 'var(--text-sm)' }}>Ваш ответ</CardTitle>
-                      <CardDescription>
-                        статус: {myLatest.status}
-                        {typeof myLatest.score === 'number' ? ` • оценка: ${myLatest.score}/5` : ''}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
-                      {myLatest.text && (
-                        <pre style={{ whiteSpace: 'pre-wrap', margin: 0, fontSize: 'var(--text-sm)' }}>{myLatest.text}</pre>
-                      )}
-                      {myLatest.reviewerComment && (
-                        <div style={{ color: 'var(--muted-fg)', fontSize: 'var(--text-sm)' }}>
-                          Комментарий: {myLatest.reviewerComment}
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                        {myLatest.fileKey && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              void downloadMyFile(myLatest.fileKey as string, myLatest.fileKey?.split('/').pop() ?? 'file')
-                            }
-                          >
-                            Скачать файл
-                          </Button>
-                        )}
-                        <Button variant="secondary" size="sm" onClick={() => refetchMySubmissions()}>
-                          Обновить
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                {myLatest ? (
+                  <StudentHomeworkAnswerCard submission={myLatest} downloadFile={downloadMyFile} />
+                ) : null}
               </>
             ) : myLatest ? (
-              <Card style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <CardHeader>
-                  <CardTitle style={{ fontSize: 'var(--text-sm)' }}>Ваш ответ</CardTitle>
-                  <CardDescription>
-                    статус: {myLatest.status}
-                    {typeof myLatest.score === 'number' ? ` • оценка: ${myLatest.score}/5` : ''}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
-                  {myLatest.text && (
-                    <pre style={{ whiteSpace: 'pre-wrap', margin: 0, fontSize: 'var(--text-sm)' }}>{myLatest.text}</pre>
-                  )}
-                  {myLatest.reviewerComment && (
-                    <div style={{ color: 'var(--muted-fg)', fontSize: 'var(--text-sm)' }}>
-                      Комментарий: {myLatest.reviewerComment}
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                    {myLatest.fileKey && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          void downloadMyFile(
-                            myLatest.fileKey as string,
-                            myLatest.fileKey?.split('/').pop() ?? 'file',
-                          )
-                        }
-                      >
-                        Скачать файл
-                      </Button>
-                    )}
-                    <Button variant="secondary" size="sm" onClick={() => refetchMySubmissions()}>
-                      Обновить
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <StudentHomeworkAnswerCard submission={myLatest} downloadFile={downloadMyFile} />
             ) : null}
           </CardContent>
         </Card>
