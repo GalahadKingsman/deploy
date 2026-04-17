@@ -3,9 +3,16 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton, useToast } from '../shared/ui/index.js';
 import { useLesson } from '../shared/queries/useLesson.js';
 import { useCreateLessonSubmission } from '../shared/queries/useCreateLessonSubmission.js';
+import { useMyLessonSubmissions } from '../shared/queries/useMyLessonSubmissions.js';
 import { fetchMultipart } from '../shared/api/index.js';
 import { ApiClientError } from '../shared/api/errors.js';
 import type { ContractsV1 } from '@tracked/shared';
+
+function labelFromSubmissionFileKey(key: string): string {
+  const tail = key.includes('/') ? key.slice(key.lastIndexOf('/') + 1) : key;
+  const withoutTs = tail.replace(/^\d+-/, '');
+  return (withoutTs || tail || 'файл').trim() || 'файл';
+}
 
 export function LessonHomeworkSubmitPage() {
   const { lessonId } = useParams<{ lessonId: string }>();
@@ -14,6 +21,7 @@ export function LessonHomeworkSubmitPage() {
   const toast = useToast();
 
   const { data, isLoading, error, refetch } = useLesson(id);
+  const { data: mySubsData, isFetched: mySubsFetched } = useMyLessonSubmissions(id);
   const createSubmission = useCreateLessonSubmission(id);
 
   const [text, setText] = React.useState('');
@@ -21,6 +29,21 @@ export function LessonHomeworkSubmitPage() {
   const [saving, setSaving] = React.useState(false);
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const [uploadedFileKey, setUploadedFileKey] = React.useState<string | null>(null);
+  const didSeedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    didSeedRef.current = false;
+  }, [id]);
+
+  React.useEffect(() => {
+    if (!mySubsFetched || didSeedRef.current) return;
+    const latest = mySubsData?.items?.[0];
+    didSeedRef.current = true;
+    if (!latest || latest.status === 'accepted') return;
+    setText(typeof latest.text === 'string' ? latest.text : '');
+    setUploadedFileKey(latest.fileKey ?? null);
+    setSelectedFile(null);
+  }, [mySubsFetched, mySubsData, id]);
 
   if (!id) {
     return (
@@ -62,7 +85,38 @@ export function LessonHomeworkSubmitPage() {
     );
   }
 
+  if (!mySubsFetched) {
+    return (
+      <div style={{ padding: 'var(--sp-4)' }}>
+        <Skeleton width="70%" height="28px" style={{ marginBottom: 'var(--sp-3)' }} />
+        <Skeleton width="100%" height="220px" radius="lg" />
+      </div>
+    );
+  }
+
+  const latestSubmission = mySubsData?.items?.[0] ?? null;
+  if (latestSubmission?.status === 'accepted') {
+    return (
+      <div style={{ padding: 'var(--sp-4)' }}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Редактирование недоступно</CardTitle>
+            <CardDescription>
+              Эксперт уже принял ваш ответ. Отправленные материалы больше нельзя изменить.
+            </CardDescription>
+          </CardHeader>
+          <CardContent style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+            <Button variant="primary" onClick={() => navigate(`/lesson/${id}`, { replace: true })}>
+              К уроку
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const lesson = data.lesson;
+  const isEditing = Boolean(latestSubmission);
 
   const upload = async () => {
     if (!selectedFile) {
@@ -132,7 +186,11 @@ export function LessonHomeworkSubmitPage() {
         link: null,
         fileKey,
       } satisfies ContractsV1.CreateSubmissionRequestV1);
-      toast.show({ title: 'Отправлено', message: 'Домашнее задание отправлено', variant: 'success' });
+      toast.show({
+        title: isEditing ? 'Сохранено' : 'Отправлено',
+        message: isEditing ? 'Ответ обновлён' : 'Домашнее задание отправлено',
+        variant: 'success',
+      });
       navigate(`/lesson/${id}`, { replace: true });
     } catch {
       toast.show({ title: 'Ошибка', message: 'Не удалось отправить', variant: 'error' });
@@ -143,7 +201,7 @@ export function LessonHomeworkSubmitPage() {
     <div style={{ padding: 'var(--sp-4)' }}>
       <Card style={{ marginBottom: 'var(--sp-4)' }}>
         <CardHeader>
-          <CardTitle>Сдать домашнее задание</CardTitle>
+          <CardTitle>{isEditing ? 'Изменить ответ' : 'Сдать домашнее задание'}</CardTitle>
           <CardDescription>Урок: {lesson.title}</CardDescription>
         </CardHeader>
       </Card>
@@ -151,7 +209,11 @@ export function LessonHomeworkSubmitPage() {
       <Card>
         <CardHeader>
           <CardTitle style={{ fontSize: 'var(--text-md)' }}>Ваш ответ</CardTitle>
-          <CardDescription>Текст + файл (опционально)</CardDescription>
+          <CardDescription>
+            {isEditing
+              ? 'Измените текст и при необходимости замените или удалите файл.'
+              : 'Текст + файл (опционально)'}
+          </CardDescription>
         </CardHeader>
         <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
           <textarea
@@ -179,12 +241,42 @@ export function LessonHomeworkSubmitPage() {
             style={{ width: '100%' }}
           />
 
+          {uploadedFileKey ? (
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: 'var(--sp-2)',
+                padding: 'var(--sp-3)',
+                borderRadius: 'var(--r-md)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'rgba(255,255,255,0.04)',
+              }}
+            >
+              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)', flex: '1 1 auto', minWidth: 0 }}>
+                Прикреплённый файл:{' '}
+                <span style={{ color: 'var(--fg)', wordBreak: 'break-word' }}>{labelFromSubmissionFileKey(uploadedFileKey)}</span>
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setUploadedFileKey(null);
+                  setSelectedFile(null);
+                }}
+              >
+                Удалить файл
+              </Button>
+            </div>
+          ) : null}
+
           <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
             <Button variant="secondary" onClick={upload} disabled={!selectedFile || uploading}>
-              {uploading ? 'Загрузка…' : uploadedFileKey ? 'Файл загружен' : 'Загрузить файл'}
+              {uploading ? 'Загрузка…' : uploadedFileKey ? 'Заменить файл' : 'Загрузить файл'}
             </Button>
             <Button variant="primary" onClick={() => void save()} disabled={createSubmission.isPending || saving}>
-              {createSubmission.isPending || saving ? 'Отправка…' : 'Сохранить'}
+              {createSubmission.isPending || saving ? 'Отправка…' : isEditing ? 'Сохранить изменения' : 'Сохранить'}
             </Button>
             <Button variant="secondary" onClick={() => navigate(-1)}>
               Назад
@@ -195,4 +287,3 @@ export function LessonHomeworkSubmitPage() {
     </div>
   );
 }
-

@@ -46,10 +46,12 @@ function HomeworkScoreStars({ score }: { score: number }) {
 
 function StudentHomeworkAnswerCard({
   submission,
-  downloadFile,
+  onEditHomework,
+  allowEditHomework,
 }: {
   submission: ContractsV1.SubmissionV1;
-  downloadFile: (fileKey: string, fallbackFilename: string) => void | Promise<void>;
+  onEditHomework: () => void;
+  allowEditHomework: boolean;
 }) {
   const numericScore = typeof submission.score === 'number' ? submission.score : null;
   const showStars = numericScore != null && numericScore >= 1 && numericScore <= 5;
@@ -152,16 +154,10 @@ function StudentHomeworkAnswerCard({
             </div>
           </div>
         ) : null}
-        {submission.fileKey ? (
+        {allowEditHomework ? (
           <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() =>
-                void downloadFile(submission.fileKey as string, submission.fileKey?.split('/').pop() ?? 'file')
-              }
-            >
-              Скачать файл
+            <Button variant="secondary" size="sm" onClick={onEditHomework}>
+              Изменить ответ
             </Button>
           </div>
         ) : null}
@@ -246,6 +242,7 @@ export function LessonPage() {
   const assignment = assignmentData?.assignment ?? null;
   const assignmentFiles = assignmentData?.files ?? [];
   const myLatest = (mySubmissionsData?.items ?? [])[0] ?? null;
+  const homeworkLockedAfterAccept = myLatest?.status === 'accepted';
 
   const homeworkText = (assignment?.promptMarkdown ?? '').trim();
   const hasHomeworkText = homeworkText.length > 0;
@@ -257,17 +254,6 @@ export function LessonPage() {
     assignmentQuery.isError ||
     publishedHomework ||
     (assignmentQuery.isSuccess && !!myLatest);
-
-  const downloadMyFile = async (fileKey: string, fallbackFilename: string) => {
-    try {
-      const baseUrl =
-        config.API_BASE_URL || (typeof window !== 'undefined' ? (window.location?.origin ?? '') : '');
-      const url = buildUrl(baseUrl, `/files`, { key: fileKey });
-      await downloadAuthenticatedFile({ url, fallbackFilename });
-    } catch {
-      toast.show({ title: 'Ошибка', message: 'Не удалось скачать файл', variant: 'error' });
-    }
-  };
 
   const downloadAssignmentMaterial = async (fileId: string, fallbackFilename: string) => {
     try {
@@ -372,17 +358,27 @@ export function LessonPage() {
                       {assignmentFiles.length === 1 ? 'Скачать презентацию' : `Материалы (${assignmentFiles.length})`}
                     </Button>
                   )}
-                  <Button variant="primary" onClick={() => navigate(`/lesson/${id}/homework`)}>
-                    Сдать домашнее задание
-                  </Button>
+                  {!myLatest ? (
+                    <Button variant="primary" onClick={() => navigate(`/lesson/${id}/homework`)}>
+                      Сдать домашнее задание
+                    </Button>
+                  ) : null}
                 </div>
 
                 {myLatest ? (
-                  <StudentHomeworkAnswerCard submission={myLatest} downloadFile={downloadMyFile} />
+                  <StudentHomeworkAnswerCard
+                    submission={myLatest}
+                    onEditHomework={() => navigate(`/lesson/${id}/homework`)}
+                    allowEditHomework={!homeworkLockedAfterAccept}
+                  />
                 ) : null}
               </>
             ) : myLatest ? (
-              <StudentHomeworkAnswerCard submission={myLatest} downloadFile={downloadMyFile} />
+              <StudentHomeworkAnswerCard
+                submission={myLatest}
+                onEditHomework={() => navigate(`/lesson/${id}/homework`)}
+                allowEditHomework={!homeworkLockedAfterAccept}
+              />
             ) : null}
           </CardContent>
         </Card>

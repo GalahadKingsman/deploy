@@ -9,6 +9,7 @@ import {
   Post,
   Body,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ContractsV1, ErrorCodes } from '@tracked/shared';
@@ -152,6 +153,15 @@ export class StudentAssignmentsController {
     if (!ok) throw new NotFoundException({ code: ErrorCodes.FORBIDDEN, message: 'No active access to this course' });
     const assignment = await this.assignmentsRepository.getByLessonId(lessonId);
     if (!assignment) throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'Assignment not found' });
+
+    const mySubmissions = await this.submissionsRepository.listMyByLesson({ userId, lessonId });
+    const latest = mySubmissions[0];
+    if (latest?.status === 'accepted') {
+      throw new ForbiddenException({
+        code: ErrorCodes.FORBIDDEN,
+        message: 'Ответ уже принят экспертом; изменить отправленные материалы нельзя',
+      });
+    }
 
     const submission = await this.submissionsRepository.create({
       assignmentId: assignment.id,
