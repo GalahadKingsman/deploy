@@ -11,6 +11,7 @@ import { config } from '../shared/config/flags.js';
 import { normalizeRutubeEmbedUrl } from '@tracked/shared';
 import { downloadAuthenticatedFile } from '../shared/api/index.js';
 import { BottomSheet } from '../ui/kit/BottomSheet.js';
+import { renderTextWithLinks } from '../shared/lib/renderTextWithLinks.js';
 
 const STAR_GOLD = '#d4c090';
 const STAR_GOLD_DIM = 'rgba(212, 192, 144, 0.28)';
@@ -108,7 +109,7 @@ function StudentHomeworkAnswerCard({
                 minWidth: 0,
               }}
             >
-              {submission.text}
+              {renderTextWithLinks(submission.text, { wordBreak: 'break-all' })}
             </div>
           </div>
         ) : null}
@@ -147,7 +148,7 @@ function StudentHomeworkAnswerCard({
                 minWidth: 0,
               }}
             >
-              {submission.reviewerComment}
+              {renderTextWithLinks(submission.reviewerComment ?? '', { wordBreak: 'break-all' })}
             </div>
           </div>
         ) : null}
@@ -340,18 +341,19 @@ export function LessonPage() {
             ) : publishedHomework ? (
               <>
                 {hasHomeworkText && (
-                  <pre
+                  <div
                     style={{
                       whiteSpace: 'pre-wrap',
                       wordBreak: 'break-word',
+                      overflowWrap: 'anywhere',
                       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                       fontSize: 'var(--text-sm)',
                       color: 'var(--fg)',
                       margin: 0,
                     }}
                   >
-                    {homeworkText}
-                  </pre>
+                    {renderTextWithLinks(homeworkText, { wordBreak: 'break-all' })}
+                  </div>
                 )}
 
                 <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
@@ -408,18 +410,19 @@ export function LessonPage() {
           <CardTitle style={{ fontSize: 'var(--text-md)' }}>Материал</CardTitle>
         </CardHeader>
         <CardContent>
-          <pre
+          <div
             style={{
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',
+              overflowWrap: 'anywhere',
               fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
               fontSize: 'var(--text-sm)',
               color: 'var(--fg)',
               margin: 0,
             }}
           >
-            {lesson.contentMarkdown ?? ''}
-          </pre>
+            {renderTextWithLinks(lesson.contentMarkdown ?? '', { wordBreak: 'break-all' })}
+          </div>
           <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', marginTop: 'var(--sp-4)' }}>
             <Button variant="primary" onClick={complete} disabled={completing}>
               Завершить урок
