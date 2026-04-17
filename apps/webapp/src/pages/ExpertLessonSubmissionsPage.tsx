@@ -4,8 +4,7 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Skel
 import { useExpertLessonSubmissions, useDecideSubmission } from '../shared/queries/useExpertLessonSubmissions.js';
 import { config } from '../shared/config/flags.js';
 import { buildUrl } from '../shared/api/url.js';
-import { getAuthHeaders } from '../shared/api/headers.js';
-import { openPresignedDownloadUrl } from '../shared/auth/telegram.js';
+import { downloadAuthenticatedFile } from '../shared/api/index.js';
 
 function baseUrl(): string {
   return config.API_BASE_URL || (typeof window !== 'undefined' ? (window.location?.origin ?? '') : '');
@@ -25,15 +24,8 @@ export function ExpertLessonSubmissionsPage() {
 
   const download = async (submissionId: string) => {
     try {
-      const headers = await getAuthHeaders();
-      const url = buildUrl(
-        baseUrl(),
-        `/experts/${eId}/lessons/${lId}/submissions/${submissionId}/file/signed`,
-      );
-      const res = await fetch(url, { headers });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as { url: string };
-      openPresignedDownloadUrl(data.url);
+      const url = buildUrl(baseUrl(), `/experts/${eId}/lessons/${lId}/submissions/${submissionId}/file`);
+      await downloadAuthenticatedFile({ url, fallbackFilename: 'submission' });
     } catch {
       toast.show({ title: 'Ошибка', message: 'Не удалось скачать файл', variant: 'error' });
     }

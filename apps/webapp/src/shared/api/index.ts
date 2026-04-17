@@ -11,4 +11,5 @@ export {
   getHttpStatus,
 } from './errors.js';
 export { buildUrl } from './url.js';
+export { downloadAuthenticatedFile } from './downloadAuthenticatedFile.js';
 export { createRequestId, getAuthHeaders } from './headers.js';

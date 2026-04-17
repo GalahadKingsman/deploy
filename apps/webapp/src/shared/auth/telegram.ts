@@ -92,31 +92,6 @@ export function openExternalHttpsUrl(url: string): void {
 }
 
 /**
- * Open a presigned storage URL (file download). In Telegram Mini App, assigning
- * `window.location` to a third-party URL often does nothing; `WebApp.openLink` opens the
- * system browser where the download can complete.
- */
-export function openPresignedDownloadUrl(url: string): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const tg = window.Telegram?.WebApp;
-    if (tg?.openLink) {
-      tg.openLink(url, { try_instant_view: false });
-      return;
-    }
-  } catch {
-    // fall through
-  }
-  try {
-    const opened = window.open(url, '_blank', 'noopener,noreferrer');
-    if (opened) return;
-  } catch {
-    // ignore
-  }
-  window.location.assign(url);
-}
-
-/**
  * Get Telegram initData safely
  * @returns initData string or null if not in Telegram or initData unavailable
  */

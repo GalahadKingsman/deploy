@@ -6,11 +6,10 @@ import { useLessonAssignment } from '../shared/queries/useLessonAssignment.js';
 import { useMyLessonSubmissions } from '../shared/queries/useMyLessonSubmissions.js';
 import { fetchJson } from '../shared/api/index.js';
 import type { ContractsV1 } from '@tracked/shared';
-import { getAuthHeaders } from '../shared/api/headers.js';
 import { buildUrl } from '../shared/api/url.js';
 import { config } from '../shared/config/flags.js';
 import { normalizeRutubeEmbedUrl } from '@tracked/shared';
-import { openPresignedDownloadUrl } from '../shared/auth/telegram.js';
+import { downloadAuthenticatedFile } from '../shared/api/index.js';
 import { BottomSheet } from '../ui/kit/BottomSheet.js';
 
 export function LessonPage() {
@@ -101,31 +100,26 @@ export function LessonPage() {
     publishedHomework ||
     (assignmentQuery.isSuccess && !!myLatest);
 
-  const downloadMyFile = async (fileKey: string) => {
+  const downloadMyFile = async (fileKey: string, fallbackFilename: string) => {
     try {
-      const headers = await getAuthHeaders();
       const baseUrl =
         config.API_BASE_URL || (typeof window !== 'undefined' ? (window.location?.origin ?? '') : '');
-      const signedUrl = buildUrl(baseUrl, `/files/signed`, { key: fileKey });
-      const res = await fetch(signedUrl, { headers });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as { url: string };
-      openPresignedDownloadUrl(data.url);
+      const url = buildUrl(baseUrl, `/files`, { key: fileKey });
+      await downloadAuthenticatedFile({ url, fallbackFilename });
     } catch {
       toast.show({ title: 'Ошибка', message: 'Не удалось скачать файл', variant: 'error' });
     }
   };
 
-  const downloadAssignmentMaterial = async (fileId: string) => {
+  const downloadAssignmentMaterial = async (fileId: string, fallbackFilename: string) => {
     try {
-      const headers = await getAuthHeaders();
       const baseUrl =
         config.API_BASE_URL || (typeof window !== 'undefined' ? (window.location?.origin ?? '') : '');
-      const url = buildUrl(baseUrl, `/lessons/${id}/assignment/files/${encodeURIComponent(fileId)}/signed`);
-      const res = await fetch(url, { headers });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as { url: string };
-      openPresignedDownloadUrl(data.url);
+      const url = buildUrl(
+        baseUrl,
+        `/lessons/${id}/assignment/files/${encodeURIComponent(fileId)}/download`,
+      );
+      await downloadAuthenticatedFile({ url, fallbackFilename });
     } catch {
       toast.show({ title: 'Ошибка', message: 'Не удалось скачать файл', variant: 'error' });
     }
@@ -209,7 +203,8 @@ export function LessonPage() {
                       variant="secondary"
                       onClick={() => {
                         if (assignmentFiles.length === 1) {
-                          void downloadAssignmentMaterial(assignmentFiles[0].id);
+                          const f0 = assignmentFiles[0];
+                          void downloadAssignmentMaterial(f0.id, f0.filename);
                           return;
                         }
                         setMaterialsOpen(true);
@@ -243,7 +238,13 @@ export function LessonPage() {
                       )}
                       <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
                         {myLatest.fileKey && (
-                          <Button variant="ghost" size="sm" onClick={() => downloadMyFile(myLatest.fileKey as string)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              void downloadMyFile(myLatest.fileKey as string, myLatest.fileKey?.split('/').pop() ?? 'file')
+                            }
+                          >
                             Скачать файл
                           </Button>
                         )}
@@ -275,7 +276,16 @@ export function LessonPage() {
                   )}
                   <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
                     {myLatest.fileKey && (
-                      <Button variant="ghost" size="sm" onClick={() => downloadMyFile(myLatest.fileKey as string)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          void downloadMyFile(
+                            myLatest.fileKey as string,
+                            myLatest.fileKey?.split('/').pop() ?? 'file',
+                          )
+                        }
+                      >
                         Скачать файл
                       </Button>
                     )}
@@ -297,7 +307,7 @@ export function LessonPage() {
               key={f.id}
               variant="secondary"
               onClick={async () => {
-                await downloadAssignmentMaterial(f.id);
+                await downloadAssignmentMaterial(f.id, f.filename);
                 setMaterialsOpen(false);
               }}
             >
