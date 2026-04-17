@@ -84,7 +84,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
           bottom: 0,
           left: 0,
           right: 0,
-          maxHeight: '80vh',
+          maxHeight: '85vh',
           backgroundColor: 'var(--color-bg-0)',
           borderTopLeftRadius: 'var(--radius-xl, 16px)',
           borderTopRightRadius: 'var(--radius-xl, 16px)',
@@ -94,6 +94,8 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
           paddingBottom: 'calc(var(--safe-bottom, 0px) + var(--spacing-6, 8px))',
           animation: 'slideUp 0.3s ease-out',
           pointerEvents: 'auto',
+          // Avoid flex:1 + auto parent height in WebKit (Telegram): scroll area collapses to ~one row.
+          minHeight: 0,
         }}
         onClick={(e) => {
           // Prevent closing when clicking inside sheet
@@ -142,12 +144,15 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
             ×
           </button>
         </div>
-        {/* Content */}
+        {/* Content: explicit max-height scroll (not flex:1) so all rows stay reachable in Telegram WebView */}
         <div
           style={{
-            flex: 1,
-            minHeight: 0,
             overflowY: 'auto',
+            overflowX: 'hidden',
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
+            overscrollBehavior: 'contain',
+            maxHeight: 'min(62vh, 480px)',
             padding: 'var(--spacing-10, 16px)',
           }}
         >

@@ -301,10 +301,10 @@ export function LessonPage() {
       )}
 
       <BottomSheet open={materialsOpen} onClose={() => setMaterialsOpen(false)} title="Материалы">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
           {assignmentFiles.map((f) => (
             <Button
-              key={f.id}
+              key={`${f.id}:${f.fileKey}`}
               variant="secondary"
               onClick={async () => {
                 await downloadAssignmentMaterial(f.id, f.filename);
