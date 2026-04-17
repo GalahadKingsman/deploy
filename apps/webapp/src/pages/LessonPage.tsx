@@ -115,6 +115,21 @@ export function LessonPage() {
     }
   };
 
+  const downloadAssignmentMaterial = async (fileId: string) => {
+    try {
+      const headers = await getAuthHeaders();
+      const baseUrl =
+        config.API_BASE_URL || (typeof window !== 'undefined' ? (window.location?.origin ?? '') : '');
+      const url = buildUrl(baseUrl, `/lessons/${id}/assignment/files/${encodeURIComponent(fileId)}/signed`);
+      const res = await fetch(url, { headers });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { url: string };
+      window.location.href = data.url;
+    } catch {
+      toast.show({ title: 'Ошибка', message: 'Не удалось скачать файл', variant: 'error' });
+    }
+  };
+
   return (
     <div style={{ padding: 'var(--sp-4)' }}>
       <Card style={{ marginBottom: 'var(--sp-4)' }}>
@@ -192,6 +207,10 @@ export function LessonPage() {
                     <Button
                       variant="secondary"
                       onClick={() => {
+                        if (assignmentFiles.length === 1) {
+                          void downloadAssignmentMaterial(assignmentFiles[0].id);
+                          return;
+                        }
                         setMaterialsOpen(true);
                       }}
                     >
@@ -270,25 +289,15 @@ export function LessonPage() {
         </Card>
       )}
 
-      <BottomSheet open={materialsOpen} onOpenChange={setMaterialsOpen} title="Материалы">
+      <BottomSheet open={materialsOpen} onClose={() => setMaterialsOpen(false)} title="Материалы">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
           {assignmentFiles.map((f) => (
             <Button
               key={f.id}
               variant="secondary"
               onClick={async () => {
-                try {
-                  const headers = await getAuthHeaders();
-                  const baseUrl =
-                    config.API_BASE_URL || (typeof window !== 'undefined' ? (window.location?.origin ?? '') : '');
-                  const url = buildUrl(baseUrl, `/lessons/${id}/assignment/files/${encodeURIComponent(f.id)}/signed`);
-                  const res = await fetch(url, { headers });
-                  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                  const data = (await res.json()) as { url: string };
-                  window.location.href = data.url;
-                } catch {
-                  toast.show({ title: 'Ошибка', message: 'Не удалось скачать файл', variant: 'error' });
-                }
+                await downloadAssignmentMaterial(f.id);
+                setMaterialsOpen(false);
               }}
             >
               Скачать: {f.filename}

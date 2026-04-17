@@ -72,6 +72,8 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
           backgroundColor: 'rgba(0, 0, 0, 0.5)',
           zIndex: 'var(--z-modal, 2000)',
           animation: 'fadeIn 0.2s ease-out',
+          // main gets pointer-events:none while open; re-enable hits on the overlay
+          pointerEvents: 'auto',
         }}
         onClick={onClose}
       />
@@ -91,6 +93,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
           flexDirection: 'column',
           paddingBottom: 'calc(var(--safe-bottom, 0px) + var(--spacing-6, 8px))',
           animation: 'slideUp 0.3s ease-out',
+          pointerEvents: 'auto',
         }}
         onClick={(e) => {
           // Prevent closing when clicking inside sheet
@@ -143,6 +146,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
         <div
           style={{
             flex: 1,
+            minHeight: 0,
             overflowY: 'auto',
             padding: 'var(--spacing-10, 16px)',
           }}
