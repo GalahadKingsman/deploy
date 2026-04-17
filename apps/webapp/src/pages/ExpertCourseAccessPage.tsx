@@ -132,7 +132,8 @@ export function ExpertCourseAccessPage() {
       ? String((webappEnv as any).VITE_TELEGRAM_BOT_USERNAME).trim().replace(/^@/, '')
       : '';
     if (!unameRaw) return null;
-    return `https://t.me/${encodeURIComponent(unameRaw)}?start=${encodeURIComponent(`inv_${code}`)}`;
+    // Use startapp to open the Mini App directly (more reliable than start payload for already-started bots).
+    return `https://t.me/${encodeURIComponent(unameRaw)}?startapp=${encodeURIComponent(`inv_${code}`)}`;
   };
 
   const copyText = async (text: string) => {

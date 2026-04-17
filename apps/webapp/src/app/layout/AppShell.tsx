@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { BottomTabs } from '../../ui/shell/BottomTabs.js';
+import { getTelegramStartParam } from '../../shared/auth/telegram.js';
 import {
   isTabPath,
   getTabKey,
@@ -21,6 +22,17 @@ export function AppShell() {
   const pathname = location.pathname;
   const isTab = isTabPath(pathname);
   const prevIsTab = isTabPath(prevPathnameRef.current);
+
+  // If Mini App opened via startapp=inv_<code>, auto-navigate to invite activation route.
+  useEffect(() => {
+    const p = getTelegramStartParam();
+    if (!p || !p.startsWith('inv_')) return;
+    const code = p.slice('inv_'.length).trim();
+    if (!code) return;
+    // Avoid redirect loops if we're already on /invite/:code
+    if (pathname.startsWith('/invite/')) return;
+    navigate(`/invite/${encodeURIComponent(code)}`, { replace: true });
+  }, [navigate, pathname]);
 
   const setTelegramVerticalSwipe = (enabled: boolean) => {
     try {

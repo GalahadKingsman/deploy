@@ -20,6 +20,7 @@ export interface TelegramDisplayUser {
 interface TelegramWebApp {
   initData?: string;
   initDataUnsafe?: {
+    start_param?: string;
     user?: {
       id?: number;
       first_name?: string;
@@ -164,6 +165,19 @@ export function getTelegramDisplayUser(): TelegramDisplayUser | null {
       avatarUrl: u.photo_url ?? null,
       telegramId: u.id != null ? String(u.id) : undefined,
     };
+  } catch {
+    return null;
+  }
+}
+
+/** Deep link payload for Mini App (e.g. `startapp=inv_<code>` => initDataUnsafe.start_param). */
+export function getTelegramStartParam(): string | null {
+  try {
+    if (typeof window === 'undefined') return null;
+    const p = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
+    if (!p || typeof p !== 'string') return null;
+    const s = p.trim();
+    return s ? s : null;
   } catch {
     return null;
   }

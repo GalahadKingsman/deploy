@@ -31,7 +31,8 @@ function isInviteCode(s: string): boolean {
 
 // Команда /start — inline-кнопка Open WebApp; поддерживаем deep link payload (inv_<code>)
 bot.command('start', async (ctx) => {
-  const payloadRaw = typeof (ctx as any).match === 'string' ? String((ctx as any).match).trim() : '';
+  const text = ctx.message?.text ?? '';
+  const payloadRaw = text.replace(/^\/start(@\w+)?\s*/i, '').trim();
   if (payloadRaw.startsWith('inv_')) {
     const code = payloadRaw.slice('inv_'.length).trim();
     if (isInviteCode(code)) {
