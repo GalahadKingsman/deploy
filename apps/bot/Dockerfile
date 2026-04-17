@@ -18,7 +18,8 @@ RUN pnpm install --frozen-lockfile
 COPY packages/shared ./packages/shared
 COPY apps/bot ./apps/bot
 
-RUN pnpm --filter @tracked/bot build
+# Build shared first so bot runtime can import @tracked/shared/dist
+RUN pnpm --filter @tracked/shared build && pnpm --filter @tracked/bot build
 
 ENV NODE_ENV=production
 
