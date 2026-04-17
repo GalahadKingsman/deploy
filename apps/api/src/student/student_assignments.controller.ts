@@ -85,7 +85,9 @@ export class StudentAssignmentsController {
     }
 
     const obj = await this.storage.getObject({ key: file.fileKey });
-    if (obj.contentType) reply.header('content-type', obj.contentType);
+    // Force octet-stream so iOS / Telegram WebView do not open PDF/images inline (breaks WebApp "Назад").
+    reply.header('content-type', 'application/octet-stream');
+    reply.header('x-content-type-options', 'nosniff');
     if (obj.contentLength != null) reply.header('content-length', String(obj.contentLength));
 
     const asciiFallback =

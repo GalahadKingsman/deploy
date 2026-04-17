@@ -69,7 +69,14 @@ export class FilesController {
 
     const obj = await this.storage.getObject({ key: cleanKey });
 
-    if (obj.contentType) reply.header('content-type', obj.contentType);
+    const lastSeg = cleanKey.includes('/') ? cleanKey.slice(cleanKey.lastIndexOf('/') + 1) : cleanKey;
+    const asciiName = lastSeg.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_').slice(0, 180) || 'file';
+    reply.header('content-type', 'application/octet-stream');
+    reply.header('x-content-type-options', 'nosniff');
+    reply.header(
+      'content-disposition',
+      `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(lastSeg)}`,
+    );
     if (obj.contentLength != null) reply.header('content-length', String(obj.contentLength));
 
     // AWS SDK v3 returns Node Readable stream in Node.js runtime
