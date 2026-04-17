@@ -28,6 +28,10 @@ export function ExpertLessonEditorPage() {
   const [title, setTitle] = React.useState('');
   const [contentMarkdown, setContentMarkdown] = React.useState('');
   const [rutubeUrl, setRutubeUrl] = React.useState('');
+  const [assignmentPrompt, setAssignmentPrompt] = React.useState('');
+  const [assignmentFiles, setAssignmentFiles] = React.useState<ContractsV1.AssignmentFileV1[]>([]);
+  const [homeworkSaving, setHomeworkSaving] = React.useState(false);
+  const [homeworkUploading, setHomeworkUploading] = React.useState(false);
   const [lesson, setLesson] = React.useState<ContractsV1.ExpertLessonV1 | null>(null);
 
   React.useEffect(() => {
@@ -47,6 +51,20 @@ export function ExpertLessonEditorPage() {
         setContentMarkdown(found?.contentMarkdown ?? '');
         const v = found?.video;
         setRutubeUrl(v && v.kind === 'rutube' ? v.url : '');
+
+        // Homework (assignment + files)
+        if (found?.id && expertId) {
+          try {
+            const a = await fetchJson<ContractsV1.GetLessonAssignmentResponseV1>({
+              path: `/experts/${expertId}/lessons/${found.id}/assignment`,
+            });
+            if (cancelled) return;
+            setAssignmentPrompt(a.assignment?.promptMarkdown ?? '');
+            setAssignmentFiles(a.files ?? []);
+          } catch {
+            // ignore: homework can be configured later
+          }
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -98,6 +116,88 @@ export function ExpertLessonEditorPage() {
       toast.show({ title: 'Ошибка', message: msg, variant: 'error' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveHomework = async () => {
+    if (!expertId || !lessonId) return;
+    setHomeworkSaving(true);
+    try {
+      await fetchJson<ContractsV1.AssignmentV1>({
+        path: `/experts/${expertId}/lessons/${lessonId}/assignment`,
+        method: 'PATCH',
+        body: { promptMarkdown: assignmentPrompt.trim() ? assignmentPrompt : null } satisfies ContractsV1.UpsertAssignmentRequestV1,
+      });
+      toast.show({ title: 'Домашнее задание сохранено', variant: 'success' });
+      // Refresh assignment (also pulls files list)
+      const a = await fetchJson<ContractsV1.GetLessonAssignmentResponseV1>({
+        path: `/experts/${expertId}/lessons/${lessonId}/assignment`,
+      });
+      setAssignmentPrompt(a.assignment?.promptMarkdown ?? '');
+      setAssignmentFiles(a.files ?? []);
+    } catch (e) {
+      const msg =
+        e instanceof ApiClientError
+          ? `${e.message} (HTTP ${e.status})`
+          : e instanceof Error
+            ? e.message
+            : 'Не удалось сохранить';
+      toast.show({ title: 'Ошибка', message: msg, variant: 'error' });
+    } finally {
+      setHomeworkSaving(false);
+    }
+  };
+
+  const uploadHomeworkFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    if (!expertId || !lessonId) return;
+    setHomeworkUploading(true);
+    try {
+      for (const f of Array.from(files)) {
+        const signed = await fetchJson<{ fileKey: string; url: string }>({
+          path: `/experts/${expertId}/lessons/${lessonId}/assignment/files/signed`,
+          method: 'POST',
+          body: { filename: f.name, contentType: f.type || null },
+        });
+        const putRes = await fetch(signed.url, {
+          method: 'PUT',
+          headers: f.type ? { 'content-type': f.type } : undefined,
+          body: f,
+        });
+        if (!putRes.ok) {
+          throw new Error(`Upload failed (HTTP ${putRes.status})`);
+        }
+        await fetchJson<ContractsV1.AssignmentFileV1>({
+          path: `/experts/${expertId}/lessons/${lessonId}/assignment/files`,
+          method: 'POST',
+          body: { fileKey: signed.fileKey, filename: f.name, contentType: f.type || null },
+        });
+      }
+      const a = await fetchJson<ContractsV1.GetLessonAssignmentResponseV1>({
+        path: `/experts/${expertId}/lessons/${lessonId}/assignment`,
+      });
+      setAssignmentFiles(a.files ?? []);
+      toast.show({ title: 'Файлы добавлены', variant: 'success' });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Не удалось загрузить файлы';
+      toast.show({ title: 'Ошибка', message: msg, variant: 'error' });
+    } finally {
+      setHomeworkUploading(false);
+    }
+  };
+
+  const deleteHomeworkFile = async (fileId: string) => {
+    if (!expertId || !lessonId) return;
+    try {
+      await fetchJson<{ ok: true }>({
+        path: `/experts/${expertId}/lessons/${lessonId}/assignment/files/${fileId}/delete`,
+        method: 'POST',
+        body: {},
+      });
+      setAssignmentFiles((xs) => xs.filter((x) => x.id !== fileId));
+      toast.show({ title: 'Удалено', variant: 'success' });
+    } catch {
+      toast.show({ title: 'Ошибка', message: 'Не удалось удалить файл', variant: 'error' });
     }
   };
 
@@ -154,6 +254,73 @@ export function ExpertLessonEditorPage() {
               }}
             />
           </div>
+
+          <Card style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <CardHeader>
+              <CardTitle style={{ fontSize: 'var(--text-md)' }}>Домашнее задание</CardTitle>
+              <CardDescription>Текст задания + файлы (презентации, материалы и т.д.)</CardDescription>
+            </CardHeader>
+            <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
+              <textarea
+                value={assignmentPrompt}
+                onChange={(e) => setAssignmentPrompt(e.target.value)}
+                placeholder="Текст домашнего задания"
+                style={{
+                  width: '100%',
+                  minHeight: 140,
+                  padding: 'var(--sp-3)',
+                  borderRadius: 'var(--r-md)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  background: 'var(--card)',
+                  color: 'var(--fg)',
+                }}
+              />
+              <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', alignItems: 'center' }}>
+                <Button variant="secondary" onClick={saveHomework} disabled={homeworkSaving}>
+                  Сохранить задание
+                </Button>
+                <label style={{ display: 'inline-block' }}>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={(e) => uploadHomeworkFiles(e.target.files)}
+                    style={{ display: 'none' }}
+                    disabled={homeworkUploading}
+                  />
+                  <Button variant="secondary" disabled={homeworkUploading}>
+                    {homeworkUploading ? 'Загрузка…' : 'Добавить файлы'}
+                  </Button>
+                </label>
+              </div>
+
+              {assignmentFiles.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
+                  {assignmentFiles.map((f) => (
+                    <div
+                      key={f.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 'var(--sp-2)',
+                        alignItems: 'center',
+                        padding: 'var(--sp-2)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: 'var(--r-md)',
+                      }}
+                    >
+                      <div style={{ fontSize: 'var(--text-sm)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {f.filename}
+                      </div>
+                      <Button variant="secondary" size="sm" onClick={() => deleteHomeworkFile(f.id)}>
+                        Удалить
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
             <Button variant="primary" onClick={save} disabled={saving}>
               Сохранить

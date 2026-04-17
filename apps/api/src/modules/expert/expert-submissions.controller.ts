@@ -73,11 +73,18 @@ export class ExpertSubmissionsController {
       throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Validation failed' });
     }
     await this.lessonsRepository.assertLessonBelongsToExpert({ expertId, lessonId });
+    const scoreProvided = body != null && typeof body === 'object' && 'score' in (body as any);
+    const reviewerCommentProvided =
+      body != null && typeof body === 'object' && 'reviewerComment' in (body as any);
     const updated = await this.submissionsRepository.decide({
       submissionId,
       status: parsed.data.status,
       decidedByUserId: req.user?.userId ?? null,
       lessonId,
+      scoreProvided,
+      score: parsed.data.score ?? null,
+      reviewerCommentProvided,
+      reviewerComment: parsed.data.reviewerComment ?? null,
     });
     if (!updated) {
       throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'Submission not found' });

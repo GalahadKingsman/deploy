@@ -11,6 +11,8 @@ interface SubmissionRow {
   link: string | null;
   file_key: string | null;
   status: string;
+  score: number | null;
+  reviewer_comment: string | null;
 }
 
 function mapRow(r: SubmissionRow, lessonId: string): ContractsV1.SubmissionV1 {
@@ -24,6 +26,8 @@ function mapRow(r: SubmissionRow, lessonId: string): ContractsV1.SubmissionV1 {
     link: r.link ?? null,
     fileKey: r.file_key ?? null,
     status: r.status as ContractsV1.SubmissionStatusV1,
+    score: typeof r.score === 'number' ? r.score : null,
+    reviewerComment: r.reviewer_comment ?? null,
   };
 }
 
@@ -41,10 +45,14 @@ export class SubmissionsRepository {
       link: string | null;
       file_key: string | null;
       status: string;
+      score: number | null;
+      reviewer_comment: string | null;
       lesson_id: string;
     }>(
       `
-      SELECT s.id, s.assignment_id, s.student_user_id, s.created_at, s.text, s.link, s.file_key, s.status, a.lesson_id
+      SELECT s.id, s.assignment_id, s.student_user_id, s.created_at, s.text, s.link, s.file_key, s.status,
+             s.score, s.reviewer_comment,
+             a.lesson_id
       FROM submissions s
       JOIN assignments a ON a.id = s.assignment_id
       WHERE s.student_user_id = $1 AND a.lesson_id = $2
@@ -64,6 +72,8 @@ export class SubmissionsRepository {
           link: r.link,
           file_key: r.file_key,
           status: r.status,
+          score: r.score,
+          reviewer_comment: r.reviewer_comment,
         },
         r.lesson_id,
       ),
@@ -136,16 +146,32 @@ export class SubmissionsRepository {
     status: ContractsV1.SubmissionStatusV1;
     decidedByUserId: string | null;
     lessonId: string;
+    score?: number | null;
+    scoreProvided?: boolean;
+    reviewerComment?: string | null;
+    reviewerCommentProvided?: boolean;
   }): Promise<ContractsV1.SubmissionV1 | null> {
     if (!this.pool) return null;
     const res = await this.pool.query<SubmissionRow>(
       `
       UPDATE submissions
-      SET status = $2, decided_at = NOW(), decided_by_user_id = $3
+      SET status = $2,
+          decided_at = NOW(),
+          decided_by_user_id = $3,
+          score = CASE WHEN $4 THEN $5 ELSE score END,
+          reviewer_comment = CASE WHEN $6 THEN $7 ELSE reviewer_comment END
       WHERE id = $1
       RETURNING *
       `,
-      [params.submissionId, params.status, params.decidedByUserId],
+      [
+        params.submissionId,
+        params.status,
+        params.decidedByUserId,
+        Boolean(params.scoreProvided),
+        params.score ?? null,
+        Boolean(params.reviewerCommentProvided),
+        params.reviewerComment ?? null,
+      ],
     );
     const row = res.rows[0];
     return row ? mapRow(row, params.lessonId) : null;

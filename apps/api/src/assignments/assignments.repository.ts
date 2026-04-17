@@ -23,6 +23,22 @@ function mapRow(r: AssignmentRow): ContractsV1.AssignmentV1 {
 export class AssignmentsRepository {
   constructor(private readonly pool: Pool | null) {}
 
+  async ensureByLessonId(lessonId: string): Promise<ContractsV1.AssignmentV1> {
+    if (!this.pool) throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    // Create a row if missing; never overwrite prompt_md.
+    const inserted = await this.pool.query<AssignmentRow>(
+      `
+      INSERT INTO assignments (id, lesson_id, prompt_md, created_at, updated_at)
+      VALUES ($1, $2, NULL, NOW(), NOW())
+      ON CONFLICT (lesson_id) DO UPDATE
+        SET updated_at = assignments.updated_at
+      RETURNING *
+      `,
+      [randomUUID(), lessonId],
+    );
+    return mapRow(inserted.rows[0]);
+  }
+
   async upsertByLessonId(params: {
     lessonId: string;
     promptMarkdown: string | null;

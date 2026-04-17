@@ -16,6 +16,8 @@ export interface SubmissionV1 {
   link?: UrlString | null;
   fileKey?: string | null;
   status: SubmissionStatusV1;
+  score?: number | null;
+  reviewerComment?: string | null;
 }
 
 /**
@@ -31,4 +33,6 @@ export const SubmissionV1Schema = z.object({
   link: z.string().nullable().optional(),
   fileKey: z.string().nullable().optional(),
   status: SubmissionStatusV1Schema,
+  score: z.number().int().min(1).max(5).nullable().optional(),
+  reviewerComment: z.string().max(4000).nullable().optional(),
 });

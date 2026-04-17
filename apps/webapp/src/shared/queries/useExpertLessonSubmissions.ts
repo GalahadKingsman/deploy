@@ -21,11 +21,20 @@ export function useExpertLessonSubmissions(expertId: string, lessonId: string) {
 export function useDecideSubmission(expertId: string, lessonId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (params: { submissionId: string; status: ContractsV1.SubmissionStatusV1 }) => {
+    mutationFn: async (params: {
+      submissionId: string;
+      status: ContractsV1.SubmissionStatusV1;
+      score?: number | null;
+      reviewerComment?: string | null;
+    }) => {
       return await fetchJson<ContractsV1.CreateSubmissionResponseV1>({
         path: `/experts/${expertId}/lessons/${lessonId}/submissions/${params.submissionId}`,
         method: 'PATCH',
-        body: { status: params.status },
+        body: {
+          status: params.status,
+          ...(params.score !== undefined ? { score: params.score } : {}),
+          ...(params.reviewerComment !== undefined ? { reviewerComment: params.reviewerComment } : {}),
+        } satisfies ContractsV1.DecideSubmissionRequestV1,
       });
     },
     onSuccess: async () => {

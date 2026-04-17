@@ -60,7 +60,12 @@ export {
   ReorderExpertLessonsRequestV1Schema,
 } from './expert-lesson.js';
 export { InviteV1Schema } from './invite.js';
-export { AssignmentV1Schema, SubmissionStatusV1Schema, UpsertAssignmentRequestV1Schema } from './assignment.js';
+export {
+  AssignmentV1Schema,
+  AssignmentFileV1Schema,
+  SubmissionStatusV1Schema,
+  UpsertAssignmentRequestV1Schema,
+} from './assignment.js';
 export {
   GetLessonAssignmentResponseV1Schema,
   CreateSubmissionRequestV1Schema,

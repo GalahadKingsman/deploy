@@ -16,7 +16,9 @@ import type { FastifyRequest } from 'fastify';
 import { StudentCoursesRepository } from './student_courses.repository.js';
 import { EnrollmentsRepository } from './student_enrollments.repository.js';
 import { AssignmentsRepository } from '../assignments/assignments.repository.js';
+import { AssignmentFilesRepository } from '../assignments/assignment-files.repository.js';
 import { SubmissionsRepository } from '../submissions/submissions.repository.js';
+import { S3StorageService } from '../storage/s3-storage.service.js';
 
 @ApiTags('Assignments')
 @Controller()
@@ -25,7 +27,9 @@ export class StudentAssignmentsController {
     private readonly coursesRepository: StudentCoursesRepository,
     private readonly enrollmentsRepository: EnrollmentsRepository,
     private readonly assignmentsRepository: AssignmentsRepository,
+    private readonly assignmentFilesRepository: AssignmentFilesRepository,
     private readonly submissionsRepository: SubmissionsRepository,
+    private readonly storage: S3StorageService,
   ) {}
 
   @Get('lessons/:lessonId/assignment')
@@ -44,7 +48,40 @@ export class StudentAssignmentsController {
     const ok = await this.enrollmentsRepository.hasActiveAccess({ userId, courseId: lesson.courseId });
     if (!ok) throw new NotFoundException({ code: ErrorCodes.FORBIDDEN, message: 'No active access to this course' });
     const assignment = await this.assignmentsRepository.getByLessonId(lessonId);
-    return { assignment };
+    const files = assignment
+      ? await this.assignmentFilesRepository.listByAssignmentId(assignment.id)
+      : [];
+    return { assignment, files };
+  }
+
+  @Get('lessons/:lessonId/assignment/files/:fileId/signed')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get signed URL for assignment file download (student with access)' })
+  @ApiResponse({ status: 200, description: 'Signed URL' })
+  async getAssignmentFileSignedUrl(
+    @Param('lessonId') lessonId: string,
+    @Param('fileId') fileId: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
+  ): Promise<{ url: string }> {
+    const userId = req.user?.userId;
+    if (!userId) throw new NotFoundException({ code: ErrorCodes.UNAUTHORIZED, message: 'Unauthorized' });
+    const lesson = await this.coursesRepository.getLesson(lessonId);
+    if (!lesson) throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'Lesson not found' });
+    const ok = await this.enrollmentsRepository.hasActiveAccess({ userId, courseId: lesson.courseId });
+    if (!ok) throw new NotFoundException({ code: ErrorCodes.FORBIDDEN, message: 'No active access to this course' });
+
+    const assignment = await this.assignmentsRepository.getByLessonId(lessonId);
+    if (!assignment) throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'Assignment not found' });
+
+    const file = await this.assignmentFilesRepository.findById(fileId);
+    if (!file || file.assignmentId !== assignment.id) {
+      throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'File not found' });
+    }
+    if (!file.fileKey.startsWith('assignment-files/')) {
+      throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'File not found' });
+    }
+    return await this.storage.getSignedGetUrl({ key: file.fileKey, expiresSeconds: 120 });
   }
 
   @Post('lessons/:lessonId/submissions')

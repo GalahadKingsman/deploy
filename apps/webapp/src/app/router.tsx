@@ -6,6 +6,7 @@ import { AccountPage } from '../pages/AccountPage.js';
 import { CourseDetailPage } from '../pages/CourseDetailPage.js';
 import { CourseModulePage } from '../pages/CourseModulePage.js';
 import { LessonPage } from '../pages/LessonPage.js';
+import { LessonHomeworkSubmitPage } from '../pages/LessonHomeworkSubmitPage.js';
 import { UpdatePage } from '../pages/UpdatePage.js';
 import { SettingsPage } from '../pages/SettingsPage.js';
 import { CreatorOnboardingPage } from '../pages/CreatorOnboardingPage.js';
@@ -47,6 +48,7 @@ export const router = createBrowserRouter([
       { path: 'course/:id', element: <CourseDetailPage /> },
       { path: 'course/:courseId/modules/:moduleId', element: <CourseModulePage /> },
       { path: 'lesson/:lessonId', element: <LessonPage /> },
+      { path: 'lesson/:lessonId/homework', element: <LessonHomeworkSubmitPage /> },
       { path: 'update/:id', element: <UpdatePage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'creator/onboarding', element: <CreatorOnboardingPage /> },

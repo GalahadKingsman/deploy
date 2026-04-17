@@ -19,6 +19,8 @@ export function ExpertLessonSubmissionsPage() {
 
   const { data, isLoading, error, refetch } = useExpertLessonSubmissions(eId, lId);
   const decide = useDecideSubmission(eId, lId);
+  const [scoreById, setScoreById] = React.useState<Record<string, number | null>>({});
+  const [commentById, setCommentById] = React.useState<Record<string, string>>({});
 
   const download = async (submissionId: string) => {
     try {
@@ -106,7 +108,10 @@ export function ExpertLessonSubmissionsPage() {
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
-        {items.map((s) => (
+        {items.map((s) => {
+          const score = scoreById[s.id] ?? (typeof s.score === 'number' ? s.score : null);
+          const comment = commentById[s.id] ?? (s.reviewerComment ?? '');
+          return (
           <Card key={s.id}>
             <CardHeader>
               <CardTitle style={{ fontSize: 'var(--text-md)' }}>submission {s.id}</CardTitle>
@@ -123,13 +128,47 @@ export function ExpertLessonSubmissionsPage() {
                   {s.link}
                 </a>
               )}
+              <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ color: 'var(--muted-fg)', fontSize: 'var(--text-xs)' }}>Оценка:</div>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Button
+                    key={n}
+                    variant={score === n ? 'primary' : 'secondary'}
+                    size="sm"
+                    onClick={() => setScoreById((m) => ({ ...m, [s.id]: n }))}
+                  >
+                    {n}
+                  </Button>
+                ))}
+                <Button
+                  variant={score == null ? 'primary' : 'secondary'}
+                  size="sm"
+                  onClick={() => setScoreById((m) => ({ ...m, [s.id]: null }))}
+                >
+                  Без оценки
+                </Button>
+              </div>
+              <textarea
+                value={comment}
+                onChange={(e) => setCommentById((m) => ({ ...m, [s.id]: e.target.value }))}
+                placeholder="Комментарий (опционально)"
+                style={{
+                  width: '100%',
+                  minHeight: 90,
+                  padding: 'var(--sp-3)',
+                  borderRadius: 'var(--r-md)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  background: 'var(--card)',
+                  color: 'var(--fg)',
+                }}
+              />
               <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
                 <Button
                   variant="primary"
                   size="sm"
                   onClick={async () => {
                     try {
-                      await decide.mutateAsync({ submissionId: s.id, status: 'accepted' });
+                      await decide.mutateAsync({ submissionId: s.id, status: 'accepted', score, reviewerComment: comment });
                       toast.show({ title: 'Готово', message: 'Принято', variant: 'success' });
                     } catch {
                       toast.show({ title: 'Ошибка', message: 'Не удалось обновить статус', variant: 'error' });
@@ -144,7 +183,7 @@ export function ExpertLessonSubmissionsPage() {
                   size="sm"
                   onClick={async () => {
                     try {
-                      await decide.mutateAsync({ submissionId: s.id, status: 'rework' });
+                      await decide.mutateAsync({ submissionId: s.id, status: 'rework', score, reviewerComment: comment });
                       toast.show({ title: 'Готово', message: 'Отправлено на доработку', variant: 'success' });
                     } catch {
                       toast.show({ title: 'Ошибка', message: 'Не удалось обновить статус', variant: 'error' });
@@ -154,6 +193,21 @@ export function ExpertLessonSubmissionsPage() {
                 >
                   Rework
                 </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      await decide.mutateAsync({ submissionId: s.id, status: s.status, score, reviewerComment: comment });
+                      toast.show({ title: 'Сохранено', message: 'Оценка и комментарий обновлены', variant: 'success' });
+                    } catch {
+                      toast.show({ title: 'Ошибка', message: 'Не удалось сохранить', variant: 'error' });
+                    }
+                  }}
+                  disabled={decide.isPending}
+                >
+                  Сохранить оценку
+                </Button>
                 {s.fileKey && (
                   <Button variant="ghost" size="sm" onClick={() => download(s.id)}>
                     Скачать файл
@@ -162,7 +216,8 @@ export function ExpertLessonSubmissionsPage() {
               </div>
             </CardContent>
           </Card>
-        ))}
+        );
+        })}
       </div>
     </div>
   );

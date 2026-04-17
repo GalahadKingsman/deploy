@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Skeleton, useToast } from '../shared/ui/index.js';
 import { useLesson } from '../shared/queries/useLesson.js';
 import { useLessonAssignment } from '../shared/queries/useLessonAssignment.js';
-import { useCreateLessonSubmission } from '../shared/queries/useCreateLessonSubmission.js';
 import { useMyLessonSubmissions } from '../shared/queries/useMyLessonSubmissions.js';
 import { fetchJson } from '../shared/api/index.js';
 import type { ContractsV1 } from '@tracked/shared';
@@ -11,6 +10,7 @@ import { getAuthHeaders } from '../shared/api/headers.js';
 import { buildUrl } from '../shared/api/url.js';
 import { config } from '../shared/config/flags.js';
 import { normalizeRutubeEmbedUrl } from '@tracked/shared';
+import { BottomSheet } from '../ui/kit/BottomSheet.js';
 
 export function LessonPage() {
   const { lessonId } = useParams<{ lessonId: string }>();
@@ -19,14 +19,9 @@ export function LessonPage() {
   const id = lessonId ?? '';
   const { data, isLoading, error, refetch } = useLesson(id);
   const { data: assignmentData } = useLessonAssignment(id);
-  const createSubmission = useCreateLessonSubmission(id);
   const { data: mySubmissionsData, refetch: refetchMySubmissions } = useMyLessonSubmissions(id);
   const [completing, setCompleting] = React.useState(false);
-  const [submissionText, setSubmissionText] = React.useState('');
-  const [submissionLink, setSubmissionLink] = React.useState('');
-  const [uploading, setUploading] = React.useState(false);
-  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
-  const [uploadedFileKey, setUploadedFileKey] = React.useState<string | null>(null);
+  const [materialsOpen, setMaterialsOpen] = React.useState(false);
 
   const complete = async () => {
     if (!id) return;
@@ -90,6 +85,7 @@ export function LessonPage() {
     lesson.video && lesson.video.kind === 'rutube' ? (lesson.video.url as string) : null;
   const rutube = rutubeRaw ? normalizeRutubeEmbedUrl(rutubeRaw) ?? rutubeRaw : null;
   const assignment = assignmentData?.assignment ?? null;
+  const assignmentFiles = assignmentData?.files ?? [];
   const myLatest = (mySubmissionsData?.items ?? [])[0] ?? null;
 
   const downloadMyFile = async (fileKey: string) => {
@@ -147,8 +143,8 @@ export function LessonPage() {
       {assignment && (
         <Card style={{ marginBottom: 'var(--sp-4)' }}>
           <CardHeader>
-            <CardTitle style={{ fontSize: 'var(--text-md)' }}>Задание</CardTitle>
-            <CardDescription>Отправьте ответ текстом или ссылкой</CardDescription>
+            <CardTitle style={{ fontSize: 'var(--text-md)' }}>Домашнее задание</CardTitle>
+            <CardDescription>Прочитайте задание, скачайте материалы и сдайте ответ.</CardDescription>
           </CardHeader>
           <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
             <pre
@@ -163,123 +159,88 @@ export function LessonPage() {
             >
               {assignment.promptMarkdown ?? ''}
             </pre>
-            <textarea
-              value={submissionText}
-              onChange={(e) => setSubmissionText(e.target.value)}
-              placeholder="Ваш ответ (текст)"
-              style={{
-                width: '100%',
-                minHeight: 120,
-                padding: 'var(--sp-3)',
-                borderRadius: 'var(--r-md)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                background: 'var(--card)',
-                color: 'var(--fg)',
-              }}
-            />
-            <input
-              value={submissionLink}
-              onChange={(e) => setSubmissionLink(e.target.value)}
-              placeholder="Ссылка (опционально)"
-              style={{
-                width: '100%',
-                padding: 'var(--sp-3)',
-                borderRadius: 'var(--r-md)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                background: 'var(--card)',
-                color: 'var(--fg)',
-              }}
-            />
-            <input
-              type="file"
-              onChange={(e) => {
-                const f = e.target.files?.[0] ?? null;
-                setSelectedFile(f);
-                setUploadedFileKey(null);
-              }}
-              style={{ width: '100%' }}
-            />
-            <Button
-              variant="secondary"
-              onClick={async () => {
-                if (!selectedFile) {
-                  toast.show({ title: 'Файл', message: 'Выберите файл', variant: 'error' });
-                  return;
-                }
-                setUploading(true);
-                try {
-                  const signed = await fetchJson<{ fileKey: string; url: string }>({
-                    path: '/uploads/submissions/signed',
-                    method: 'POST',
-                    body: {
-                      lessonId: id,
-                      filename: selectedFile.name,
-                      contentType: selectedFile.type || null,
-                    },
-                  });
-                  const putRes = await fetch(signed.url, {
-                    method: 'PUT',
-                    headers: selectedFile.type ? { 'content-type': selectedFile.type } : undefined,
-                    body: selectedFile,
-                  });
-                  if (!putRes.ok) throw new Error(`PUT failed: ${putRes.status}`);
-                  setUploadedFileKey(signed.fileKey);
-                  toast.show({ title: 'Загружено', message: 'Файл загружен', variant: 'success' });
-                } catch {
-                  toast.show({ title: 'Ошибка', message: 'Не удалось загрузить файл', variant: 'error' });
-                } finally {
-                  setUploading(false);
-                }
-              }}
-              disabled={uploading}
-            >
-              Загрузить файл
-            </Button>
-            <Button
-              variant="primary"
-              onClick={async () => {
-                try {
-                  await createSubmission.mutateAsync({
-                    text: submissionText.trim() ? submissionText.trim() : null,
-                    link: submissionLink.trim() ? submissionLink.trim() : null,
-                    fileKey: uploadedFileKey,
-                  });
-                  setSubmissionText('');
-                  setSubmissionLink('');
-                  setSelectedFile(null);
-                  setUploadedFileKey(null);
-                  await refetchMySubmissions();
-                  toast.show({ title: 'Отправлено', message: 'Ответ отправлен', variant: 'success' });
-                } catch (e) {
-                  toast.show({ title: 'Ошибка', message: 'Не удалось отправить ответ', variant: 'error' });
-                }
-              }}
-              disabled={createSubmission.isPending}
-            >
-              Отправить ответ
-            </Button>
+
+            <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+              {assignmentFiles.length > 0 && (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    if (assignmentFiles.length === 1) {
+                      setMaterialsOpen(true);
+                      return;
+                    }
+                    setMaterialsOpen(true);
+                  }}
+                >
+                  {assignmentFiles.length === 1 ? 'Скачать презентацию' : `Материалы (${assignmentFiles.length})`}
+                </Button>
+              )}
+              <Button variant="primary" onClick={() => navigate(`/lesson/${id}/homework`)}>
+                Сдать домашнее задание
+              </Button>
+            </div>
 
             {myLatest && (
               <Card style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <CardHeader>
-                  <CardTitle style={{ fontSize: 'var(--text-sm)' }}>Ваш последний сабмит</CardTitle>
-                  <CardDescription>status: {myLatest.status}</CardDescription>
+                  <CardTitle style={{ fontSize: 'var(--text-sm)' }}>Ваш ответ</CardTitle>
+                  <CardDescription>
+                    статус: {myLatest.status}
+                    {typeof myLatest.score === 'number' ? ` • оценка: ${myLatest.score}/5` : ''}
+                  </CardDescription>
                 </CardHeader>
-                <CardContent style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                  {myLatest.fileKey && (
-                    <Button variant="ghost" size="sm" onClick={() => downloadMyFile(myLatest.fileKey as string)}>
-                      Скачать файл
-                    </Button>
+                <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
+                  {myLatest.text && (
+                    <pre style={{ whiteSpace: 'pre-wrap', margin: 0, fontSize: 'var(--text-sm)' }}>{myLatest.text}</pre>
                   )}
-                  <Button variant="secondary" size="sm" onClick={() => refetchMySubmissions()}>
-                    Обновить статус
-                  </Button>
+                  {myLatest.reviewerComment && (
+                    <div style={{ color: 'var(--muted-fg)', fontSize: 'var(--text-sm)' }}>
+                      Комментарий: {myLatest.reviewerComment}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+                    {myLatest.fileKey && (
+                      <Button variant="ghost" size="sm" onClick={() => downloadMyFile(myLatest.fileKey as string)}>
+                        Скачать файл
+                      </Button>
+                    )}
+                    <Button variant="secondary" size="sm" onClick={() => refetchMySubmissions()}>
+                      Обновить
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             )}
           </CardContent>
         </Card>
       )}
+
+      <BottomSheet open={materialsOpen} onOpenChange={setMaterialsOpen} title="Материалы">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
+          {assignmentFiles.map((f) => (
+            <Button
+              key={f.id}
+              variant="secondary"
+              onClick={async () => {
+                try {
+                  const headers = await getAuthHeaders();
+                  const baseUrl =
+                    config.API_BASE_URL || (typeof window !== 'undefined' ? (window.location?.origin ?? '') : '');
+                  const url = buildUrl(baseUrl, `/lessons/${id}/assignment/files/${encodeURIComponent(f.id)}/signed`);
+                  const res = await fetch(url, { headers });
+                  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                  const data = (await res.json()) as { url: string };
+                  window.location.href = data.url;
+                } catch {
+                  toast.show({ title: 'Ошибка', message: 'Не удалось скачать файл', variant: 'error' });
+                }
+              }}
+            >
+              Скачать: {f.filename}
+            </Button>
+          ))}
+        </div>
+      </BottomSheet>
 
       <Card>
         <CardHeader>

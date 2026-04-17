@@ -62,7 +62,12 @@ export type {
   ReorderExpertLessonsRequestV1,
 } from './expert-lesson.js';
 export type { InviteV1 } from './invite.js';
-export type { AssignmentV1, SubmissionStatusV1, UpsertAssignmentRequestV1 } from './assignment.js';
+export type {
+  AssignmentV1,
+  AssignmentFileV1,
+  SubmissionStatusV1,
+  UpsertAssignmentRequestV1,
+} from './assignment.js';
 export type {
   GetLessonAssignmentResponseV1,
   CreateSubmissionRequestV1,

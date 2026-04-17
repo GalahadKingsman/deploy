@@ -4,6 +4,24 @@ import type { Id, IsoDateTime } from './common.js';
 export type SubmissionStatusV1 = 'submitted' | 'rework' | 'accepted';
 export const SubmissionStatusV1Schema = z.enum(['submitted', 'rework', 'accepted']);
 
+export interface AssignmentFileV1 {
+  id: Id;
+  assignmentId: Id;
+  fileKey: string;
+  filename: string;
+  contentType?: string | null;
+  createdAt: IsoDateTime;
+}
+
+export const AssignmentFileV1Schema = z.object({
+  id: z.string(),
+  assignmentId: z.string(),
+  fileKey: z.string(),
+  filename: z.string(),
+  contentType: z.string().nullable().optional(),
+  createdAt: z.string(),
+});
+
 export interface AssignmentV1 {
   id: Id;
   lessonId: Id;
