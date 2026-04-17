@@ -35,6 +35,7 @@ export function ExpertCourseAccessPage() {
   const [usernameManual, setUsernameManual] = React.useState('');
   const [grantDaysByRow, setGrantDaysByRow] = React.useState<Record<string, string>>({});
   const [inviteMaxUses, setInviteMaxUses] = React.useState('1');
+  const [revokedInviteCodes, setRevokedInviteCodes] = React.useState<Record<string, true>>({});
 
   if (!expertId || !courseId) {
     return (
@@ -77,7 +78,7 @@ export function ExpertCourseAccessPage() {
   }
 
   const rows = data.items ?? [];
-  const inviteRows = invites.data?.items ?? [];
+  const inviteRows = (invites.data?.items ?? []).filter((i) => !revokedInviteCodes[i.code]);
 
   const buildDeepLink = (code: string) => {
     const unameRaw = (webappEnv as any).VITE_TELEGRAM_BOT_USERNAME
@@ -85,6 +86,30 @@ export function ExpertCourseAccessPage() {
       : '';
     if (!unameRaw) return null;
     return `https://t.me/${encodeURIComponent(unameRaw)}?start=${encodeURIComponent(`inv_${code}`)}`;
+  };
+
+  const copyText = async (text: string) => {
+    // Telegram WebView часто режет navigator.clipboard. Делаем best-effort и не считаем это ошибкой создания.
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return { ok: true as const };
+      }
+    } catch {
+      // fallback below
+    }
+    try {
+      const tg = (window as any)?.Telegram?.WebApp;
+      if (tg?.showPopup) {
+        tg.showPopup({
+          title: 'Ссылка создана',
+          message: 'Не удалось скопировать автоматически. Нажмите и удерживайте ссылку, чтобы скопировать.',
+        });
+      }
+    } catch {
+      // ignore
+    }
+    return { ok: false as const };
   };
 
   return (
@@ -139,9 +164,13 @@ export function ExpertCourseAccessPage() {
                 try {
                   const created = await createInvite.mutateAsync({ maxUses: n });
                   const link = buildDeepLink(created.code);
-                  if (link && navigator.clipboard) {
-                    await navigator.clipboard.writeText(link);
-                    toast.show({ title: 'Ссылка скопирована', variant: 'success' });
+                  if (link) {
+                    const copied = await copyText(link);
+                    toast.show({
+                      title: copied.ok ? 'Ссылка скопирована' : 'Ссылка создана',
+                      message: copied.ok ? undefined : link,
+                      variant: 'success',
+                    });
                   } else {
                     toast.show({ title: 'Инвайт создан', message: `Код: ${created.code}`, variant: 'success' });
                   }
@@ -211,12 +240,12 @@ export function ExpertCourseAccessPage() {
                         disabled={!link}
                         onClick={async () => {
                           if (!link) return;
-                          try {
-                            await navigator.clipboard.writeText(link);
-                            toast.show({ title: 'Скопировано', variant: 'success' });
-                          } catch {
-                            toast.show({ title: 'Не удалось скопировать', variant: 'error' });
-                          }
+                        const copied = await copyText(link);
+                        toast.show({
+                          title: copied.ok ? 'Скопировано' : 'Ссылка готова',
+                          message: copied.ok ? undefined : link,
+                          variant: 'success',
+                        });
                         }}
                       >
                         Копировать ссылку
@@ -226,9 +255,9 @@ export function ExpertCourseAccessPage() {
                         size="sm"
                         disabled={revokeInvite.isPending}
                         onClick={async () => {
-                          if (!window.confirm('Отозвать инвайт?')) return;
                           try {
                             await revokeInvite.mutateAsync({ code: i.code });
+                          setRevokedInviteCodes((s) => ({ ...s, [i.code]: true }));
                             toast.show({ title: 'Отозвано', variant: 'success' });
                           } catch {
                             toast.show({ title: 'Ошибка', variant: 'error' });

@@ -2,6 +2,8 @@ import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button, Skeleton, useToast } from '../shared/ui/index.js';
 import { useActivateInvite } from '../shared/queries/useActivateInvite.js';
+import { ApiClientError } from '../shared/api/errors.js';
+import { getAccessToken } from '../shared/auth/tokenStorage.js';
 
 export function InviteActivatePage() {
   const { code } = useParams<{ code: string }>();
@@ -15,10 +17,29 @@ export function InviteActivatePage() {
     async function run() {
       if (!c) return;
       try {
-        const res = await activate.mutateAsync(c);
+        // When opened via bot deep link, the page can mount before bootstrapAuth stores JWT.
+        // Retry a bit on 401 until token appears.
+        let lastErr: unknown = null;
+        for (let attempt = 0; attempt < 12; attempt++) {
+          try {
+            const res = await activate.mutateAsync(c);
+            if (cancelled) return;
+            toast.show({ title: 'Готово', message: 'Доступ активирован', variant: 'success' });
+            navigate(`/course/${res.courseId}`, { replace: true });
+            return;
+          } catch (e) {
+            lastErr = e;
+            const status = e instanceof ApiClientError ? e.status : null;
+            // Only retry on unauthorized while token is not yet present.
+            if (status === 401 && !getAccessToken()) {
+              await new Promise((r) => setTimeout(r, 350));
+              continue;
+            }
+            throw e;
+          }
+        }
+        throw lastErr;
         if (cancelled) return;
-        toast.show({ title: 'Готово', message: 'Доступ активирован', variant: 'success' });
-        navigate(`/course/${res.courseId}`, { replace: true });
       } catch {
         if (cancelled) return;
       }
