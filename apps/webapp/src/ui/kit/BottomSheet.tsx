@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 export interface BottomSheetProps {
   open: boolean;
@@ -59,7 +60,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
 
   if (!open) return null;
 
-  return (
+  const modal = (
     <>
       {/* Overlay */}
       <div
@@ -177,4 +178,9 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
       </div>
     </>
   );
+
+  // Portal outside <main>: AppShell sets contain:paint on main, which clips fixed descendants
+  // so only the top of the sheet (one row) was visible.
+  if (typeof document === 'undefined') return null;
+  return createPortal(modal, document.body);
 }
