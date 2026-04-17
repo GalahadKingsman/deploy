@@ -1,5 +1,6 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
+import type { ContractsV1 } from '@tracked/shared';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton, useToast } from '../shared/ui/index.js';
 import { useExpertLessonSubmissions, useDecideSubmission } from '../shared/queries/useExpertLessonSubmissions.js';
 import { config } from '../shared/config/flags.js';
@@ -23,6 +24,22 @@ function scoreReadLabel(score: number | null): string {
   return `${score} из 5`;
 }
 
+/** S3 key for student attachment (camelCase or legacy snake_case from JSON). */
+function getSubmissionFileStorageKey(s: ContractsV1.SubmissionV1): string | null {
+  const row = s as ContractsV1.SubmissionV1 & { file_key?: string | null };
+  const raw = row.fileKey ?? row.file_key;
+  if (typeof raw !== 'string') return null;
+  const t = raw.trim();
+  return t.length ? t : null;
+}
+
+function displayFilenameFromSubmissionKey(key: string): string {
+  const i = key.lastIndexOf('/');
+  const tail = i >= 0 ? key.slice(i + 1) : key;
+  const withoutTs = tail.replace(/^\d+-/, '');
+  return (withoutTs || tail || 'файл').trim() || 'файл';
+}
+
 export function ExpertLessonSubmissionsPage() {
   const toast = useToast();
   const { expertId, lessonId } = useParams<{ expertId: string; lessonId: string }>();
@@ -36,10 +53,10 @@ export function ExpertLessonSubmissionsPage() {
   /** When true, expert is editing a submission that is already `accepted`. */
   const [gradingEditById, setGradingEditById] = React.useState<Record<string, boolean>>({});
 
-  const download = async (submissionId: string) => {
+  const download = async (submissionId: string, fallbackFilename = 'submission') => {
     try {
       const url = buildUrl(baseUrl(), `/experts/${eId}/lessons/${lId}/submissions/${submissionId}/file`);
-      await downloadAuthenticatedFile({ url, fallbackFilename: 'submission' });
+      await downloadAuthenticatedFile({ url, fallbackFilename });
     } catch {
       toast.show({ title: 'Ошибка', message: 'Не удалось скачать файл', variant: 'error' });
     }
@@ -118,6 +135,8 @@ export function ExpertLessonSubmissionsPage() {
           const comment = commentById[s.id] ?? (s.reviewerComment ?? '');
           const isAccepted = s.status === 'accepted';
           const isViewOnly = isAccepted && !gradingEditById[s.id];
+          const attachmentKey = getSubmissionFileStorageKey(s);
+          const attachmentName = attachmentKey ? displayFilenameFromSubmissionKey(attachmentKey) : null;
 
           return (
             <Card key={s.id}>
@@ -135,6 +154,36 @@ export function ExpertLessonSubmissionsPage() {
                     {s.link}
                   </a>
                 )}
+
+                {attachmentKey && attachmentName ? (
+                  <div
+                    style={{
+                      padding: 'var(--sp-3)',
+                      borderRadius: 'var(--r-md)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      background: 'rgba(255,255,255,0.03)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 'var(--sp-2)',
+                    }}
+                  >
+                    <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>Файл ответа ученика</div>
+                    <div
+                      style={{
+                        fontSize: 'var(--text-xs)',
+                        color: 'var(--muted-fg)',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {attachmentName}
+                    </div>
+                    <div>
+                      <Button variant="secondary" size="sm" onClick={() => download(s.id, attachmentName)}>
+                        Скачать файл
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
 
                 {isViewOnly ? (
                   <>
@@ -156,11 +205,6 @@ export function ExpertLessonSubmissionsPage() {
                       >
                         Редактировать
                       </Button>
-                      {s.fileKey && (
-                        <Button variant="ghost" size="sm" onClick={() => download(s.id)}>
-                          Скачать файл
-                        </Button>
-                      )}
                     </div>
                   </>
                 ) : (
@@ -225,11 +269,6 @@ export function ExpertLessonSubmissionsPage() {
                       >
                         Сохранить
                       </Button>
-                      {s.fileKey && (
-                        <Button variant="ghost" size="sm" onClick={() => download(s.id)}>
-                          Скачать файл
-                        </Button>
-                      )}
                     </div>
                   </>
                 )}

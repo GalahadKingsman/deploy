@@ -18,6 +18,7 @@ export function LessonHomeworkSubmitPage() {
 
   const [text, setText] = React.useState('');
   const [uploading, setUploading] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const [uploadedFileKey, setUploadedFileKey] = React.useState<string | null>(null);
 
@@ -94,7 +95,34 @@ export function LessonHomeworkSubmitPage() {
 
   const save = async () => {
     const t = text.trim();
-    if (!t && !uploadedFileKey) {
+    let fileKey = uploadedFileKey;
+    if (selectedFile && !fileKey) {
+      setSaving(true);
+      try {
+        const form = new FormData();
+        form.append('lessonId', id);
+        form.append('file', selectedFile, selectedFile.name);
+        const res = await fetchMultipart<{ fileKey: string }>({
+          path: '/uploads/submissions',
+          form,
+        });
+        fileKey = res.fileKey;
+        setUploadedFileKey(res.fileKey);
+      } catch (e) {
+        const msg =
+          e instanceof ApiClientError
+            ? `${e.message} (HTTP ${e.status})`
+            : e instanceof Error
+              ? e.message
+              : 'Не удалось загрузить файл';
+        toast.show({ title: 'Ошибка', message: msg, variant: 'error' });
+        return;
+      } finally {
+        setSaving(false);
+      }
+    }
+
+    if (!t && !fileKey) {
       toast.show({ title: 'Заполните ответ', message: 'Добавьте текст и/или файл', variant: 'info' });
       return;
     }
@@ -102,7 +130,7 @@ export function LessonHomeworkSubmitPage() {
       await createSubmission.mutateAsync({
         text: t ? t : null,
         link: null,
-        fileKey: uploadedFileKey,
+        fileKey,
       } satisfies ContractsV1.CreateSubmissionRequestV1);
       toast.show({ title: 'Отправлено', message: 'Домашнее задание отправлено', variant: 'success' });
       navigate(`/lesson/${id}`, { replace: true });
@@ -155,8 +183,8 @@ export function LessonHomeworkSubmitPage() {
             <Button variant="secondary" onClick={upload} disabled={!selectedFile || uploading}>
               {uploading ? 'Загрузка…' : uploadedFileKey ? 'Файл загружен' : 'Загрузить файл'}
             </Button>
-            <Button variant="primary" onClick={save} disabled={createSubmission.isPending}>
-              Сохранить
+            <Button variant="primary" onClick={() => void save()} disabled={createSubmission.isPending || saving}>
+              {createSubmission.isPending || saving ? 'Отправка…' : 'Сохранить'}
             </Button>
             <Button variant="secondary" onClick={() => navigate(-1)}>
               Назад
