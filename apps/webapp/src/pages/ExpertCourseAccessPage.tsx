@@ -132,8 +132,9 @@ export function ExpertCourseAccessPage() {
       ? String((webappEnv as any).VITE_TELEGRAM_BOT_USERNAME).trim().replace(/^@/, '')
       : '';
     if (!unameRaw) return null;
-    // Use startapp to open the Mini App directly (more reliable than start payload for already-started bots).
-    return `https://t.me/${encodeURIComponent(unameRaw)}?startapp=${encodeURIComponent(`inv_${code}`)}`;
+    // Use start=payload: for brand-new users Telegram sends /start <payload> to bot, which can show a WebApp button.
+    // (startapp is not consistently supported across clients/bot setups.)
+    return `https://t.me/${encodeURIComponent(unameRaw)}?start=${encodeURIComponent(`inv_${code}`)}`;
   };
 
   const copyText = async (text: string) => {

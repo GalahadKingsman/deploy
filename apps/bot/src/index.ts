@@ -42,7 +42,12 @@ bot.command('start', async (ctx) => {
       return;
     }
   }
-  await ctx.reply('Open the app:', { reply_markup: openWebAppKb });
+  await ctx.reply(
+    'Open the app:',
+    {
+      reply_markup: openWebAppKb,
+    },
+  );
 });
 
 bot.command('submit', async (ctx) => {
