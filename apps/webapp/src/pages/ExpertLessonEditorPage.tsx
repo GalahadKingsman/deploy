@@ -10,7 +10,7 @@ import {
   Input,
   useToast,
 } from '../shared/ui/index.js';
-import { fetchJson } from '../shared/api/index.js';
+import { fetchJson, fetchMultipart } from '../shared/api/index.js';
 import { normalizeRutubeEmbedUrl, type ContractsV1 } from '@tracked/shared';
 import { ApiClientError } from '../shared/api/errors.js';
 
@@ -155,25 +155,11 @@ export function ExpertLessonEditorPage() {
     setHomeworkUploading(true);
     try {
       for (const f of Array.from(files)) {
-        const contentType = (f.type || '').trim() || 'application/octet-stream';
-        const signed = await fetchJson<{ fileKey: string; url: string }>({
-          path: `/experts/${expertId}/lessons/${lessonId}/assignment/files/signed`,
-          method: 'POST',
-          body: { filename: f.name, contentType },
-        });
-        const putRes = await fetch(signed.url, {
-          method: 'PUT',
-          credentials: 'omit',
-          headers: { 'content-type': contentType },
-          body: f,
-        });
-        if (!putRes.ok) {
-          throw new Error(`Upload failed (HTTP ${putRes.status})`);
-        }
-        await fetchJson<ContractsV1.AssignmentFileV1>({
-          path: `/experts/${expertId}/lessons/${lessonId}/assignment/files`,
-          method: 'POST',
-          body: { fileKey: signed.fileKey, filename: f.name, contentType },
+        const form = new FormData();
+        form.append('file', f, f.name);
+        await fetchMultipart<ContractsV1.AssignmentFileV1>({
+          path: `/experts/${expertId}/lessons/${lessonId}/assignment/files/upload`,
+          form,
         });
       }
       const a = await fetchJson<ContractsV1.GetLessonAssignmentResponseV1>({

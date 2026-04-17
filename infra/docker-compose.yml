@@ -63,7 +63,9 @@ services:
       /bin/sh -c "
       mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
       mc mb -p local/${MINIO_BUCKET} || true &&
-      mc anonymous set download local/${MINIO_BUCKET} || true
+      mc anonymous set download local/${MINIO_BUCKET} || true &&
+      printf '%s\n' '{"CORSRules":[{"AllowedOrigins":["*"],"AllowedMethods":["GET","PUT","POST","DELETE","HEAD"],"AllowedHeaders":["*"],"ExposeHeaders":["ETag","x-amz-request-id"],"MaxAgeSeconds":3600}]}' > /tmp/cors.json &&
+      mc cors set-json local/${MINIO_BUCKET} /tmp/cors.json || true
       "
     restart: 'no'
 

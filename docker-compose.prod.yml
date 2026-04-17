@@ -1,6 +1,10 @@
 # Production stack: Postgres + Redis + MinIO + API + bot (polling).
 # Webapp: собери статику (pnpm --filter @tracked/webapp build) и отдавай через nginx.
 #
+# Загрузка файлов (MinIO): в .env задай S3_PUBLIC_ENDPOINT — URL, доступный браузеру/телеграму
+# (например http://ВАШ_IP:9000 при открытом MINIO_PORT или https://storage.ваш-домен через nginx).
+# Без этого presigned-ссылки будут с хостом minio:9000 и загрузка из Mini App не сработает.
+#
 # Запуск из корня репозитория:
 #   docker compose -f docker-compose.prod.yml --env-file .env up -d --build
 #
@@ -41,6 +45,9 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_password}
     command: server /data --console-address ':9001'
+    ports:
+      # Publish MinIO so browsers can use presigned PUT/GET (set S3_PUBLIC_ENDPOINT, e.g. http://YOUR_IP:9000).
+      - '${MINIO_PORT:-9000}:9000'
     volumes:
       - minio_data:/data
     healthcheck:
@@ -65,7 +72,9 @@ services:
       - |
         mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" &&
         mc mb -p local/$$MINIO_BUCKET || true &&
-        mc anonymous set download local/$$MINIO_BUCKET || true
+        mc anonymous set download local/$$MINIO_BUCKET || true &&
+        printf '%s\n' '{"CORSRules":[{"AllowedOrigins":["*"],"AllowedMethods":["GET","PUT","POST","DELETE","HEAD"],"AllowedHeaders":["*"],"ExposeHeaders":["ETag","x-amz-request-id"],"MaxAgeSeconds":3600}]}' > /tmp/cors.json &&
+        mc cors set-json local/$$MINIO_BUCKET /tmp/cors.json || true
     restart: 'no'
 
   api:
@@ -87,6 +96,8 @@ services:
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-120}
       RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
       S3_ENDPOINT: http://minio:9000
+      # Must be reachable from the Telegram Mini App / browser (not http://minio:9000). Example: http://YOUR_VPS_IP:9000 or https://files.yourdomain.com
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minio}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minio_password}
       S3_REGION: ${S3_REGION:-us-east-1}

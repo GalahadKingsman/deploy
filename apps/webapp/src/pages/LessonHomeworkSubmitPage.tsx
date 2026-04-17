@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton, useToast } from '../shared/ui/index.js';
 import { useLesson } from '../shared/queries/useLesson.js';
 import { useCreateLessonSubmission } from '../shared/queries/useCreateLessonSubmission.js';
-import { fetchJson } from '../shared/api/index.js';
+import { fetchMultipart } from '../shared/api/index.js';
+import { ApiClientError } from '../shared/api/errors.js';
 import type { ContractsV1 } from '@tracked/shared';
 
 export function LessonHomeworkSubmitPage() {
@@ -69,27 +70,23 @@ export function LessonHomeworkSubmitPage() {
     }
     setUploading(true);
     try {
-      const contentType = (selectedFile.type || '').trim() || 'application/octet-stream';
-      const signed = await fetchJson<{ fileKey: string; url: string }>({
-        path: '/uploads/submissions/signed',
-        method: 'POST',
-        body: {
-          lessonId: id,
-          filename: selectedFile.name,
-          contentType,
-        },
+      const form = new FormData();
+      form.append('lessonId', id);
+      form.append('file', selectedFile, selectedFile.name);
+      const res = await fetchMultipart<{ fileKey: string }>({
+        path: '/uploads/submissions',
+        form,
       });
-      const putRes = await fetch(signed.url, {
-        method: 'PUT',
-        credentials: 'omit',
-        headers: { 'content-type': contentType },
-        body: selectedFile,
-      });
-      if (!putRes.ok) throw new Error(`HTTP ${putRes.status}`);
-      setUploadedFileKey(signed.fileKey);
+      setUploadedFileKey(res.fileKey);
       toast.show({ title: 'Файл загружен', variant: 'success' });
-    } catch {
-      toast.show({ title: 'Ошибка', message: 'Не удалось загрузить файл', variant: 'error' });
+    } catch (e) {
+      const msg =
+        e instanceof ApiClientError
+          ? `${e.message} (HTTP ${e.status})`
+          : e instanceof Error
+            ? e.message
+            : 'Не удалось загрузить файл';
+      toast.show({ title: 'Ошибка', message: msg, variant: 'error' });
     } finally {
       setUploading(false);
     }

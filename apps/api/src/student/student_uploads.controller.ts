@@ -57,8 +57,7 @@ export class StudentUploadsController {
     const ok = await this.enrollmentsRepository.hasActiveAccess({ userId, courseId: lesson.courseId });
     if (!ok) throw new NotFoundException({ code: ErrorCodes.FORBIDDEN, message: 'No active access to this course' });
 
-    const assignment = await this.assignmentsRepository.getByLessonId(lessonId);
-    if (!assignment) throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'Assignment not found' });
+    const assignment = await this.assignmentsRepository.ensureByLessonId(lessonId);
 
     const buf: Buffer = await file.toBuffer();
     if (!buf || buf.length === 0) {
@@ -104,8 +103,7 @@ export class StudentUploadsController {
     const ok = await this.enrollmentsRepository.hasActiveAccess({ userId, courseId: lesson.courseId });
     if (!ok) throw new NotFoundException({ code: ErrorCodes.FORBIDDEN, message: 'No active access to this course' });
 
-    const assignment = await this.assignmentsRepository.getByLessonId(lessonId);
-    if (!assignment) throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'Assignment not found' });
+    const assignment = await this.assignmentsRepository.ensureByLessonId(lessonId);
 
     const original = typeof body?.filename === 'string' && body.filename ? body.filename : 'file';
     const safeName = original.replace(/[^\w.\-]+/g, '_').slice(0, 120);

@@ -9,8 +9,10 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { FastifyRequest } from 'fastify';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ContractsV1, ErrorCodes } from '@tracked/shared';
 import { JwtAuthGuard } from '../../auth/session/jwt-auth.guard.js';
@@ -85,6 +87,51 @@ export class ExpertAssignmentsController {
     if (!assignment) return { items: [] };
     const items = await this.assignmentFilesRepository.listByAssignmentId(assignment.id);
     return { items };
+  }
+
+  @Post('lessons/:lessonId/assignment/files/upload')
+  @RequireExpertRole('manager')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Upload assignment material file (multipart, manager+)' })
+  @ApiResponse({ status: 201, description: 'File stored and metadata created' })
+  async uploadAssignmentFile(
+    @Param('expertId') expertId: string,
+    @Param('lessonId') lessonId: string,
+    @Req()
+    req: FastifyRequest & {
+      user?: { userId: string };
+      file?: (opts?: any) => Promise<any>;
+    },
+  ): Promise<ContractsV1.AssignmentFileV1> {
+    await this.lessonsRepository.assertLessonBelongsToExpert({ expertId, lessonId });
+    const assignment = await this.assignmentsRepository.ensureByLessonId(lessonId);
+
+    const file = await (req as any).file?.();
+    if (!file) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'file is required' });
+    }
+
+    const buf: Buffer = await file.toBuffer();
+    if (!buf || buf.length === 0) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Empty file' });
+    }
+
+    const displayName =
+      typeof file.filename === 'string' && file.filename.trim() ? file.filename.trim() : 'file';
+    const safeName = displayName.replace(/[^\w.\-]+/g, '_').slice(0, 120);
+    const key = `assignment-files/${assignment.id}/${Date.now()}-${safeName}`;
+    await this.storage.putObject({
+      key,
+      body: new Uint8Array(buf),
+      contentType: file.mimetype ?? null,
+    });
+
+    return await this.assignmentFilesRepository.create({
+      assignmentId: assignment.id,
+      fileKey: key,
+      filename: displayName,
+      contentType: typeof file.mimetype === 'string' && file.mimetype ? file.mimetype : null,
+    });
   }
 
   @Post('lessons/:lessonId/assignment/files/signed')

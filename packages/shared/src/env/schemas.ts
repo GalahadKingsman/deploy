@@ -13,6 +13,13 @@ export const ApiEnvSchema = z.object({
   /** Comma-separated list of allowed origins in production (e.g. https://app.example.com,https://admin.example.com). */
   CORS_ORIGINS: z.preprocess(emptyToUndefined, z.string().optional()),
   S3_ENDPOINT: z.string().optional(),
+  /**
+   * Base URL for presigned GET/PUT links returned to the browser (Telegram WebView).
+   * Must be reachable from the user's device — not a Docker-internal host like http://minio:9000.
+   * Example: https://s3.example.com or http://YOUR_VPS_IP:9000 if MinIO port is published.
+   * When omitted, S3_ENDPOINT is used (fine for local dev when it is already localhost/public).
+   */
+  S3_PUBLIC_ENDPOINT: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   S3_ACCESS_KEY: z.string().optional(),
   S3_SECRET_KEY: z.string().optional(),
   S3_BUCKET: z.string().optional(),
