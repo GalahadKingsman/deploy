@@ -131,10 +131,15 @@ export function ExpertCourseAccessPage() {
     const unameRaw = (webappEnv as any).VITE_TELEGRAM_BOT_USERNAME
       ? String((webappEnv as any).VITE_TELEGRAM_BOT_USERNAME).trim().replace(/^@/, '')
       : '';
-    if (!unameRaw) return null;
-    // Use start=payload: for brand-new users Telegram sends /start <payload> to bot, which can show a WebApp button.
-    // (startapp is not consistently supported across clients/bot setups.)
-    return `https://t.me/${encodeURIComponent(unameRaw)}?start=${encodeURIComponent(`inv_${code}`)}`;
+    const appShortRaw = (webappEnv as any).VITE_TELEGRAM_APP_SHORT_NAME
+      ? String((webappEnv as any).VITE_TELEGRAM_APP_SHORT_NAME).trim()
+      : '';
+    if (!unameRaw || !appShortRaw) return null;
+    // Direct Mini App deep-link (reliable for brand-new users and without relying on chat /start payload):
+    // https://t.me/<bot>/<miniapp_short>?startapp=...
+    return `https://t.me/${encodeURIComponent(unameRaw)}/${encodeURIComponent(appShortRaw)}?startapp=${encodeURIComponent(
+      `inv_${code}`,
+    )}`;
   };
 
   const copyText = async (text: string) => {
@@ -199,8 +204,9 @@ export function ExpertCourseAccessPage() {
               onClick={async () => {
                 if (!buildDeepLink('test')) {
                   toast.show({
-                    title: 'Нужен username бота',
-                    message: 'Задайте VITE_TELEGRAM_BOT_USERNAME при сборке фронта.',
+                    title: 'Нужна настройка Telegram',
+                    message:
+                      'Задайте VITE_TELEGRAM_BOT_USERNAME и VITE_TELEGRAM_APP_SHORT_NAME при сборке фронта.',
                     variant: 'info',
                   });
                   return;
@@ -234,7 +240,8 @@ export function ExpertCourseAccessPage() {
 
           {!buildDeepLink('test') && (
             <div style={{ color: 'var(--muted-fg)', fontSize: 'var(--text-sm)' }}>
-              Чтобы формировались ссылки, задайте <code>VITE_TELEGRAM_BOT_USERNAME</code> при сборке фронта.
+              Чтобы формировались ссылки, задайте <code>VITE_TELEGRAM_BOT_USERNAME</code> и{' '}
+              <code>VITE_TELEGRAM_APP_SHORT_NAME</code> при сборке фронта.
             </div>
           )}
 

@@ -82,6 +82,11 @@ export const WebappEnvSchema = z.object({
    * Optional: UI can fall back to manual entry if unset.
    */
   VITE_TELEGRAM_BOT_USERNAME: z.string().optional(),
+  /**
+   * Telegram Mini App short name (the part in t.me/<bot>/<shortName>).
+   * Used to generate direct Mini App deep links: https://t.me/<bot>/<shortName>?startapp=...
+   */
+  VITE_TELEGRAM_APP_SHORT_NAME: z.string().optional(),
 });
 
 export type ApiEnv = z.infer<typeof ApiEnvSchema>;
