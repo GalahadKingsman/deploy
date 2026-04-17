@@ -5,6 +5,7 @@ import { useExpertLessonSubmissions, useDecideSubmission } from '../shared/queri
 import { config } from '../shared/config/flags.js';
 import { buildUrl } from '../shared/api/url.js';
 import { getAuthHeaders } from '../shared/api/headers.js';
+import { openPresignedDownloadUrl } from '../shared/auth/telegram.js';
 
 function baseUrl(): string {
   return config.API_BASE_URL || (typeof window !== 'undefined' ? (window.location?.origin ?? '') : '');
@@ -32,7 +33,7 @@ export function ExpertLessonSubmissionsPage() {
       const res = await fetch(url, { headers });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as { url: string };
-      window.location.href = data.url;
+      openPresignedDownloadUrl(data.url);
     } catch {
       toast.show({ title: 'Ошибка', message: 'Не удалось скачать файл', variant: 'error' });
     }

@@ -10,6 +10,7 @@ import { getAuthHeaders } from '../shared/api/headers.js';
 import { buildUrl } from '../shared/api/url.js';
 import { config } from '../shared/config/flags.js';
 import { normalizeRutubeEmbedUrl } from '@tracked/shared';
+import { openPresignedDownloadUrl } from '../shared/auth/telegram.js';
 import { BottomSheet } from '../ui/kit/BottomSheet.js';
 
 export function LessonPage() {
@@ -109,7 +110,7 @@ export function LessonPage() {
       const res = await fetch(signedUrl, { headers });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as { url: string };
-      window.location.href = data.url;
+      openPresignedDownloadUrl(data.url);
     } catch {
       toast.show({ title: 'Ошибка', message: 'Не удалось скачать файл', variant: 'error' });
     }
@@ -124,7 +125,7 @@ export function LessonPage() {
       const res = await fetch(url, { headers });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as { url: string };
-      window.location.href = data.url;
+      openPresignedDownloadUrl(data.url);
     } catch {
       toast.show({ title: 'Ошибка', message: 'Не удалось скачать файл', variant: 'error' });
     }
