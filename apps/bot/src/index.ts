@@ -29,6 +29,18 @@ function isInviteCode(s: string): boolean {
   return /^[a-f0-9]{8,64}$/i.test(s);
 }
 
+bot.command('inv', async (ctx) => {
+  const text = ctx.message?.text ?? '';
+  const code = text.replace(/^\/inv(@\w+)?\s*/i, '').trim();
+  if (!code || !isInviteCode(code)) {
+    await ctx.reply('Usage: /inv <inviteCode>');
+    return;
+  }
+  const url = `${WEBAPP_URL}/invite/${encodeURIComponent(code)}`;
+  const kb = new InlineKeyboard().webApp('Open WebApp', url);
+  await ctx.reply('Open the app to activate invite:', { reply_markup: kb });
+});
+
 // Команда /start — inline-кнопка Open WebApp; поддерживаем deep link payload (inv_<code>)
 bot.command('start', async (ctx) => {
   const text = ctx.message?.text ?? '';

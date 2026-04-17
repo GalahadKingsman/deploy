@@ -131,15 +131,10 @@ export function ExpertCourseAccessPage() {
     const unameRaw = (webappEnv as any).VITE_TELEGRAM_BOT_USERNAME
       ? String((webappEnv as any).VITE_TELEGRAM_BOT_USERNAME).trim().replace(/^@/, '')
       : '';
-    const appShortRaw = (webappEnv as any).VITE_TELEGRAM_APP_SHORT_NAME
-      ? String((webappEnv as any).VITE_TELEGRAM_APP_SHORT_NAME).trim()
-      : '';
-    if (!unameRaw || !appShortRaw) return null;
-    // Direct Mini App deep-link (reliable for brand-new users and without relying on chat /start payload):
-    // https://t.me/<bot>/<miniapp_short>?startapp=...
-    return `https://t.me/${encodeURIComponent(unameRaw)}/${encodeURIComponent(appShortRaw)}?startapp=${encodeURIComponent(
-      `inv_${code}`,
-    )}`;
+    if (!unameRaw) return null;
+    // Works without BotFather "Mini App short name": Telegram opens bot and user presses Start.
+    // Payload is delivered as /start inv_<code> so bot can show a WebApp button that opens /invite/<code>.
+    return `https://t.me/${encodeURIComponent(unameRaw)}?start=${encodeURIComponent(`inv_${code}`)}`;
   };
 
   const copyText = async (text: string) => {
@@ -206,7 +201,7 @@ export function ExpertCourseAccessPage() {
                   toast.show({
                     title: 'Нужна настройка Telegram',
                     message:
-                      'Задайте VITE_TELEGRAM_BOT_USERNAME и VITE_TELEGRAM_APP_SHORT_NAME при сборке фронта.',
+                      'Задайте VITE_TELEGRAM_BOT_USERNAME при сборке фронта.',
                     variant: 'info',
                   });
                   return;
@@ -240,8 +235,7 @@ export function ExpertCourseAccessPage() {
 
           {!buildDeepLink('test') && (
             <div style={{ color: 'var(--muted-fg)', fontSize: 'var(--text-sm)' }}>
-              Чтобы формировались ссылки, задайте <code>VITE_TELEGRAM_BOT_USERNAME</code> и{' '}
-              <code>VITE_TELEGRAM_APP_SHORT_NAME</code> при сборке фронта.
+              Чтобы формировались ссылки, задайте <code>VITE_TELEGRAM_BOT_USERNAME</code> при сборке фронта.
             </div>
           )}
 
@@ -288,6 +282,9 @@ export function ExpertCourseAccessPage() {
                     </div>
                     <div style={{ color: 'var(--muted-fg)', wordBreak: 'break-all' }}>
                       {link ?? 'Укажите bot username, чтобы сформировать ссылку.'}
+                    </div>
+                    <div style={{ color: 'var(--muted-fg)', fontSize: 'var(--text-xs)' }}>
+                      Если deep-link не сработал, откройте бота и отправьте: <code>/inv {i.code}</code>
                     </div>
                     <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
                       <Button
