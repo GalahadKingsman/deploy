@@ -15,21 +15,29 @@ import {
   useExpertCourseEnrollments,
   useExtendEnrollment,
   useRevokeEnrollment,
-  useEnrollByTelegram,
   useEnrollByUsername,
+  useExpertCourseInvites,
+  useCreateCourseInvite,
+  useRevokeCourseInvite,
 } from '../shared/queries/useExpertCourseAccess.js';
+import { webappEnv } from '../shared/env/env.js';
 
 export function ExpertCourseAccessPage() {
   const toast = useToast();
   const { expertId = '', courseId = '' } = useParams<{ expertId: string; courseId: string }>();
   const { data, isLoading, error, refetch } = useExpertCourseEnrollments(expertId, courseId);
+  const invites = useExpertCourseInvites(expertId, courseId);
+  const createInvite = useCreateCourseInvite(expertId, courseId);
+  const revokeInvite = useRevokeCourseInvite(expertId, courseId);
   const extend = useExtendEnrollment(expertId, courseId);
   const revoke = useRevokeEnrollment(expertId, courseId);
-  const enrollTg = useEnrollByTelegram(expertId, courseId);
   const enrollUsername = useEnrollByUsername(expertId, courseId);
-  const [tgManual, setTgManual] = React.useState('');
   const [usernameManual, setUsernameManual] = React.useState('');
   const [grantDaysByRow, setGrantDaysByRow] = React.useState<Record<string, string>>({});
+  const [inviteMaxUses, setInviteMaxUses] = React.useState('1');
+  const [botUsername, setBotUsername] = React.useState(
+    (webappEnv as any).VITE_TELEGRAM_BOT_USERNAME ? String((webappEnv as any).VITE_TELEGRAM_BOT_USERNAME) : '',
+  );
 
   if (!expertId || !courseId) {
     return (
@@ -72,6 +80,13 @@ export function ExpertCourseAccessPage() {
   }
 
   const rows = data.items ?? [];
+  const inviteRows = invites.data?.items ?? [];
+
+  const buildDeepLink = (code: string) => {
+    const unameRaw = (botUsername || '').trim().replace(/^@/, '');
+    if (!unameRaw) return null;
+    return `https://t.me/${encodeURIComponent(unameRaw)}?start=${encodeURIComponent(`inv_${code}`)}`;
+  };
 
   return (
     <div style={{ padding: 'var(--sp-4)', display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
@@ -90,27 +105,138 @@ export function ExpertCourseAccessPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle style={{ fontSize: 'var(--text-md)' }}>Зачислить по Telegram ID</CardTitle>
+          <CardTitle style={{ fontSize: 'var(--text-md)' }}>Инвайт-ссылка на зачисление</CardTitle>
+          <CardDescription>
+            Сгенерируйте ссылку и отправьте её пользователю. Он откроет бота, нажмёт кнопку Mini App, авторизуется и
+            будет автоматически зачислен на курс. Лимит срабатываний ограничивается.
+          </CardDescription>
         </CardHeader>
-        <CardContent style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <Input placeholder="Telegram user id" value={tgManual} onChange={(e) => setTgManual(e.target.value)} />
-          <Button
-            variant="primary"
-            disabled={enrollTg.isPending}
-            onClick={async () => {
-              const t = tgManual.trim();
-              if (!t) return;
-              try {
-                await enrollTg.mutateAsync({ telegramUserId: t });
-                setTgManual('');
-                toast.show({ title: 'Зачислено', variant: 'success' });
-              } catch {
-                toast.show({ title: 'Ошибка', message: 'Не удалось зачислить', variant: 'error' });
-              }
-            }}
-          >
-            Зачислить
-          </Button>
+        <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
+          <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <Input
+              label="Bot username"
+              placeholder="@your_bot (без @ тоже ок)"
+              value={botUsername}
+              onChange={(e) => setBotUsername(e.target.value)}
+              style={{ minWidth: 240 }}
+            />
+            <Input
+              label="Лимит активаций"
+              placeholder="1"
+              value={inviteMaxUses}
+              onChange={(e) => setInviteMaxUses(e.target.value)}
+              style={{ width: 160 }}
+            />
+            <Button
+              variant="primary"
+              disabled={createInvite.isPending}
+              onClick={async () => {
+                const n = parseInt(inviteMaxUses.trim() || '1', 10);
+                if (!Number.isFinite(n) || n < 1 || n > 10_000) {
+                  toast.show({ title: 'Лимит: 1…10000', variant: 'info' });
+                  return;
+                }
+                try {
+                  const created = await createInvite.mutateAsync({ maxUses: n });
+                  const link = buildDeepLink(created.code);
+                  if (link && navigator.clipboard) {
+                    await navigator.clipboard.writeText(link);
+                    toast.show({ title: 'Ссылка скопирована', variant: 'success' });
+                  } else {
+                    toast.show({ title: 'Инвайт создан', message: `Код: ${created.code}`, variant: 'success' });
+                  }
+                } catch {
+                  toast.show({ title: 'Ошибка', message: 'Не удалось создать инвайт', variant: 'error' });
+                }
+              }}
+            >
+              Создать ссылку
+            </Button>
+          </div>
+
+          {invites.isLoading && (
+            <div style={{ color: 'var(--muted-fg)', fontSize: 'var(--text-sm)' }}>Загрузка инвайтов…</div>
+          )}
+          {invites.isError && (
+            <div style={{ color: 'var(--muted-fg)', fontSize: 'var(--text-sm)' }}>Не удалось загрузить инвайты.</div>
+          )}
+          {inviteRows.length === 0 && !invites.isLoading && (
+            <div style={{ color: 'var(--muted-fg)', fontSize: 'var(--text-sm)' }}>Инвайтов пока нет.</div>
+          )}
+
+          {inviteRows.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
+              {inviteRows.map((i) => {
+                const link = buildDeepLink(i.code);
+                const limit = i.maxUses == null ? '∞' : String(i.maxUses);
+                const used = i.usesCount ?? 0;
+                const exhausted = i.maxUses != null && used >= i.maxUses;
+                return (
+                  <div
+                    key={i.id}
+                    style={{
+                      padding: 'var(--sp-3)',
+                      background: 'var(--card-2)',
+                      borderRadius: 'var(--r-md)',
+                      fontSize: 'var(--text-sm)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 'var(--sp-2)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <strong>{i.code}</strong>
+                      <span style={{ color: exhausted ? 'var(--destructive, #c44)' : 'var(--muted-fg)' }}>
+                        использований: {used}/{limit}
+                      </span>
+                      {i.expiresAt && (
+                        <span style={{ color: 'var(--muted-fg)' }}>
+                          до: {new Date(i.expiresAt).toLocaleString('ru-RU')}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ color: 'var(--muted-fg)', wordBreak: 'break-all' }}>
+                      {link ?? 'Укажите bot username, чтобы сформировать ссылку.'}
+                    </div>
+                    <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={!link}
+                        onClick={async () => {
+                          if (!link) return;
+                          try {
+                            await navigator.clipboard.writeText(link);
+                            toast.show({ title: 'Скопировано', variant: 'success' });
+                          } catch {
+                            toast.show({ title: 'Не удалось скопировать', variant: 'error' });
+                          }
+                        }}
+                      >
+                        Копировать ссылку
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={revokeInvite.isPending}
+                        onClick={async () => {
+                          if (!window.confirm('Отозвать инвайт?')) return;
+                          try {
+                            await revokeInvite.mutateAsync({ code: i.code });
+                            toast.show({ title: 'Отозвано', variant: 'success' });
+                          } catch {
+                            toast.show({ title: 'Ошибка', variant: 'error' });
+                          }
+                        }}
+                      >
+                        Отозвать
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 

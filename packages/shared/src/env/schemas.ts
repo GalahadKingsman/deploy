@@ -77,6 +77,11 @@ export const BotEnvSchema = z.object({
 export const WebappEnvSchema = z.object({
   VITE_API_BASE_URL: z.string().optional(),
   VITE_USE_MSW: z.string().optional(),
+  /**
+   * Telegram bot username without @ (used to generate deep links like https://t.me/<bot>?start=...)
+   * Optional: UI can fall back to manual entry if unset.
+   */
+  VITE_TELEGRAM_BOT_USERNAME: z.string().optional(),
 });
 
 export type ApiEnv = z.infer<typeof ApiEnvSchema>;

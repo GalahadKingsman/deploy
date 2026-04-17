@@ -3,6 +3,7 @@ import { WebappEnvSchema } from '@tracked/shared';
 const rawEnv = {
   VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
   VITE_USE_MSW: import.meta.env.VITE_USE_MSW,
+  VITE_TELEGRAM_BOT_USERNAME: import.meta.env.VITE_TELEGRAM_BOT_USERNAME,
 };
 
 const result = WebappEnvSchema.safeParse(rawEnv);

@@ -284,7 +284,6 @@ export function LessonPage() {
       <Card>
         <CardHeader>
           <CardTitle style={{ fontSize: 'var(--text-md)' }}>Материал</CardTitle>
-          <CardDescription>Markdown (рендер будет улучшен позже).</CardDescription>
         </CardHeader>
         <CardContent>
           <pre

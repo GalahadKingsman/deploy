@@ -24,8 +24,23 @@ const openWebAppKb = new InlineKeyboard().webApp('Open WebApp', WEBAPP_URL);
 const pendingSubmissions = new Map<string, { lessonId: string }>();
 const pendingContacts = new Map<string, { step: 'await_contact' | 'await_email' }>();
 
-// Команда /start — inline-кнопка Open WebApp
+function isInviteCode(s: string): boolean {
+  // Our invite codes are hex strings produced by randomBytes(12).toString('hex') => 24 chars.
+  return /^[a-f0-9]{8,64}$/i.test(s);
+}
+
+// Команда /start — inline-кнопка Open WebApp; поддерживаем deep link payload (inv_<code>)
 bot.command('start', async (ctx) => {
+  const payloadRaw = typeof (ctx as any).match === 'string' ? String((ctx as any).match).trim() : '';
+  if (payloadRaw.startsWith('inv_')) {
+    const code = payloadRaw.slice('inv_'.length).trim();
+    if (isInviteCode(code)) {
+      const url = `${WEBAPP_URL}/invite/${encodeURIComponent(code)}`;
+      const kb = new InlineKeyboard().webApp('Open WebApp', url);
+      await ctx.reply('Open the app to activate invite:', { reply_markup: kb });
+      return;
+    }
+  }
   await ctx.reply('Open the app:', { reply_markup: openWebAppKb });
 });
 

@@ -5,6 +5,9 @@ import { fetchJson, ApiClientError } from '../api/index.js';
 export const expertEnrollmentsKey = (expertId: string, courseId: string) =>
   ['experts', expertId, 'courses', courseId, 'enrollments'] as const;
 
+export const expertInvitesKey = (expertId: string, courseId: string) =>
+  ['experts', expertId, 'courses', courseId, 'invites'] as const;
+
 export function useExpertCourseEnrollments(expertId: string, courseId: string) {
   return useQuery<ContractsV1.ListExpertCourseEnrollmentsResponseV1, Error>({
     queryKey: expertEnrollmentsKey(expertId, courseId),
@@ -20,6 +23,60 @@ export function useExpertCourseEnrollments(expertId: string, courseId: string) {
       return failureCount < 2;
     },
     staleTime: 10_000,
+  });
+}
+
+export function useExpertCourseInvites(expertId: string, courseId: string) {
+  return useQuery<{ items: ContractsV1.InviteV1[] }, Error>({
+    queryKey: expertInvitesKey(expertId, courseId),
+    queryFn: async ({ signal }) => {
+      return await fetchJson<{ items: ContractsV1.InviteV1[] }>({
+        path: `/experts/${encodeURIComponent(expertId)}/courses/${encodeURIComponent(courseId)}/invites`,
+        signal,
+      });
+    },
+    enabled: Boolean(expertId && courseId),
+    retry: (failureCount, error) => {
+      if (error instanceof ApiClientError && (error.status === 401 || error.status === 403)) return false;
+      return failureCount < 2;
+    },
+    staleTime: 10_000,
+  });
+}
+
+export function useCreateCourseInvite(expertId: string, courseId: string) {
+  const qc = useQueryClient();
+  return useMutation<
+    ContractsV1.InviteV1,
+    Error,
+    { maxUses?: number | null; expiresAt?: string | null }
+  >({
+    mutationFn: async (body) => {
+      return await fetchJson<ContractsV1.InviteV1>({
+        path: `/experts/${encodeURIComponent(expertId)}/courses/${encodeURIComponent(courseId)}/invites`,
+        method: 'POST',
+        body,
+      });
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: expertInvitesKey(expertId, courseId) });
+    },
+  });
+}
+
+export function useRevokeCourseInvite(expertId: string, courseId: string) {
+  const qc = useQueryClient();
+  return useMutation<{ ok: true }, Error, { code: string }>({
+    mutationFn: async ({ code }) => {
+      return await fetchJson<{ ok: true }>({
+        path: `/experts/${encodeURIComponent(expertId)}/invites/${encodeURIComponent(code)}/revoke`,
+        method: 'POST',
+        body: {},
+      });
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: expertInvitesKey(expertId, courseId) });
+    },
   });
 }
 
