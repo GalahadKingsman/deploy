@@ -35,9 +35,6 @@ export function ExpertCourseAccessPage() {
   const [usernameManual, setUsernameManual] = React.useState('');
   const [grantDaysByRow, setGrantDaysByRow] = React.useState<Record<string, string>>({});
   const [inviteMaxUses, setInviteMaxUses] = React.useState('1');
-  const [botUsername, setBotUsername] = React.useState(
-    (webappEnv as any).VITE_TELEGRAM_BOT_USERNAME ? String((webappEnv as any).VITE_TELEGRAM_BOT_USERNAME) : '',
-  );
 
   if (!expertId || !courseId) {
     return (
@@ -83,7 +80,9 @@ export function ExpertCourseAccessPage() {
   const inviteRows = invites.data?.items ?? [];
 
   const buildDeepLink = (code: string) => {
-    const unameRaw = (botUsername || '').trim().replace(/^@/, '');
+    const unameRaw = (webappEnv as any).VITE_TELEGRAM_BOT_USERNAME
+      ? String((webappEnv as any).VITE_TELEGRAM_BOT_USERNAME).trim().replace(/^@/, '')
+      : '';
     if (!unameRaw) return null;
     return `https://t.me/${encodeURIComponent(unameRaw)}?start=${encodeURIComponent(`inv_${code}`)}`;
   };
@@ -114,13 +113,6 @@ export function ExpertCourseAccessPage() {
         <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
           <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <Input
-              label="Bot username"
-              placeholder="@your_bot (без @ тоже ок)"
-              value={botUsername}
-              onChange={(e) => setBotUsername(e.target.value)}
-              style={{ minWidth: 240 }}
-            />
-            <Input
               label="Лимит активаций"
               placeholder="1"
               value={inviteMaxUses}
@@ -131,6 +123,14 @@ export function ExpertCourseAccessPage() {
               variant="primary"
               disabled={createInvite.isPending}
               onClick={async () => {
+                if (!buildDeepLink('test')) {
+                  toast.show({
+                    title: 'Нужен username бота',
+                    message: 'Задайте VITE_TELEGRAM_BOT_USERNAME при сборке фронта.',
+                    variant: 'info',
+                  });
+                  return;
+                }
                 const n = parseInt(inviteMaxUses.trim() || '1', 10);
                 if (!Number.isFinite(n) || n < 1 || n > 10_000) {
                   toast.show({ title: 'Лимит: 1…10000', variant: 'info' });
@@ -153,6 +153,12 @@ export function ExpertCourseAccessPage() {
               Создать ссылку
             </Button>
           </div>
+
+          {!buildDeepLink('test') && (
+            <div style={{ color: 'var(--muted-fg)', fontSize: 'var(--text-sm)' }}>
+              Чтобы формировались ссылки, задайте <code>VITE_TELEGRAM_BOT_USERNAME</code> при сборке фронта.
+            </div>
+          )}
 
           {invites.isLoading && (
             <div style={{ color: 'var(--muted-fg)', fontSize: 'var(--text-sm)' }}>Загрузка инвайтов…</div>
