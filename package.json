@@ -16,6 +16,7 @@
     "dev:webapp": "pnpm --filter @tracked/webapp dev",
     "dev:edify-site": "pnpm --filter @tracked/edify-site dev",
     "build:edify-site": "pnpm --filter @tracked/edify-site build",
+    "build:webapp-and-edify-site": "pnpm --filter @tracked/webapp build && pnpm --filter @tracked/edify-site build",
     "start:api": "pnpm --filter @tracked/shared build && pnpm --filter @tracked/api start",
     "dev:api": "node tools/dev/wait-for-db.mjs && node tools/dev/ensure-api-port-free.mjs && pnpm --filter @tracked/shared build && pnpm --filter @tracked/api dev",
     "infra:up": "docker compose -f infra/docker-compose.yml --env-file .env up -d postgres redis minio",
