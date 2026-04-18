@@ -3,6 +3,9 @@
   "version": "0.6.9.7",
   "private": true,
   "packageManager": "pnpm@9.15.4",
+  "dependencies": {
+    "vite": "^5.4.10"
+  },
   "scripts": {
     "prepare": "husky",
     "build": "turbo run build",
