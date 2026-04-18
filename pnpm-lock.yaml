@@ -192,6 +192,16 @@ importers:
         specifier: ^5.4.10
         version: 5.4.21(@types/node@20.19.30)
 
+  apps/edify-site:
+    dependencies:
+      vite:
+        specifier: ^5.4.10
+        version: 5.4.21(@types/node@20.19.30)
+    devDependencies:
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+
   packages/shared:
     dependencies:
       zod:
