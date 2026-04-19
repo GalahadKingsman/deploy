@@ -339,18 +339,87 @@ textarea.form-input{resize:vertical;min-height:80px}
 .upload-zone-title{font-family:var(--fd);font-size:12px;font-weight:700;color:var(--t1);margin-bottom:4px}
 .upload-zone-sub{font-size:11px;color:var(--t3)}
 
-/* Course card (student) */
+/* Course card (student) — обложка на всю карточку, блок с текстом снизу */
 .course-card-s{
   background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);
   overflow:hidden;transition:all .2s;cursor:pointer;box-shadow:var(--sh);
+  position:relative;display:flex;flex-direction:column;min-height:268px;
 }
 .course-card-s:hover{transform:translateY(-3px);box-shadow:var(--sh2);border-color:var(--ab)}
-.cc-thumb{height:140px;display:flex;align-items:center;justify-content:center;position:relative}
-.cc-body{padding:16px}
-.cc-title{font-family:var(--fd);font-size:13px;font-weight:700;letter-spacing:-.015em;color:var(--t1);margin-bottom:4px;line-height:1.3}
-.cc-author{font-size:11px;color:var(--t3);margin-bottom:10px}
-.cc-price{font-family:var(--fd);font-size:15px;font-weight:700;color:var(--t1)}
-.cc-price-free{color:var(--ok)}
+.course-card-s .cc-thumb{
+  position:absolute;inset:0;height:auto;min-height:100%;z-index:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.course-card-s .cc-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.course-card-s .cc-scrim{
+  position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(to bottom, rgba(8,12,16,.06) 0%, rgba(8,12,16,.38) 42%, rgba(8,12,16,.84) 100%);
+}
+.course-card-s .cc-body{
+  position:relative;z-index:2;margin-top:auto;padding:16px;
+  color:rgba(248,250,252,.92);
+}
+.course-card-s .cc-title{
+  font-family:var(--fd);font-size:13px;font-weight:700;letter-spacing:-.015em;
+  color:#f8fafc;margin-bottom:4px;line-height:1.3;
+  text-shadow:0 1px 4px rgba(0,0,0,.55);
+}
+.course-card-s .cc-author{
+  font-size:11px;color:rgba(248,250,252,.78);margin-bottom:10px;
+  text-shadow:0 1px 3px rgba(0,0,0,.45);
+}
+.course-card-s .cc-price{
+  font-family:var(--fd);font-size:15px;font-weight:700;color:#f8fafc;
+  text-shadow:0 1px 4px rgba(0,0,0,.55);
+}
+.course-card-s .cc-price-free{color:#bef264;text-shadow:0 1px 4px rgba(0,0,0,.45)}
+.course-card-s .cc-body .prog-wrap{margin:10px 0 4px}
+.course-card-s .cc-body .prog-bar{background:rgba(255,255,255,.22)}
+.course-card-s .cc-body .prog-val{
+  color:rgba(248,250,252,.92);text-shadow:0 1px 3px rgba(0,0,0,.45);
+}
+.course-card-s .cc-mycourse-meta{
+  font-size:10px;color:rgba(248,250,252,.78);margin-bottom:12px;
+  text-shadow:0 1px 2px rgba(0,0,0,.4);
+}
+
+/* Expert «Мои курсы» — та же логика полноэкранной обложки */
+.ep-expert-course-card.card{
+  position:relative;display:flex;flex-direction:column;overflow:hidden;
+  min-height:380px;background:var(--surface);
+}
+.ep-expert-course-card__bg{
+  position:absolute;inset:0;z-index:0;display:flex;align-items:center;justify-content:center;
+}
+.ep-expert-course-card__bg img{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;
+}
+.ep-expert-course-card__scrim{
+  position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(to bottom, rgba(8,12,16,.08) 0%, rgba(8,12,16,.42) 45%, rgba(8,12,16,.9) 100%);
+}
+.ep-expert-course-card__body{
+  position:relative;z-index:2;margin-top:auto;padding:16px;
+}
+.ep-expert-course-card .ep-ecd-title{
+  font-family:var(--fd);font-size:13px;font-weight:700;color:#f8fafc;margin-bottom:4px;letter-spacing:-.01em;
+  text-shadow:0 1px 4px rgba(0,0,0,.55);
+}
+.ep-expert-course-card .ep-ecd-meta{
+  font-size:11px;color:rgba(248,250,252,.82);margin-bottom:12px;
+  text-shadow:0 1px 3px rgba(0,0,0,.42);
+}
+.ep-expert-course-card .ep-ecd-lessons{
+  font-family:var(--fm);font-size:9px;color:rgba(248,250,252,.85);
+  text-shadow:0 1px 2px rgba(0,0,0,.4);
+}
+.ep-expert-course-card .ep-ecd-cap{
+  font-size:10px;color:rgba(248,250,252,.78);margin-top:4px;
+  text-shadow:0 1px 2px rgba(0,0,0,.38);
+}
+.ep-expert-course-card .prog-bar{background:rgba(255,255,255,.22)}
+.ep-expert-course-card .prog-val{color:rgba(248,250,252,.9);text-shadow:0 1px 3px rgba(0,0,0,.45)}
+.ep-expert-course-card .div{background:rgba(255,255,255,.16);margin:16px 0}
 
 /* Notification dot */
 .dot-online{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok)}

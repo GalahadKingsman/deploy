@@ -145,24 +145,21 @@ if (platformMount) {
         thumb.appendChild(span);
       };
       if (cover) {
-        // Используем <img>, чтобы иметь onerror и гарантированный фоллбек
         const img = document.createElement('img');
         img.alt = '';
         img.src = cover;
         img.loading = 'lazy';
         img.decoding = 'async';
         img.referrerPolicy = 'no-referrer';
-        img.style.width = '100%';
-        img.style.height = '100%';
-        img.style.objectFit = 'cover';
-        img.style.display = 'block';
         img.addEventListener('error', () => setPlaceholder(), { once: true });
-        // Фон оставим светлым: если картинка грузится — будет ок; если нет — заменим.
         thumb.style.background = 'var(--surface2)';
         thumb.appendChild(img);
       } else {
         setPlaceholder();
       }
+
+      const scrim = document.createElement('div');
+      scrim.className = 'cc-scrim';
 
       const body = document.createElement('div');
       body.className = 'cc-body';
@@ -181,7 +178,7 @@ if (platformMount) {
       if ((course.priceCents ?? 0) <= 0) price.classList.add('cc-price-free');
 
       body.append(title, author, price);
-      card.append(thumb, body);
+      card.append(thumb, scrim, body);
       return card;
     }
 
@@ -210,9 +207,7 @@ if (platformMount) {
       if (fill) fill.style.width = `${pct}%`;
 
       const meta = document.createElement('div');
-      meta.style.fontSize = '10px';
-      meta.style.color = 'var(--t3)';
-      meta.style.marginBottom = '12px';
+      meta.className = 'cc-mycourse-meta';
       meta.textContent = pct === 0 ? 'Не начат' : `Прогресс: ${pct}%`;
 
       const btn = document.createElement('button');
@@ -1510,28 +1505,25 @@ if (platformMount) {
         ['linear-gradient(135deg,#1c1428,#2e1f4a)', 'rgba(124,58,237,.5)'],
         ['linear-gradient(135deg,#1c1409,#2e2010)', 'rgba(245,158,11,.4)'],
       ] as const;
-      const [bg, ac] = gradients[index % gradients.length]!;
+      const [gradBg, accent] = gradients[index % gradients.length]!;
 
       const card = document.createElement('div');
-      card.className = 'card';
+      card.className = 'card ep-expert-course-card';
       card.dataset.epExpertCourseCard = '1';
-      card.style.overflow = 'hidden';
       card.style.cursor = 'pointer';
       if (item.status === 'draft') card.style.opacity = '0.88';
 
-      const thumb = document.createElement('div');
-      thumb.style.height = '120px';
-      thumb.style.display = 'flex';
-      thumb.style.alignItems = 'center';
-      thumb.style.justifyContent = 'center';
-      thumb.style.position = 'relative';
-      thumb.style.background = bg;
+      const bg = document.createElement('div');
+      bg.className = 'ep-expert-course-card__bg';
+      bg.style.background = gradBg;
 
       const initials = document.createElement('span');
       initials.style.fontFamily = 'var(--fd)';
       initials.style.fontSize = '36px';
       initials.style.fontWeight = '900';
-      initials.style.color = ac;
+      initials.style.color = accent;
+      initials.style.position = 'relative';
+      initials.style.zIndex = '0';
       initials.textContent = initialsFromTitle(item.title);
 
       const cover = normalizeAssetUrl(item.coverUrl ?? null);
@@ -1542,26 +1534,24 @@ if (platformMount) {
         img.loading = 'lazy';
         img.decoding = 'async';
         img.referrerPolicy = 'no-referrer';
-        img.style.width = '100%';
-        img.style.height = '100%';
-        img.style.objectFit = 'cover';
-        img.style.position = 'absolute';
-        img.style.inset = '0';
         img.addEventListener(
           'error',
           () => {
             img.remove();
-            thumb.appendChild(initials);
+            bg.appendChild(initials);
           },
           { once: true },
         );
-        thumb.appendChild(img);
+        bg.appendChild(img);
       } else {
-        thumb.appendChild(initials);
+        bg.appendChild(initials);
       }
 
+      const scrim = document.createElement('div');
+      scrim.className = 'ep-expert-course-card__scrim';
+
       const body = document.createElement('div');
-      body.style.padding = '16px';
+      body.className = 'ep-expert-course-card__body';
 
       const row1 = document.createElement('div');
       row1.style.display = 'flex';
@@ -1583,25 +1573,16 @@ if (platformMount) {
       }
 
       const lessonsMeta = document.createElement('span');
-      lessonsMeta.style.fontFamily = 'var(--fm)';
-      lessonsMeta.style.fontSize = '9px';
-      lessonsMeta.style.color = 'var(--t3)';
+      lessonsMeta.className = 'ep-ecd-lessons';
       lessonsMeta.textContent = `${item.lessonsCount} ${pluralRu(item.lessonsCount, ['урок', 'урока', 'уроков'])}`;
       row1.append(tag, lessonsMeta);
 
       const titleEl = document.createElement('div');
-      titleEl.style.fontFamily = 'var(--fd)';
-      titleEl.style.fontSize = '13px';
-      titleEl.style.fontWeight = '700';
-      titleEl.style.color = 'var(--t1)';
-      titleEl.style.marginBottom = '4px';
-      titleEl.style.letterSpacing = '-.01em';
+      titleEl.className = 'ep-ecd-title';
       titleEl.textContent = item.title;
 
       const meta = document.createElement('div');
-      meta.style.fontSize = '11px';
-      meta.style.color = 'var(--t3)';
-      meta.style.marginBottom = '12px';
+      meta.className = 'ep-ecd-meta';
       meta.textContent = `${item.modulesCount} ${pluralRu(item.modulesCount, ['модуль', 'модуля', 'модулей'])} · ${item.activeStudentsCount} ${pluralRu(item.activeStudentsCount, ['студент', 'студента', 'студентов'])}`;
 
       const progWrap = document.createElement('div');
@@ -1629,9 +1610,7 @@ if (platformMount) {
       progWrap.append(progBar, progVal);
 
       const progCaption = document.createElement('div');
-      progCaption.style.fontSize = '10px';
-      progCaption.style.color = 'var(--t3)';
-      progCaption.style.marginTop = '4px';
+      progCaption.className = 'ep-ecd-cap';
       progCaption.textContent = showDraftProg ? 'курс не опубликован' : 'среднее завершение';
 
       const div = document.createElement('div');
@@ -1688,7 +1667,7 @@ if (platformMount) {
       }
 
       body.append(row1, titleEl, meta, progWrap, progCaption, div, foot);
-      card.append(thumb, body);
+      card.append(bg, scrim, body);
       return card;
     }
 
