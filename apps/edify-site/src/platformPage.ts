@@ -85,6 +85,17 @@ if (platformMount) {
       return (a + b).slice(0, 2) || 'ED';
     }
 
+    function normalizeAssetUrl(raw: string | null | undefined): string | null {
+      const u = (raw ?? '').trim();
+      if (!u) return null;
+      if (/^https?:\/\//i.test(u)) return u;
+      // В API часто приходят относительные пути (например /uploads/..)
+      const api = getApiBaseUrl();
+      if (u.startsWith('/') && api) return `${api}${u}`;
+      // Фоллбек: как есть (вдруг это data: или относительный к текущему origin путь)
+      return u;
+    }
+
     function renderCourseCard(course: CourseV1): HTMLElement {
       const card = document.createElement('div');
       card.className = 'course-card-s';
@@ -92,11 +103,9 @@ if (platformMount) {
 
       const thumb = document.createElement('div');
       thumb.className = 'cc-thumb';
-      if (course.coverUrl) {
-        thumb.style.backgroundImage = `url(${course.coverUrl})`;
-        thumb.style.backgroundSize = 'cover';
-        thumb.style.backgroundPosition = 'center';
-      } else {
+      const cover = normalizeAssetUrl(course.coverUrl ?? null);
+      const setPlaceholder = () => {
+        thumb.replaceChildren();
         thumb.style.background = 'linear-gradient(135deg,#0e2c38,#1a4a58)';
         const span = document.createElement('span');
         span.style.fontFamily = 'var(--fd)';
@@ -105,6 +114,25 @@ if (platformMount) {
         span.style.color = 'rgba(10,168,200,.4)';
         span.textContent = initialsFromTitle(course.title);
         thumb.appendChild(span);
+      };
+      if (cover) {
+        // Используем <img>, чтобы иметь onerror и гарантированный фоллбек
+        const img = document.createElement('img');
+        img.alt = '';
+        img.src = cover;
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.referrerPolicy = 'no-referrer';
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'cover';
+        img.style.display = 'block';
+        img.addEventListener('error', () => setPlaceholder(), { once: true });
+        // Фон оставим светлым: если картинка грузится — будет ок; если нет — заменим.
+        thumb.style.background = 'var(--surface2)';
+        thumb.appendChild(img);
+      } else {
+        setPlaceholder();
       }
 
       const body = document.createElement('div');
