@@ -259,11 +259,126 @@ if (platformMount) {
       return (await res.json()) as T;
     }
 
+    type MyRecentSubmissionRowV1 = {
+      id: string;
+      lessonId: string;
+      status: string;
+      score?: number | null;
+      courseTitle: string;
+      moduleTitle: string;
+      lessonTitle: string;
+    };
+
+    function recentSubmissionStatusUi(status: string): { label: string; tagClass: string } {
+      if (status === 'accepted') return { label: 'Проверено', tagClass: 'tag tag-live' };
+      if (status === 'rework') return { label: 'На доработку', tagClass: 'tag tag-draft' };
+      return { label: 'На проверке', tagClass: 'tag tag-new' };
+    }
+
+    async function hydrateRecentSubmissionsTable(root: ShadowRoot | null): Promise<void> {
+      if (!root) return;
+      const tbody = root.querySelector(
+        '#screen-s-homework [data-ep-recent-submissions-tbody]',
+      ) as HTMLElement | null;
+      if (!tbody) return;
+      const token = getAccessToken();
+      const emptyHint = (text: string, color: string) => {
+        tbody.replaceChildren();
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 3;
+        td.style.textAlign = 'center';
+        td.style.fontSize = '13px';
+        td.style.padding = '18px 12px';
+        td.style.color = color;
+        td.textContent = text;
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+      };
+      if (!token) {
+        emptyHint('Войдите в аккаунт, чтобы видеть отправленные задания.', 'var(--t3)');
+        return;
+      }
+      tbody.replaceChildren();
+      const loadingTr = document.createElement('tr');
+      const loadingTd = document.createElement('td');
+      loadingTd.colSpan = 3;
+      loadingTd.style.textAlign = 'center';
+      loadingTd.style.color = 'var(--t3)';
+      loadingTd.textContent = 'Загрузка…';
+      loadingTr.appendChild(loadingTd);
+      tbody.appendChild(loadingTr);
+      try {
+        const res = await fetchJson<{ items: MyRecentSubmissionRowV1[] }>(
+          '/me/submissions/recent?limit=3',
+          token,
+        );
+        const items = res.items ?? [];
+        tbody.replaceChildren();
+        if (items.length === 0) {
+          emptyHint('Пока нет отправленных домашних заданий.', 'var(--t3)');
+          return;
+        }
+        for (const it of items) {
+          const tr = document.createElement('tr');
+          tr.dataset.epRecentLesson = it.lessonId;
+          const td1 = document.createElement('td');
+          const name = document.createElement('div');
+          name.className = 'td-name';
+          name.textContent = `ДЗ к уроку ${(it.lessonTitle || '—').trim() || '—'}`;
+          const sub = document.createElement('div');
+          sub.style.fontSize = '10px';
+          sub.style.color = 'var(--t3)';
+          sub.textContent = `${(it.courseTitle || '—').trim() || '—'} / ${(it.moduleTitle || '—').trim() || '—'}`;
+          td1.append(name, sub);
+          const td2 = document.createElement('td');
+          td2.className = 'tbl-col-center';
+          if (typeof it.score === 'number' && it.score >= 1 && it.score <= 5) {
+            const sp = document.createElement('span');
+            sp.className = 'ep-recent-sub-stars';
+            sp.setAttribute('aria-label', `Оценка ${it.score} из 5`);
+            sp.textContent = '★'.repeat(it.score) + '☆'.repeat(5 - it.score);
+            td2.appendChild(sp);
+          } else {
+            const dash = document.createElement('span');
+            dash.style.color = 'var(--t3)';
+            dash.style.fontSize = '12px';
+            dash.textContent = '—';
+            td2.appendChild(dash);
+          }
+          const td3 = document.createElement('td');
+          td3.className = 'tbl-col-right';
+          const tag = document.createElement('span');
+          const u = recentSubmissionStatusUi(it.status);
+          tag.className = u.tagClass;
+          tag.textContent = u.label;
+          td3.appendChild(tag);
+          tr.append(td1, td2, td3);
+          tbody.appendChild(tr);
+        }
+      } catch {
+        tbody.replaceChildren();
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 3;
+        td.style.textAlign = 'center';
+        td.style.color = 'var(--err)';
+        td.style.fontSize = '13px';
+        td.style.padding = '18px 12px';
+        td.textContent = 'Не удалось загрузить список.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+      }
+    }
+
     const shell = mountPlatformShell(platformMount, {
       initialRole: 'student',
       initialScreenId: 's-catalog',
       onAction(action) {
         if (import.meta.env.DEV) console.debug('[edify-platform-page]', action);
+        if (action.type === 'navigate' && action.screenId === 's-homework') {
+          void hydrateRecentSubmissionsTable(action.shadowRoot);
+        }
       },
     });
 
@@ -764,6 +879,7 @@ if (platformMount) {
         window.alert('Домашнее задание отправлено.');
         shell.showScreen('s-lesson');
         await openLesson(lessonId);
+        void hydrateRecentSubmissionsTable(shell.shadowRoot);
       } catch (e) {
         window.alert(e instanceof Error ? e.message : 'Не удалось отправить ответ');
       } finally {
@@ -1267,6 +1383,15 @@ if (platformMount) {
       if (prevLessonBtn && prevTarget) {
         ev.preventDefault();
         void openLesson(prevTarget);
+        return;
+      }
+
+      const recentLessonRow = t?.closest('tr[data-ep-recent-lesson]') as HTMLElement | null;
+      const recentLid = recentLessonRow?.dataset.epRecentLesson;
+      if (recentLessonRow && recentLid) {
+        ev.preventDefault();
+        shell.showScreen('s-lesson');
+        void openLesson(recentLid);
         return;
       }
 

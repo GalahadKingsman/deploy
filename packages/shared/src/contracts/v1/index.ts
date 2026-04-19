@@ -73,6 +73,8 @@ export type {
   CreateSubmissionRequestV1,
   CreateSubmissionResponseV1,
   ListLessonSubmissionsResponseV1,
+  ListMyRecentSubmissionsResponseV1,
+  MyRecentSubmissionItemV1,
   DecideSubmissionRequestV1,
 } from './assignments-api.js';
 export type { SubmissionV1 } from './submission.js';
@@ -181,6 +183,8 @@ export {
   CreateSubmissionRequestV1Schema,
   CreateSubmissionResponseV1Schema,
   ListLessonSubmissionsResponseV1Schema,
+  ListMyRecentSubmissionsResponseV1Schema,
+  MyRecentSubmissionItemV1Schema,
   DecideSubmissionRequestV1Schema,
   SubmissionV1Schema,
   OrderV1Schema,

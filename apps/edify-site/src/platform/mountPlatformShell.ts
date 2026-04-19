@@ -3,7 +3,7 @@ import shellHtml from './shellBody.html?raw';
 
 export type PlatformShellAction =
   | { type: 'role'; role: 'expert' | 'student' }
-  | { type: 'navigate'; screenId: string }
+  | { type: 'navigate'; screenId: string; shadowRoot: ShadowRoot }
   | { type: 'open_course'; courseId: string }
   | { type: 'open_lesson'; lessonId: string }
   | { type: 'module_toggle' }
@@ -58,7 +58,7 @@ function showScreen(
   });
 
   root.getElementById('main-content')?.scrollTo(0, 0);
-  emit(handlers, { type: 'navigate', screenId: id }, ev);
+  emit(handlers, { type: 'navigate', screenId: id, shadowRoot: root }, ev);
 }
 
 function setRole(

@@ -192,6 +192,10 @@ table.tbl th{
   color:var(--t3);border-bottom:1px solid var(--line);background:var(--surface2);
 }
 table.tbl td{padding:11px 12px;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2);vertical-align:middle}
+table.tbl th.tbl-col-center,table.tbl td.tbl-col-center{text-align:center}
+table.tbl th.tbl-col-right,table.tbl td.tbl-col-right{text-align:right}
+table.tbl tr[data-ep-recent-lesson]{cursor:pointer}
+.ep-recent-sub-stars{font-size:14px;color:#c9a227;letter-spacing:2px;line-height:1;white-space:nowrap}
 table.tbl tr:last-child td{border-bottom:none}
 table.tbl tr:hover td{background:var(--bg)}
 .td-name{font-weight:600;color:var(--t1)}

@@ -1,4 +1,4 @@
-import { Controller, Get, NotFoundException, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ContractsV1, ErrorCodes } from '@tracked/shared';
 import { JwtAuthGuard } from '../auth/session/jwt-auth.guard.js';
@@ -32,6 +32,26 @@ export class StudentSubmissionsController {
     const ok = await this.enrollmentsRepository.hasActiveAccess({ userId, courseId: lesson.courseId });
     if (!ok) throw new NotFoundException({ code: ErrorCodes.FORBIDDEN, message: 'No active access to this course' });
     const items = await this.submissionsRepository.listMyByLesson({ userId, lessonId });
+    return { items };
+  }
+
+  @Get('me/submissions/recent')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Latest homework submissions across my enrolled courses' })
+  @ApiResponse({ status: 200, description: 'Recent submissions with course/module/lesson titles' })
+  async listRecentMine(
+    @Query('limit') limitRaw: string | undefined,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
+  ): Promise<ContractsV1.ListMyRecentSubmissionsResponseV1> {
+    const userId = req.user?.userId;
+    if (!userId) throw new NotFoundException({ code: ErrorCodes.UNAUTHORIZED, message: 'Unauthorized' });
+    let limit = 3;
+    if (limitRaw != null && limitRaw !== '') {
+      const n = parseInt(limitRaw, 10);
+      if (!Number.isNaN(n)) limit = Math.min(20, Math.max(1, n));
+    }
+    const items = await this.submissionsRepository.listMyRecentEnriched({ userId, limit });
     return { items };
   }
 }

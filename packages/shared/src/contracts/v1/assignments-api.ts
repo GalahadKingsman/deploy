@@ -41,6 +41,23 @@ export const ListLessonSubmissionsResponseV1Schema = z.object({
   items: z.array(SubmissionV1Schema),
 });
 
+/** Latest homework submissions for the student with course / module / lesson titles (platform, etc.). */
+export const MyRecentSubmissionItemV1Schema = SubmissionV1Schema.extend({
+  courseTitle: z.string(),
+  moduleTitle: z.string(),
+  lessonTitle: z.string(),
+});
+
+export type MyRecentSubmissionItemV1 = z.infer<typeof MyRecentSubmissionItemV1Schema>;
+
+export interface ListMyRecentSubmissionsResponseV1 {
+  items: MyRecentSubmissionItemV1[];
+}
+
+export const ListMyRecentSubmissionsResponseV1Schema = z.object({
+  items: z.array(MyRecentSubmissionItemV1Schema),
+});
+
 export interface DecideSubmissionRequestV1 {
   status: z.infer<typeof SubmissionStatusV1Schema>;
   score?: number | null;

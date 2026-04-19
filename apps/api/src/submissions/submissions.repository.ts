@@ -92,6 +92,78 @@ export class SubmissionsRepository {
     );
   }
 
+  /** Latest submissions for student, only courses with active enrollment; includes lesson/course/module titles. */
+  async listMyRecentEnriched(params: { userId: string; limit: number }): Promise<ContractsV1.MyRecentSubmissionItemV1[]> {
+    if (!this.pool) return [];
+    const lim = Math.min(50, Math.max(1, Number.isFinite(params.limit) ? Math.floor(params.limit) : 3));
+    const res = await this.pool.query<{
+      id: string;
+      assignment_id: string;
+      student_user_id: string;
+      created_at: Date;
+      text: string | null;
+      link: string | null;
+      file_key: string | null;
+      status: string;
+      score: number | null;
+      reviewer_comment: string | null;
+      lesson_id: string;
+      student_telegram_username: string | null;
+      course_title: string;
+      module_title: string;
+      lesson_title: string;
+    }>(
+      `
+      SELECT s.id, s.assignment_id, s.student_user_id, s.created_at, s.text, s.link, s.file_key, s.status,
+             s.score, s.reviewer_comment,
+             a.lesson_id,
+             u.username AS student_telegram_username,
+             c.title AS course_title,
+             m.title AS module_title,
+             l.title AS lesson_title
+      FROM submissions s
+      JOIN assignments a ON a.id = s.assignment_id
+      JOIN lessons l ON l.id = a.lesson_id AND l.deleted_at IS NULL
+      JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+      JOIN courses c ON c.id = m.course_id AND c.deleted_at IS NULL
+      JOIN users u ON u.id = s.student_user_id
+      INNER JOIN enrollments e
+        ON e.user_id = s.student_user_id
+       AND e.course_id = c.id
+       AND e.revoked_at IS NULL
+       AND (e.access_end IS NULL OR e.access_end > NOW())
+      WHERE s.student_user_id = $1
+      ORDER BY s.created_at DESC
+      LIMIT $2
+      `,
+      [params.userId, lim],
+    );
+    return res.rows.map((r) => {
+      const base = mapRow(
+        {
+          id: r.id,
+          assignment_id: r.assignment_id,
+          student_user_id: r.student_user_id,
+          created_at: r.created_at,
+          text: r.text,
+          link: r.link,
+          file_key: r.file_key,
+          status: r.status,
+          score: r.score,
+          reviewer_comment: r.reviewer_comment,
+        },
+        r.lesson_id,
+        r.student_telegram_username,
+      );
+      return {
+        ...base,
+        courseTitle: r.course_title,
+        moduleTitle: r.module_title,
+        lessonTitle: r.lesson_title,
+      };
+    });
+  }
+
   async findForDownload(submissionId: string): Promise<{
     submissionId: string;
     lessonId: string;
