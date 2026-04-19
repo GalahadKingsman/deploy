@@ -1,5 +1,23 @@
 import './edify.css';
 
+function toggleMobileNav(): void {
+  const nav = document.getElementById('mobile-nav');
+  const burger = document.getElementById('nav-burger');
+  if (!nav || !burger) return;
+  nav.classList.toggle('open');
+  burger.classList.toggle('open');
+  document.body.style.overflow = nav.classList.contains('open') ? 'hidden' : '';
+}
+
+function closeMobileNav(): void {
+  const nav = document.getElementById('mobile-nav');
+  const burger = document.getElementById('nav-burger');
+  if (!nav || !burger) return;
+  nav.classList.remove('open');
+  burger.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
 function showScreen(btn: HTMLElement, id: string): void {
   document.querySelectorAll('.ptab').forEach((b) => b.classList.remove('active'));
   btn.classList.add('active');
@@ -36,12 +54,16 @@ function toggleP(): void {
 
 declare global {
   interface Window {
+    toggleMobileNav: () => void;
+    closeMobileNav: () => void;
     showScreen: (btn: HTMLElement, id: string) => void;
     faq: (btn: HTMLElement) => void;
     toggleP: () => void;
   }
 }
 
+window.toggleMobileNav = toggleMobileNav;
+window.closeMobileNav = closeMobileNav;
 window.showScreen = showScreen;
 window.faq = faq;
 window.toggleP = toggleP;

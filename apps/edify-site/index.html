@@ -25,8 +25,24 @@
   <div class="nav-right">
     <a href="#" class="btn-ghost-sm">Войти</a>
     <a href="#pricing" class="btn-sm">Разместить курс →</a>
+    <button class="nav-burger" id="nav-burger" onclick="toggleMobileNav()" aria-label="Меню">
+      <span></span><span></span><span></span>
+    </button>
   </div>
 </header>
+
+<!-- Mobile Nav Overlay -->
+<div class="mobile-nav" id="mobile-nav">
+  <div class="mobile-nav-inner">
+    <a href="#platform" onclick="closeMobileNav()">Платформа</a>
+    <a href="#features" onclick="closeMobileNav()">Возможности</a>
+    <a href="#pricing" onclick="closeMobileNav()">Тарифы</a>
+    <a href="#faq" onclick="closeMobileNav()">FAQ</a>
+    <div class="mobile-nav-divider"></div>
+    <a href="#" class="mobile-nav-login" onclick="closeMobileNav()">Войти</a>
+    <a href="#pricing" class="mobile-nav-cta" onclick="closeMobileNav()">Разместить курс →</a>
+  </div>
+</div>
 
 <!-- HERO -->
 <section class="hero">
