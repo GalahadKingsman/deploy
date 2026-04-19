@@ -21,12 +21,28 @@ export class ProgressRepository {
     if (!this.pool) return [];
     const res = await this.pool.query<{ lesson_id: string }>(
       `
-      SELECT p.lesson_id
-      FROM lesson_progress p
-      JOIN lessons l ON l.id = p.lesson_id AND l.deleted_at IS NULL
-      JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
-      WHERE p.user_id = $1 AND m.course_id = $2
-      ORDER BY p.completed_at ASC
+      WITH completed AS (
+        -- New progress-based completion
+        SELECT p.lesson_id, p.completed_at AS at
+        FROM lesson_progress p
+        JOIN lessons l ON l.id = p.lesson_id AND l.deleted_at IS NULL
+        JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+        WHERE p.user_id = $1 AND m.course_id = $2
+
+        UNION ALL
+
+        -- Backfill compatibility: accepted homework implies lesson completion
+        SELECT a.lesson_id, s.decided_at AS at
+        FROM submissions s
+        JOIN assignments a ON a.id = s.assignment_id
+        JOIN lessons l ON l.id = a.lesson_id AND l.deleted_at IS NULL
+        JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+        WHERE s.student_user_id = $1 AND m.course_id = $2 AND s.status = 'accepted'
+      )
+      SELECT lesson_id
+      FROM completed
+      GROUP BY lesson_id
+      ORDER BY MIN(at) ASC NULLS LAST
       `,
       [params.userId, params.courseId],
     );
