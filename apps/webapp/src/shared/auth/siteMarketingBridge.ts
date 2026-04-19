@@ -7,6 +7,14 @@ import type { BootstrapAuthResult } from './bootstrapAuth.js';
 const START_PARAM_POLL_MS = 100;
 const START_PARAM_POLL_MAX = 16;
 
+type MainButtonApi = {
+  setText?: (text: string) => void;
+  show?: () => void;
+  hide?: () => void;
+  onClick?: (cb: () => void) => void;
+  offClick?: (cb: () => void) => void;
+};
+
 function urlSuggestsSiteLogin(): boolean {
   try {
     const s = window.location.search;
@@ -16,15 +24,7 @@ function urlSuggestsSiteLogin(): boolean {
   }
 }
 
-/**
- * После входа в Mini App по ссылке с бота (?start=site → startapp=site) выдаём одноразовый код
- * и открываем маркетинговый сайт с ?login=…, где токен сохраняется в localStorage.
- */
-export async function tryFinishSiteMarketingLogin(
-  authResult: BootstrapAuthResult | null,
-): Promise<void> {
-  if (!authResult || authResult.mode !== 'authenticated') return;
-
+async function awaitSiteLoginIntent(): Promise<boolean> {
   let intent = hasSiteMarketingLoginIntent();
   if (!intent && urlSuggestsSiteLogin()) {
     for (let i = 0; i < START_PARAM_POLL_MAX && !intent; i += 1) {
@@ -32,31 +32,99 @@ export async function tryFinishSiteMarketingLogin(
       intent = hasSiteMarketingLoginIntent();
     }
   }
-  if (!intent) return;
+  return intent;
+}
 
+async function issueBridgeUrl(): Promise<string | null> {
+  const raw = await fetchJson<unknown>({
+    path: '/auth/site-bridge/issue',
+    method: 'POST',
+    body: {},
+  });
+  const parsed = ContractsV1.AuthSiteBridgeIssueResponseV1Schema.safeParse(raw);
+  if (!parsed.success) {
+    console.warn('site-bridge issue: unexpected response', raw);
+    return null;
+  }
   const base = config.MARKETING_SITE_URL;
-  const tg = typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined;
+  return `${base}/?login=${encodeURIComponent(parsed.data.code)}`;
+}
+
+function openMarketingLoginUrl(url: string, tg: NonNullable<typeof window.Telegram>['WebApp']): void {
   try {
-    const raw = await fetchJson<unknown>({
-      path: '/auth/site-bridge/issue',
-      method: 'POST',
-      body: {},
-    });
-    const parsed = ContractsV1.AuthSiteBridgeIssueResponseV1Schema.safeParse(raw);
-    if (!parsed.success) {
-      console.warn('site-bridge issue: unexpected response', raw);
-      tg?.showAlert?.('Не удалось получить код для входа на сайт. Попробуйте снова из бота.');
+    void navigator.clipboard.writeText(url);
+  } catch {
+    /* ignore */
+  }
+  const opened = window.open(url, '_blank', 'noopener,noreferrer');
+  if (opened == null) {
+    if (tg.openLink) tg.openLink(url, { try_instant_view: false });
+    else window.location.assign(url);
+  }
+}
+
+/**
+ * После входа в Mini App с `startapp=site`: выдаём код и открываем маркетинг.
+ * Если есть MainButton — ждём нажатия (жест пользователя → `window.open` не блокируется).
+ * Иначе — сразу `openLink` как раньше.
+ */
+export async function tryFinishSiteMarketingLogin(
+  authResult: BootstrapAuthResult | null,
+): Promise<void> {
+  if (!authResult || authResult.mode !== 'authenticated') return;
+  if (!(await awaitSiteLoginIntent())) return;
+
+  const tg = typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined;
+  if (!tg) return;
+
+  const mb = tg.MainButton as MainButtonApi | undefined;
+  const canUseMainButton =
+    typeof mb?.onClick === 'function' &&
+    typeof mb?.show === 'function' &&
+    typeof mb?.setText === 'function' &&
+    typeof mb?.hide === 'function';
+
+  const runIssueAndOpen = async () => {
+    try {
+      const url = await issueBridgeUrl();
+      if (!url) {
+        tg.showAlert?.('Не удалось получить код для входа на сайт. Попробуйте снова из бота.');
+        return;
+      }
+      openMarketingLoginUrl(url, tg);
+    } catch (e) {
+      console.warn('site-bridge issue failed:', e);
+      const msg = e instanceof Error ? e.message : 'ошибка сети';
+      tg.showAlert?.(`Вход на сайт: ${msg}`);
+    }
+  };
+
+  if (canUseMainButton) {
+    mb.setText!('Открыть сайт EDIFY для входа');
+    mb.show!();
+    let finished = false;
+    const handler = () => {
+      if (finished) return;
+      finished = true;
+      mb.offClick?.(handler);
+      mb.hide!();
+      void runIssueAndOpen();
+    };
+    mb.onClick!(handler);
+    return;
+  }
+
+  try {
+    const url = await issueBridgeUrl();
+    if (!url) {
+      tg.showAlert?.('Не удалось получить код для входа на сайт. Попробуйте снова из бота.');
       return;
     }
-    const url = `${base}/?login=${encodeURIComponent(parsed.data.code)}`;
-    if (tg?.openLink) {
-      tg.openLink(url, { try_instant_view: false });
-    } else {
-      window.location.assign(url);
-    }
+    if (tg.openLink) tg.openLink(url, { try_instant_view: false });
+    else window.location.assign(url);
   } catch (e) {
     console.warn('site-bridge issue failed:', e);
     const msg = e instanceof Error ? e.message : 'ошибка сети';
-    tg?.showAlert?.(`Вход на сайт: ${msg}`);
+    tg.showAlert?.(`Вход на сайт: ${msg}`);
   }
 }

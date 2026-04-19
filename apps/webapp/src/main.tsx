@@ -106,8 +106,6 @@ async function bootstrap() {
     authResult,
   };
 
-  await tryFinishSiteMarketingLogin(authResult);
-
   // Dev-only: expose for console and render banner
   if (import.meta.env.DEV) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -129,6 +127,11 @@ async function bootstrap() {
     showSetupError ? <BootstrapErrorScreen message={errorMessage ?? 'API не настроен'} /> : <App />,
     diagnostic,
   );
+
+  // Вход с маркетинга: MainButton после первого кадра (поверх UI), иначе openLink без жеста часто не открывает вкладку.
+  requestAnimationFrame(() => {
+    void tryFinishSiteMarketingLogin(authResult);
+  });
 }
 
 function renderApp(children: React.ReactNode, diagnostic: AuthDiagnostic | null) {
