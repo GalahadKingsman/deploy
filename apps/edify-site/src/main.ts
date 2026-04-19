@@ -1,5 +1,5 @@
 import './edify.css';
-import { ACCESS_TOKEN_KEY } from './authSession.js';
+import { ACCESS_TOKEN_KEY, getAccessToken } from './authSession.js';
 import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
 import { refreshNavAuth } from './navAuthUi.js';
 import { mountPlatformShell } from './platform/mountPlatformShell.js';
@@ -108,9 +108,24 @@ const revealObserver = new IntersectionObserver(
 );
 document.querySelectorAll('.reveal').forEach((el) => revealObserver.observe(el));
 
+// Ограничиваем доступ на /platform/ только авторизованным
+document.addEventListener('click', (ev) => {
+  const t = ev.target as HTMLElement | null;
+  const a = t?.closest('a[href^="/platform"]') as HTMLAnchorElement | null;
+  if (!a) return;
+
+  const token = getAccessToken();
+  if (!token) {
+    ev.preventDefault();
+    closeMobileNav();
+    window.alert('Авторизуйтесь для перехода на платформу');
+  }
+});
+
 const platformMount = document.getElementById('edify-platform-mount');
 if (platformMount) {
   mountPlatformShell(platformMount, {
+    // На лендинге оставляем дефолтный старт (как в макете).
     onAction(action) {
       if (import.meta.env.DEV) console.debug('[edify-platform]', action);
     },

@@ -16,6 +16,20 @@ export type PlatformShellHandlers = {
   onAction?: (action: PlatformShellAction, ev: Event) => void | Promise<void>;
 };
 
+export type PlatformShellOptions = PlatformShellHandlers & {
+  /** Стартовая роль при маунте. По умолчанию 'expert' (как в макете). */
+  initialRole?: 'expert' | 'student';
+  /** Стартовый экран. Если не задан — берётся дефолт по роли. */
+  initialScreenId?: string;
+};
+
+export type PlatformShellController = {
+  shadowRoot: ShadowRoot;
+  setRole: (role: 'expert' | 'student') => void;
+  showScreen: (screenId: string) => void;
+  destroy: () => void;
+};
+
 function emit(
   handlers: PlatformShellHandlers,
   action: PlatformShellAction,
@@ -113,15 +127,21 @@ function onShadowClick(ev: MouseEvent, root: ShadowRoot, handlers: PlatformShell
 
 /**
  * Встраивает макет кабинета в `host` через Shadow DOM (изоляция CSS от маркетинговой страницы).
- * Возвращает функцию снятия слушателей; размонтирование shadow у хоста не поддерживается DOM API.
+ * Возвращает контроллер для управления (роутинг/данные/кнопки).
  */
 export function mountPlatformShell(
   host: HTMLElement,
-  handlers: PlatformShellHandlers = {},
-): () => void {
+  options: PlatformShellOptions = {},
+): PlatformShellController {
   if (host.shadowRoot) {
     console.warn('[edify-platform-shell] повторный mount: shadow уже есть');
-    return () => {};
+    const existing = host.shadowRoot;
+    return {
+      shadowRoot: existing,
+      setRole: () => {},
+      showScreen: () => {},
+      destroy: () => {},
+    };
   }
 
   const shadow = host.attachShadow({ mode: 'open' });
@@ -132,11 +152,22 @@ export function mountPlatformShell(
   shadow.append(style, inner);
 
   const listener = (ev: Event) => {
-    if (ev instanceof MouseEvent) onShadowClick(ev, shadow, handlers);
+    if (ev instanceof MouseEvent) onShadowClick(ev, shadow, options);
   };
   shadow.addEventListener('click', listener);
 
-  return () => {
-    shadow.removeEventListener('click', listener);
+  const controller: PlatformShellController = {
+    shadowRoot: shadow,
+    setRole: (role) => setRole(shadow, role, options, new Event('init')),
+    showScreen: (screenId) => showScreen(shadow, screenId, options, new Event('init')),
+    destroy: () => shadow.removeEventListener('click', listener),
   };
+
+  const role = options.initialRole ?? 'expert';
+  const screen = options.initialScreenId ?? (role === 'expert' ? 'e-dashboard' : 's-catalog');
+  // выставляем роль и экран без необходимости клика
+  setRole(shadow, role, options, new Event('init'));
+  showScreen(shadow, screen, options, new Event('init'));
+
+  return controller;
 }

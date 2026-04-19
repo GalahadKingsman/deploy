@@ -63,6 +63,45 @@ body.platform-standalone{overflow:hidden}
 }
 .platform-standalone-back:hover{color:var(--t1);border-color:var(--a-border)}
 
+/* ── PLATFORM AUTH GATE (/platform/) ── */
+body.platform-gate{background:var(--bg);color:var(--t1)}
+.platform-gate__wrap{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px 16px;
+}
+.platform-gate__card{
+  width:min(520px,100%);
+  background:var(--card);
+  border:1px solid var(--line2);
+  border-radius:16px;
+  box-shadow:var(--shadow2);
+  padding:22px 20px;
+}
+.platform-gate__title{
+  font-family:var(--fd);
+  font-size:18px;
+  font-weight:800;
+  letter-spacing:-.02em;
+  line-height:1.2;
+}
+.platform-gate__sub{
+  margin-top:10px;
+  color:var(--t2);
+  font-size:14px;
+  line-height:1.6;
+}
+.platform-gate__btn{
+  margin-top:16px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:12px 18px;
+  border-radius:12px;
+}
+
 /* ── NAV ── */
 .nav{
   position:fixed;top:0;left:0;right:0;z-index:200;
