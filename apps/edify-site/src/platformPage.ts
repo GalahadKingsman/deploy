@@ -238,10 +238,175 @@ if (platformMount) {
     type LessonV1 = { id: string; title: string; order?: number; contentMarkdown?: string | null };
     type AssignmentV1 = { id: string; lessonId: string; promptMarkdown?: string | null };
     type AssignmentFileV1 = { id: string; filename: string; sizeBytes?: number | null };
+    type MySubmissionV1 = {
+      id: string;
+      status: string;
+      text?: string | null;
+      link?: string | null;
+      fileKey?: string | null;
+      score?: number | null;
+      reviewerComment?: string | null;
+      createdAt: string;
+    };
 
     let currentCourseId: string | null = null;
     const lessonMetaById = new Map<string, { moduleTitle: string; lessonNo: number }>();
     const unlockedLessonIds = new Set<string>();
+    /** Lesson ids per module (API order) — for «previous lesson» within the same module only */
+    let modulesOrderedLessonIds: string[][] = [];
+
+    function previousLessonInModule(lessonId: string): string | null {
+      for (const ids of modulesOrderedLessonIds) {
+        const i = ids.indexOf(lessonId);
+        if (i === -1) continue;
+        if (i <= 0) return null;
+        return ids[i - 1] ?? null;
+      }
+      return null;
+    }
+
+    function updatePrevLessonUi(root: ShadowRoot, lessonId: string): void {
+      const prev = root.querySelector('#screen-s-lesson [data-ep-prev-lesson]') as HTMLButtonElement | null;
+      if (!prev) return;
+      const prevId = previousLessonInModule(lessonId);
+      if (!prevId) {
+        prev.style.display = 'none';
+        delete prev.dataset.epPrevTarget;
+      } else {
+        prev.style.display = '';
+        prev.dataset.epPrevTarget = prevId;
+      }
+    }
+
+    function submissionStatusUi(s: MySubmissionV1): { label: string; tagClass: string } {
+      if (s.status === 'accepted') return { label: 'Принято', tagClass: 'ep-my-sub-tag ep-my-sub-tag--ok' };
+      if (s.status === 'rework') return { label: 'На доработку', tagClass: 'ep-my-sub-tag ep-my-sub-tag--rework' };
+      return { label: 'На проверке', tagClass: 'ep-my-sub-tag ep-my-sub-tag--wait' };
+    }
+
+    function renderMySubmission(root: ShadowRoot, sub: MySubmissionV1 | null): void {
+      const wrap = root.querySelector('#screen-s-lesson [data-ep-my-submission-wrap]') as HTMLElement | null;
+      const host = root.querySelector('#screen-s-lesson [data-ep-my-submission]') as HTMLElement | null;
+      if (!wrap || !host) return;
+      host.replaceChildren();
+      if (!sub) {
+        wrap.style.display = 'none';
+        return;
+      }
+      const hasBody =
+        !!(sub.text && sub.text.trim()) ||
+        !!(sub.link && sub.link.trim()) ||
+        !!(sub.fileKey && sub.fileKey.trim()) ||
+        !!(sub.reviewerComment && sub.reviewerComment.trim());
+      if (!hasBody) {
+        wrap.style.display = 'none';
+        return;
+      }
+      wrap.style.display = '';
+
+      const card = document.createElement('div');
+      card.className = 'ep-my-sub-card';
+
+      const head = document.createElement('div');
+      head.className = 'ep-my-sub-head';
+      const left = document.createElement('div');
+      const st = submissionStatusUi(sub);
+      const tag = document.createElement('span');
+      tag.className = st.tagClass;
+      tag.textContent = st.label;
+      let dateStr = '';
+      try {
+        dateStr = new Date(sub.createdAt).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' });
+      } catch {
+        dateStr = '';
+      }
+      const meta = document.createElement('div');
+      meta.className = 'ep-my-sub-meta';
+      if (dateStr) meta.textContent = `Отправлено: ${dateStr}`;
+      left.append(tag, meta);
+      head.append(left);
+
+      if (typeof sub.score === 'number' && sub.score >= 1 && sub.score <= 5) {
+        const stars = document.createElement('div');
+        stars.className = 'ep-my-sub-stars';
+        stars.setAttribute('aria-label', `Оценка ${sub.score} из 5`);
+        stars.textContent = '★'.repeat(sub.score) + '☆'.repeat(5 - sub.score);
+        head.appendChild(stars);
+      }
+      card.appendChild(head);
+
+      const textRaw = (sub.text ?? '').trim();
+      if (textRaw) {
+        const blk = document.createElement('div');
+        blk.className = 'ep-my-sub-block';
+        const lab = document.createElement('div');
+        lab.className = 'ep-my-sub-label';
+        lab.textContent = 'Текст ответа';
+        const body = document.createElement('div');
+        setRichTextWithLinks(body, textRaw);
+        blk.append(lab, body);
+        card.appendChild(blk);
+      }
+
+      const linkRaw = (sub.link ?? '').trim();
+      if (linkRaw) {
+        const blk = document.createElement('div');
+        blk.className = 'ep-my-sub-block';
+        const lab = document.createElement('div');
+        lab.className = 'ep-my-sub-label';
+        lab.textContent = 'Ссылка';
+        const a = document.createElement('a');
+        let href = linkRaw;
+        if (!/^https?:\/\//i.test(href)) href = `https://${href}`;
+        try {
+          const u = new URL(href);
+          if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('bad protocol');
+          a.href = u.href;
+        } catch {
+          a.href = '#';
+          a.addEventListener('click', (e) => e.preventDefault());
+        }
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.textContent = linkRaw;
+        a.style.color = 'var(--a)';
+        a.style.wordBreak = 'break-all';
+        blk.append(lab, a);
+        card.appendChild(blk);
+      }
+
+      const fk = (sub.fileKey ?? '').trim();
+      if (fk) {
+        const blk = document.createElement('div');
+        blk.className = 'ep-my-sub-block';
+        const lab = document.createElement('div');
+        lab.className = 'ep-my-sub-label';
+        lab.textContent = 'Файл';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-outline btn-sm';
+        btn.textContent = '⬇ Скачать вложение';
+        btn.dataset.epSubmissionFileKey = fk;
+        blk.append(lab, btn);
+        card.appendChild(blk);
+      }
+
+      const comRaw = (sub.reviewerComment ?? '').trim();
+      if (comRaw) {
+        const blk = document.createElement('div');
+        blk.className = 'ep-my-sub-block';
+        blk.style.borderLeft = '3px solid rgba(201,162,39,.55)';
+        const lab = document.createElement('div');
+        lab.className = 'ep-my-sub-label';
+        lab.textContent = 'Комментарий эксперта';
+        const body = document.createElement('div');
+        setRichTextWithLinks(body, comRaw);
+        blk.append(lab, body);
+        card.appendChild(blk);
+      }
+
+      host.appendChild(card);
+    }
 
     async function fetchModules(courseId: string): Promise<ModuleV1[]> {
       const token = getAccessToken() ?? undefined;
@@ -519,6 +684,18 @@ if (platformMount) {
         if (matsTitle) matsTitle.style.display = 'none';
         if (hwWrap) hwWrap.style.display = 'none';
       }
+
+      try {
+        const subsRes = await fetchJson<{ items: MySubmissionV1[] }>(
+          `/lessons/${encodeURIComponent(lessonId)}/submissions/me`,
+          token,
+        );
+        renderMySubmission(root, subsRes.items?.[0] ?? null);
+      } catch {
+        renderMySubmission(root, null);
+      }
+
+      updatePrevLessonUi(root, lessonId);
     }
 
     async function openCourse(courseId: string): Promise<void> {
@@ -529,6 +706,7 @@ if (platformMount) {
       currentCourseId = courseId;
       lessonMetaById.clear();
       unlockedLessonIds.clear();
+      modulesOrderedLessonIds = [];
 
       const token = getAccessToken() ?? undefined;
       const myCourses = await fetchJson<MyCoursesResponseV1>('/me/courses', token);
@@ -551,6 +729,13 @@ if (platformMount) {
       if (mats) mats.replaceChildren();
       if (matsTitle) matsTitle.style.display = 'none';
       if (hwWrap) hwWrap.style.display = 'none';
+      const prevBtn0 = root.querySelector('#screen-s-lesson [data-ep-prev-lesson]') as HTMLElement | null;
+      if (prevBtn0) {
+        prevBtn0.style.display = 'none';
+        delete (prevBtn0 as HTMLButtonElement).dataset.epPrevTarget;
+      }
+      const subWrap0 = root.querySelector('#screen-s-lesson [data-ep-my-submission-wrap]') as HTMLElement | null;
+      if (subWrap0) subWrap0.style.display = 'none';
 
       const modules = await fetchModules(courseId);
       const moduleLessons = await Promise.all(
@@ -559,6 +744,8 @@ if (platformMount) {
           return { module: m, res };
         }),
       );
+
+      modulesOrderedLessonIds = moduleLessons.map(({ res }) => (res.items ?? []).map((x) => x.id));
 
       let activeLessonId: string | null = null;
       let activeModuleTitle = 'Текущий урок';
@@ -608,6 +795,12 @@ if (platformMount) {
           lessonTitle: 'Курс завершён',
           bodyText: 'Все уроки пройдены.',
         });
+        const prevDone = root.querySelector('#screen-s-lesson [data-ep-prev-lesson]') as HTMLElement | null;
+        if (prevDone) {
+          prevDone.style.display = 'none';
+          delete (prevDone as HTMLButtonElement).dataset.epPrevTarget;
+        }
+        renderMySubmission(root, null);
       }
     }
 
@@ -773,6 +966,33 @@ if (platformMount) {
     // Since we already have `onAction` above, we handle actions via ShadowRoot click hooks:
     shell.shadowRoot.addEventListener('click', (ev) => {
       const t = ev.target as HTMLElement | null;
+
+      const prevLessonBtn = t?.closest('[data-ep-prev-lesson]') as HTMLButtonElement | null;
+      const prevTarget = prevLessonBtn?.dataset.epPrevTarget;
+      if (prevLessonBtn && prevTarget) {
+        ev.preventDefault();
+        void openLesson(prevTarget);
+        return;
+      }
+
+      const subFileBtn = t?.closest('[data-ep-submission-file-key]') as HTMLElement | null;
+      const subFileKey = subFileBtn?.dataset.epSubmissionFileKey;
+      if (subFileKey) {
+        ev.preventDefault();
+        void (async () => {
+          try {
+            const api = getApiBaseUrl();
+            if (!api) throw new Error('API base url is empty');
+            const url = `${api}/files?key=${encodeURIComponent(subFileKey)}`;
+            const name = subFileKey.includes('/') ? subFileKey.slice(subFileKey.lastIndexOf('/') + 1) : subFileKey;
+            await downloadAuthenticatedFile({ url, fallbackFilename: name || 'file' });
+          } catch {
+            window.alert('Не удалось скачать вложение');
+          }
+        })();
+        return;
+      }
+
       const courseId = (t?.closest('[data-ep-course-id]') as HTMLElement | null)?.dataset.epCourseId;
       if (courseId) {
         // If enrolled -> go to current lesson; else open preview screen

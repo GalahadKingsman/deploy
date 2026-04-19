@@ -1085,8 +1085,12 @@
           <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:10px">Домашнее задание</div>
           <div class="hw-q" data-ep-homework-prompt>—</div>
         </div>
-        <div style="display:flex;gap:10px;margin-top:20px">
-          <button class="btn btn-outline" style="flex:1;justify-content:center">← Предыдущий урок</button>
+        <div data-ep-my-submission-wrap style="margin-top:18px;display:none">
+          <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:10px">Ваш ответ</div>
+          <div data-ep-my-submission></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:20px" data-ep-lesson-nav>
+          <button class="btn btn-outline" style="flex:1;justify-content:center;display:none" type="button" data-ep-prev-lesson>← Предыдущий урок</button>
           <button class="btn btn-accent" style="flex:1;justify-content:center" type="button" data-ep-go-homework>Сдать ДЗ →</button>
         </div>
       </div>
