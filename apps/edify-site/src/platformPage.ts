@@ -5,6 +5,7 @@ import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
 import { refreshNavAuth } from './navAuthUi.js';
 import { mountPlatformShell } from './platform/mountPlatformShell.js';
 import { normalizeRutubeEmbedUrl } from './util/rutubeEmbed.js';
+import { downloadAuthenticatedFile } from './downloadAuthenticatedFile.js';
 
 function renderAuthGate(): void {
   document.body.classList.add('platform-gate');
@@ -468,6 +469,7 @@ if (platformMount) {
             row.style.cursor = 'pointer';
             row.dataset.epAssignmentFileId = f.id;
             row.dataset.epLessonId = lessonId;
+            row.dataset.epAssignmentFilename = encodeURIComponent(f.filename);
 
             const ico = document.createElement('div');
             ico.className = 'mat-ico';
@@ -486,6 +488,7 @@ if (platformMount) {
             btn.textContent = '⬇ Скачать';
             btn.dataset.epAssignmentFileId = f.id;
             btn.dataset.epLessonId = lessonId;
+            btn.dataset.epAssignmentFilename = encodeURIComponent(f.filename);
 
             row.append(ico, body, btn);
             mats.appendChild(row);
@@ -783,12 +786,12 @@ if (platformMount) {
         ev.preventDefault();
         void (async () => {
           try {
-            const token = getAccessToken() ?? undefined;
-            const urlRes = await fetchJson<{ url: string }>(
-              `/lessons/${encodeURIComponent(fileLessonId)}/assignment/files/${encodeURIComponent(fileId)}/signed`,
-              token,
-            );
-            if (urlRes.url) window.open(urlRes.url, '_blank', 'noopener,noreferrer');
+            const api = getApiBaseUrl();
+            if (!api) throw new Error('API base url is empty');
+            const encName = fileEl?.dataset.epAssignmentFilename;
+            const fallbackFilename = encName ? decodeURIComponent(encName) : 'file';
+            const url = `${api}/lessons/${encodeURIComponent(fileLessonId)}/assignment/files/${encodeURIComponent(fileId)}/download`;
+            await downloadAuthenticatedFile({ url, fallbackFilename });
           } catch {
             window.alert('Не удалось скачать файл');
           }
