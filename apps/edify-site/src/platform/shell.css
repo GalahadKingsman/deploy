@@ -316,6 +316,8 @@ textarea.form-input{resize:vertical;min-height:80px}
 .ep-my-sub-block{margin-top:12px;padding:12px;border-radius:8px;border:1px solid var(--line);background:var(--surface2)}
 .ep-my-sub-label{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin-bottom:6px;font-family:var(--fm)}
 .ep-my-sub-stars{font-size:14px;color:#c9a227;letter-spacing:2px;line-height:1}
+.ep-my-sub-actions{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap}
+.ep-my-sub-actions .btn{flex:1;min-width:min(100%,140px);justify-content:center}
 
 /* Upload zone */
 .upload-zone{

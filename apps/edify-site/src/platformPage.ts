@@ -317,7 +317,7 @@ if (platformMount) {
       return { label: 'На проверке', tagClass: 'ep-my-sub-tag ep-my-sub-tag--wait' };
     }
 
-    function renderMySubmission(root: ShadowRoot, sub: MySubmissionV1 | null): void {
+    function renderMySubmission(root: ShadowRoot, sub: MySubmissionV1 | null, hasExpertHomework: boolean): void {
       const wrap = root.querySelector('#screen-s-lesson [data-ep-my-submission-wrap]') as HTMLElement | null;
       const host = root.querySelector('#screen-s-lesson [data-ep-my-submission]') as HTMLElement | null;
       if (!wrap || !host) return;
@@ -436,6 +436,18 @@ if (platformMount) {
         setRichTextWithLinks(body, comRaw);
         blk.append(lab, body);
         card.appendChild(blk);
+      }
+
+      if (sub.status !== 'accepted' && hasExpertHomework) {
+        const actions = document.createElement('div');
+        actions.className = 'ep-my-sub-actions';
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'btn btn-outline';
+        editBtn.textContent = 'Изменить ответ';
+        editBtn.dataset.epHomeworkEdit = '1';
+        actions.appendChild(editBtn);
+        card.appendChild(actions);
       }
 
       host.appendChild(card);
@@ -941,9 +953,9 @@ if (platformMount) {
           `/lessons/${encodeURIComponent(lessonId)}/submissions/me`,
           token,
         );
-        renderMySubmission(root, subsRes.items?.[0] ?? null);
+        renderMySubmission(root, subsRes.items?.[0] ?? null, hasExpertHomework);
       } catch {
-        renderMySubmission(root, null);
+        renderMySubmission(root, null, hasExpertHomework);
       }
 
       updatePrevLessonUi(root, lessonId);
@@ -1055,7 +1067,7 @@ if (platformMount) {
         }
         const goDone = root.querySelector('#screen-s-lesson [data-ep-go-homework]') as HTMLElement | null;
         setGoHomeworkButtonVisible(goDone, false);
-        renderMySubmission(root, null);
+        renderMySubmission(root, null, false);
       }
     }
 
@@ -1327,6 +1339,13 @@ if (platformMount) {
       if (submitHw) {
         ev.preventDefault();
         void submitHomeworkFromForm();
+        return;
+      }
+
+      const editHwFromLesson = t?.closest('[data-ep-homework-edit]') as HTMLElement | null;
+      if (editHwFromLesson) {
+        ev.preventDefault();
+        void prepareHomeworkScreen();
         return;
       }
 
