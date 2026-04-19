@@ -17,20 +17,11 @@ export type MeUserV1 = {
   platformRole: string;
 };
 
-const COPY_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
-
 function displayName(u: MeUserV1): string {
   const n = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
   if (n) return n;
   if (u.username) return u.username;
   return 'Пользователь';
-}
-
-function badgeLabel(u: MeUserV1): string {
-  if (u.platformRole === 'owner') return 'Owner';
-  if (u.platformRole === 'admin') return 'Admin';
-  if (u.platformRole === 'moderator') return 'Mod';
-  return 'Pro';
 }
 
 function guestLoginAlert(): void {
@@ -113,49 +104,17 @@ function buildUserChip(user: MeUserV1, variant: string): HTMLElement {
   const body = document.createElement('div');
   body.className = 'edify-user-chip__body';
 
-  const row1 = document.createElement('div');
-  row1.className = 'edify-user-chip__row';
   const name = document.createElement('span');
   name.className = 'edify-user-chip__name';
   name.textContent = displayName(user);
-  const badge = document.createElement('span');
-  badge.className = 'edify-user-chip__badge';
-  badge.textContent = badgeLabel(user);
-  row1.append(name, badge);
-  body.appendChild(row1);
+  body.appendChild(name);
 
   if (user.username) {
-    const handle = document.createElement('div');
+    const handle = document.createElement('span');
     handle.className = 'edify-user-chip__handle';
     handle.textContent = `@${user.username}`;
     body.appendChild(handle);
   }
-
-  const idRow = document.createElement('div');
-  idRow.className = 'edify-user-chip__idrow';
-  const tid = document.createElement('span');
-  tid.className = 'edify-user-chip__tid';
-  tid.textContent = user.telegramUserId ?? '—';
-  const copyBtn = document.createElement('button');
-  copyBtn.type = 'button';
-  copyBtn.className = 'edify-user-chip__copy';
-  copyBtn.setAttribute('aria-label', 'Копировать Telegram ID');
-  copyBtn.innerHTML = COPY_SVG;
-  copyBtn.addEventListener('click', () => {
-    const id = user.telegramUserId ?? '';
-    if (!id) return;
-    void navigator.clipboard.writeText(id).then(
-      () => {
-        copyBtn.classList.add('edify-user-chip__copy--ok');
-        window.setTimeout(() => copyBtn.classList.remove('edify-user-chip__copy--ok'), 1200);
-      },
-      () => {
-        window.alert('Не удалось скопировать');
-      },
-    );
-  });
-  idRow.append(tid, copyBtn);
-  body.appendChild(idRow);
 
   const out = document.createElement('button');
   out.type = 'button';
