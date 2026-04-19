@@ -778,14 +778,14 @@ if (platformMount) {
       // Download assignment file
       const fileEl = t?.closest('[data-ep-assignment-file-id]') as HTMLElement | null;
       const fileId = fileEl?.dataset.epAssignmentFileId;
-      const lessonId = fileEl?.dataset.epLessonId;
-      if (fileId && lessonId) {
+      const fileLessonId = fileEl?.dataset.epLessonId;
+      if (fileId && fileLessonId) {
         ev.preventDefault();
         void (async () => {
           try {
             const token = getAccessToken() ?? undefined;
             const urlRes = await fetchJson<{ url: string }>(
-              `/lessons/${encodeURIComponent(lessonId)}/assignment/files/${encodeURIComponent(fileId)}/signed`,
+              `/lessons/${encodeURIComponent(fileLessonId)}/assignment/files/${encodeURIComponent(fileId)}/signed`,
               token,
             );
             if (urlRes.url) window.open(urlRes.url, '_blank', 'noopener,noreferrer');
