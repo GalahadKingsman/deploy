@@ -524,6 +524,24 @@ if (platformMount) {
       const myCourses = await fetchJson<MyCoursesResponseV1>('/me/courses', token);
       const knownTitle = myCourses.items?.find((x) => x.course.id === courseId)?.course?.title ?? 'Курс';
 
+      // Avoid showing design placeholders while data is loading
+      setLessonContent(root, {
+        moduleTitle: 'Загрузка…',
+        lessonTitle: knownTitle,
+        bodyText: 'Загрузка содержимого курса…',
+      });
+      const videoHost = root.querySelector('#screen-s-lesson [data-ep-video]') as HTMLElement | null;
+      if (videoHost) {
+        videoHost.style.display = 'none';
+        videoHost.querySelectorAll('iframe').forEach((x) => x.remove());
+      }
+      const hwWrap = root.querySelector('#screen-s-lesson [data-ep-homework]') as HTMLElement | null;
+      const matsTitle = root.querySelector('#screen-s-lesson [data-ep-materials-title]') as HTMLElement | null;
+      const mats = root.querySelector('#screen-s-lesson [data-ep-materials]') as HTMLElement | null;
+      if (mats) mats.replaceChildren();
+      if (matsTitle) matsTitle.style.display = 'none';
+      if (hwWrap) hwWrap.style.display = 'none';
+
       const modules = await fetchModules(courseId);
       const moduleLessons = await Promise.all(
         modules.map(async (m) => {
@@ -572,24 +590,8 @@ if (platformMount) {
       setProgress(root, completedAll.size, total);
 
       if (activeLessonId) {
-        setActiveLessonRow(root, activeLessonId);
-        try {
-          const lessonRes = await fetchJson<{ lesson: LessonV1 }>(
-            `/lessons/${encodeURIComponent(activeLessonId)}`,
-            token,
-          );
-          setLessonContent(root, {
-            moduleTitle: `${activeModuleTitle} · Урок ${activeLessonNo}`,
-            lessonTitle: lessonRes.lesson.title,
-            bodyText: (lessonRes.lesson.contentMarkdown ?? '').trim() || 'Содержимое урока появится здесь.',
-          });
-        } catch {
-          setLessonContent(root, {
-            moduleTitle: `${activeModuleTitle} · Урок ${activeLessonNo}`,
-            lessonTitle: 'Урок',
-            bodyText: 'Не удалось загрузить урок. Возможно, он пока закрыт.',
-          });
-        }
+        // Reuse openLesson to hydrate video/materials/homework too
+        await openLesson(activeLessonId);
       } else {
         setLessonContent(root, {
           moduleTitle: 'Готово',
