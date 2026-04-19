@@ -22,6 +22,17 @@ export const config = {
   API_BASE_URL: import.meta.env.VITE_API_BASE_URL || '',
 
   /**
+   * Маркетинговый сайт (перенос сессии после входа из бота по payload site).
+   */
+  MARKETING_SITE_URL: (() => {
+    const raw =
+      typeof import.meta.env.VITE_MARKETING_SITE_URL === 'string'
+        ? import.meta.env.VITE_MARKETING_SITE_URL.trim()
+        : '';
+    return (raw || 'https://edify.su').replace(/\/+$/, '');
+  })(),
+
+  /**
    * API prefix (default '/api')
    */
   API_PREFIX: '/api',

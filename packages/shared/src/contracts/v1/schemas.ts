@@ -99,7 +99,12 @@ export {
   GetLessonResponseV1Schema,
   ListModuleLessonsResponseV1Schema,
 } from './endpoints.js';
-export { AuthTelegramRequestV1Schema, AuthTelegramResponseV1Schema } from './auth.js';
+export {
+  AuthTelegramRequestV1Schema,
+  AuthTelegramResponseV1Schema,
+  AuthSiteBridgeIssueResponseV1Schema,
+  AuthSiteBridgeClaimRequestV1Schema,
+} from './auth.js';
 export { AuditLogEntryV1Schema, AuditLogListResponseV1Schema } from './audit-log.js';
 export {
   ExpertApplicationStatusV1Schema,

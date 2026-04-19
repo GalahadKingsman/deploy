@@ -7,6 +7,7 @@ import { startMocking } from './shared/mocks/startMocking.js';
 import { bootstrapAuth } from './shared/auth/bootstrapAuth.js';
 import { getAccessToken, clearAccessToken } from './shared/auth/tokenStorage.js';
 import { waitForTelegramWebApp, waitForTelegramInitData } from './shared/auth/telegram.js';
+import { tryFinishSiteMarketingLogin } from './shared/auth/siteMarketingBridge.js';
 import { setReferral } from './shared/referrals/referralStorage.js';
 import {
   AuthDiagnosticProvider,
@@ -104,6 +105,8 @@ async function bootstrap() {
     initDataLength: initDataSnapshot?.length ?? 0,
     authResult,
   };
+
+  await tryFinishSiteMarketingLogin(authResult);
 
   // Dev-only: expose for console and render banner
   if (import.meta.env.DEV) {

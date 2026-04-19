@@ -31,3 +31,21 @@ export const AuthTelegramResponseV1Schema = z.object({
   user: UserV1Schema,
   accessToken: z.string().min(1),
 });
+
+/** POST /auth/site-bridge/issue — одноразовый код для переноса сессии на маркетинговый сайт. */
+export interface AuthSiteBridgeIssueResponseV1 {
+  code: string;
+}
+
+export const AuthSiteBridgeIssueResponseV1Schema = z.object({
+  code: z.string().min(16).max(128),
+});
+
+/** POST /auth/site-bridge/claim */
+export interface AuthSiteBridgeClaimRequestV1 {
+  code: string;
+}
+
+export const AuthSiteBridgeClaimRequestV1Schema = z.object({
+  code: z.string().min(16).max(128),
+});

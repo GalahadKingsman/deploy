@@ -38,6 +38,13 @@ function isInviteCode(s: string): boolean {
   return /^[a-f0-9]{8,64}$/i.test(s);
 }
 
+/** Mini App получает `start_param` из query `startapp` на URL кнопки WebApp. */
+function webAppUrlWithStartApp(startParam: string): string {
+  const u = new URL(WEBAPP_URL);
+  u.searchParams.set('startapp', startParam);
+  return u.toString();
+}
+
 bot.command('inv', async (ctx) => {
   const text = ctx.message?.text ?? '';
   const code = text.replace(/^\/inv(@\w+)?\s*/i, '').trim();
@@ -62,6 +69,13 @@ bot.command('start', async (ctx) => {
       await ctx.reply('Open the app to activate invite:', { reply_markup: kb });
       return;
     }
+  }
+  // Вход с маркетингового сайта: t.me/bot?start=site → Mini App с start_param=site
+  if (payloadRaw.toLowerCase() === 'site') {
+    const url = webAppUrlWithStartApp('site');
+    const kb = new InlineKeyboard().webApp('Open WebApp', url);
+    await ctx.reply('Нажмите кнопку, чтобы завершить вход на сайте:', { reply_markup: kb });
+    return;
   }
   await ctx.reply(
     'Open the app:',

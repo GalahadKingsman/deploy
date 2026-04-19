@@ -130,7 +130,12 @@ export type {
 } from './endpoints.js';
 
 // Auth types
-export type { AuthTelegramRequestV1, AuthTelegramResponseV1 } from './auth.js';
+export type {
+  AuthTelegramRequestV1,
+  AuthTelegramResponseV1,
+  AuthSiteBridgeIssueResponseV1,
+  AuthSiteBridgeClaimRequestV1,
+} from './auth.js';
 
 // Audit log types (admin read)
 export type { AuditLogEntryV1, AuditLogListResponseV1 } from './audit-log.js';
@@ -193,6 +198,8 @@ export {
   ListModuleLessonsResponseV1Schema,
   AuthTelegramRequestV1Schema,
   AuthTelegramResponseV1Schema,
+  AuthSiteBridgeIssueResponseV1Schema,
+  AuthSiteBridgeClaimRequestV1Schema,
   AuditLogEntryV1Schema,
   AuditLogListResponseV1Schema,
   ExpertApplicationStatusV1Schema,

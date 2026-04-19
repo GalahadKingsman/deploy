@@ -1,4 +1,6 @@
 import './edify.css';
+import { getTelegramBotUsername } from './env.js';
+import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
 
 function toggleMobileNav(): void {
   const nav = document.getElementById('mobile-nav');
@@ -67,6 +69,18 @@ window.closeMobileNav = closeMobileNav;
 window.showScreen = showScreen;
 window.faq = faq;
 window.toggleP = toggleP;
+
+function wireTelegramLoginLinks(): void {
+  const bot = getTelegramBotUsername();
+  const href = bot ? `https://t.me/${bot}?start=site` : '#';
+  document.querySelectorAll<HTMLAnchorElement>('a[data-tg-login]').forEach((a) => {
+    a.href = href;
+  });
+}
+
+void claimSiteLoginFromUrl().finally(() => {
+  wireTelegramLoginLinks();
+});
 
 const revealObserver = new IntersectionObserver(
   (entries) => {
