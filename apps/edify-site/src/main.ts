@@ -72,15 +72,29 @@ window.toggleP = toggleP;
 
 function wireTelegramLoginLinks(): void {
   const bot = getTelegramBotUsername();
-  const href = bot ? `https://t.me/${bot}?start=site` : '#';
   document.querySelectorAll<HTMLAnchorElement>('a[data-tg-login]').forEach((a) => {
-    a.href = href;
+    if (bot) {
+      a.href = `https://t.me/${bot}?start=site`;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      return;
+    }
+    a.href = '#';
+    a.removeAttribute('target');
+    a.removeAttribute('rel');
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.alert(
+        'Вход через Telegram не настроен: при сборке маркетингового сайта задайте переменную VITE_TELEGRAM_BOT_USERNAME (имя бота без @). Пример:\n' +
+          'VITE_TELEGRAM_BOT_USERNAME=your_bot pnpm --filter @tracked/edify-site build',
+      );
+    });
   });
 }
 
-void claimSiteLoginFromUrl().finally(() => {
-  wireTelegramLoginLinks();
-});
+/** Ссылки «Войти» не должны ждать сеть claim — иначе при сбое API кнопка остаётся пустой. */
+wireTelegramLoginLinks();
+void claimSiteLoginFromUrl();
 
 const revealObserver = new IntersectionObserver(
   (entries) => {

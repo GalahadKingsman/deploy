@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="edify-telegram-bot" content="">
 <title>EDIFY — Образовательная платформа для экспертов</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;900&family=Manrope:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -1868,6 +1869,25 @@ document.querySelectorAll('.grade-btn').forEach(btn => {
     btn.classList.add('active')
   })
 })
+
+;(function wireTgLogin() {
+  var meta = document.querySelector('meta[name="edify-telegram-bot"]')
+  var bot = ((meta && meta.getAttribute('content')) || '').trim().replace(/^@/, '')
+  document.querySelectorAll('a[data-tg-login]').forEach(function (a) {
+    if (bot) {
+      a.href = 'https://t.me/' + bot + '?start=site'
+      a.target = '_blank'
+      a.rel = 'noopener noreferrer'
+    } else {
+      a.addEventListener('click', function (ev) {
+        ev.preventDefault()
+        alert(
+          'Вход через Telegram: укажите имя бота в <meta name="edify-telegram-bot" content="имя_бота"> (без @) или соберите сайт с VITE_TELEGRAM_BOT_USERNAME.',
+        )
+      })
+    }
+  })
+})()
 </script>
 </body>
 </html>
