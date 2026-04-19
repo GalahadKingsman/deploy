@@ -1369,6 +1369,51 @@ if (platformMount) {
       return (a + b).slice(0, 2) || 'ED';
     }
 
+    /** Как в веб-приложении (ExpertHomePage): при активной подписке — expertId из /me/expert-subscription, иначе первое членство. */
+    type ExpertSubscriptionPickV1 = {
+      expertId: string;
+      status: string;
+      currentPeriodEnd: string | null;
+    };
+
+    function expertSubscriptionIsActive(sub: ExpertSubscriptionPickV1): boolean {
+      const now = Date.now();
+      const end = sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd).getTime() : null;
+      return sub.status === 'active' && (end === null || end > now);
+    }
+
+    function pickWorkspaceExpertId(
+      memberships: { expertId: string }[],
+      subscription: ExpertSubscriptionPickV1 | null,
+    ): string | null {
+      if (!memberships.length) return null;
+      const allowed = new Set(memberships.map((m) => m.expertId));
+      if (subscription && expertSubscriptionIsActive(subscription) && allowed.has(subscription.expertId)) {
+        return subscription.expertId;
+      }
+      return memberships[0]?.expertId ?? null;
+    }
+
+    async function fetchExpertWorkspaceId(token: string): Promise<string | null> {
+      let memberships: { expertId: string }[] = [];
+      try {
+        const mem = await fetchJson<{ items?: { expertId: string }[] }>('/me/expert-memberships', token);
+        memberships = mem.items ?? [];
+      } catch {
+        return null;
+      }
+      if (memberships.length === 0) return null;
+
+      let subscription: ExpertSubscriptionPickV1 | null = null;
+      try {
+        const raw = await fetchJson<ExpertSubscriptionPickV1 | null>('/me/expert-subscription', token);
+        if (raw && typeof raw.expertId === 'string') subscription = raw;
+      } catch {
+        subscription = null;
+      }
+      return pickWorkspaceExpertId(memberships, subscription);
+    }
+
     async function hydrateTopbarUser(): Promise<void> {
       const token = getAccessToken();
       if (!token) {
@@ -1394,10 +1439,8 @@ if (platformMount) {
         let inExpertTeam = false;
         activeExpertId = null;
         try {
-          const mem = await fetchJson<{ items?: { expertId: string }[] }>('/me/expert-memberships', token);
-          const mItems = mem.items ?? [];
-          inExpertTeam = mItems.length > 0;
-          activeExpertId = mItems[0]?.expertId ?? null;
+          activeExpertId = await fetchExpertWorkspaceId(token);
+          inExpertTeam = !!activeExpertId;
         } catch {
           inExpertTeam = false;
           activeExpertId = null;
@@ -1457,12 +1500,7 @@ if (platformMount) {
       if (activeExpertId) return activeExpertId;
       const token = getAccessToken();
       if (!token) return null;
-      try {
-        const mem = await fetchJson<{ items?: { expertId: string }[] }>('/me/expert-memberships', token);
-        activeExpertId = mem.items?.[0]?.expertId ?? null;
-      } catch {
-        activeExpertId = null;
-      }
+      activeExpertId = await fetchExpertWorkspaceId(token);
       return activeExpertId;
     }
 
