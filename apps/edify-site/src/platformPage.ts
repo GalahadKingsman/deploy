@@ -437,11 +437,19 @@ if (platformMount) {
     const expertShellAccess = { allowed: false };
     /** Первый expertId из членств (рабочее пространство для API `/experts/:id/...`). */
     let activeExpertId: string | null = null;
+    /** expertId владельца курса в конструкторе — при нескольких командах эксперта не путать с «активным» из подписки. */
+    let expertBuilderExpertId: string | null = null;
+
+    async function resolveBuilderExpertId(): Promise<string | null> {
+      if (expertBuilderExpertId) return expertBuilderExpertId;
+      return resolveActiveExpertId();
+    }
     let expertCoursesSearchTimer: ReturnType<typeof setTimeout> | undefined;
     /** Последний курс, открытый в конструкторе (для пункта меню «Конструктор»). */
     let expertBuilderCourseId: string | null = null;
     type BuilderCourseDetailV1 = {
       id: string;
+      expertId?: string;
       title: string;
       status: string;
       visibility?: string;
@@ -489,6 +497,7 @@ if (platformMount) {
           void hydratePendingHomeworkHub(action.shadowRoot);
         }
         if (action.type === 'navigate' && action.screenId === 'e-courses') {
+          expertBuilderExpertId = null;
           void hydrateExpertCourses(action.shadowRoot);
         }
         if (action.type === 'navigate' && action.screenId === 'e-builder') {
@@ -1589,6 +1598,7 @@ if (platformMount) {
       card.className = 'card ep-expert-course-card';
       card.dataset.epExpertCourseCard = '1';
       card.dataset.epExpertEditorCourseId = item.id;
+      card.dataset.epExpertEditorExpertId = item.expertId;
       card.style.cursor = 'pointer';
       if (item.status === 'draft') card.style.opacity = '0.88';
 
@@ -1869,6 +1879,7 @@ if (platformMount) {
         token,
       );
       builderCourseDetail = { ...course, id: cid };
+      if (course.expertId) expertBuilderExpertId = course.expertId;
       const titleHost = root.querySelector('[data-ep-builder-course-title]');
       const metaHost = root.querySelector('[data-ep-builder-course-meta]');
       const statusHost = root.querySelector('[data-ep-builder-course-status]');
@@ -2066,7 +2077,7 @@ if (platformMount) {
       builderSelectedModuleId = moduleId;
       builderSelectedLessonId = lessonId;
       const token = getAccessToken();
-      const eid = await resolveActiveExpertId();
+      const eid = await resolveBuilderExpertId();
       if (!token || !eid) return;
       renderBuilderModTree(root);
       await applyBuilderLessonToForm(root, eid, token);
@@ -2079,6 +2090,7 @@ if (platformMount) {
         window.alert('Войдите в аккаунт с доступом эксперта.');
         return;
       }
+      expertBuilderExpertId = eid;
       let created: { id: string; title: string };
       try {
         created = await postJson<{ id: string; title: string }>(
@@ -2097,7 +2109,7 @@ if (platformMount) {
 
     async function openExpertBuilderEdit(root: ShadowRoot, courseId: string): Promise<void> {
       const token = getAccessToken();
-      const eid = await resolveActiveExpertId();
+      const eid = await resolveBuilderExpertId();
       if (!token || !eid) {
         window.alert('Войдите в аккаунт с доступом эксперта.');
         return;
@@ -2112,7 +2124,7 @@ if (platformMount) {
 
     async function saveBuilderLesson(root: ShadowRoot): Promise<void> {
       const token = getAccessToken();
-      const eid = await resolveActiveExpertId();
+      const eid = await resolveBuilderExpertId();
       const cid = expertBuilderCourseId;
       const mid = builderSelectedModuleId;
       const lid = builderSelectedLessonId;
@@ -2162,7 +2174,7 @@ if (platformMount) {
 
     async function saveBuilderHomework(root: ShadowRoot): Promise<void> {
       const token = getAccessToken();
-      const eid = await resolveActiveExpertId();
+      const eid = await resolveBuilderExpertId();
       const lid = builderSelectedLessonId;
       if (!token || !eid || !lid) {
         window.alert('Выберите урок.');
@@ -2181,14 +2193,21 @@ if (platformMount) {
           token,
         );
         window.alert('Домашнее задание сохранено.');
-      } catch {
-        window.alert('Не удалось сохранить ДЗ.');
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes('403')) {
+          window.alert(
+            'Сервер отклонил сохранение (нет прав). Текст и файлы ДЗ можно менять с роли менеджера в команде эксперта и выше — как в мини-приложении.',
+          );
+        } else {
+          window.alert('Не удалось сохранить ДЗ. Проверьте сеть и что выбран урок этого курса.');
+        }
       }
     }
 
     async function builderAddModule(root: ShadowRoot): Promise<void> {
       const token = getAccessToken();
-      const eid = await resolveActiveExpertId();
+      const eid = await resolveBuilderExpertId();
       const cid = expertBuilderCourseId;
       if (!token || !eid || !cid) {
         window.alert('Сначала создайте или откройте курс.');
@@ -2206,7 +2225,7 @@ if (platformMount) {
 
     async function builderAddLesson(root: ShadowRoot): Promise<void> {
       const token = getAccessToken();
-      const eid = await resolveActiveExpertId();
+      const eid = await resolveBuilderExpertId();
       const cid = expertBuilderCourseId;
       if (!token || !eid || !cid) {
         window.alert('Сначала создайте или откройте курс.');
@@ -2250,7 +2269,7 @@ if (platformMount) {
       });
       if (panel === 'homework') {
         const token = getAccessToken();
-        const eid = await resolveActiveExpertId();
+        const eid = await resolveBuilderExpertId();
         if (token && eid) await applyBuilderLessonToForm(root, eid, token);
       }
     }
@@ -2262,7 +2281,7 @@ if (platformMount) {
         return;
       }
       const token = getAccessToken();
-      const eid = await resolveActiveExpertId();
+      const eid = await resolveBuilderExpertId();
       const lid = builderSelectedLessonId;
       if (!token || !eid || !lid) return;
       try {
@@ -2271,7 +2290,7 @@ if (platformMount) {
           {},
           token,
         );
-        const ee = await resolveActiveExpertId();
+        const ee = await resolveBuilderExpertId();
         if (ee) await applyBuilderLessonToForm(root, ee, token);
       } catch {
         window.alert('Не удалось удалить файл.');
@@ -2286,7 +2305,7 @@ if (platformMount) {
         return;
       }
       const token = getAccessToken();
-      const eid = await resolveActiveExpertId();
+      const eid = await resolveBuilderExpertId();
       const lid = builderSelectedLessonId;
       if (!token || !eid || !lid) return;
       try {
@@ -2367,7 +2386,7 @@ if (platformMount) {
     async function openBuilderCourseSettingsDrawer(root: ShadowRoot): Promise<void> {
       const cid = expertBuilderCourseId;
       const token = getAccessToken();
-      const eid = await resolveActiveExpertId();
+      const eid = await resolveBuilderExpertId();
       if (!token || !eid || !cid) {
         window.alert('Откройте курс в конструкторе.');
         return;
@@ -2464,7 +2483,7 @@ if (platformMount) {
     async function saveBuilderCourseSettingsDrawer(root: ShadowRoot): Promise<void> {
       const cid = expertBuilderCourseId;
       const token = getAccessToken();
-      const eid = await resolveActiveExpertId();
+      const eid = await resolveBuilderExpertId();
       if (!token || !eid || !cid) return;
       const titleInp = root.querySelector('[data-ep-course-title]') as HTMLInputElement | null;
       const descTa = root.querySelector('[data-ep-course-desc]') as HTMLTextAreaElement | null;
@@ -2501,7 +2520,7 @@ if (platformMount) {
     async function toggleBuilderCoursePublishFromDrawer(root: ShadowRoot): Promise<void> {
       const cid = expertBuilderCourseId;
       const token = getAccessToken();
-      const eid = await resolveActiveExpertId();
+      const eid = await resolveBuilderExpertId();
       if (!token || !eid || !cid) return;
       const pub = builderCourseDetail?.status !== 'published';
       try {
@@ -2522,7 +2541,7 @@ if (platformMount) {
     async function uploadBuilderCourseCoverFromDrawer(root: ShadowRoot): Promise<void> {
       const cid = expertBuilderCourseId;
       const token = getAccessToken();
-      const eid = await resolveActiveExpertId();
+      const eid = await resolveBuilderExpertId();
       if (!token || !eid || !cid) return;
       const fileInp = root.querySelector('[data-ep-course-cover-file]') as HTMLInputElement | null;
       const coverUrlInp = root.querySelector('[data-ep-course-cover-url]') as HTMLInputElement | null;
@@ -2551,7 +2570,7 @@ if (platformMount) {
     async function addBuilderCourseCustomTopic(root: ShadowRoot): Promise<void> {
       const cid = expertBuilderCourseId;
       const token = getAccessToken();
-      const eid = await resolveActiveExpertId();
+      const eid = await resolveBuilderExpertId();
       if (!token || !eid || !cid) return;
       const customInp = root.querySelector('[data-ep-course-custom-topic]') as HTMLInputElement | null;
       const title = (customInp?.value ?? '').trim();
@@ -2580,7 +2599,7 @@ if (platformMount) {
     async function saveBuilderCourseTopicsFromDrawer(root: ShadowRoot): Promise<void> {
       const cid = expertBuilderCourseId;
       const token = getAccessToken();
-      const eid = await resolveActiveExpertId();
+      const eid = await resolveBuilderExpertId();
       if (!token || !eid || !cid) return;
       try {
         await putJson<{ items?: BuilderTopicV1[] }>(
@@ -2725,6 +2744,8 @@ if (platformMount) {
         if (btn?.dataset.epExpertCourseEdit && exCid) {
           ev.preventDefault();
           ev.stopPropagation();
+          const xe = exCard.dataset.epExpertEditorExpertId;
+          expertBuilderExpertId = xe && xe.trim() ? xe.trim() : null;
           expertBuilderCourseId = exCid;
           suppressBuilderNavigateHydrate = true;
           shell.showScreen('e-builder');
@@ -2749,7 +2770,8 @@ if (platformMount) {
           ev.stopPropagation();
           void (async () => {
             const tok = getAccessToken();
-            const eid = await resolveActiveExpertId();
+            const xe = exCard.dataset.epExpertEditorExpertId;
+            const eid = xe && xe.trim() ? xe.trim() : await resolveActiveExpertId();
             if (!tok || !eid) return;
             if (!window.confirm('Удалить курс? Доступ учеников будет отозван после удаления.')) return;
             try {
@@ -2765,6 +2787,8 @@ if (platformMount) {
           ev.preventDefault();
           const ec = exCard.dataset.epExpertEditorCourseId;
           if (ec) {
+            const xe = exCard.dataset.epExpertEditorExpertId;
+            expertBuilderExpertId = xe && xe.trim() ? xe.trim() : null;
             expertBuilderCourseId = ec;
             suppressBuilderNavigateHydrate = true;
             shell.showScreen('e-builder');
