@@ -276,6 +276,22 @@ if (platformMount) {
       return (await res.json()) as T;
     }
 
+    async function patchJson<T>(path: string, body: unknown, token?: string): Promise<T> {
+      const api = getApiBaseUrl();
+      if (!api) throw new Error('API base url is empty');
+      const res = await fetch(`${api}${path}`, {
+        method: 'PATCH',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${path}`);
+      return (await res.json()) as T;
+    }
+
     async function deleteJson(path: string, token?: string): Promise<void> {
       const api = getApiBaseUrl();
       if (!api) throw new Error('API base url is empty');
@@ -406,6 +422,25 @@ if (platformMount) {
     /** Первый expertId из членств (рабочее пространство для API `/experts/:id/...`). */
     let activeExpertId: string | null = null;
     let expertCoursesSearchTimer: ReturnType<typeof setTimeout> | undefined;
+    /** Последний курс, открытый в конструкторе (для пункта меню «Конструктор»). */
+    let expertBuilderCourseId: string | null = null;
+    /** Не дублировать загрузку конструктора при navigate от showScreen после ручного открытия курса. */
+    let suppressBuilderNavigateHydrate = false;
+    let builderSelectedModuleId: string | null = null;
+    let builderSelectedLessonId: string | null = null;
+    type BuilderModuleV1 = { id: string; courseId: string; title: string; position: number };
+    type BuilderLessonV1 = {
+      id: string;
+      moduleId: string;
+      title: string;
+      position: number;
+      contentMarkdown?: string | null;
+      video?: { kind: string; url?: string } | null;
+      createdAt: string;
+      updatedAt: string;
+    };
+    const builderLessonsByModule = new Map<string, BuilderLessonV1[]>();
+    let builderModulesCache: BuilderModuleV1[] = [];
 
     const shell = mountPlatformShell(platformMount, {
       initialRole: 'student',
@@ -426,6 +461,20 @@ if (platformMount) {
         }
         if (action.type === 'navigate' && action.screenId === 'e-courses') {
           void hydrateExpertCourses(action.shadowRoot);
+        }
+        if (action.type === 'navigate' && action.screenId === 'e-builder') {
+          if (suppressBuilderNavigateHydrate) return;
+          const src = action.sourceElement ?? null;
+          if (src?.dataset.epBuilderLaunch === 'new') {
+            void openExpertBuilderNew(action.shadowRoot);
+          } else if (expertBuilderCourseId) {
+            void openExpertBuilderEdit(action.shadowRoot, expertBuilderCourseId);
+          } else {
+            window.alert('Создайте курс кнопкой «+ Создать курс» в «Мои курсы» или откройте курс для редактирования.');
+          }
+        }
+        if (action.type === 'builder_tab') {
+          switchExpertBuilderTab(action.shadowRoot, action.tabLabel);
         }
       },
     });
@@ -1510,6 +1559,7 @@ if (platformMount) {
       const card = document.createElement('div');
       card.className = 'card ep-expert-course-card';
       card.dataset.epExpertCourseCard = '1';
+      card.dataset.epExpertEditorCourseId = item.id;
       card.style.cursor = 'pointer';
       if (item.status === 'draft') card.style.opacity = '0.88';
 
@@ -1755,6 +1805,410 @@ if (platformMount) {
       }
     }
 
+    function builderScreen(root: ShadowRoot): HTMLElement | null {
+      return root.getElementById('screen-e-builder');
+    }
+
+    async function builderFetchModules(eid: string, cid: string, token: string): Promise<BuilderModuleV1[]> {
+      const res = await fetchJson<{ items?: BuilderModuleV1[] }>(
+        `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/modules`,
+        token,
+      );
+      return (res.items ?? []).slice().sort((a, b) => a.position - b.position);
+    }
+
+    async function builderFetchLessons(eid: string, mid: string, token: string): Promise<BuilderLessonV1[]> {
+      const res = await fetchJson<{ items?: BuilderLessonV1[] }>(
+        `/experts/${encodeURIComponent(eid)}/modules/${encodeURIComponent(mid)}/lessons`,
+        token,
+      );
+      return (res.items ?? []).slice().sort((a, b) => a.position - b.position);
+    }
+
+    async function builderLoadCourseData(root: ShadowRoot, eid: string, cid: string, token: string): Promise<void> {
+      builderLessonsByModule.clear();
+      builderModulesCache = await builderFetchModules(eid, cid, token);
+      let totalLessons = 0;
+      for (const m of builderModulesCache) {
+        const ls = await builderFetchLessons(eid, m.id, token);
+        builderLessonsByModule.set(m.id, ls);
+        totalLessons += ls.length;
+      }
+
+      const course = await fetchJson<{ title: string; status: string }>(
+        `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}`,
+        token,
+      );
+      const titleHost = root.querySelector('[data-ep-builder-course-title]');
+      const metaHost = root.querySelector('[data-ep-builder-course-meta]');
+      const statusHost = root.querySelector('[data-ep-builder-course-status]');
+      if (titleHost) titleHost.textContent = course.title;
+      if (metaHost) {
+        metaHost.textContent = `${builderModulesCache.length} ${pluralRu(builderModulesCache.length, ['модуль', 'модуля', 'модулей'])} · ${totalLessons} ${pluralRu(totalLessons, ['урок', 'урока', 'уроков'])}`;
+      }
+      if (statusHost) statusHost.textContent = course.status;
+
+      let best: { mid: string; lid: string; t: number } | null = null;
+      for (const m of builderModulesCache) {
+        for (const l of builderLessonsByModule.get(m.id) ?? []) {
+          const ts = Date.parse(l.createdAt);
+          if (!Number.isFinite(ts)) continue;
+          if (!best || ts >= best.t) best = { mid: m.id, lid: l.id, t: ts };
+        }
+      }
+      if (best) {
+        builderSelectedModuleId = best.mid;
+        builderSelectedLessonId = best.lid;
+      } else if (builderModulesCache[0]) {
+        builderSelectedModuleId = builderModulesCache[0].id;
+        builderSelectedLessonId = null;
+      } else {
+        builderSelectedModuleId = null;
+        builderSelectedLessonId = null;
+      }
+
+      renderBuilderModTree(root);
+      await applyBuilderLessonToForm(root, eid, token);
+    }
+
+    function renderBuilderModTree(root: ShadowRoot): void {
+      const host = root.querySelector('[data-ep-builder-mod-tree]') as HTMLElement | null;
+      if (!host) return;
+      host.replaceChildren();
+      for (const m of builderModulesCache) {
+        const lessons = builderLessonsByModule.get(m.id) ?? [];
+        const item = document.createElement('div');
+        item.className = 'mod-item';
+
+        const head = document.createElement('div');
+        head.className = 'mod-head';
+        head.dataset.epModToggle = '1';
+        const isOpen = builderSelectedModuleId === m.id;
+        if (isOpen) head.classList.add('active');
+        const arrow = document.createElement('span');
+        arrow.className = `mod-arrow${isOpen ? ' open' : ''}`;
+        arrow.textContent = '▶';
+        const name = document.createElement('span');
+        name.className = 'mod-name';
+        name.textContent = m.title;
+        const cnt = document.createElement('span');
+        cnt.className = 'mod-cnt';
+        cnt.textContent = String(lessons.length);
+        head.append(arrow, name, cnt);
+
+        const box = document.createElement('div');
+        box.className = `mod-lessons${isOpen ? ' open' : ''}`;
+        for (const l of lessons) {
+          const row = document.createElement('div');
+          row.className = 'lesson-row';
+          if (builderSelectedLessonId === l.id) row.classList.add('active');
+          row.dataset.epBuilderLessonId = l.id;
+          row.dataset.epBuilderModuleId = m.id;
+          const ico = document.createElement('span');
+          ico.className = 'lesson-ico';
+          ico.textContent = '▶';
+          const nm = document.createElement('span');
+          nm.className = 'lesson-name';
+          nm.textContent = l.title;
+          row.append(ico, nm);
+          box.appendChild(row);
+        }
+        item.append(head, box);
+        host.appendChild(item);
+      }
+    }
+
+    async function applyBuilderLessonToForm(root: ShadowRoot, eid: string, token: string): Promise<void> {
+      const titleInp = root.querySelector('[data-ep-builder-lesson-title]') as HTMLInputElement | null;
+      const rutubeInp = root.querySelector('[data-ep-builder-rutube]') as HTMLInputElement | null;
+      const bodyTa = root.querySelector('[data-ep-builder-lesson-body]') as HTMLTextAreaElement | null;
+      const hwTa = root.querySelector('[data-ep-builder-hw-body]') as HTMLTextAreaElement | null;
+      const filesHost = root.querySelector('[data-ep-builder-hw-files]') as HTMLElement | null;
+
+      if (!builderSelectedLessonId || !builderSelectedModuleId) {
+        if (titleInp) titleInp.value = '';
+        if (rutubeInp) rutubeInp.value = '';
+        if (bodyTa) bodyTa.value = '';
+        if (hwTa) hwTa.value = '';
+        if (filesHost) filesHost.replaceChildren();
+        return;
+      }
+      const list = builderLessonsByModule.get(builderSelectedModuleId) ?? [];
+      const lesson = list.find((x) => x.id === builderSelectedLessonId) ?? null;
+      if (!lesson) {
+        if (titleInp) titleInp.value = '';
+        if (rutubeInp) rutubeInp.value = '';
+        if (bodyTa) bodyTa.value = '';
+        if (hwTa) hwTa.value = '';
+        if (filesHost) filesHost.replaceChildren();
+        return;
+      }
+      if (titleInp) titleInp.value = lesson.title;
+      if (bodyTa) bodyTa.value = lesson.contentMarkdown ?? '';
+      const v = lesson.video;
+      if (rutubeInp) rutubeInp.value = v && v.kind === 'rutube' && v.url ? v.url : '';
+
+      if (hwTa) hwTa.value = '';
+      if (filesHost) filesHost.replaceChildren();
+      try {
+        const a = await fetchJson<{
+          assignment?: { promptMarkdown?: string | null } | null;
+          files?: { id: string; filename: string }[];
+        }>(`/experts/${encodeURIComponent(eid)}/lessons/${encodeURIComponent(lesson.id)}/assignment`, token);
+        if (hwTa) hwTa.value = a.assignment?.promptMarkdown ?? '';
+        if (filesHost && Array.isArray(a.files)) {
+          for (const f of a.files) {
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.justifyContent = 'space-between';
+            row.style.alignItems = 'center';
+            row.style.gap = '8px';
+            row.style.padding = '6px 8px';
+            row.style.border = '1px solid var(--line)';
+            row.style.borderRadius = '8px';
+            row.style.background = 'var(--surface2)';
+            const lab = document.createElement('span');
+            lab.textContent = f.filename;
+            lab.style.overflow = 'hidden';
+            lab.style.textOverflow = 'ellipsis';
+            const del = document.createElement('button');
+            del.type = 'button';
+            del.className = 'btn btn-ghost btn-sm';
+            del.textContent = 'Удалить';
+            del.dataset.epBuilderHwDelFile = f.id;
+            row.append(lab, del);
+            filesHost.appendChild(row);
+          }
+        }
+      } catch {
+        /* нет ДЗ — ок */
+      }
+    }
+
+    async function selectBuilderLesson(root: ShadowRoot, moduleId: string, lessonId: string): Promise<void> {
+      builderSelectedModuleId = moduleId;
+      builderSelectedLessonId = lessonId;
+      const token = getAccessToken();
+      const eid = await resolveActiveExpertId();
+      if (!token || !eid) return;
+      renderBuilderModTree(root);
+      await applyBuilderLessonToForm(root, eid, token);
+    }
+
+    async function openExpertBuilderNew(root: ShadowRoot): Promise<void> {
+      const token = getAccessToken();
+      const eid = await resolveActiveExpertId();
+      if (!token || !eid) {
+        window.alert('Войдите в аккаунт с доступом эксперта.');
+        return;
+      }
+      let created: { id: string; title: string };
+      try {
+        created = await postJson<{ id: string; title: string }>(
+          `/experts/${encodeURIComponent(eid)}/courses`,
+          { title: 'Новый курс' },
+          token,
+        );
+      } catch {
+        window.alert('Не удалось создать курс. Нужна роль менеджера или выше.');
+        return;
+      }
+      expertBuilderCourseId = created.id;
+      await builderLoadCourseData(root, eid, created.id, token);
+      void hydrateExpertCourses(root);
+    }
+
+    async function openExpertBuilderEdit(root: ShadowRoot, courseId: string): Promise<void> {
+      const token = getAccessToken();
+      const eid = await resolveActiveExpertId();
+      if (!token || !eid) {
+        window.alert('Войдите в аккаунт с доступом эксперта.');
+        return;
+      }
+      expertBuilderCourseId = courseId;
+      try {
+        await builderLoadCourseData(root, eid, courseId, token);
+      } catch {
+        window.alert('Не удалось загрузить курс.');
+      }
+    }
+
+    async function saveBuilderLesson(root: ShadowRoot): Promise<void> {
+      const token = getAccessToken();
+      const eid = await resolveActiveExpertId();
+      const cid = expertBuilderCourseId;
+      const mid = builderSelectedModuleId;
+      const lid = builderSelectedLessonId;
+      if (!token || !eid || !cid || !mid || !lid) {
+        window.alert('Выберите урок в дереве слева.');
+        return;
+      }
+      const titleInp = root.querySelector('[data-ep-builder-lesson-title]') as HTMLInputElement | null;
+      const rutubeInp = root.querySelector('[data-ep-builder-rutube]') as HTMLInputElement | null;
+      const bodyTa = root.querySelector('[data-ep-builder-lesson-body]') as HTMLTextAreaElement | null;
+      const title = (titleInp?.value ?? '').trim();
+      if (!title) {
+        window.alert('Укажите название урока.');
+        return;
+      }
+      const rawRu = (rutubeInp?.value ?? '').trim();
+      let video: { kind: string; url?: string } = { kind: 'none' };
+      if (rawRu) {
+        const embed = normalizeRutubeEmbedUrl(rawRu);
+        if (!embed) {
+          window.alert('Некорректная ссылка Rutube.');
+          return;
+        }
+        video = { kind: 'rutube', url: embed };
+      }
+      try {
+        const updated = await patchJson<BuilderLessonV1>(
+          `/experts/${encodeURIComponent(eid)}/modules/${encodeURIComponent(mid)}/lessons/${encodeURIComponent(lid)}`,
+          {
+            title,
+            contentMarkdown: bodyTa?.value ?? '',
+            video,
+          },
+          token,
+        );
+        const list = builderLessonsByModule.get(mid) ?? [];
+        const idx = list.findIndex((x) => x.id === lid);
+        if (idx >= 0) list[idx] = updated;
+        else list.push(updated);
+        builderLessonsByModule.set(mid, list);
+        renderBuilderModTree(root);
+        window.alert('Урок сохранён.');
+      } catch {
+        window.alert('Не удалось сохранить урок.');
+      }
+    }
+
+    async function saveBuilderHomework(root: ShadowRoot): Promise<void> {
+      const token = getAccessToken();
+      const eid = await resolveActiveExpertId();
+      const lid = builderSelectedLessonId;
+      if (!token || !eid || !lid) {
+        window.alert('Выберите урок.');
+        return;
+      }
+      const hwTa = root.querySelector('[data-ep-builder-hw-body]') as HTMLTextAreaElement | null;
+      const text = (hwTa?.value ?? '').trim();
+      try {
+        await patchJson(
+          `/experts/${encodeURIComponent(eid)}/lessons/${encodeURIComponent(lid)}/assignment`,
+          { promptMarkdown: text ? (hwTa?.value ?? '') : null },
+          token,
+        );
+        window.alert('Домашнее задание сохранено.');
+      } catch {
+        window.alert('Не удалось сохранить ДЗ.');
+      }
+    }
+
+    async function builderAddModule(root: ShadowRoot): Promise<void> {
+      const token = getAccessToken();
+      const eid = await resolveActiveExpertId();
+      const cid = expertBuilderCourseId;
+      if (!token || !eid || !cid) {
+        window.alert('Сначала создайте или откройте курс.');
+        return;
+      }
+      const title = window.prompt('Название модуля', 'Новый модуль');
+      if (!title?.trim()) return;
+      try {
+        await postJson(`/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/modules`, { title: title.trim() }, token);
+        await builderLoadCourseData(root, eid, cid, token);
+      } catch {
+        window.alert('Не удалось создать модуль (нужна роль менеджера+).');
+      }
+    }
+
+    async function builderAddLesson(root: ShadowRoot): Promise<void> {
+      const token = getAccessToken();
+      const eid = await resolveActiveExpertId();
+      const cid = expertBuilderCourseId;
+      if (!token || !eid || !cid) {
+        window.alert('Сначала создайте или откройте курс.');
+        return;
+      }
+      const mid = builderSelectedModuleId ?? builderModulesCache[0]?.id ?? null;
+      if (!mid) {
+        window.alert('Сначала добавьте модуль.');
+        return;
+      }
+      const title = window.prompt('Название урока', 'Новый урок');
+      if (!title?.trim()) return;
+      try {
+        const created = await postJson<BuilderLessonV1>(
+          `/experts/${encodeURIComponent(eid)}/modules/${encodeURIComponent(mid)}/lessons`,
+          { title: title.trim(), contentMarkdown: '' },
+          token,
+        );
+        builderSelectedModuleId = mid;
+        builderSelectedLessonId = created.id;
+        await builderLoadCourseData(root, eid, cid, token);
+      } catch {
+        window.alert('Не удалось создать урок (нужна роль менеджера+).');
+      }
+    }
+
+    function switchExpertBuilderTab(root: ShadowRoot, tabLabel: string): void {
+      const screen = builderScreen(root);
+      if (!screen) return;
+      const tabs = screen.querySelectorAll('[data-ep-builder-tabs] .tab');
+      tabs.forEach((t) => t.classList.remove('active'));
+      let panel: 'content' | 'homework' | 'settings' = 'content';
+      if (tabLabel.includes('Домашнее')) panel = 'homework';
+      else if (tabLabel.includes('Настройки')) panel = 'settings';
+      tabs.forEach((t) => {
+        if (t.textContent?.trim() === tabLabel) t.classList.add('active');
+      });
+      screen.querySelectorAll('[data-ep-builder-panel]').forEach((p) => {
+        const k = (p as HTMLElement).dataset.epBuilderPanel;
+        (p as HTMLElement).style.display = k === panel ? '' : 'none';
+      });
+    }
+
+    async function builderDeleteHwFile(root: ShadowRoot, fileId: string): Promise<void> {
+      const token = getAccessToken();
+      const eid = await resolveActiveExpertId();
+      const lid = builderSelectedLessonId;
+      if (!token || !eid || !lid) return;
+      try {
+        await postJson(
+          `/experts/${encodeURIComponent(eid)}/lessons/${encodeURIComponent(lid)}/assignment/files/${encodeURIComponent(fileId)}/delete`,
+          {},
+          token,
+        );
+        const ee = await resolveActiveExpertId();
+        if (ee) await applyBuilderLessonToForm(root, ee, token);
+      } catch {
+        window.alert('Не удалось удалить файл.');
+      }
+    }
+
+    async function builderUploadHwFiles(root: ShadowRoot, files: FileList | null): Promise<void> {
+      if (!files?.length) return;
+      const token = getAccessToken();
+      const eid = await resolveActiveExpertId();
+      const lid = builderSelectedLessonId;
+      if (!token || !eid || !lid) return;
+      try {
+        for (const f of Array.from(files)) {
+          const form = new FormData();
+          form.append('file', f, f.name);
+          await fetchMultipartJson(
+            `/experts/${encodeURIComponent(eid)}/lessons/${encodeURIComponent(lid)}/assignment/files/upload`,
+            form,
+            token,
+          );
+        }
+        await applyBuilderLessonToForm(root, eid, token);
+      } catch {
+        window.alert('Не удалось загрузить файлы.');
+      }
+    }
+
     // Подгружаем данные на старте
     void hydrateTopbarUser();
     void hydrateStudentCatalog();
@@ -1877,7 +2331,11 @@ if (platformMount) {
         if (btn?.dataset.epExpertCourseEdit && exCid) {
           ev.preventDefault();
           ev.stopPropagation();
+          expertBuilderCourseId = exCid;
+          suppressBuilderNavigateHydrate = true;
           shell.showScreen('e-builder');
+          suppressBuilderNavigateHydrate = false;
+          void openExpertBuilderEdit(shell.shadowRoot, exCid);
           return;
         }
         if (btn?.dataset.epExpertCourseAnalytics && exCid) {
@@ -1911,8 +2369,64 @@ if (platformMount) {
         }
         if (!btn) {
           ev.preventDefault();
-          shell.showScreen('e-builder');
+          const ec = exCard.dataset.epExpertEditorCourseId;
+          if (ec) {
+            expertBuilderCourseId = ec;
+            suppressBuilderNavigateHydrate = true;
+            shell.showScreen('e-builder');
+            suppressBuilderNavigateHydrate = false;
+            void openExpertBuilderEdit(shell.shadowRoot, ec);
+          }
         }
+        return;
+      }
+
+      const bLesson = t?.closest('[data-ep-builder-lesson-id]') as HTMLElement | null;
+      const bLid = bLesson?.dataset.epBuilderLessonId;
+      const bMid = bLesson?.dataset.epBuilderModuleId;
+      if (bLesson && bLid && bMid) {
+        ev.preventDefault();
+        void selectBuilderLesson(shell.shadowRoot, bMid, bLid);
+        return;
+      }
+
+      if (t?.closest('[data-ep-builder-add-module]')) {
+        ev.preventDefault();
+        void builderAddModule(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-builder-add-lesson]')) {
+        ev.preventDefault();
+        void builderAddLesson(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-builder-save-lesson]')) {
+        ev.preventDefault();
+        void saveBuilderLesson(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-builder-save-hw]')) {
+        ev.preventDefault();
+        void saveBuilderHomework(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-builder-preview-lesson]')) {
+        ev.preventDefault();
+        const cid = expertBuilderCourseId;
+        if (cid) void openCoursePreview(cid);
+        else window.alert('Сначала выберите курс.');
+        return;
+      }
+      if (t?.closest('[data-ep-builder-hw-add-files]')) {
+        ev.preventDefault();
+        shell.shadowRoot.querySelector<HTMLInputElement>('[data-ep-builder-hw-file-input]')?.click();
+        return;
+      }
+      const hwDel = t?.closest('[data-ep-builder-hw-del-file]') as HTMLElement | null;
+      const hwFid = hwDel?.dataset.epBuilderHwDelFile;
+      if (hwDel && hwFid) {
+        ev.preventDefault();
+        void builderDeleteHwFile(shell.shadowRoot, hwFid);
         return;
       }
 
@@ -2015,6 +2529,13 @@ if (platformMount) {
 
     shell.shadowRoot.addEventListener('change', (ev) => {
       const t = ev.target as HTMLElement | null;
+      if (t?.matches('input[data-ep-builder-hw-file-input]')) {
+        const inp = t as HTMLInputElement;
+        void builderUploadHwFiles(shell.shadowRoot, inp.files).finally(() => {
+          inp.value = '';
+        });
+        return;
+      }
       if (!t?.matches('input[data-ep-homework-file-input]')) return;
       const inp = t as HTMLInputElement;
       const f = inp.files?.[0] ?? null;

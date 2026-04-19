@@ -421,6 +421,36 @@ textarea.form-input{resize:vertical;min-height:80px}
 .ep-expert-course-card .prog-val{color:rgba(248,250,252,.9);text-shadow:0 1px 3px rgba(0,0,0,.45)}
 .ep-expert-course-card .div{background:rgba(255,255,255,.16);margin:16px 0}
 
+/* Эксперт: футер карточки на обложке — читаемая «Редактировать» и иконки */
+.ep-expert-course-card__body .btn.btn-outline.btn-sm{
+  background:rgba(255,255,255,.96);
+  border:1px solid rgba(255,255,255,.65);
+  color:var(--t1);
+  font-weight:600;
+  box-shadow:0 2px 12px rgba(0,0,0,.28);
+}
+.ep-expert-course-card__body .btn.btn-outline.btn-sm:hover{
+  background:#fff;
+  border-color:var(--t1);
+  color:var(--t1);
+}
+.ep-expert-course-card__body .btn.btn-ghost.btn-icon{
+  background:rgba(255,255,255,.22);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.5);
+  color:#f8fafc;
+  box-shadow:0 2px 10px rgba(0,0,0,.22);
+}
+.ep-expert-course-card__body .btn.btn-ghost.btn-icon:hover{
+  background:rgba(255,255,255,.36);
+  border-color:rgba(255,255,255,.72);
+  color:#fff;
+}
+.ep-expert-course-card__body .btn.btn-primary.btn-sm{
+  box-shadow:0 2px 14px rgba(0,0,0,.35);
+}
+
 /* Notification dot */
 .dot-online{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok)}
 

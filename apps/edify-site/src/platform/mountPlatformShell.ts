@@ -3,7 +3,7 @@ import shellHtml from './shellBody.html?raw';
 
 export type PlatformShellAction =
   | { type: 'role'; role: 'expert' | 'student' }
-  | { type: 'navigate'; screenId: string; shadowRoot: ShadowRoot }
+  | { type: 'navigate'; screenId: string; shadowRoot: ShadowRoot; sourceElement?: HTMLElement | null }
   | { type: 'open_course'; courseId: string }
   | { type: 'open_lesson'; lessonId: string }
   | { type: 'module_toggle' }
@@ -51,6 +51,7 @@ function showScreen(
   id: string,
   handlers: PlatformShellHandlers,
   ev: Event,
+  sourceElement?: HTMLElement | null,
 ): void {
   root.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
   root.getElementById(`screen-${id}`)?.classList.add('active');
@@ -60,7 +61,7 @@ function showScreen(
   });
 
   root.getElementById('main-content')?.scrollTo(0, 0);
-  emit(handlers, { type: 'navigate', screenId: id, shadowRoot: root }, ev);
+  emit(handlers, { type: 'navigate', screenId: id, shadowRoot: root, sourceElement: sourceElement ?? null }, ev);
 }
 
 function setRole(
@@ -143,7 +144,7 @@ function onShadowClick(ev: MouseEvent, root: ShadowRoot, handlers: PlatformShell
   const sid = screenEl?.dataset.epScreen;
   if (screenEl && sid) {
     if (screenEl.dataset.epStopProp === '1') ev.stopPropagation();
-    showScreen(root, sid, handlers, ev);
+    showScreen(root, sid, handlers, ev, screenEl);
   }
 }
 
