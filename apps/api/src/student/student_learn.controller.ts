@@ -42,8 +42,9 @@ export class LearnController {
       progressRepository: this.progressRepository,
     });
     const lessons = await this.coursesRepository.listLessonsByCourseId(activeCourseId);
-    const nextLesson =
-      (access.nextUnlockedLessonId && lessons.find((l) => l.id === access.nextUnlockedLessonId)) ?? null;
+    const nextLesson = access.nextUnlockedLessonId
+      ? (lessons.find((l) => l.id === access.nextUnlockedLessonId) ?? null)
+      : null;
     return { activeCourse: course, nextLesson };
   }
 }
