@@ -1,4 +1,5 @@
 import './edify.css';
+import { ACCESS_TOKEN_KEY } from './authSession.js';
 import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
 import { refreshNavAuth } from './navAuthUi.js';
 
@@ -88,6 +89,20 @@ window.addEventListener('focus', () => {
   } catch {
     /* ignore */
   }
+  void refreshNavAuth();
+});
+
+/**
+ * Telegram Mini App после входа открывает сайт через openLink в **новой вкладке**:
+ * там сохраняется токен. Старая вкладка не получает localStorage «сама по себе» —
+ * событие `storage` и возврат на вкладку (`visibilitychange`) подтягивают профиль.
+ */
+window.addEventListener('storage', (ev) => {
+  if (ev.key === ACCESS_TOKEN_KEY || ev.key === null) void refreshNavAuth();
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') void refreshNavAuth();
 });
 
 const revealObserver = new IntersectionObserver(
