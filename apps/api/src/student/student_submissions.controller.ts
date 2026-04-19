@@ -38,7 +38,7 @@ export class StudentSubmissionsController {
   @Get('me/submissions/recent')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Latest homework submissions across my enrolled courses' })
+  @ApiOperation({ summary: 'Latest homework per lesson across my enrolled courses (newest row per lesson, then N lessons by activity)' })
   @ApiResponse({ status: 200, description: 'Recent submissions with course/module/lesson titles' })
   async listRecentMine(
     @Query('limit') limitRaw: string | undefined,

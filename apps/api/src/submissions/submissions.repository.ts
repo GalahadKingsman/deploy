@@ -92,7 +92,10 @@ export class SubmissionsRepository {
     );
   }
 
-  /** Latest submissions for student, only courses with active enrollment; includes lesson/course/module titles. */
+  /**
+   * Latest homework per lesson (resubmits are new rows — we only keep the newest per lesson_id),
+   * then the N most recently touched lessons. Only courses with active enrollment.
+   */
   async listMyRecentEnriched(params: { userId: string; limit: number }): Promise<ContractsV1.MyRecentSubmissionItemV1[]> {
     if (!this.pool) return [];
     const lim = Math.min(50, Math.max(1, Number.isFinite(params.limit) ? Math.floor(params.limit) : 3));
@@ -114,26 +117,35 @@ export class SubmissionsRepository {
       lesson_title: string;
     }>(
       `
-      SELECT s.id, s.assignment_id, s.student_user_id, s.created_at, s.text, s.link, s.file_key, s.status,
-             s.score, s.reviewer_comment,
-             a.lesson_id,
-             u.username AS student_telegram_username,
-             c.title AS course_title,
-             m.title AS module_title,
-             l.title AS lesson_title
-      FROM submissions s
-      JOIN assignments a ON a.id = s.assignment_id
-      JOIN lessons l ON l.id = a.lesson_id AND l.deleted_at IS NULL
-      JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
-      JOIN courses c ON c.id = m.course_id AND c.deleted_at IS NULL
-      JOIN users u ON u.id = s.student_user_id
-      INNER JOIN enrollments e
-        ON e.user_id = s.student_user_id
-       AND e.course_id = c.id
-       AND e.revoked_at IS NULL
-       AND (e.access_end IS NULL OR e.access_end > NOW())
-      WHERE s.student_user_id = $1
-      ORDER BY s.created_at DESC
+      SELECT sub.id, sub.assignment_id, sub.student_user_id, sub.created_at, sub.text, sub.link, sub.file_key,
+             sub.status, sub.score, sub.reviewer_comment,
+             sub.lesson_id,
+             sub.student_telegram_username,
+             sub.course_title, sub.module_title, sub.lesson_title
+      FROM (
+        SELECT DISTINCT ON (a.lesson_id)
+          s.id, s.assignment_id, s.student_user_id, s.created_at, s.text, s.link, s.file_key, s.status,
+          s.score, s.reviewer_comment,
+          a.lesson_id,
+          u.username AS student_telegram_username,
+          c.title AS course_title,
+          m.title AS module_title,
+          l.title AS lesson_title
+        FROM submissions s
+        JOIN assignments a ON a.id = s.assignment_id
+        JOIN lessons l ON l.id = a.lesson_id AND l.deleted_at IS NULL
+        JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+        JOIN courses c ON c.id = m.course_id AND c.deleted_at IS NULL
+        JOIN users u ON u.id = s.student_user_id
+        INNER JOIN enrollments e
+          ON e.user_id = s.student_user_id
+         AND e.course_id = c.id
+         AND e.revoked_at IS NULL
+         AND (e.access_end IS NULL OR e.access_end > NOW())
+        WHERE s.student_user_id = $1
+        ORDER BY a.lesson_id, s.created_at DESC
+      ) sub
+      ORDER BY sub.created_at DESC
       LIMIT $2
       `,
       [params.userId, lim],
