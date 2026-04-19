@@ -18,6 +18,8 @@ import { JwtAuthGuard } from '../auth/session/jwt-auth.guard.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { StudentCoursesRepository } from './student_courses.repository.js';
 import { EnrollmentsRepository } from './student_enrollments.repository.js';
+import { ProgressRepository } from './student_progress.repository.js';
+import { computeCourseLessonAccess } from './student_lesson_access.js';
 import { AssignmentsRepository } from '../assignments/assignments.repository.js';
 import { AssignmentFilesRepository } from '../assignments/assignment-files.repository.js';
 import { SubmissionsRepository } from '../submissions/submissions.repository.js';
@@ -25,10 +27,23 @@ import { S3StorageService } from '../storage/s3-storage.service.js';
 
 @ApiTags('Assignments')
 @Controller()
+function assignmentPromptHasBody(raw: string | null | undefined): boolean {
+  if (raw == null) return false;
+  let s = String(raw)
+    .replace(/^\uFEFF/, '')
+    .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, ' ')
+    .trim();
+  if (!s) return false;
+  const noTags = s.replace(/<[^>]+>/g, ' ');
+  const collapsed = noTags.replace(/\s+/g, ' ').trim();
+  return collapsed.length > 0;
+}
+
 export class StudentAssignmentsController {
   constructor(
     private readonly coursesRepository: StudentCoursesRepository,
     private readonly enrollmentsRepository: EnrollmentsRepository,
+    private readonly progressRepository: ProgressRepository,
     private readonly assignmentsRepository: AssignmentsRepository,
     private readonly assignmentFilesRepository: AssignmentFilesRepository,
     private readonly submissionsRepository: SubmissionsRepository,
@@ -55,6 +70,79 @@ export class StudentAssignmentsController {
       ? await this.assignmentFilesRepository.listByAssignmentId(assignment.id)
       : [];
     return { assignment, files };
+  }
+
+  @Get('me/homework/next-pending')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Latest “received” homework that still needs the student’s send (unlocked lesson, no submission or rework; excludes submitted/accepted)',
+  })
+  @ApiResponse({ status: 200, description: 'Homework context or null' })
+  async getNextPendingHomework(
+    @Req() req: FastifyRequest & { user?: { userId: string } },
+  ): Promise<ContractsV1.GetNextPendingHomeworkResponseV1> {
+    const userId = req.user?.userId;
+    if (!userId) throw new NotFoundException({ code: ErrorCodes.UNAUTHORIZED, message: 'Unauthorized' });
+
+    const courseIds = await this.enrollmentsRepository.listMyActiveCourseIds(userId);
+    type Best = {
+      updatedAtMs: number;
+      courseIdx: number;
+      lessonIdx: number;
+      payload: ContractsV1.NextPendingHomeworkV1;
+    };
+    let best: Best | null = null;
+
+    for (let ci = 0; ci < courseIds.length; ci++) {
+      const courseId = courseIds[ci];
+      const access = await computeCourseLessonAccess({
+        userId,
+        courseId,
+        coursesRepository: this.coursesRepository,
+        progressRepository: this.progressRepository,
+      });
+      const unlocked = new Set(access.unlockedLessonIds);
+      const lessons = await this.coursesRepository.listLessonsByCourseId(courseId);
+      for (let li = 0; li < lessons.length; li++) {
+        const lesson = lessons[li];
+        if (!unlocked.has(lesson.id)) continue;
+        const assignment = await this.assignmentsRepository.getByLessonId(lesson.id);
+        if (!assignment) continue;
+        const files = await this.assignmentFilesRepository.listByAssignmentId(assignment.id);
+        const hasBody = assignmentPromptHasBody(assignment.promptMarkdown);
+        if (!hasBody && files.length === 0) continue;
+
+        const subs = await this.submissionsRepository.listMyByLesson({ userId, lessonId: lesson.id });
+        const latestStatus = subs[0]?.status;
+        if (latestStatus === 'submitted' || latestStatus === 'accepted') continue;
+
+        const ctx = await this.coursesRepository.getLessonWithContext(lesson.id);
+        if (!ctx) continue;
+
+        const updatedAtMs = new Date(assignment.updatedAt).getTime();
+        const payload: ContractsV1.NextPendingHomeworkV1 = {
+          lessonId: lesson.id,
+          lessonTitle: lesson.title,
+          courseTitle: ctx.courseTitle,
+          moduleTitle: ctx.moduleTitle,
+          promptMarkdown: assignment.promptMarkdown ?? null,
+          hasExpertFiles: files.length > 0,
+        };
+        const cand: Best = { updatedAtMs, courseIdx: ci, lessonIdx: li, payload };
+        if (
+          !best ||
+          cand.updatedAtMs > best.updatedAtMs ||
+          (cand.updatedAtMs === best.updatedAtMs &&
+            (cand.courseIdx < best.courseIdx || (cand.courseIdx === best.courseIdx && cand.lessonIdx < best.lessonIdx)))
+        ) {
+          best = cand;
+        }
+      }
+    }
+
+    return { homework: best?.payload ?? null };
   }
 
   @Get('lessons/:lessonId/assignment/files/:fileId/download')

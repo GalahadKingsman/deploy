@@ -378,6 +378,7 @@ if (platformMount) {
         if (import.meta.env.DEV) console.debug('[edify-platform-page]', action);
         if (action.type === 'navigate' && action.screenId === 's-homework') {
           void hydrateRecentSubmissionsTable(action.shadowRoot);
+          void hydratePendingHomeworkHub(action.shadowRoot);
         }
       },
     });
@@ -748,22 +749,26 @@ if (platformMount) {
       }
     }
 
-    async function prepareHomeworkScreen(): Promise<void> {
-      const root = shell.shadowRoot;
-      const hw = (root as any).__epHomework as
-        | { lessonId?: string; lessonTitle?: string; prompt?: string; hasHomework?: boolean }
-        | undefined;
-      if (!hw?.lessonId) {
-        window.alert('Сначала откройте урок с заданием.');
-        return;
-      }
-      if (hw.hasHomework === false) {
-        window.alert('У этого урока нет домашнего задания от эксперта.');
-        return;
-      }
-      shell.showScreen('s-homework');
-      const token = getAccessToken() ?? undefined;
+    type EpHomeworkCtx = {
+      lessonId: string;
+      lessonTitle?: string;
+      prompt?: string;
+      hasHomework?: boolean;
+      /** Из экрана «Домашние задания»: вторая строка «курс / модуль» */
+      courseModuleLine?: string | null;
+    };
 
+    type NextPendingHomeworkApi = {
+      lessonId: string;
+      lessonTitle: string;
+      courseTitle: string;
+      moduleTitle: string;
+      promptMarkdown: string | null;
+      hasExpertFiles: boolean;
+    };
+
+    async function fillHomeworkFormCard(root: ShadowRoot, hw: EpHomeworkCtx): Promise<void> {
+      const token = getAccessToken() ?? undefined;
       const subEl = root.querySelector('#screen-s-homework [data-ep-homework-sub]') as HTMLElement | null;
       const titleEl = root.querySelector('#screen-s-homework [data-ep-homework-title]') as HTMLElement | null;
       const metaEl = root.querySelector('#screen-s-homework [data-ep-homework-meta]') as HTMLElement | null;
@@ -775,8 +780,14 @@ if (platformMount) {
       const fileInp = root.querySelector('#screen-s-homework [data-ep-homework-file-input]') as HTMLInputElement | null;
 
       if (subEl) subEl.textContent = 'Задание к текущему уроку';
-      if (titleEl) titleEl.textContent = 'Домашнее задание';
-      if (metaEl) metaEl.textContent = (hw.lessonTitle ?? '').trim() || '—';
+      const cm = (hw.courseModuleLine ?? '').trim();
+      if (cm) {
+        if (titleEl) titleEl.textContent = (hw.lessonTitle ?? '').trim() || 'Домашнее задание';
+        if (metaEl) metaEl.textContent = cm;
+      } else {
+        if (titleEl) titleEl.textContent = 'Домашнее задание';
+        if (metaEl) metaEl.textContent = (hw.lessonTitle ?? '').trim() || '—';
+      }
       const prompt = (hw.prompt ?? '').trim();
       setRichTextWithLinks(qEl, prompt || 'Формулировка задания не указана.');
 
@@ -819,6 +830,71 @@ if (platformMount) {
       hwDraft.selectedFile = null;
       setHomeworkStatusBadge(statusEl, latest?.status);
       syncHomeworkFileRow(root);
+    }
+
+    async function hydratePendingHomeworkHub(root: ShadowRoot | null): Promise<void> {
+      if (!root) return;
+      const active = root.querySelector('#screen-s-homework [data-ep-homework-hub-active]') as HTMLElement | null;
+      const empty = root.querySelector('#screen-s-homework [data-ep-homework-hub-empty]') as HTMLElement | null;
+      if (!active || !empty) return;
+
+      const token = getAccessToken();
+      if (!token) {
+        active.style.display = 'none';
+        empty.style.display = '';
+        empty.textContent = 'Войдите в аккаунт, чтобы видеть актуальные задания.';
+        (root as any).__epHomework = { hasHomework: false };
+        return;
+      }
+
+      try {
+        const res = await fetchJson<{ homework: NextPendingHomeworkApi | null }>(
+          '/me/homework/next-pending',
+          token,
+        );
+        const h = res.homework;
+        if (!h) {
+          active.style.display = 'none';
+          empty.style.display = '';
+          empty.textContent =
+            'Сейчас нет домашних заданий, которые нужно отправить: всё уже сдано или ваши ответы на проверке у эксперта.';
+          (root as any).__epHomework = { hasHomework: false };
+          return;
+        }
+
+        active.style.display = '';
+        empty.style.display = 'none';
+        const promptTrim = (h.promptMarkdown ?? '').trim();
+        const courseMod = `${(h.courseTitle || '—').trim() || '—'} / ${(h.moduleTitle || '—').trim() || '—'}`;
+        (root as any).__epHomework = {
+          lessonId: h.lessonId,
+          lessonTitle: h.lessonTitle,
+          prompt: promptTrim,
+          hasHomework: true,
+          courseModuleLine: courseMod,
+        };
+        await fillHomeworkFormCard(root, (root as any).__epHomework as EpHomeworkCtx);
+      } catch {
+        active.style.display = 'none';
+        empty.style.display = '';
+        empty.textContent = 'Не удалось загрузить актуальное задание. Попробуйте позже.';
+        (root as any).__epHomework = { hasHomework: false };
+      }
+    }
+
+    async function prepareHomeworkScreen(): Promise<void> {
+      const root = shell.shadowRoot;
+      const hw = (root as any).__epHomework as EpHomeworkCtx | undefined;
+      if (!hw?.lessonId) {
+        window.alert('Сначала откройте урок с заданием.');
+        return;
+      }
+      if (hw.hasHomework === false) {
+        window.alert('У этого урока нет домашнего задания от эксперта.');
+        return;
+      }
+      shell.showScreen('s-homework');
+      await fillHomeworkFormCard(root, hw);
     }
 
     async function submitHomeworkFromForm(): Promise<void> {
@@ -880,6 +956,7 @@ if (platformMount) {
         shell.showScreen('s-lesson');
         await openLesson(lessonId);
         void hydrateRecentSubmissionsTable(shell.shadowRoot);
+        void hydratePendingHomeworkHub(shell.shadowRoot);
       } catch (e) {
         window.alert(e instanceof Error ? e.message : 'Не удалось отправить ответ');
       } finally {

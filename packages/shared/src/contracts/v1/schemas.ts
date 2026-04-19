@@ -73,6 +73,8 @@ export {
   ListLessonSubmissionsResponseV1Schema,
   ListMyRecentSubmissionsResponseV1Schema,
   MyRecentSubmissionItemV1Schema,
+  GetNextPendingHomeworkResponseV1Schema,
+  NextPendingHomeworkV1Schema,
   DecideSubmissionRequestV1Schema,
 } from './assignments-api.js';
 export { SubmissionV1Schema } from './submission.js';

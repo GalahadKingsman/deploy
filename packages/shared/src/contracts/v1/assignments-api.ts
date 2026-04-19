@@ -58,6 +58,26 @@ export const ListMyRecentSubmissionsResponseV1Schema = z.object({
   items: z.array(MyRecentSubmissionItemV1Schema),
 });
 
+/** One “актуальное” homework: unlocked, expert-facing content, latest submission not submitted/accepted. */
+export const NextPendingHomeworkV1Schema = z.object({
+  lessonId: z.string(),
+  lessonTitle: z.string(),
+  courseTitle: z.string(),
+  moduleTitle: z.string(),
+  promptMarkdown: z.string().nullable().optional(),
+  hasExpertFiles: z.boolean(),
+});
+
+export type NextPendingHomeworkV1 = z.infer<typeof NextPendingHomeworkV1Schema>;
+
+export interface GetNextPendingHomeworkResponseV1 {
+  homework: NextPendingHomeworkV1 | null;
+}
+
+export const GetNextPendingHomeworkResponseV1Schema = z.object({
+  homework: NextPendingHomeworkV1Schema.nullable(),
+});
+
 export interface DecideSubmissionRequestV1 {
   status: z.infer<typeof SubmissionStatusV1Schema>;
   score?: number | null;

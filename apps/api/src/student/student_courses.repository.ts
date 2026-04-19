@@ -151,5 +151,45 @@ export class StudentCoursesRepository {
       video: (r.video as any) ?? undefined,
     };
   }
+
+  async getLessonWithContext(lessonId: string): Promise<{
+    lesson: ContractsV1.LessonV1;
+    courseTitle: string;
+    moduleTitle: string;
+  } | null> {
+    if (!this.pool) return null;
+    const res = await this.pool.query<
+      LessonRow & {
+        course_title: string;
+        module_title: string;
+      }
+    >(
+      `
+      SELECT l.id, m.course_id, l.title, l.position, l.content_md, l.updated_at, l.video,
+             c.title AS course_title, m.title AS module_title
+      FROM lessons l
+      JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+      JOIN courses c ON c.id = m.course_id AND c.deleted_at IS NULL
+      WHERE l.id = $1 AND l.deleted_at IS NULL
+      LIMIT 1
+      `,
+      [lessonId],
+    );
+    const r = res.rows[0];
+    if (!r) return null;
+    return {
+      lesson: {
+        id: r.id,
+        courseId: r.course_id,
+        title: r.title,
+        order: r.position,
+        contentMarkdown: r.content_md ?? null,
+        updatedAt: r.updated_at.toISOString(),
+        video: (r.video as any) ?? undefined,
+      },
+      courseTitle: r.course_title,
+      moduleTitle: r.module_title,
+    };
+  }
 }
 
