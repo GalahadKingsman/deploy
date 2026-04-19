@@ -32,6 +32,9 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);font-size:15px;l
 
 .container{max-width:1160px;margin:0 auto;padding:0 40px}
 
+/* ── PLATFORM PAGE ── */
+.platform-page{padding-top:88px;padding-bottom:60px}
+
 /* ── NAV ── */
 .nav{
   position:fixed;top:0;left:0;right:0;z-index:200;

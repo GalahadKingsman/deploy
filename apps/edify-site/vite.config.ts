@@ -16,4 +16,12 @@ export default defineConfig({
     port: 5174,
     host: true,
   },
+  build: {
+    rollupOptions: {
+      input: {
+        index: path.resolve(root, 'index.html'),
+        platform: path.resolve(root, 'platform/index.html'),
+      },
+    },
+  },
 });
