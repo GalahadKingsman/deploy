@@ -624,10 +624,14 @@ if (platformMount) {
     async function prepareHomeworkScreen(): Promise<void> {
       const root = shell.shadowRoot;
       const hw = (root as any).__epHomework as
-        | { lessonId?: string; lessonTitle?: string; prompt?: string }
+        | { lessonId?: string; lessonTitle?: string; prompt?: string; hasHomework?: boolean }
         | undefined;
       if (!hw?.lessonId) {
         window.alert('Сначала откройте урок с заданием.');
+        return;
+      }
+      if (hw.hasHomework === false) {
+        window.alert('У этого урока нет домашнего задания от эксперта.');
         return;
       }
       shell.showScreen('s-homework');
@@ -830,11 +834,13 @@ if (platformMount) {
       // Homework + materials
       const hwPrompt = root.querySelector('#screen-s-lesson [data-ep-homework-prompt]') as HTMLElement | null;
       const hwWrap = root.querySelector('#screen-s-lesson [data-ep-homework]') as HTMLElement | null;
+      const goHwBtn = root.querySelector('#screen-s-lesson [data-ep-go-homework]') as HTMLElement | null;
       const matsTitle = root.querySelector('#screen-s-lesson [data-ep-materials-title]') as HTMLElement | null;
       const mats = root.querySelector('#screen-s-lesson [data-ep-materials]') as HTMLElement | null;
       if (mats) mats.replaceChildren();
 
       let homeworkPrompt = '';
+      let hasExpertHomework = false;
       try {
         const assRes = await fetchJson<{ assignment: AssignmentV1 | null; files: any[] }>(
           `/lessons/${encodeURIComponent(lessonId)}/assignment`,
@@ -843,6 +849,8 @@ if (platformMount) {
         const assignment = assRes.assignment;
         const files = (assRes.files ?? []) as Array<{ id: string; filename: string; sizeBytes?: number | null }>;
         homeworkPrompt = (assignment?.promptMarkdown ?? '').trim();
+        hasExpertHomework =
+          Boolean(assignment) && (homeworkPrompt.length > 0 || (files?.length ?? 0) > 0);
 
         // materials (files)
         if (mats && files.length > 0) {
@@ -887,19 +895,26 @@ if (platformMount) {
           if (matsTitle) matsTitle.style.display = 'none';
         }
 
-        // homework prompt
-        if (hwWrap) hwWrap.style.display = homeworkPrompt ? '' : 'none';
-        setRichTextWithLinks(hwPrompt, homeworkPrompt || '');
+        // homework prompt (блок «Домашнее задание»: текст и/или смысл через материалы)
+        if (hwWrap) hwWrap.style.display = hasExpertHomework ? '' : 'none';
+        if (hwPrompt) {
+          if (hasExpertHomework) setRichTextWithLinks(hwPrompt, homeworkPrompt || '');
+          else hwPrompt.replaceChildren();
+        }
       } catch {
         if (matsTitle) matsTitle.style.display = 'none';
         if (hwWrap) hwWrap.style.display = 'none';
         homeworkPrompt = '';
+        hasExpertHomework = false;
       }
+
+      if (goHwBtn) goHwBtn.style.display = hasExpertHomework ? '' : 'none';
 
       (root as any).__epHomework = {
         lessonId,
         lessonTitle: lesson?.title ?? 'Урок',
         prompt: homeworkPrompt,
+        hasHomework: hasExpertHomework,
       };
 
       try {
@@ -953,6 +968,8 @@ if (platformMount) {
       }
       const subWrap0 = root.querySelector('#screen-s-lesson [data-ep-my-submission-wrap]') as HTMLElement | null;
       if (subWrap0) subWrap0.style.display = 'none';
+      const goHwBtn0 = root.querySelector('#screen-s-lesson [data-ep-go-homework]') as HTMLElement | null;
+      if (goHwBtn0) goHwBtn0.style.display = 'none';
 
       const modules = await fetchModules(courseId);
       const moduleLessons = await Promise.all(
@@ -1017,6 +1034,8 @@ if (platformMount) {
           prevDone.style.display = 'none';
           delete (prevDone as HTMLButtonElement).dataset.epPrevTarget;
         }
+        const goDone = root.querySelector('#screen-s-lesson [data-ep-go-homework]') as HTMLElement | null;
+        if (goDone) goDone.style.display = 'none';
         renderMySubmission(root, null);
       }
     }
