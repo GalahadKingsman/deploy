@@ -424,8 +424,18 @@ section{position:relative}
 .compare-list li.pos{background:rgba(10,168,200,.04);border-color:var(--a-border);color:var(--t1)}
 .cmp-ico{flex-shrink:0;margin-top:1px;font-size:13px}
 
-/* ── PLATFORM INTERIOR (the big section) ── */
+/* ── PLATFORM INTERIOR (интерактивная демо) ── */
 .s-platform{padding:100px 0;background:var(--card)}
+/* Макет кабинета: Shadow DOM внутри хоста (см. mountPlatformShell) */
+.platform-shell-host{
+  display:block;width:100%;margin-top:28px;
+  border-radius:20px;overflow:hidden;
+  border:1px solid var(--line2);
+  box-shadow:var(--shadow2);
+  background:var(--card);
+  min-height:min(88vh,920px);
+}
+
 .platform-tabs{
   display:flex;gap:4px;
   background:var(--bg2);border:1px solid var(--line);border-radius:12px;
@@ -1002,19 +1012,7 @@ footer{background:var(--t1);padding:56px 0 40px}
   .compare-list li{font-size:13px;padding:9px 12px}
 
   /* PLATFORM SECTION */
-  .platform-tabs{flex-wrap:wrap;gap:3px;width:100%}
-  .ptab{font-size:9px;padding:7px 12px}
-  .pw-body{flex-direction:column;min-height:auto}
-  .pw-sidebar{width:100%;border-right:none;border-bottom:1px solid var(--line);padding:8px 0;display:none}
-  .pw-content{padding:14px}
-  .dash-stats{grid-template-columns:1fr 1fr;gap:8px}
-  .ds-num{font-size:18px}
-  .dash-grid2{grid-template-columns:1fr}
-  .builder-modules{width:100%;height:auto;border-right:none;border-bottom:1px solid var(--line)}
-  .lesson-editor .le-toolbar{gap:4px}
-  .hw-layout{flex-direction:column}
-  .hw-list{width:100%;border-right:none;border-bottom:1px solid var(--line);max-height:240px}
-  .hw-detail-body{padding:12px 14px}
+  .platform-shell-host{min-height:min(75vh,800px);margin-top:22px}
 
   /* STEPS */
   .steps-grid{grid-template-columns:1fr;border-radius:12px}
@@ -1065,11 +1063,9 @@ footer{background:var(--t1);padding:56px 0 40px}
   .hero-h1{font-size:28px}
   .hero-eyebrow{font-size:9px}
   .stats-inner{grid-template-columns:1fr 1fr}
-  .dash-stats{grid-template-columns:1fr 1fr}
   .pricing-toggle-wrap{flex-wrap:wrap;justify-content:center}
   .footer-links{grid-template-columns:1fr}
-  .platform-tabs{width:100%}
-  .ptab{flex:1;text-align:center;font-size:8px;padding:6px 8px}
+  .platform-shell-host{min-height:min(70vh,720px)}
   .s-h2{font-size:22px}
   .final-h{font-size:24px}
   .testi-quote{font-size:36px}

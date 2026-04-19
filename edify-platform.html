@@ -1,0 +1,1647 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>EDIFY — Platform UI Design</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;900&family=Manrope:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F5F4F0;
+  --bg2:#EEECEA;
+  --bg3:#E6E4DF;
+  --surface:#FFFFFF;
+  --surface2:#FAFAF8;
+  --line:rgba(0,0,0,0.07);
+  --line2:rgba(0,0,0,0.13);
+  --a:#0AA8C8;
+  --al:rgba(10,168,200,0.10);
+  --ab:rgba(10,168,200,0.22);
+  --t1:#0C1220;
+  --t2:#4A5268;
+  --t3:#8E94A8;
+  --ok:#16A34A;
+  --ok-bg:rgba(22,163,74,0.09);
+  --warn:#D97706;
+  --warn-bg:rgba(217,119,6,0.09);
+  --err:#DC2626;
+  --err-bg:rgba(220,38,38,0.08);
+  --purple:#7C3AED;
+  --purple-bg:rgba(124,58,237,0.08);
+  --fd:'Unbounded',sans-serif;
+  --fb:'Manrope',sans-serif;
+  --fm:'IBM Plex Mono',monospace;
+  --r:8px;
+  --r2:12px;
+  --r3:16px;
+  --sh:0 1px 2px rgba(0,0,0,0.05),0 3px 10px rgba(0,0,0,0.06);
+  --sh2:0 2px 8px rgba(0,0,0,0.08),0 8px 32px rgba(0,0,0,0.10);
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--t1);font-family:var(--fb);font-size:14px;line-height:1.5}
+
+/* ── TOP BAR ── */
+.topbar{
+  position:fixed;top:0;left:0;right:0;height:56px;z-index:100;
+  background:var(--surface);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;padding:0 20px 0 0;
+}
+.topbar-logo{
+  width:220px;flex-shrink:0;
+  display:flex;align-items:center;gap:9px;
+  padding:0 20px;border-right:1px solid var(--line);
+  height:100%;
+}
+.topbar-logo img{height:24px;width:auto}
+.topbar-logo-name{font-family:var(--fd);font-size:15px;font-weight:700;letter-spacing:-.02em;color:var(--t1)}
+.topbar-role-tabs{display:flex;gap:2px;margin-left:24px;background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:3px}
+.role-tab{
+  font-family:var(--fm);font-size:10px;letter-spacing:.05em;text-transform:uppercase;
+  padding:5px 16px;border-radius:6px;cursor:pointer;border:none;
+  color:var(--t3);background:transparent;transition:all .15s;
+}
+.role-tab.active{background:var(--surface);color:var(--t1);box-shadow:var(--sh);font-weight:500}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.topbar-notif{
+  width:32px;height:32px;border-radius:8px;border:1px solid var(--line);
+  background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:14px;position:relative;transition:all .15s;
+}
+.topbar-notif:hover{background:var(--bg2)}
+.notif-badge{
+  position:absolute;top:4px;right:4px;
+  width:7px;height:7px;border-radius:50%;
+  background:var(--err);border:1.5px solid var(--surface);
+}
+.topbar-user{display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 8px;border-radius:8px;transition:background .15s}
+.topbar-user:hover{background:var(--bg2)}
+.user-avatar{
+  width:30px;height:30px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--fd);font-size:10px;font-weight:700;flex-shrink:0;
+}
+.user-name{font-size:13px;font-weight:600;color:var(--t1)}
+.user-role{font-size:10px;color:var(--t3);font-family:var(--fm)}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  position:fixed;top:56px;left:0;bottom:0;width:220px;
+  background:var(--surface);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;overflow-y:auto;z-index:90;
+  padding:12px 0 20px;
+}
+.sb-section{
+  font-family:var(--fm);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--t3);padding:10px 18px 5px;margin-top:6px;
+}
+.sb-item{
+  display:flex;align-items:center;gap:9px;
+  padding:8px 18px;font-size:13px;color:var(--t2);
+  cursor:pointer;transition:all .12s;position:relative;
+  border-radius:0;user-select:none;border:none;background:none;width:100%;text-align:left;
+}
+.sb-item:hover{background:var(--bg2);color:var(--t1)}
+.sb-item.active{background:var(--al);color:var(--a);font-weight:600}
+.sb-item.active::before{content:'';position:absolute;left:0;top:4px;bottom:4px;width:3px;background:var(--a);border-radius:0 3px 3px 0}
+.sb-icon{font-size:15px;flex-shrink:0;width:18px;text-align:center}
+.sb-badge{
+  margin-left:auto;font-family:var(--fm);font-size:9px;
+  padding:1px 7px;border-radius:100px;
+}
+.sb-badge-red{background:var(--err-bg);color:var(--err);border:1px solid rgba(220,38,38,.15)}
+.sb-badge-blue{background:var(--al);color:var(--a);border:1px solid var(--ab)}
+.sb-badge-ok{background:var(--ok-bg);color:var(--ok);border:1px solid rgba(22,163,74,.15)}
+.sb-footer{
+  margin-top:auto;padding:12px 18px 0;border-top:1px solid var(--line);
+}
+.sb-footer-link{
+  display:flex;align-items:center;gap:8px;
+  font-size:12px;color:var(--t3);padding:6px 0;cursor:pointer;
+  transition:color .12s;
+}
+.sb-footer-link:hover{color:var(--t1)}
+
+/* ── MAIN ── */
+.main{
+  position:fixed;top:56px;left:220px;right:0;bottom:0;
+  overflow-y:auto;background:var(--bg);
+}
+.screen{display:none;min-height:100%;padding:28px 32px}
+.screen.active{display:block}
+
+/* ── COMMON ── */
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px}
+.page-title{font-family:var(--fd);font-size:20px;font-weight:700;letter-spacing:-.025em;color:var(--t1);line-height:1.2}
+.page-sub{font-size:13px;color:var(--t3);margin-top:3px}
+.actions-row{display:flex;gap:8px;align-items:center;flex-shrink:0}
+
+/* Buttons */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--fb);font-weight:600;font-size:13px;
+  padding:8px 16px;border-radius:8px;border:none;cursor:pointer;
+  text-decoration:none;transition:all .15s;white-space:nowrap;
+}
+.btn-primary{background:var(--t1);color:#fff}
+.btn-primary:hover{opacity:.87;transform:translateY(-1px)}
+.btn-accent{background:var(--a);color:#fff}
+.btn-accent:hover{opacity:.9}
+.btn-outline{background:transparent;border:1px solid var(--line2);color:var(--t2)}
+.btn-outline:hover{border-color:var(--t1);color:var(--t1)}
+.btn-ghost{background:transparent;color:var(--t3)}
+.btn-ghost:hover{background:var(--bg2);color:var(--t1)}
+.btn-sm{font-size:11px;padding:5px 12px}
+.btn-icon{width:32px;height:32px;padding:0;border-radius:7px;justify-content:center;font-size:14px}
+
+/* Tags */
+.tag{font-family:var(--fm);font-size:9px;padding:2px 8px;border-radius:100px;white-space:nowrap;display:inline-block}
+.tag-live{background:var(--ok-bg);color:var(--ok);border:1px solid rgba(22,163,74,.2)}
+.tag-draft{background:var(--warn-bg);color:var(--warn);border:1px solid rgba(217,119,6,.2)}
+.tag-new{background:var(--al);color:var(--a);border:1px solid var(--ab)}
+.tag-err{background:var(--err-bg);color:var(--err);border:1px solid rgba(220,38,38,.15)}
+.tag-purple{background:var(--purple-bg);color:var(--purple);border:1px solid rgba(124,58,237,.18)}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);box-shadow:var(--sh)}
+.card-sm{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2)}
+
+/* Stat cards row */
+.stats-row{display:grid;gap:12px;margin-bottom:20px}
+.stats-4{grid-template-columns:repeat(4,1fr)}
+.stats-3{grid-template-columns:repeat(3,1fr)}
+.stat-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:16px 18px;box-shadow:var(--sh)}
+.stat-card .num{font-family:var(--fd);font-size:24px;font-weight:900;letter-spacing:-.03em;color:var(--t1);line-height:1;margin-bottom:4px}
+.stat-card .num.a{color:var(--a)}
+.stat-card .num.ok{color:var(--ok)}
+.stat-card .num.warn{color:var(--warn)}
+.stat-card .lbl{font-family:var(--fm);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--t3)}
+.stat-card .delta{font-size:11px;margin-top:4px}
+.delta-up{color:var(--ok)}
+.delta-dn{color:var(--err)}
+
+/* Table */
+.tbl-wrap{overflow-x:auto}
+table.tbl{width:100%;border-collapse:collapse}
+table.tbl th{
+  text-align:left;padding:9px 12px;
+  font-family:var(--fm);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--t3);border-bottom:1px solid var(--line);background:var(--surface2);
+}
+table.tbl td{padding:11px 12px;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2);vertical-align:middle}
+table.tbl tr:last-child td{border-bottom:none}
+table.tbl tr:hover td{background:var(--bg)}
+.td-name{font-weight:600;color:var(--t1)}
+
+/* Avatar */
+.avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:700;flex-shrink:0}
+.av-sm{width:28px;height:28px;font-size:9px}
+.av-md{width:36px;height:36px;font-size:11px}
+.av-lg{width:44px;height:44px;font-size:14px}
+
+/* Progress bar */
+.prog-wrap{display:flex;align-items:center;gap:8px}
+.prog-bar{flex:1;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;background:var(--a);border-radius:2px;transition:width .3s}
+.prog-val{font-family:var(--fm);font-size:10px;color:var(--t3);min-width:28px;text-align:right}
+
+/* Section title inside screen */
+.sec-title{font-family:var(--fd);font-size:13px;font-weight:700;letter-spacing:-.01em;color:var(--t1);margin-bottom:12px}
+
+/* Divider */
+.div{height:1px;background:var(--line);margin:20px 0}
+
+/* Search input */
+.search-input{
+  display:flex;align-items:center;gap:8px;
+  background:var(--surface);border:1px solid var(--line);border-radius:8px;
+  padding:7px 12px;font-size:13px;color:var(--t3);cursor:text;
+  transition:border-color .15s;
+}
+.search-input:focus-within{border-color:var(--a)}
+.search-input input{border:none;outline:none;background:transparent;font-size:13px;color:var(--t1);width:200px;font-family:var(--fb)}
+.search-input input::placeholder{color:var(--t3)}
+
+/* Form elements */
+.form-group{margin-bottom:16px}
+.form-label{font-family:var(--fm);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin-bottom:6px}
+.form-input{
+  width:100%;border:1px solid var(--line2);border-radius:8px;
+  padding:9px 12px;font-size:13px;color:var(--t1);font-family:var(--fb);
+  background:var(--surface);outline:none;transition:border-color .15s;
+}
+.form-input:focus{border-color:var(--a)}
+textarea.form-input{resize:vertical;min-height:80px}
+
+/* Module tree */
+.mod-tree{display:flex;flex-direction:column;gap:2px}
+.mod-item{}
+.mod-head{
+  display:flex;align-items:center;gap:6px;
+  padding:7px 10px;border-radius:7px;cursor:pointer;
+  transition:background .1s;user-select:none;
+}
+.mod-head:hover{background:var(--bg2)}
+.mod-head.active{background:var(--al)}
+.mod-arrow{font-size:8px;color:var(--t3);transition:transform .18s;flex-shrink:0}
+.mod-arrow.open{transform:rotate(90deg)}
+.mod-name{flex:1;font-size:12px;font-weight:600;color:var(--t1)}
+.mod-cnt{font-family:var(--fm);font-size:9px;color:var(--t3)}
+.mod-lessons{padding-left:16px;display:none}
+.mod-lessons.open{display:block}
+.lesson-row{
+  display:flex;align-items:center;gap:6px;
+  padding:5px 10px 5px 8px;border-radius:6px;cursor:pointer;
+  font-size:12px;color:var(--t2);transition:all .1s;
+  margin-bottom:1px;
+}
+.lesson-row:hover{background:var(--bg2);color:var(--t1)}
+.lesson-row.active{background:var(--al);color:var(--a)}
+.lesson-ico{font-size:11px;flex-shrink:0}
+.lesson-name{flex:1;line-height:1.3}
+.lesson-tag{font-family:var(--fm);font-size:8px}
+
+/* Video player */
+.video-player{
+  background:linear-gradient(160deg,#0D1220,#1A2438);
+  border-radius:var(--r2);aspect-ratio:16/9;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;cursor:pointer;
+}
+.play-btn{
+  width:56px;height:56px;border-radius:50%;
+  background:rgba(255,255,255,0.18);border:2px solid rgba(255,255,255,.4);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;transition:all .15s;
+}
+.play-btn:hover{background:rgba(255,255,255,.28);transform:scale(1.08)}
+.video-overlay-bottom{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:12px 16px;background:linear-gradient(transparent,rgba(0,0,0,.7));
+  display:flex;align-items:center;gap:10px;
+}
+.video-progress{flex:1;height:3px;background:rgba(255,255,255,.25);border-radius:2px}
+.video-prog-fill{height:100%;background:var(--a);width:32%;border-radius:2px}
+.video-time{font-family:var(--fm);font-size:10px;color:rgba(255,255,255,.7)}
+
+/* Material row */
+.material-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;border-radius:8px;border:1px solid var(--line);
+  background:var(--surface2);margin-bottom:6px;transition:border-color .15s;
+}
+.material-row:hover{border-color:var(--line2)}
+.mat-ico{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.mat-name{flex:1;font-size:12px;font-weight:600;color:var(--t1)}
+.mat-meta{font-size:10px;color:var(--t3);font-family:var(--fm)}
+
+/* HW submission */
+.hw-submit-form{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:20px}
+.hw-q{font-size:13px;color:var(--t1);line-height:1.6;margin-bottom:16px;padding:14px;background:var(--bg);border-radius:8px;border-left:3px solid var(--a)}
+
+/* Upload zone */
+.upload-zone{
+  border:1.5px dashed var(--line2);border-radius:10px;padding:24px;
+  text-align:center;cursor:pointer;transition:all .15s;
+  background:var(--surface2);
+}
+.upload-zone:hover{border-color:var(--a);background:var(--al)}
+.upload-zone-ico{font-size:28px;margin-bottom:8px}
+.upload-zone-title{font-family:var(--fd);font-size:12px;font-weight:700;color:var(--t1);margin-bottom:4px}
+.upload-zone-sub{font-size:11px;color:var(--t3)}
+
+/* Course card (student) */
+.course-card-s{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);
+  overflow:hidden;transition:all .2s;cursor:pointer;box-shadow:var(--sh);
+}
+.course-card-s:hover{transform:translateY(-3px);box-shadow:var(--sh2);border-color:var(--ab)}
+.cc-thumb{height:140px;display:flex;align-items:center;justify-content:center;position:relative}
+.cc-body{padding:16px}
+.cc-title{font-family:var(--fd);font-size:13px;font-weight:700;letter-spacing:-.015em;color:var(--t1);margin-bottom:4px;line-height:1.3}
+.cc-author{font-size:11px;color:var(--t3);margin-bottom:10px}
+.cc-price{font-family:var(--fd);font-size:15px;font-weight:700;color:var(--t1)}
+.cc-price-free{color:var(--ok)}
+
+/* Notification dot */
+.dot-online{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok)}
+
+/* Tabs */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:20px}
+.tab{
+  padding:9px 16px;font-size:13px;font-weight:500;color:var(--t3);
+  cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;
+  border:none;background:none;font-family:var(--fb);
+}
+.tab.active{color:var(--a);border-bottom-color:var(--a)}
+.tab:hover:not(.active){color:var(--t1)}
+
+/* Grid layouts */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+
+/* HW review list */
+.hw-card{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:12px 14px;border-radius:10px;border:1px solid var(--line);
+  background:var(--surface);margin-bottom:6px;cursor:pointer;
+  transition:all .12s;
+}
+.hw-card:hover,.hw-card.active{border-color:var(--ab);background:var(--al)}
+.hw-card-body{flex:1;min-width:0}
+.hw-card-top{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.hw-card-name{font-size:12px;font-weight:600;color:var(--t1)}
+.hw-card-lesson{font-size:10px;color:var(--t3);font-family:var(--fm)}
+.hw-card-preview{font-size:11px;color:var(--t2);line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.hw-card-time{font-family:var(--fm);font-size:9px;color:var(--t3);margin-left:auto;flex-shrink:0}
+
+/* Grade buttons */
+.grade-row{display:flex;gap:8px}
+.grade-btn{
+  flex:1;padding:10px 6px;border-radius:8px;
+  border:1px solid var(--line2);background:var(--surface2);
+  cursor:pointer;text-align:center;transition:all .15s;
+}
+.grade-btn:hover,.grade-btn.sel{border-color:var(--a);background:var(--al)}
+.grade-btn .g-score{font-family:var(--fd);font-size:18px;font-weight:900;color:var(--t1)}
+.grade-btn .g-lbl{font-family:var(--fm);font-size:8px;color:var(--t3);letter-spacing:.06em;margin-top:2px}
+.grade-btn.sel .g-score{color:var(--a)}
+
+/* Two column layout */
+.two-col{display:grid;grid-template-columns:260px 1fr;gap:16px;align-items:start}
+.two-col-r{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+
+/* Finance chart placeholder */
+.chart-bar-row{display:flex;align-items:flex-end;gap:6px;height:120px;padding:0 4px}
+.cbar{flex:1;border-radius:4px 4px 0 0;background:var(--a);opacity:.7;transition:opacity .15s;cursor:pointer}
+.cbar:hover{opacity:1}
+
+/* Student lesson layout */
+.lesson-layout{display:grid;grid-template-columns:1fr 280px;gap:20px}
+.lesson-content{}
+.lesson-aside{display:flex;flex-direction:column;gap:12px}
+
+/* Profile / progress circles */
+.prog-circle-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+.prog-circle-num{font-family:var(--fd);font-size:28px;font-weight:900;letter-spacing:-.03em;color:var(--t1)}
+.prog-circle-lbl{font-family:var(--fm);font-size:9px;color:var(--t3);letter-spacing:.08em;text-transform:uppercase}
+
+/* Settings layout */
+.settings-layout{display:grid;grid-template-columns:200px 1fr;gap:20px}
+.settings-nav{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:8px 0;height:fit-content}
+.settings-nav-item{
+  padding:8px 16px;font-size:13px;color:var(--t2);cursor:pointer;
+  transition:all .12s;display:flex;align-items:center;gap:8px;
+}
+.settings-nav-item:hover{background:var(--bg2);color:var(--t1)}
+.settings-nav-item.active{background:var(--al);color:var(--a);font-weight:600}
+
+/* empty state */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;color:var(--t3);text-align:center}
+.empty-ico{font-size:40px;margin-bottom:12px;opacity:.5}
+.empty-title{font-family:var(--fd);font-size:14px;font-weight:600;color:var(--t2);margin-bottom:6px}
+.empty-sub{font-size:13px;line-height:1.5}
+</style>
+</head>
+<body>
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <img src="data:image/jpeg;base64,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" alt="EDIFY"/>
+    <span class="topbar-logo-name">EDIFY</span>
+  </div>
+  <div class="topbar-role-tabs">
+    <button class="role-tab active" id="tab-expert" onclick="setRole('expert')">Эксперт</button>
+    <button class="role-tab" id="tab-student" onclick="setRole('student')">Студент</button>
+  </div>
+  <div class="topbar-right">
+    <button class="topbar-notif" title="Уведомления">🔔<div class="notif-badge"></div></button>
+    <div class="topbar-user">
+      <div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div>
+      <div>
+        <div class="user-name">Алина К.</div>
+        <div class="user-role">Эксперт</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="sidebar" id="sidebar-expert">
+  <div class="sb-section">Обучение</div>
+  <button class="sb-item active" onclick="showScreen('e-dashboard')"><span class="sb-icon">📊</span>Дашборд</button>
+  <button class="sb-item" onclick="showScreen('e-courses')"><span class="sb-icon">📚</span>Мои курсы</button>
+  <button class="sb-item" onclick="showScreen('e-builder')"><span class="sb-icon">✏️</span>Конструктор курса</button>
+  <button class="sb-item" onclick="showScreen('e-students')"><span class="sb-icon">👥</span>Студенты<span class="sb-badge sb-badge-blue">38</span></button>
+  <button class="sb-item" onclick="showScreen('e-homework')"><span class="sb-icon">📋</span>Домашние задания<span class="sb-badge sb-badge-red">12</span></button>
+  <div class="sb-section">Команда</div>
+  <button class="sb-item" onclick="showScreen('e-team')"><span class="sb-icon">👔</span>Кураторы и менеджеры</button>
+  <button class="sb-item" onclick="showScreen('e-messages')"><span class="sb-icon">💬</span>Сообщения<span class="sb-badge sb-badge-red">3</span></button>
+  <div class="sb-section">Монетизация</div>
+  <button class="sb-item" onclick="showScreen('e-finance')"><span class="sb-icon">💰</span>Финансы</button>
+  <button class="sb-item" onclick="showScreen('e-referral')"><span class="sb-icon">🔗</span>Реферальная программа</button>
+  <div class="sb-section">Настройки</div>
+  <button class="sb-item" onclick="showScreen('e-settings')"><span class="sb-icon">⚙️</span>Настройки</button>
+  <div class="sb-footer">
+    <div class="sb-footer-link">📖 Документация</div>
+    <div class="sb-footer-link">💬 Поддержка</div>
+  </div>
+</nav>
+
+<nav class="sidebar" id="sidebar-student" style="display:none">
+  <div class="sb-section">Обучение</div>
+  <button class="sb-item active" onclick="showScreen('s-catalog')"><span class="sb-icon">🏠</span>Каталог курсов</button>
+  <button class="sb-item" onclick="showScreen('s-mycourses')"><span class="sb-icon">📚</span>Мои курсы<span class="sb-badge sb-badge-blue">3</span></button>
+  <button class="sb-item" onclick="showScreen('s-lesson')"><span class="sb-icon">▶️</span>Текущий урок</button>
+  <button class="sb-item" onclick="showScreen('s-homework')"><span class="sb-icon">📝</span>Домашние задания<span class="sb-badge sb-badge-red">2</span></button>
+  <div class="sb-section">Профиль</div>
+  <button class="sb-item" onclick="showScreen('s-progress')"><span class="sb-icon">🏆</span>Мой прогресс</button>
+  <button class="sb-item" onclick="showScreen('s-profile')"><span class="sb-icon">👤</span>Профиль</button>
+  <div class="sb-section">Другое</div>
+  <button class="sb-item" onclick="showScreen('s-certificates')"><span class="sb-icon">🎓</span>Сертификаты</button>
+  <div class="sb-footer">
+    <div class="sb-footer-link">💬 Поддержка</div>
+  </div>
+</nav>
+
+<div class="main" id="main-content">
+
+<!-- ═══════════════════════════════════════════
+     EXPERT SCREENS
+═══════════════════════════════════════════ -->
+
+<!-- E-DASHBOARD -->
+<div class="screen active" id="screen-e-dashboard">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Дашборд</div>
+      <div class="page-sub">Добро пожаловать, Алина · Апрель 2026</div>
+    </div>
+    <div class="actions-row">
+      <button class="btn btn-outline btn-sm">Апрель 2026 ▾</button>
+      <button class="btn btn-primary btn-sm">+ Новый курс</button>
+    </div>
+  </div>
+
+  <div class="stats-row stats-4">
+    <div class="stat-card"><div class="num a">38</div><div class="lbl">Студентов</div><div class="delta delta-up">↑ +5 за месяц</div></div>
+    <div class="stat-card"><div class="num ok">14 200 ₽</div><div class="lbl">Выручка (апрель)</div><div class="delta delta-up">↑ +2 100 ₽</div></div>
+    <div class="stat-card"><div class="num">3</div><div class="lbl">Активных курса</div><div class="delta" style="color:var(--t3)">1 в черновике</div></div>
+    <div class="stat-card"><div class="num warn">12</div><div class="lbl">ДЗ на проверке</div><div class="delta delta-dn">↑ 4 новых сегодня</div></div>
+  </div>
+
+  <div class="grid2">
+    <div>
+      <div class="sec-title">Мои курсы</div>
+      <div class="card" style="overflow:hidden">
+        <table class="tbl">
+          <thead><tr><th>Курс</th><th>Студентов</th><th>Статус</th><th>Действия</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div class="td-name">Маркетинг в интернете 2025</div><div style="font-size:10px;color:var(--t3)">12 уроков · 3 модуля</div></td>
+              <td><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:700;color:var(--t1)">22</span></div></td>
+              <td><span class="tag tag-live">Активен</span></td>
+              <td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm btn-icon" onclick="showScreen('e-builder')">✏️</button><button class="btn btn-ghost btn-sm btn-icon">👁</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="td-name">Продажи без скриптов</div><div style="font-size:10px;color:var(--t3)">8 уроков · 2 модуля</div></td>
+              <td><span style="font-weight:700;color:var(--t1)">10</span></td>
+              <td><span class="tag tag-live">Активен</span></td>
+              <td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm btn-icon">✏️</button><button class="btn btn-ghost btn-sm btn-icon">👁</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="td-name">Финансовая грамотность</div><div style="font-size:10px;color:var(--t3)">5 уроков · 1 модуль</div></td>
+              <td><span style="color:var(--t3)">0</span></td>
+              <td><span class="tag tag-draft">Черновик</span></td>
+              <td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm btn-icon">✏️</button></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sec-title" style="margin-top:20px">График выручки (апрель)</div>
+      <div class="card" style="padding:16px 20px">
+        <div class="chart-bar-row">
+          <div class="cbar" style="height:40%"></div><div class="cbar" style="height:55%"></div>
+          <div class="cbar" style="height:35%"></div><div class="cbar" style="height:70%"></div>
+          <div class="cbar" style="height:50%"></div><div class="cbar" style="height:65%"></div>
+          <div class="cbar" style="height:45%"></div><div class="cbar" style="height:80%"></div>
+          <div class="cbar" style="height:60%"></div><div class="cbar" style="height:75%"></div>
+          <div class="cbar" style="height:55%"></div><div class="cbar" style="height:90%;opacity:1"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;font-family:var(--fm);font-size:9px;color:var(--t3)">
+          <span>1 апр</span><span>5</span><span>10</span><span>15</span><span>18</span>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sec-title">Активность студентов</div>
+      <div class="card" style="padding:16px">
+        <div style="display:flex;flex-direction:column;gap:0">
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)">
+            <div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--t1)">Алина К.</div><div style="font-size:10px;color:var(--t3)">Сдала ДЗ к уроку 4 · 2 мин назад</div></div>
+            <span class="tag tag-new">ДЗ</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)">
+            <div class="avatar av-sm" style="background:rgba(167,139,250,.12);color:#7C3AED">ДМ</div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--t1)">Дмитрий М.</div><div style="font-size:10px;color:var(--t3)">Записался на курс · 18 мин назад</div></div>
+            <span class="tag tag-live">+1</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)">
+            <div class="avatar av-sm" style="background:rgba(22,163,74,.1);color:var(--ok)">СВ</div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--t1)">Светлана В.</div><div style="font-size:10px;color:var(--t3)">Прошла урок 7 · 1 ч назад</div></div>
+            <span class="tag">Урок 7</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)">
+            <div class="avatar av-sm" style="background:rgba(245,158,11,.1);color:var(--warn)">ИН</div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--t1)">Иван Н.</div><div style="font-size:10px;color:var(--t3)">Оплатил по рефералу · 3 ч назад</div></div>
+            <span class="tag tag-live">+490 ₽</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 0">
+            <div class="avatar av-sm" style="background:var(--bg2);color:var(--t3)">МК</div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--t1)">Мария К.</div><div style="font-size:10px;color:var(--t3)">Написала в чат · 4 ч назад</div></div>
+            <span class="tag tag-draft">Чат</span>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-top:10px;color:var(--a)">Вся активность →</button>
+      </div>
+
+      <div class="sec-title" style="margin-top:20px">Задания на проверке</div>
+      <div class="card" style="padding:16px">
+        <div class="hw-card" onclick="showScreen('e-homework')">
+          <div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div>
+          <div class="hw-card-body">
+            <div class="hw-card-top"><span class="hw-card-name">Алина К.</span><span class="tag tag-new">Новое</span><span class="hw-card-time">2 мин</span></div>
+            <div class="hw-card-lesson">Маркетинг 2025 · Урок 4 · Анализ ЦА</div>
+            <div class="hw-card-preview">Провела анализ ЦА для своего магазина, определила три портрета клиента...</div>
+          </div>
+        </div>
+        <div class="hw-card">
+          <div class="avatar av-sm" style="background:rgba(167,139,250,.12);color:#7C3AED">ДМ</div>
+          <div class="hw-card-body">
+            <div class="hw-card-top"><span class="hw-card-name">Дмитрий М.</span><span class="tag tag-new">Новое</span><span class="hw-card-time">20 мин</span></div>
+            <div class="hw-card-lesson">Маркетинг 2025 · Урок 4 · Анализ ЦА</div>
+            <div class="hw-card-preview">Анализ конкурентов в нише фитнес-оборудования...</div>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-top:6px;color:var(--a)" onclick="showScreen('e-homework')">Все 12 заданий →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- E-COURSES -->
+<div class="screen" id="screen-e-courses">
+  <div class="page-header">
+    <div><div class="page-title">Мои курсы</div><div class="page-sub">3 курса · 38 студентов суммарно</div></div>
+    <div class="actions-row">
+      <div class="search-input"><span>🔍</span><input placeholder="Поиск курсов..."/></div>
+      <button class="btn btn-primary btn-sm" onclick="showScreen('e-builder')">+ Создать курс</button>
+    </div>
+  </div>
+  <div class="grid3">
+    <div class="card" style="overflow:hidden;cursor:pointer" onclick="showScreen('e-builder')">
+      <div style="height:120px;background:linear-gradient(135deg,#0e2c38,#1a4a58);display:flex;align-items:center;justify-content:center">
+        <span style="font-family:var(--fd);font-size:36px;font-weight:900;color:rgba(10,168,200,.5)">МК</span>
+      </div>
+      <div style="padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span class="tag tag-live">Активен</span>
+          <span style="font-family:var(--fm);font-size:9px;color:var(--t3)">12 уроков</span>
+        </div>
+        <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px;letter-spacing:-.01em">Маркетинг в интернете 2025</div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:12px">3 модуля · 22 студента</div>
+        <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" style="width:65%"></div></div><div class="prog-val">65%</div></div>
+        <div style="font-size:10px;color:var(--t3);margin-top:4px">среднее завершение</div>
+        <div class="div"></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-outline btn-sm" style="flex:1;justify-content:center">✏️ Редактировать</button>
+          <button class="btn btn-ghost btn-sm btn-icon">📊</button>
+          <button class="btn btn-ghost btn-sm btn-icon">👁</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="overflow:hidden;cursor:pointer">
+      <div style="height:120px;background:linear-gradient(135deg,#1c1428,#2e1f4a);display:flex;align-items:center;justify-content:center">
+        <span style="font-family:var(--fd);font-size:36px;font-weight:900;color:rgba(124,58,237,.5)">ПБ</span>
+      </div>
+      <div style="padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span class="tag tag-live">Активен</span>
+          <span style="font-family:var(--fm);font-size:9px;color:var(--t3)">8 уроков</span>
+        </div>
+        <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px;letter-spacing:-.01em">Продажи без скриптов</div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:12px">2 модуля · 10 студентов</div>
+        <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" style="width:48%"></div></div><div class="prog-val">48%</div></div>
+        <div style="font-size:10px;color:var(--t3);margin-top:4px">среднее завершение</div>
+        <div class="div"></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-outline btn-sm" style="flex:1;justify-content:center">✏️ Редактировать</button>
+          <button class="btn btn-ghost btn-sm btn-icon">📊</button>
+          <button class="btn btn-ghost btn-sm btn-icon">👁</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="overflow:hidden;cursor:pointer;opacity:.8">
+      <div style="height:120px;background:linear-gradient(135deg,#1c1409,#2e2010);display:flex;align-items:center;justify-content:center">
+        <span style="font-family:var(--fd);font-size:36px;font-weight:900;color:rgba(245,158,11,.4)">ФГ</span>
+      </div>
+      <div style="padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span class="tag tag-draft">Черновик</span>
+          <span style="font-family:var(--fm);font-size:9px;color:var(--t3)">5 уроков</span>
+        </div>
+        <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px;letter-spacing:-.01em">Финансовая грамотность</div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:12px">1 модуль · 0 студентов</div>
+        <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" style="width:0%"></div></div><div class="prog-val">—</div></div>
+        <div style="font-size:10px;color:var(--t3);margin-top:4px">курс не опубликован</div>
+        <div class="div"></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-primary btn-sm" style="flex:1;justify-content:center">✏️ Продолжить</button>
+          <button class="btn btn-ghost btn-sm btn-icon">🗑</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- E-BUILDER -->
+<div class="screen" id="screen-e-builder" style="padding:0">
+  <div style="display:flex;height:calc(100vh - 56px)">
+
+    <!-- Module tree sidebar -->
+    <div style="width:260px;flex-shrink:0;background:var(--surface2);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--line);background:var(--surface)">
+        <div style="font-family:var(--fd);font-size:12px;font-weight:700;color:var(--t1);margin-bottom:2px">Маркетинг в интернете 2025</div>
+        <div style="font-size:10px;color:var(--t3);font-family:var(--fm)">3 модуля · 12 уроков</div>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:12px 8px">
+        <div class="mod-tree">
+
+          <div class="mod-item">
+            <div class="mod-head active" onclick="this.querySelector('.mod-arrow').classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
+              <span class="mod-arrow open">▶</span>
+              <span class="mod-name">Модуль 1. Основы маркетинга</span>
+              <span class="mod-cnt">4</span>
+            </div>
+            <div class="mod-lessons open">
+              <div class="lesson-row active"><span class="lesson-ico">▶</span><span class="lesson-name">Урок 1. Введение в маркетинг</span><span class="lesson-tag" style="color:var(--ok)">✓</span></div>
+              <div class="lesson-row"><span class="lesson-ico">▶</span><span class="lesson-name">Урок 2. Целевая аудитория</span></div>
+              <div class="lesson-row"><span class="lesson-ico">📄</span><span class="lesson-name">Урок 3. Анализ конкурентов</span></div>
+              <div class="lesson-row"><span class="lesson-ico">📋</span><span class="lesson-name">ДЗ к модулю 1</span><span class="lesson-tag" style="color:var(--a)">ДЗ</span></div>
+            </div>
+          </div>
+
+          <div class="mod-item">
+            <div class="mod-head" onclick="this.querySelector('.mod-arrow').classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
+              <span class="mod-arrow">▶</span>
+              <span class="mod-name">Модуль 2. Контент-маркетинг</span>
+              <span class="mod-cnt">3</span>
+            </div>
+            <div class="mod-lessons">
+              <div class="lesson-row"><span class="lesson-ico">▶</span><span class="lesson-name">Урок 4. Типы контента</span></div>
+              <div class="lesson-row"><span class="lesson-ico">▶</span><span class="lesson-name">Урок 5. Контент-план</span></div>
+              <div class="lesson-row"><span class="lesson-ico">📋</span><span class="lesson-name">ДЗ к модулю 2</span><span class="lesson-tag" style="color:var(--a)">ДЗ</span></div>
+            </div>
+          </div>
+
+          <div class="mod-item">
+            <div class="mod-head" onclick="this.querySelector('.mod-arrow').classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
+              <span class="mod-arrow">▶</span>
+              <span class="mod-name">Модуль 3. Таргетированная реклама</span>
+              <span class="mod-cnt">5</span>
+            </div>
+            <div class="mod-lessons"></div>
+          </div>
+
+        </div>
+      </div>
+      <div style="padding:10px 12px;border-top:1px solid var(--line);display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm" style="flex:1;justify-content:center;font-size:11px">+ Модуль</button>
+        <button class="btn btn-outline btn-sm" style="flex:1;justify-content:center;font-size:11px">+ Урок</button>
+      </div>
+    </div>
+
+    <!-- Lesson editor -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--line)">
+        <div class="tabs" style="border-bottom:none;margin-bottom:0">
+          <button class="tab active">Контент урока</button>
+          <button class="tab">Домашнее задание</button>
+          <button class="tab">Настройки урока</button>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm">👁 Предпросмотр</button>
+          <button class="btn btn-primary btn-sm">💾 Сохранить</button>
+        </div>
+      </div>
+
+      <div style="flex:1;overflow-y:auto;padding:20px 28px;background:var(--bg)">
+
+        <div class="form-group">
+          <div class="form-label">Название урока</div>
+          <input class="form-input" value="Урок 1. Введение в маркетинг"/>
+        </div>
+
+        <!-- Video -->
+        <div style="margin-bottom:16px">
+          <div class="form-label">Видео урока</div>
+          <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);overflow:hidden">
+            <div class="video-player" style="border-radius:0">
+              <div class="play-btn">▶</div>
+              <div class="video-overlay-bottom">
+                <div class="video-progress"><div class="video-prog-fill"></div></div>
+                <div class="video-time">6:12 / 18:42</div>
+                <span style="font-size:12px">⛶</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 14px">
+              <span style="font-size:12px;color:var(--t1);font-weight:600;flex:1">урок_1_введение.mp4 · 245 МБ · 18:42</span>
+              <button class="btn btn-outline btn-sm">Заменить видео</button>
+              <button class="btn btn-ghost btn-sm btn-icon">🗑</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Text editor -->
+        <div style="margin-bottom:16px">
+          <div class="form-label">Текст урока</div>
+          <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);overflow:hidden">
+            <div style="display:flex;gap:2px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--surface2);flex-wrap:wrap">
+              <button class="btn btn-ghost btn-sm btn-icon" style="font-size:12px"><b>B</b></button>
+              <button class="btn btn-ghost btn-sm btn-icon" style="font-size:12px"><i>I</i></button>
+              <button class="btn btn-ghost btn-sm btn-icon" style="font-size:12px"><u>U</u></button>
+              <button class="btn btn-ghost btn-sm btn-icon" style="font-size:11px">H1</button>
+              <button class="btn btn-ghost btn-sm btn-icon" style="font-size:11px">H2</button>
+              <button class="btn btn-ghost btn-sm btn-icon" style="font-size:14px">•</button>
+              <button class="btn btn-ghost btn-sm btn-icon">🔗</button>
+              <button class="btn btn-ghost btn-sm btn-icon" style="font-size:11px">▶</button>
+            </div>
+            <div style="padding:14px 16px;min-height:120px;font-size:13px;color:var(--t2);line-height:1.65">В этом уроке мы разберём базовые понятия интернет-маркетинга. Вы узнаете, чем отличается SMM от таргетированной рекламы, и какие инструменты подойдут для вашего бизнеса.<br><br>Ключевые темы урока:<br>• Что такое интернет-маркетинг<br>• Основные каналы продвижения<br>• Как выбрать подходящий канал</div>
+          </div>
+        </div>
+
+        <!-- Materials -->
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div class="form-label">Материалы для скачивания</div>
+            <button class="btn btn-outline btn-sm" style="font-size:11px">+ Добавить файл</button>
+          </div>
+          <div class="material-row">
+            <div class="mat-ico" style="background:rgba(220,38,38,.08)">📕</div>
+            <div style="flex:1"><div class="mat-name">Презентация урока 1.pdf</div><div class="mat-meta">PDF · 2.4 МБ · Студенты могут скачать</div></div>
+            <button class="btn btn-ghost btn-sm btn-icon">✏️</button>
+            <button class="btn btn-ghost btn-sm btn-icon">🗑</button>
+          </div>
+          <div class="material-row">
+            <div class="mat-ico" style="background:rgba(22,163,74,.08)">📊</div>
+            <div style="flex:1"><div class="mat-name">Шаблон анализа ЦА.xlsx</div><div class="mat-meta">Excel · 156 КБ · Только просмотр</div></div>
+            <button class="btn btn-ghost btn-sm btn-icon">✏️</button>
+            <button class="btn btn-ghost btn-sm btn-icon">🗑</button>
+          </div>
+          <div class="upload-zone" style="margin-top:8px">
+            <div class="upload-zone-ico">📎</div>
+            <div class="upload-zone-title">Перетащите файл или нажмите</div>
+            <div class="upload-zone-sub">PDF, DOCX, XLSX, PPTX, MP3, ZIP · до 500 МБ</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Right: lesson settings panel -->
+    <div style="width:260px;flex-shrink:0;background:var(--surface);border-left:1px solid var(--line);padding:16px;overflow-y:auto">
+      <div class="sec-title">Параметры урока</div>
+      <div class="form-group">
+        <div class="form-label">Тип урока</div>
+        <select class="form-input" style="cursor:pointer">
+          <option>Видеоурок</option>
+          <option>Текстовый урок</option>
+          <option>Вебинар</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Доступ</div>
+        <select class="form-input" style="cursor:pointer">
+          <option>После оплаты курса</option>
+          <option>Свободный доступ</option>
+          <option>По расписанию</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Домашнее задание</div>
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg2);border-radius:8px;border:1px solid var(--line)">
+          <span style="font-size:12px;color:var(--t2);flex:1">ДЗ настроено</span>
+          <span class="tag tag-new">Есть</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Статус</div>
+        <select class="form-input" style="cursor:pointer">
+          <option>Опубликован</option>
+          <option>Черновик</option>
+        </select>
+      </div>
+      <div class="div"></div>
+      <div class="sec-title">Прохождение студентами</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--t3)">Просмотрели</span><span style="font-weight:600">18 / 22</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--t3)">Завершили</span><span style="font-weight:600">14 / 22</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--t3)">Сдали ДЗ</span><span style="font-weight:600;color:var(--a)">12 / 22</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--t3)">Ср. оценка</span><span style="font-weight:600;color:var(--ok)">87 баллов</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- E-STUDENTS -->
+<div class="screen" id="screen-e-students">
+  <div class="page-header">
+    <div><div class="page-title">Студенты</div><div class="page-sub">38 студентов во всех курсах</div></div>
+    <div class="actions-row">
+      <div class="search-input"><span>🔍</span><input placeholder="Поиск студентов..."/></div>
+      <button class="btn btn-outline btn-sm">Фильтр ▾</button>
+      <button class="btn btn-primary btn-sm">Пригласить</button>
+    </div>
+  </div>
+  <div class="stats-row stats-4" style="margin-bottom:20px">
+    <div class="stat-card"><div class="num a">38</div><div class="lbl">Всего студентов</div></div>
+    <div class="stat-card"><div class="num ok">29</div><div class="lbl">Активных (7 дней)</div></div>
+    <div class="stat-card"><div class="num">65%</div><div class="lbl">Среднее завершение</div></div>
+    <div class="stat-card"><div class="num warn">5</div><div class="lbl">Отток в этом месяце</div></div>
+  </div>
+  <div class="card" style="overflow:hidden">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Студент</th>
+          <th>Курс</th>
+          <th>Прогресс</th>
+          <th>Streak</th>
+          <th>Очки</th>
+          <th>ДЗ</th>
+          <th>Последняя активность</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div><div><div class="td-name">Алина Карпова</div><div style="font-size:10px;color:var(--t3)">Маркетинг 2025</div></div></div></td>
+          <td>Маркетинг 2025</td>
+          <td><div class="prog-wrap" style="width:120px"><div class="prog-bar"><div class="prog-fill" style="width:65%"></div></div><div class="prog-val">65%</div></div></td>
+          <td><span style="color:var(--warn)">🔥</span> 12 дн.</td>
+          <td><span style="font-weight:600">840</span></td>
+          <td><span class="tag tag-new">8 сдано</span></td>
+          <td style="font-size:11px;color:var(--t3)">2 мин назад</td>
+          <td><button class="btn btn-ghost btn-sm btn-icon">💬</button></td>
+        </tr>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm" style="background:rgba(124,58,237,.1);color:var(--purple)">ДМ</div><div><div class="td-name">Дмитрий Морозов</div><div style="font-size:10px;color:var(--t3)">Продажи</div></div></div></td>
+          <td>Продажи без скриптов</td>
+          <td><div class="prog-wrap" style="width:120px"><div class="prog-bar"><div class="prog-fill" style="width:48%"></div></div><div class="prog-val">48%</div></div></td>
+          <td><span style="color:var(--warn)">🔥</span> 7 дн.</td>
+          <td><span style="font-weight:600">520</span></td>
+          <td><span class="tag tag-new">5 сдано</span></td>
+          <td style="font-size:11px;color:var(--t3)">18 мин назад</td>
+          <td><button class="btn btn-ghost btn-sm btn-icon">💬</button></td>
+        </tr>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm" style="background:rgba(22,163,74,.1);color:var(--ok)">СВ</div><div><div class="td-name">Светлана Волкова</div><div style="font-size:10px;color:var(--t3)">Маркетинг 2025</div></div></div></td>
+          <td>Маркетинг 2025</td>
+          <td><div class="prog-wrap" style="width:120px"><div class="prog-bar"><div class="prog-fill" style="width:88%"></div></div><div class="prog-val">88%</div></div></td>
+          <td><span style="color:var(--warn)">🔥</span> 21 дн.</td>
+          <td><span style="font-weight:600">1240</span></td>
+          <td><span class="tag tag-live">11 сдано</span></td>
+          <td style="font-size:11px;color:var(--t3)">1 час назад</td>
+          <td><button class="btn btn-ghost btn-sm btn-icon">💬</button></td>
+        </tr>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm" style="background:rgba(245,158,11,.1);color:var(--warn)">ИН</div><div><div class="td-name">Иван Новиков</div><div style="font-size:10px;color:var(--t3)">Продажи</div></div></div></td>
+          <td>Продажи без скриптов</td>
+          <td><div class="prog-wrap" style="width:120px"><div class="prog-bar"><div class="prog-fill" style="width:22%"></div></div><div class="prog-val">22%</div></div></td>
+          <td>3 дн.</td>
+          <td><span style="font-weight:600">180</span></td>
+          <td><span class="tag tag-draft">2 сдано</span></td>
+          <td style="font-size:11px;color:var(--t3)">3 дня назад</td>
+          <td><button class="btn btn-ghost btn-sm btn-icon">💬</button></td>
+        </tr>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm" style="background:var(--bg2);color:var(--t3)">МК</div><div><div class="td-name">Мария Козлова</div><div style="font-size:10px;color:var(--t3)">Маркетинг 2025</div></div></div></td>
+          <td>Маркетинг 2025</td>
+          <td><div class="prog-wrap" style="width:120px"><div class="prog-bar"><div class="prog-fill" style="width:12%"></div></div><div class="prog-val">12%</div></div></td>
+          <td>—</td>
+          <td><span style="font-weight:600">80</span></td>
+          <td><span style="color:var(--t3)">0 сдано</span></td>
+          <td style="font-size:11px;color:var(--err)">8 дней назад</td>
+          <td><button class="btn btn-ghost btn-sm btn-icon">💬</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- E-HOMEWORK -->
+<div class="screen" id="screen-e-homework" style="padding:0">
+  <div style="display:flex;height:calc(100vh - 56px)">
+    <!-- List panel -->
+    <div style="width:320px;flex-shrink:0;border-right:1px solid var(--line);display:flex;flex-direction:column;background:var(--surface)">
+      <div style="padding:16px;border-bottom:1px solid var(--line)">
+        <div style="font-family:var(--fd);font-size:14px;font-weight:700;color:var(--t1);margin-bottom:10px">Домашние задания</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" style="font-size:10px;padding:4px 10px">Все (12)</button>
+          <button class="btn btn-outline btn-sm" style="font-size:10px;padding:4px 10px">Новые (8)</button>
+          <button class="btn btn-outline btn-sm" style="font-size:10px;padding:4px 10px">Проверено</button>
+          <button class="btn btn-outline btn-sm" style="font-size:10px;padding:4px 10px">Доработать</button>
+        </div>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:10px">
+        <div class="hw-card active">
+          <div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div>
+          <div class="hw-card-body">
+            <div class="hw-card-top"><span class="hw-card-name">Алина Карпова</span><span class="tag tag-new">Новое</span><span class="hw-card-time">2 мин</span></div>
+            <div class="hw-card-lesson">Маркетинг 2025 · Урок 4</div>
+            <div class="hw-card-preview">Провела анализ ЦА для своего магазина женской одежды...</div>
+          </div>
+        </div>
+        <div class="hw-card">
+          <div class="avatar av-sm" style="background:rgba(124,58,237,.1);color:var(--purple)">ДМ</div>
+          <div class="hw-card-body">
+            <div class="hw-card-top"><span class="hw-card-name">Дмитрий Морозов</span><span class="tag tag-new">Новое</span><span class="hw-card-time">20 мин</span></div>
+            <div class="hw-card-lesson">Маркетинг 2025 · Урок 4</div>
+            <div class="hw-card-preview">Анализ конкурентов в нише фитнес-оборудования...</div>
+          </div>
+        </div>
+        <div class="hw-card">
+          <div class="avatar av-sm" style="background:rgba(22,163,74,.1);color:var(--ok)">СВ</div>
+          <div class="hw-card-body">
+            <div class="hw-card-top"><span class="hw-card-name">Светлана В.</span><span class="tag tag-live">Проверено</span><span class="hw-card-time">1 ч</span></div>
+            <div class="hw-card-lesson">Продажи · Урок 2</div>
+            <div class="hw-card-preview">Написала скрипт холодного звонка по шаблону...</div>
+          </div>
+        </div>
+        <div class="hw-card">
+          <div class="avatar av-sm" style="background:rgba(245,158,11,.1);color:var(--warn)">ИН</div>
+          <div class="hw-card-body">
+            <div class="hw-card-top"><span class="hw-card-name">Иван Новиков</span><span class="tag tag-draft">Доработать</span><span class="hw-card-time">3 ч</span></div>
+            <div class="hw-card-lesson">Маркетинг 2025 · Урок 3</div>
+            <div class="hw-card-preview">SWOT-анализ проекта, не все поля заполнены...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail panel -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--line)">
+        <div class="avatar av-md" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div>
+        <div style="flex:1">
+          <div style="font-family:var(--fd);font-size:14px;font-weight:700;color:var(--t1)">Алина Карпова</div>
+          <div style="font-size:11px;color:var(--t3)">Маркетинг в интернете 2025 · Урок 4 · Анализ целевой аудитории</div>
+        </div>
+        <span class="tag tag-new" style="font-size:10px;padding:4px 10px">Ожидает проверки</span>
+      </div>
+
+      <div style="flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:14px">
+        <div class="card-sm" style="padding:16px">
+          <div style="font-family:var(--fm);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Задание</div>
+          <div style="font-size:13px;color:var(--t2);line-height:1.6;padding:12px;background:var(--bg);border-radius:8px;border-left:3px solid var(--a)">Проведите анализ целевой аудитории вашего продукта. Опишите 2–3 портрета клиента с демографией, болями и мотивацией. Можно оформить в виде таблицы или схемы.</div>
+        </div>
+
+        <div class="card-sm" style="padding:16px">
+          <div style="font-family:var(--fm);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Ответ студента</div>
+          <div style="font-size:13px;color:var(--t1);line-height:1.65">Провела анализ ЦА для своего магазина женской одежды. Определила три основных портрета:<br><br><strong>Портрет 1:</strong> Женщины 25–35 лет, работающие в офисе, доход средний+. Ищут деловую одежду — качественную, но не слишком дорогую.<br><br><strong>Портрет 2:</strong> Мамы в декрете 28–40 лет. Ценят удобство и качество, покупают в онлайн по рекомендациям.<br><br><strong>Портрет 3:</strong> Студентки 18–24, следят за трендами, ценят цену.</div>
+          <div class="material-row" style="margin-top:12px">
+            <div class="mat-ico" style="background:rgba(22,163,74,.08)">📊</div>
+            <div style="flex:1"><div class="mat-name">Таблица_анализ_ЦА_Карпова.xlsx</div><div class="mat-meta">Excel · 68 КБ · Прикреплён студентом</div></div>
+            <button class="btn btn-outline btn-sm">⬇ Скачать</button>
+          </div>
+        </div>
+
+        <div class="card-sm" style="padding:16px">
+          <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:14px">Оценить работу</div>
+          <div class="grade-row" style="margin-bottom:12px">
+            <div class="grade-btn sel"><div class="g-score">100</div><div class="g-lbl">ОТЛИЧНО</div></div>
+            <div class="grade-btn"><div class="g-score">85</div><div class="g-lbl">ХОРОШО</div></div>
+            <div class="grade-btn"><div class="g-score">70</div><div class="g-lbl">ЗАЧЁТ</div></div>
+            <div class="grade-btn"><div class="g-score" style="color:var(--err)">✗</div><div class="g-lbl">ДОРАБОТАТЬ</div></div>
+          </div>
+          <textarea class="form-input" placeholder="Комментарий для студента...">Отличная работа! Портреты проработаны детально. Особенно понравился третий портрет — точное описание. Рекомендую добавить каналы коммуникации для каждого портрета в следующем задании.</textarea>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn btn-accent" style="flex:1;justify-content:center">✅ Отправить оценку</button>
+            <button class="btn btn-outline">На доработку</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- E-TEAM -->
+<div class="screen" id="screen-e-team">
+  <div class="page-header">
+    <div><div class="page-title">Кураторы и менеджеры</div><div class="page-sub">Управление командой</div></div>
+    <button class="btn btn-primary btn-sm">+ Пригласить участника</button>
+  </div>
+  <div class="grid2">
+    <div>
+      <div class="sec-title">Участники команды</div>
+      <div class="card" style="overflow:hidden">
+        <table class="tbl">
+          <thead><tr><th>Участник</th><th>Роль</th><th>Курсы</th><th>Последняя активность</th><th></th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm" style="background:var(--al);color:var(--a)">АК</div><div><div class="td-name">Алина К. (вы)</div><div style="font-size:10px;color:var(--t3)">hello@edify.su</div></div></div></td>
+              <td><span class="tag tag-new">Эксперт (автор)</span></td>
+              <td style="color:var(--t2)">Все курсы</td>
+              <td style="color:var(--t3);font-size:11px">Сейчас онлайн <span class="dot-online"></span></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm" style="background:rgba(124,58,237,.1);color:var(--purple)">МС</div><div><div class="td-name">Мария Соколова</div><div style="font-size:10px;color:var(--t3)">m.sokolova@email.com</div></div></div></td>
+              <td><span class="tag tag-live">Куратор</span></td>
+              <td style="color:var(--t2)">Маркетинг 2025</td>
+              <td style="color:var(--t3);font-size:11px">1 час назад</td>
+              <td><button class="btn btn-ghost btn-sm btn-icon">⚙️</button></td>
+            </tr>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm" style="background:rgba(245,158,11,.1);color:var(--warn)">АП</div><div><div class="td-name">Антон Петров</div><div style="font-size:10px;color:var(--t3)">a.petrov@email.com</div></div></div></td>
+              <td><span class="tag tag-draft">Менеджер</span></td>
+              <td style="color:var(--t2)">Все курсы</td>
+              <td style="color:var(--t3);font-size:11px">Вчера</td>
+              <td><button class="btn btn-ghost btn-sm btn-icon">⚙️</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div class="sec-title">Права доступа по ролям</div>
+      <div class="card" style="padding:20px">
+        <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;font-size:12px;margin-bottom:10px">
+          <div style="color:var(--t3);font-family:var(--fm);font-size:9px;letter-spacing:.06em;text-transform:uppercase">Действие</div>
+          <div style="color:var(--t3);font-family:var(--fm);font-size:9px;text-align:center;letter-spacing:.06em;text-transform:uppercase">КУРАТОР</div>
+          <div style="color:var(--t3);font-family:var(--fm);font-size:9px;text-align:center;letter-spacing:.06em;text-transform:uppercase">МЕНЕДЖЕР</div>
+        </div>
+        <div class="div" style="margin:0 0 10px"></div>
+        <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;row-gap:10px;font-size:12px;align-items:center">
+          <span style="color:var(--t2)">Проверка домашних заданий</span><span style="text-align:center;color:var(--ok)">✓</span><span style="text-align:center;color:var(--err)">✗</span>
+          <span style="color:var(--t2)">Переписка со студентами</span><span style="text-align:center;color:var(--ok)">✓</span><span style="text-align:center;color:var(--ok)">✓</span>
+          <span style="color:var(--t2)">Просмотр аналитики</span><span style="text-align:center;color:var(--err)">✗</span><span style="text-align:center;color:var(--ok)">✓</span>
+          <span style="color:var(--t2)">Редактирование курсов</span><span style="text-align:center;color:var(--err)">✗</span><span style="text-align:center;color:var(--err)">✗</span>
+          <span style="color:var(--t2)">Приглашение студентов</span><span style="text-align:center;color:var(--err)">✗</span><span style="text-align:center;color:var(--ok)">✓</span>
+          <span style="color:var(--t2)">Доступ к финансам</span><span style="text-align:center;color:var(--err)">✗</span><span style="text-align:center;color:var(--err)">✗</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- E-FINANCE -->
+<div class="screen" id="screen-e-finance">
+  <div class="page-header">
+    <div><div class="page-title">Финансы</div><div class="page-sub">Выручка, выплаты и реферальная программа</div></div>
+    <button class="btn btn-primary btn-sm">Запросить выплату</button>
+  </div>
+  <div class="stats-row stats-4">
+    <div class="stat-card"><div class="num ok">14 200 ₽</div><div class="lbl">Выручка за апрель</div><div class="delta delta-up">↑ +17%</div></div>
+    <div class="stat-card"><div class="num a">8 900 ₽</div><div class="lbl">Доступно к выплате</div></div>
+    <div class="stat-card"><div class="num">490 ₽</div><div class="lbl">Реферальные начисления</div><div class="delta delta-up">↑ 1 реферал</div></div>
+    <div class="stat-card"><div class="num">42 300 ₽</div><div class="lbl">Всего выплачено</div></div>
+  </div>
+  <div class="grid2">
+    <div>
+      <div class="sec-title">История транзакций</div>
+      <div class="card" style="overflow:hidden">
+        <table class="tbl">
+          <thead><tr><th>Дата</th><th>Описание</th><th>Сумма</th><th>Статус</th></tr></thead>
+          <tbody>
+            <tr><td style="font-family:var(--fm);font-size:11px;color:var(--t3)">18 апр</td><td><div class="td-name">Подписка — Алина К.</div><div style="font-size:10px;color:var(--t3)">Маркетинг 2025 · 1 500 ₽</div></td><td style="font-weight:700;color:var(--ok)">+1 500 ₽</td><td><span class="tag tag-live">Получено</span></td></tr>
+            <tr><td style="font-family:var(--fm);font-size:11px;color:var(--t3)">17 апр</td><td><div class="td-name">Реферальная выплата</div><div style="font-size:10px;color:var(--t3)">Иван Н. купил подписку эксперта</div></td><td style="font-weight:700;color:var(--ok)">+490 ₽</td><td><span class="tag tag-live">Получено</span></td></tr>
+            <tr><td style="font-family:var(--fm);font-size:11px;color:var(--t3)">15 апр</td><td><div class="td-name">Подписка — Дмитрий М.</div><div style="font-size:10px;color:var(--t3)">Продажи без скриптов · 900 ₽</div></td><td style="font-weight:700;color:var(--ok)">+900 ₽</td><td><span class="tag tag-live">Получено</span></td></tr>
+            <tr><td style="font-family:var(--fm);font-size:11px;color:var(--t3)">10 апр</td><td><div class="td-name">Выплата на карту</div><div style="font-size:10px;color:var(--t3)">**** 4211 · Сбербанк</div></td><td style="font-weight:700;color:var(--err)">−5 400 ₽</td><td><span class="tag tag-new">Выплачено</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div class="sec-title">Настройки выплат</div>
+      <div class="card" style="padding:20px">
+        <div class="form-group">
+          <div class="form-label">Способ выплаты</div>
+          <select class="form-input" style="cursor:pointer"><option>Карта (СБП)</option><option>ИП расчётный счёт</option></select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Автовыплата</div>
+          <select class="form-input" style="cursor:pointer"><option>При накоплении 5 000 ₽</option><option>Еженедельно</option><option>Вручную</option></select>
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center">Запросить выплату 8 900 ₽</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- E-REFERRAL -->
+<div class="screen" id="screen-e-referral">
+  <div class="page-header">
+    <div><div class="page-title">Реферальная программа</div><div class="page-sub">Зарабатывайте с каждого приглашённого эксперта</div></div>
+  </div>
+  <div class="grid2">
+    <div>
+      <div class="sec-title">Ваша реферальная ссылка</div>
+      <div class="card" style="padding:20px">
+        <div style="font-family:var(--fm);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:6px">Ваш код</div>
+        <div style="font-family:var(--fm);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:12px;letter-spacing:.04em">REF-L29NICIN</div>
+        <div style="background:var(--bg);border:1px solid var(--al);border-radius:8px;padding:10px 14px;font-family:var(--fm);font-size:11px;color:var(--a);display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <span>https://app.edify.su/?ref=REF-L29NICIN</span>
+          <button class="btn btn-ghost btn-sm" style="color:var(--a)">Копировать</button>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" style="flex:1;justify-content:center">Поделиться</button>
+          <button class="btn btn-outline btn-sm">QR-код</button>
+        </div>
+      </div>
+      <div class="stats-row stats-3" style="margin-top:16px">
+        <div class="stat-card"><div class="num a">3</div><div class="lbl">Приглашено</div></div>
+        <div class="stat-card"><div class="num ok">1</div><div class="lbl">Оплатили</div></div>
+        <div class="stat-card"><div class="num">490 ₽</div><div class="lbl">Начислено</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="sec-title">Как это работает</div>
+      <div class="card" style="padding:20px">
+        <div style="display:flex;flex-direction:column;gap:0">
+          <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--al);border:1px solid var(--ab);color:var(--a);font-family:var(--fm);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+            <div style="font-size:13px;color:var(--t2)">Поделитесь ссылкой с коллегой-экспертом</div>
+          </div>
+          <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--al);border:1px solid var(--ab);color:var(--a);font-family:var(--fm);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+            <div style="font-size:13px;color:var(--t2)">Коллега регистрируется и оплачивает подписку эксперта</div>
+          </div>
+          <div style="display:flex;gap:12px;padding:12px 0">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--al);border:1px solid var(--ab);color:var(--a);font-family:var(--fm);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+            <div style="font-size:13px;color:var(--t2)">Вы получаете % с каждой его оплаты — автоматически, бессрочно</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- E-SETTINGS -->
+<div class="screen" id="screen-e-settings">
+  <div class="page-header">
+    <div><div class="page-title">Настройки</div><div class="page-sub">Профиль и параметры аккаунта</div></div>
+    <button class="btn btn-primary btn-sm">Сохранить изменения</button>
+  </div>
+  <div class="settings-layout">
+    <div class="settings-nav">
+      <div class="settings-nav-item active">👤 Профиль</div>
+      <div class="settings-nav-item">🎨 Оформление школы</div>
+      <div class="settings-nav-item">💳 Платёжные реквизиты</div>
+      <div class="settings-nav-item">🔔 Уведомления</div>
+      <div class="settings-nav-item">🔒 Безопасность</div>
+    </div>
+    <div class="card" style="padding:24px">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--line)">
+        <div class="avatar av-lg" style="background:rgba(10,168,200,.12);color:var(--a);font-size:16px">АК</div>
+        <div>
+          <div style="font-family:var(--fd);font-size:15px;font-weight:700;color:var(--t1);margin-bottom:4px">Алина Карпова</div>
+          <div style="font-size:12px;color:var(--t3);margin-bottom:8px">Эксперт · Подписка активна до 12.04.2026</div>
+          <button class="btn btn-outline btn-sm">Загрузить фото</button>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="form-group"><div class="form-label">Имя</div><input class="form-input" value="Алина"/></div>
+        <div class="form-group"><div class="form-label">Фамилия</div><input class="form-input" value="Карпова"/></div>
+        <div class="form-group"><div class="form-label">Email</div><input class="form-input" value="alina@email.com"/></div>
+        <div class="form-group"><div class="form-label">Никнейм</div><input class="form-input" value="@blondibabe"/></div>
+      </div>
+      <div class="form-group"><div class="form-label">О себе</div><textarea class="form-input">Маркетолог с 7-летним опытом. Автор курсов по интернет-маркетингу и продажам.</textarea></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- E-MESSAGES -->
+<div class="screen" id="screen-e-messages">
+  <div style="display:flex;height:calc(100vh - 56px)">
+    <div style="width:300px;border-right:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--line)">
+        <div style="font-family:var(--fd);font-size:13px;font-weight:700;margin-bottom:10px">Сообщения</div>
+        <div class="search-input"><span>🔍</span><input placeholder="Поиск..."/></div>
+      </div>
+      <div style="flex:1;overflow-y:auto">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer;background:var(--al)">
+          <div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div>
+          <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--t1)">Алина Карпова</div><div style="font-size:11px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Спасибо за обратную связь!</div></div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><div style="font-family:var(--fm);font-size:9px;color:var(--t3)">2 мин</div><div style="width:7px;height:7px;border-radius:50%;background:var(--a)"></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer">
+          <div class="avatar av-sm" style="background:rgba(124,58,237,.1);color:var(--purple)">ДМ</div>
+          <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--t1)">Дмитрий Морозов</div><div style="font-size:11px;color:var(--t3)">Когда будет следующий модуль?</div></div>
+          <div style="font-family:var(--fm);font-size:9px;color:var(--t3)">1 ч</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer">
+          <div class="avatar av-sm" style="background:rgba(22,163,74,.1);color:var(--ok)">СВ</div>
+          <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--t1)">Светлана В.</div><div style="font-size:11px;color:var(--t3)">Можно доп. материалы?</div></div>
+          <div style="font-family:var(--fm);font-size:9px;color:var(--t3)">3 ч</div>
+        </div>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;background:var(--bg)">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--line)">
+        <div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div>
+        <div><div style="font-size:13px;font-weight:600;color:var(--t1)">Алина Карпова</div><div style="font-size:10px;color:var(--ok)"><span class="dot-online"></span> онлайн</div></div>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:flex-end"><div style="background:var(--a);color:#fff;border-radius:12px 12px 2px 12px;padding:10px 14px;max-width:320px;font-size:13px;line-height:1.5">Алина, посмотрел ваше домашнее задание — очень хорошая работа! Оценка 100 баллов.</div></div>
+        <div style="display:flex;gap:8px;align-items:flex-end"><div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div><div style="background:var(--surface);border:1px solid var(--line);border-radius:12px 12px 12px 2px;padding:10px 14px;max-width:320px;font-size:13px;line-height:1.5">Спасибо большое! Очень рада получить такой отзыв 🙏</div></div>
+      </div>
+      <div style="padding:14px 20px;background:var(--surface);border-top:1px solid var(--line);display:flex;gap:8px">
+        <input class="form-input" placeholder="Написать сообщение..." style="flex:1"/>
+        <button class="btn btn-accent btn-icon" style="width:36px;height:36px">→</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     STUDENT SCREENS
+═══════════════════════════════════════════ -->
+
+<!-- S-CATALOG -->
+<div class="screen" id="screen-s-catalog">
+  <div class="page-header">
+    <div><div class="page-title">Каталог курсов</div><div class="page-sub">Найдите подходящий курс</div></div>
+    <div class="actions-row">
+      <div class="search-input"><span>🔍</span><input placeholder="Поиск курсов..."/></div>
+      <button class="btn btn-outline btn-sm">Категория ▾</button>
+    </div>
+  </div>
+  <div class="grid4" style="margin-bottom:16px">
+    <div style="padding:10px 14px;background:var(--t1);color:#fff;border-radius:8px;font-size:12px;font-weight:600;text-align:center;cursor:pointer">Все курсы</div>
+    <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;font-size:12px;color:var(--t2);text-align:center;cursor:pointer">Маркетинг</div>
+    <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;font-size:12px;color:var(--t2);text-align:center;cursor:pointer">Продажи</div>
+    <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;font-size:12px;color:var(--t2);text-align:center;cursor:pointer">Финансы</div>
+  </div>
+  <div class="grid3">
+    <div class="course-card-s" onclick="showScreen('s-lesson')">
+      <div class="cc-thumb" style="background:linear-gradient(135deg,#0e2c38,#1a4a58)"><span style="font-family:var(--fd);font-size:40px;font-weight:900;color:rgba(10,168,200,.4)">МК</span></div>
+      <div class="cc-body">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="tag tag-live">Активен</span><span style="font-family:var(--fm);font-size:10px;color:var(--t3)">12 уроков</span></div>
+        <div class="cc-title">Маркетинг в интернете 2025</div>
+        <div class="cc-author">Алина Карпова · 22 студента</div>
+        <div class="cc-price">1 500 ₽</div>
+      </div>
+    </div>
+    <div class="course-card-s">
+      <div class="cc-thumb" style="background:linear-gradient(135deg,#1c1428,#2e1f4a)"><span style="font-family:var(--fd);font-size:40px;font-weight:900;color:rgba(124,58,237,.35)">ПБ</span></div>
+      <div class="cc-body">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="tag tag-new">Новинка</span><span style="font-family:var(--fm);font-size:10px;color:var(--t3)">8 уроков</span></div>
+        <div class="cc-title">Продажи без скриптов</div>
+        <div class="cc-author">Алина Карпова · 10 студентов</div>
+        <div class="cc-price">900 ₽</div>
+      </div>
+    </div>
+    <div class="course-card-s">
+      <div class="cc-thumb" style="background:linear-gradient(135deg,#0d1f18,#143326)"><span style="font-family:var(--fd);font-size:40px;font-weight:900;color:rgba(22,163,74,.35)">UI</span></div>
+      <div class="cc-body">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="tag" style="background:var(--ok-bg);color:var(--ok);border:1px solid rgba(22,163,74,.2)">Бесплатно</span><span style="font-family:var(--fm);font-size:10px;color:var(--t3)">6 уроков</span></div>
+        <div class="cc-title">UI/UX Design основы</div>
+        <div class="cc-author">Другой эксперт · 55 студентов</div>
+        <div class="cc-price cc-price-free">Бесплатно</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- S-MYCOURSES -->
+<div class="screen" id="screen-s-mycourses">
+  <div class="page-header">
+    <div><div class="page-title">Мои курсы</div><div class="page-sub">3 активных курса</div></div>
+  </div>
+  <div class="grid3">
+    <div class="course-card-s" onclick="showScreen('s-lesson')">
+      <div class="cc-thumb" style="background:linear-gradient(135deg,#0e2c38,#1a4a58)"><span style="font-family:var(--fd);font-size:40px;font-weight:900;color:rgba(10,168,200,.4)">МК</span></div>
+      <div class="cc-body">
+        <div class="cc-title">Маркетинг в интернете 2025</div>
+        <div class="cc-author">Алина Карпова</div>
+        <div class="prog-wrap" style="margin:10px 0 4px"><div class="prog-bar"><div class="prog-fill" style="width:65%"></div></div><div class="prog-val">65%</div></div>
+        <div style="font-size:10px;color:var(--t3);margin-bottom:12px">8 из 12 уроков</div>
+        <button class="btn btn-accent btn-sm" style="width:100%;justify-content:center" onclick="event.stopPropagation();showScreen('s-lesson')">Продолжить урок 9 →</button>
+      </div>
+    </div>
+    <div class="course-card-s">
+      <div class="cc-thumb" style="background:linear-gradient(135deg,#1c1428,#2e1f4a)"><span style="font-family:var(--fd);font-size:40px;font-weight:900;color:rgba(124,58,237,.35)">ПБ</span></div>
+      <div class="cc-body">
+        <div class="cc-title">Продажи без скриптов</div>
+        <div class="cc-author">Алина Карпова</div>
+        <div class="prog-wrap" style="margin:10px 0 4px"><div class="prog-bar"><div class="prog-fill" style="width:30%"></div></div><div class="prog-val">30%</div></div>
+        <div style="font-size:10px;color:var(--t3);margin-bottom:12px">3 из 8 уроков</div>
+        <button class="btn btn-outline btn-sm" style="width:100%;justify-content:center">Продолжить →</button>
+      </div>
+    </div>
+    <div class="course-card-s">
+      <div class="cc-thumb" style="background:linear-gradient(135deg,#0d1f18,#143326)"><span style="font-family:var(--fd);font-size:40px;font-weight:900;color:rgba(22,163,74,.35)">UI</span></div>
+      <div class="cc-body">
+        <div class="cc-title">UI/UX Design основы</div>
+        <div class="cc-author">Другой эксперт</div>
+        <div class="prog-wrap" style="margin:10px 0 4px"><div class="prog-bar"><div class="prog-fill" style="width:0%"></div></div><div class="prog-val">0%</div></div>
+        <div style="font-size:10px;color:var(--t3);margin-bottom:12px">Не начат</div>
+        <button class="btn btn-outline btn-sm" style="width:100%;justify-content:center">Начать</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- S-LESSON -->
+<div class="screen" id="screen-s-lesson">
+  <div style="display:flex;gap:20px;height:calc(100vh - 56px - 56px);overflow:hidden">
+    <!-- Module tree -->
+    <div style="width:240px;flex-shrink:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);padding:14px;overflow-y:auto;height:fit-content">
+      <div style="font-family:var(--fd);font-size:11px;font-weight:700;color:var(--t1);margin-bottom:2px">Маркетинг 2025</div>
+      <div class="prog-wrap" style="margin:8px 0 14px"><div class="prog-bar"><div class="prog-fill" style="width:65%"></div></div><div class="prog-val">65%</div></div>
+      <div class="mod-tree">
+        <div class="mod-item">
+          <div class="mod-head" onclick="this.querySelector('.mod-arrow').classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
+            <span class="mod-arrow open">▶</span><span class="mod-name">Модуль 1. Основы</span><span style="color:var(--ok);font-size:11px">✓</span>
+          </div>
+          <div class="mod-lessons open">
+            <div class="lesson-row"><span style="color:var(--ok)">✓</span><span class="lesson-name">Урок 1. Введение</span></div>
+            <div class="lesson-row"><span style="color:var(--ok)">✓</span><span class="lesson-name">Урок 2. Целевая аудитория</span></div>
+            <div class="lesson-row"><span style="color:var(--ok)">✓</span><span class="lesson-name">Урок 3. Конкуренты</span></div>
+            <div class="lesson-row"><span style="color:var(--ok)">✓</span><span class="lesson-name">ДЗ к модулю 1</span></div>
+          </div>
+        </div>
+        <div class="mod-item">
+          <div class="mod-head active" onclick="this.querySelector('.mod-arrow').classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
+            <span class="mod-arrow open">▶</span><span class="mod-name">Модуль 2. Контент</span>
+          </div>
+          <div class="mod-lessons open">
+            <div class="lesson-row"><span style="color:var(--ok)">✓</span><span class="lesson-name">Урок 4. Типы контента</span></div>
+            <div class="lesson-row active"><span class="lesson-ico">▶</span><span class="lesson-name">Урок 5. Контент-план</span></div>
+            <div class="lesson-row" style="color:var(--t3)"><span class="lesson-ico">🔒</span><span class="lesson-name">Урок 6. SEO</span></div>
+            <div class="lesson-row" style="color:var(--t3)"><span class="lesson-ico">🔒</span><span class="lesson-name">ДЗ к модулю 2</span></div>
+          </div>
+        </div>
+        <div class="mod-item">
+          <div class="mod-head" onclick="this.querySelector('.mod-arrow').classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
+            <span class="mod-arrow">▶</span><span class="mod-name">Модуль 3. Реклама</span>
+          </div>
+          <div class="mod-lessons"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main lesson area -->
+    <div style="flex:1;overflow-y:auto">
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;color:var(--t3);margin-bottom:4px;font-family:var(--fm)">Модуль 2 · Урок 5</div>
+        <div style="font-family:var(--fd);font-size:20px;font-weight:700;letter-spacing:-.02em;color:var(--t1);margin-bottom:16px">Контент-план: структура и инструменты</div>
+        <div class="video-player" style="margin-bottom:20px">
+          <div class="play-btn">▶</div>
+          <div class="video-overlay-bottom">
+            <div class="video-progress"><div class="video-prog-fill" style="width:32%"></div></div>
+            <div class="video-time">6:12 / 19:40</div>
+            <span style="font-size:12px;color:rgba(255,255,255,.6)">⛶</span>
+          </div>
+        </div>
+        <div style="font-size:14px;color:var(--t2);line-height:1.7;margin-bottom:16px">
+          В этом уроке мы разберём, что такое контент-план, зачем он нужен и как его составить на практике для любой ниши. Контент-план — это расписание публикаций, которое помогает систематизировать работу с контентом.<br><br>
+          <strong style="color:var(--t1)">Ключевые элементы контент-плана:</strong> дата и время публикации, тема и формат, платформа, цель публикации, ответственный исполнитель.
+        </div>
+        <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:10px">Материалы к уроку</div>
+        <div class="material-row" style="cursor:pointer">
+          <div class="mat-ico" style="background:rgba(220,38,38,.08)">📕</div>
+          <div style="flex:1"><div class="mat-name">Шаблон контент-плана.xlsx</div><div class="mat-meta">Excel · 156 КБ</div></div>
+          <button class="btn btn-outline btn-sm">⬇ Скачать</button>
+        </div>
+        <div class="material-row" style="cursor:pointer">
+          <div class="mat-ico" style="background:rgba(10,168,200,.08)">📊</div>
+          <div style="flex:1"><div class="mat-name">Презентация урока 5.pdf</div><div class="mat-meta">PDF · 2.1 МБ</div></div>
+          <button class="btn btn-outline btn-sm">⬇ Скачать</button>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:20px">
+          <button class="btn btn-outline" style="flex:1;justify-content:center">← Предыдущий урок</button>
+          <button class="btn btn-accent" style="flex:1;justify-content:center" onclick="showScreen('s-homework')">Следующий урок → Сдать ДЗ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats sidebar -->
+    <div style="width:200px;flex-shrink:0;display:flex;flex-direction:column;gap:12px">
+      <div class="card-sm" style="padding:16px;text-align:center">
+        <div style="font-family:var(--fd);font-size:28px;font-weight:900;color:var(--warn);margin-bottom:4px">🔥 12</div>
+        <div style="font-family:var(--fm);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em">Streak дней</div>
+      </div>
+      <div class="card-sm" style="padding:16px;text-align:center">
+        <div style="font-family:var(--fd);font-size:28px;font-weight:900;color:var(--a);margin-bottom:4px">840</div>
+        <div style="font-family:var(--fm);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em">Очков</div>
+      </div>
+      <div class="card-sm" style="padding:16px">
+        <div style="font-family:var(--fm);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Прогресс курса</div>
+        <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" style="width:65%"></div></div><div class="prog-val">65%</div></div>
+        <div style="font-size:10px;color:var(--t3);margin-top:4px">8 из 12 уроков</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- S-HOMEWORK -->
+<div class="screen" id="screen-s-homework">
+  <div class="page-header">
+    <div><div class="page-title">Домашние задания</div><div class="page-sub">2 задания ожидают сдачи</div></div>
+  </div>
+  <div class="grid2">
+    <div>
+      <div class="sec-title">Актуальные задания</div>
+      <div class="card" style="padding:20px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div><div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1)">ДЗ к уроку 5 — Контент-план</div><div style="font-size:11px;color:var(--t3)">Маркетинг в интернете 2025 · Модуль 2</div></div>
+          <span class="tag tag-err">Не сдано</span>
+        </div>
+        <div class="hw-q">Составьте контент-план для своего проекта или бизнеса на 2 недели. Используйте шаблон из урока. Опишите выбранные темы и форматы контента.</div>
+        <div style="font-family:var(--fd);font-size:12px;font-weight:700;color:var(--t1);margin-bottom:10px;margin-top:16px">Ваш ответ</div>
+        <textarea class="form-input" style="height:100px" placeholder="Напишите ответ здесь..."></textarea>
+        <div class="upload-zone" style="margin-top:10px">
+          <div class="upload-zone-ico">📎</div>
+          <div class="upload-zone-title">Прикрепить файл</div>
+          <div class="upload-zone-sub">PDF, DOCX, XLSX, изображение · до 50 МБ</div>
+        </div>
+        <button class="btn btn-accent" style="width:100%;justify-content:center;margin-top:12px">Отправить на проверку</button>
+      </div>
+    </div>
+    <div>
+      <div class="sec-title">Выполненные задания</div>
+      <div class="card" style="overflow:hidden">
+        <table class="tbl">
+          <thead><tr><th>Задание</th><th>Оценка</th><th>Статус</th></tr></thead>
+          <tbody>
+            <tr><td><div class="td-name">ДЗ к Модулю 1</div><div style="font-size:10px;color:var(--t3)">Маркетинг 2025</div></td><td><span style="font-family:var(--fd);font-weight:700;color:var(--ok)">100</span></td><td><span class="tag tag-live">Проверено</span></td></tr>
+            <tr><td><div class="td-name">Анализ ЦА</div><div style="font-size:10px;color:var(--t3)">Урок 4</div></td><td><span style="font-family:var(--fd);font-weight:700;color:var(--ok)">95</span></td><td><span class="tag tag-live">Проверено</span></td></tr>
+            <tr><td><div class="td-name">ДЗ к Уроку 2</div><div style="font-size:10px;color:var(--t3)">Продажи</div></td><td><span style="font-family:var(--fd);font-weight:700;color:var(--warn)">70</span></td><td><span class="tag tag-draft">Доработать</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- S-PROGRESS -->
+<div class="screen" id="screen-s-progress">
+  <div class="page-header"><div><div class="page-title">Мой прогресс</div><div class="page-sub">Достижения и статистика обучения</div></div></div>
+  <div class="stats-row stats-4">
+    <div class="stat-card" style="text-align:center"><div class="num warn" style="font-size:32px">🔥 12</div><div class="lbl">Дней подряд</div></div>
+    <div class="stat-card" style="text-align:center"><div class="num a">840</div><div class="lbl">Очков всего</div></div>
+    <div class="stat-card" style="text-align:center"><div class="num ok">8</div><div class="lbl">Уроков пройдено</div></div>
+    <div class="stat-card" style="text-align:center"><div class="num">87</div><div class="lbl">Средний балл за ДЗ</div></div>
+  </div>
+  <div class="grid2">
+    <div>
+      <div class="sec-title">Прогресс по курсам</div>
+      <div class="card" style="padding:16px">
+        <div style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:13px;font-weight:600;color:var(--t1)">Маркетинг в интернете 2025</span><span style="font-family:var(--fm);font-size:11px;color:var(--t3)">8/12</span></div>
+          <div class="prog-wrap"><div class="prog-bar" style="height:8px;border-radius:4px"><div class="prog-fill" style="width:65%;height:100%;border-radius:4px"></div></div></div>
+        </div>
+        <div style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:13px;font-weight:600;color:var(--t1)">Продажи без скриптов</span><span style="font-family:var(--fm);font-size:11px;color:var(--t3)">3/8</span></div>
+          <div class="prog-wrap"><div class="prog-bar" style="height:8px;border-radius:4px"><div class="prog-fill" style="width:37%;height:100%;border-radius:4px;background:var(--purple)"></div></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:13px;font-weight:600;color:var(--t1)">UI/UX Design</span><span style="font-family:var(--fm);font-size:11px;color:var(--t3)">0/6</span></div>
+          <div class="prog-wrap"><div class="prog-bar" style="height:8px;border-radius:4px"><div class="prog-fill" style="width:0%;height:100%;border-radius:4px;background:var(--ok)"></div></div></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="sec-title">Достижения</div>
+      <div class="card" style="padding:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="background:var(--al);border:1px solid var(--ab);border-radius:10px;padding:14px;text-align:center"><div style="font-size:24px;margin-bottom:6px">🏆</div><div style="font-size:11px;font-weight:600;color:var(--t1)">Первый урок</div></div>
+          <div style="background:var(--warn-bg);border:1px solid rgba(217,119,6,.2);border-radius:10px;padding:14px;text-align:center"><div style="font-size:24px;margin-bottom:6px">🔥</div><div style="font-size:11px;font-weight:600;color:var(--t1)">Streak 7 дней</div></div>
+          <div style="background:var(--ok-bg);border:1px solid rgba(22,163,74,.2);border-radius:10px;padding:14px;text-align:center"><div style="font-size:24px;margin-bottom:6px">✅</div><div style="font-size:11px;font-weight:600;color:var(--t1)">5 ДЗ сдано</div></div>
+          <div style="background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:14px;text-align:center;opacity:.4"><div style="font-size:24px;margin-bottom:6px">🎓</div><div style="font-size:11px;font-weight:600;color:var(--t1)">Курс завершён</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- S-PROFILE -->
+<div class="screen" id="screen-s-profile">
+  <div class="page-header">
+    <div><div class="page-title">Профиль</div><div class="page-sub">Личные данные и настройки</div></div>
+    <button class="btn btn-primary btn-sm">Сохранить</button>
+  </div>
+  <div class="grid2">
+    <div class="card" style="padding:24px">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--line)">
+        <div class="avatar av-lg" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div>
+        <div><div style="font-family:var(--fd);font-size:15px;font-weight:700;color:var(--t1)">Алина Карпова</div><div style="font-size:12px;color:var(--t3);margin-bottom:8px">@blondibabe · Студент</div><button class="btn btn-outline btn-sm">Загрузить фото</button></div>
+      </div>
+      <div class="form-group"><div class="form-label">Имя</div><input class="form-input" value="Алина"/></div>
+      <div class="form-group"><div class="form-label">Email</div><input class="form-input" value="alina@email.com"/></div>
+      <div class="form-group"><div class="form-label">Уведомления</div><select class="form-input"><option>Включены</option><option>Только важные</option></select></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="stat-card"><div class="num a">38</div><div class="lbl">Баллов набрано</div></div>
+      <div class="stat-card"><div class="num">3</div><div class="lbl">Активных курса</div></div>
+      <div class="stat-card" style="background:linear-gradient(135deg,var(--al),var(--surface));border-color:var(--ab)">
+        <div style="font-size:12px;color:var(--t2);margin-bottom:8px">Ваша реферальная ссылка</div>
+        <div style="font-family:var(--fm);font-size:11px;color:var(--a);background:var(--bg);border-radius:6px;padding:6px 10px;border:1px solid var(--ab)">app.edify.su/?ref=STUDENT123</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:6px">Приглашайте друзей и получайте скидки</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- S-CERTIFICATES -->
+<div class="screen" id="screen-s-certificates">
+  <div class="page-header"><div><div class="page-title">Сертификаты</div><div class="page-sub">Документы о прохождении курсов</div></div></div>
+  <div class="empty">
+    <div class="empty-ico">🎓</div>
+    <div class="empty-title">Пока нет сертификатов</div>
+    <div class="empty-sub">Завершите курс полностью, чтобы получить сертификат</div>
+  </div>
+</div>
+
+
+</div><!-- end main-content -->
+
+<script>
+let currentRole = 'expert'
+let currentScreen = 'e-dashboard'
+
+function setRole(role) {
+  currentRole = role
+  document.getElementById('tab-expert').classList.toggle('active', role === 'expert')
+  document.getElementById('tab-student').classList.toggle('active', role === 'student')
+  document.getElementById('sidebar-expert').style.display = role === 'expert' ? 'flex' : 'none'
+  document.getElementById('sidebar-student').style.display = role === 'student' ? 'flex' : 'none'
+
+  const firstScreen = role === 'expert' ? 'e-dashboard' : 's-catalog'
+  showScreen(firstScreen)
+}
+
+function showScreen(id) {
+  // Hide all
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
+  document.querySelectorAll('.sb-item').forEach(b => b.classList.remove('active'))
+
+  // Show target
+  const target = document.getElementById('screen-' + id)
+  if (target) target.classList.add('active')
+
+  // Highlight sidebar item
+  document.querySelectorAll('.sb-item').forEach(btn => {
+    if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes("'" + id + "'")) {
+      btn.classList.add('active')
+    }
+  })
+
+  currentScreen = id
+  window.scrollTo(0, 0)
+}
+
+// Grade button selection
+document.addEventListener('click', e => {
+  if (e.target.closest('.grade-btn') && e.target.closest('.grade-row')) {
+    const row = e.target.closest('.grade-row')
+    row.querySelectorAll('.grade-btn').forEach(b => b.classList.remove('sel'))
+    e.target.closest('.grade-btn').classList.add('sel')
+  }
+})
+
+// Tab switching in builder
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('tab') && e.target.closest('.tabs')) {
+    const tabs = e.target.closest('.tabs')
+    tabs.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
+    e.target.classList.add('active')
+  }
+})
+</script>
+</body>
+</html>

@@ -2,6 +2,7 @@ import './edify.css';
 import { ACCESS_TOKEN_KEY } from './authSession.js';
 import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
 import { refreshNavAuth } from './navAuthUi.js';
+import { mountPlatformShell } from './platform/mountPlatformShell.js';
 
 function toggleMobileNav(): void {
   const nav = document.getElementById('mobile-nav');
@@ -19,15 +20,6 @@ function closeMobileNav(): void {
   nav.classList.remove('open');
   burger.classList.remove('open');
   document.body.style.overflow = '';
-}
-
-function showScreen(btn: HTMLElement, id: string): void {
-  document.querySelectorAll('.ptab').forEach((b) => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.querySelectorAll('[id^="screen-"]').forEach((s) => {
-    (s as HTMLElement).style.display = 'none';
-  });
-  document.getElementById(`screen-${id}`)?.style.setProperty('display', 'block');
 }
 
 function faq(btn: HTMLElement): void {
@@ -59,7 +51,6 @@ declare global {
   interface Window {
     toggleMobileNav: () => void;
     closeMobileNav: () => void;
-    showScreen: (btn: HTMLElement, id: string) => void;
     faq: (btn: HTMLElement) => void;
     toggleP: () => void;
   }
@@ -67,7 +58,6 @@ declare global {
 
 window.toggleMobileNav = toggleMobileNav;
 window.closeMobileNav = closeMobileNav;
-window.showScreen = showScreen;
 window.faq = faq;
 window.toggleP = toggleP;
 
@@ -118,10 +108,11 @@ const revealObserver = new IntersectionObserver(
 );
 document.querySelectorAll('.reveal').forEach((el) => revealObserver.observe(el));
 
-document.querySelectorAll('.grade-btn').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    const row = btn.closest('.hw-grade-row');
-    row?.querySelectorAll('.grade-btn').forEach((b) => b.classList.remove('active'));
-    btn.classList.add('active');
+const platformMount = document.getElementById('edify-platform-mount');
+if (platformMount) {
+  mountPlatformShell(platformMount, {
+    onAction(action) {
+      if (import.meta.env.DEV) console.debug('[edify-platform]', action);
+    },
   });
-});
+}

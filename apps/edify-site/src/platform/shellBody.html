@@ -1,0 +1,1184 @@
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <img src="/logo.jpg" alt="EDIFY"/>
+    <span class="topbar-logo-name">EDIFY</span>
+  </div>
+  <div class="topbar-role-tabs">
+    <button class="role-tab active" id="tab-expert" type="button" data-ep-role="expert">Эксперт</button>
+    <button class="role-tab" id="tab-student" type="button" data-ep-role="student">Студент</button>
+  </div>
+  <div class="topbar-right">
+    <button class="topbar-notif" title="Уведомления">🔔<div class="notif-badge"></div></button>
+    <div class="topbar-user">
+      <div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div>
+      <div>
+        <div class="user-name">Алина К.</div>
+        <div class="user-role">Эксперт</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="sidebar" id="sidebar-expert">
+  <div class="sb-section">Обучение</div>
+  <button class="sb-item active" data-ep-screen="e-dashboard"><span class="sb-icon">📊</span>Дашборд</button>
+  <button class="sb-item" data-ep-screen="e-courses"><span class="sb-icon">📚</span>Мои курсы</button>
+  <button class="sb-item" data-ep-screen="e-builder"><span class="sb-icon">✏️</span>Конструктор курса</button>
+  <button class="sb-item" data-ep-screen="e-students"><span class="sb-icon">👥</span>Студенты<span class="sb-badge sb-badge-blue">38</span></button>
+  <button class="sb-item" data-ep-screen="e-homework"><span class="sb-icon">📋</span>Домашние задания<span class="sb-badge sb-badge-red">12</span></button>
+  <div class="sb-section">Команда</div>
+  <button class="sb-item" data-ep-screen="e-team"><span class="sb-icon">👔</span>Кураторы и менеджеры</button>
+  <button class="sb-item" data-ep-screen="e-messages"><span class="sb-icon">💬</span>Сообщения<span class="sb-badge sb-badge-red">3</span></button>
+  <div class="sb-section">Монетизация</div>
+  <button class="sb-item" data-ep-screen="e-finance"><span class="sb-icon">💰</span>Финансы</button>
+  <button class="sb-item" data-ep-screen="e-referral"><span class="sb-icon">🔗</span>Реферальная программа</button>
+  <div class="sb-section">Настройки</div>
+  <button class="sb-item" data-ep-screen="e-settings"><span class="sb-icon">⚙️</span>Настройки</button>
+  <div class="sb-footer">
+    <div class="sb-footer-link">📖 Документация</div>
+    <div class="sb-footer-link">💬 Поддержка</div>
+  </div>
+</nav>
+
+<nav class="sidebar" id="sidebar-student" style="display:none">
+  <div class="sb-section">Обучение</div>
+  <button class="sb-item active" data-ep-screen="s-catalog"><span class="sb-icon">🏠</span>Каталог курсов</button>
+  <button class="sb-item" data-ep-screen="s-mycourses"><span class="sb-icon">📚</span>Мои курсы<span class="sb-badge sb-badge-blue">3</span></button>
+  <button class="sb-item" data-ep-screen="s-lesson"><span class="sb-icon">▶️</span>Текущий урок</button>
+  <button class="sb-item" data-ep-screen="s-homework"><span class="sb-icon">📝</span>Домашние задания<span class="sb-badge sb-badge-red">2</span></button>
+  <div class="sb-section">Профиль</div>
+  <button class="sb-item" data-ep-screen="s-progress"><span class="sb-icon">🏆</span>Мой прогресс</button>
+  <button class="sb-item" data-ep-screen="s-profile"><span class="sb-icon">👤</span>Профиль</button>
+  <div class="sb-section">Другое</div>
+  <button class="sb-item" data-ep-screen="s-certificates"><span class="sb-icon">🎓</span>Сертификаты</button>
+  <div class="sb-footer">
+    <div class="sb-footer-link">💬 Поддержка</div>
+  </div>
+</nav>
+
+<div class="main" id="main-content">
+
+<!-- ═══════════════════════════════════════════
+     EXPERT SCREENS
+═══════════════════════════════════════════ -->
+
+<!-- E-DASHBOARD -->
+<div class="screen active" id="screen-e-dashboard">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Дашборд</div>
+      <div class="page-sub">Добро пожаловать, Алина · Апрель 2026</div>
+    </div>
+    <div class="actions-row">
+      <button class="btn btn-outline btn-sm">Апрель 2026 ▾</button>
+      <button class="btn btn-primary btn-sm">+ Новый курс</button>
+    </div>
+  </div>
+
+  <div class="stats-row stats-4">
+    <div class="stat-card"><div class="num a">38</div><div class="lbl">Студентов</div><div class="delta delta-up">↑ +5 за месяц</div></div>
+    <div class="stat-card"><div class="num ok">14 200 ₽</div><div class="lbl">Выручка (апрель)</div><div class="delta delta-up">↑ +2 100 ₽</div></div>
+    <div class="stat-card"><div class="num">3</div><div class="lbl">Активных курса</div><div class="delta" style="color:var(--t3)">1 в черновике</div></div>
+    <div class="stat-card"><div class="num warn">12</div><div class="lbl">ДЗ на проверке</div><div class="delta delta-dn">↑ 4 новых сегодня</div></div>
+  </div>
+
+  <div class="grid2">
+    <div>
+      <div class="sec-title">Мои курсы</div>
+      <div class="card" style="overflow:hidden">
+        <table class="tbl">
+          <thead><tr><th>Курс</th><th>Студентов</th><th>Статус</th><th>Действия</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div class="td-name">Маркетинг в интернете 2025</div><div style="font-size:10px;color:var(--t3)">12 уроков · 3 модуля</div></td>
+              <td><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:700;color:var(--t1)">22</span></div></td>
+              <td><span class="tag tag-live">Активен</span></td>
+              <td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm btn-icon" data-ep-screen="e-builder">✏️</button><button class="btn btn-ghost btn-sm btn-icon">👁</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="td-name">Продажи без скриптов</div><div style="font-size:10px;color:var(--t3)">8 уроков · 2 модуля</div></td>
+              <td><span style="font-weight:700;color:var(--t1)">10</span></td>
+              <td><span class="tag tag-live">Активен</span></td>
+              <td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm btn-icon">✏️</button><button class="btn btn-ghost btn-sm btn-icon">👁</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="td-name">Финансовая грамотность</div><div style="font-size:10px;color:var(--t3)">5 уроков · 1 модуль</div></td>
+              <td><span style="color:var(--t3)">0</span></td>
+              <td><span class="tag tag-draft">Черновик</span></td>
+              <td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm btn-icon">✏️</button></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sec-title" style="margin-top:20px">График выручки (апрель)</div>
+      <div class="card" style="padding:16px 20px">
+        <div class="chart-bar-row">
+          <div class="cbar" style="height:40%"></div><div class="cbar" style="height:55%"></div>
+          <div class="cbar" style="height:35%"></div><div class="cbar" style="height:70%"></div>
+          <div class="cbar" style="height:50%"></div><div class="cbar" style="height:65%"></div>
+          <div class="cbar" style="height:45%"></div><div class="cbar" style="height:80%"></div>
+          <div class="cbar" style="height:60%"></div><div class="cbar" style="height:75%"></div>
+          <div class="cbar" style="height:55%"></div><div class="cbar" style="height:90%;opacity:1"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;font-family:var(--fm);font-size:9px;color:var(--t3)">
+          <span>1 апр</span><span>5</span><span>10</span><span>15</span><span>18</span>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sec-title">Активность студентов</div>
+      <div class="card" style="padding:16px">
+        <div style="display:flex;flex-direction:column;gap:0">
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)">
+            <div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--t1)">Алина К.</div><div style="font-size:10px;color:var(--t3)">Сдала ДЗ к уроку 4 · 2 мин назад</div></div>
+            <span class="tag tag-new">ДЗ</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)">
+            <div class="avatar av-sm" style="background:rgba(167,139,250,.12);color:#7C3AED">ДМ</div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--t1)">Дмитрий М.</div><div style="font-size:10px;color:var(--t3)">Записался на курс · 18 мин назад</div></div>
+            <span class="tag tag-live">+1</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)">
+            <div class="avatar av-sm" style="background:rgba(22,163,74,.1);color:var(--ok)">СВ</div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--t1)">Светлана В.</div><div style="font-size:10px;color:var(--t3)">Прошла урок 7 · 1 ч назад</div></div>
+            <span class="tag">Урок 7</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)">
+            <div class="avatar av-sm" style="background:rgba(245,158,11,.1);color:var(--warn)">ИН</div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--t1)">Иван Н.</div><div style="font-size:10px;color:var(--t3)">Оплатил по рефералу · 3 ч назад</div></div>
+            <span class="tag tag-live">+490 ₽</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 0">
+            <div class="avatar av-sm" style="background:var(--bg2);color:var(--t3)">МК</div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--t1)">Мария К.</div><div style="font-size:10px;color:var(--t3)">Написала в чат · 4 ч назад</div></div>
+            <span class="tag tag-draft">Чат</span>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-top:10px;color:var(--a)">Вся активность →</button>
+      </div>
+
+      <div class="sec-title" style="margin-top:20px">Задания на проверке</div>
+      <div class="card" style="padding:16px">
+        <div class="hw-card" data-ep-screen="e-homework">
+          <div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div>
+          <div class="hw-card-body">
+            <div class="hw-card-top"><span class="hw-card-name">Алина К.</span><span class="tag tag-new">Новое</span><span class="hw-card-time">2 мин</span></div>
+            <div class="hw-card-lesson">Маркетинг 2025 · Урок 4 · Анализ ЦА</div>
+            <div class="hw-card-preview">Провела анализ ЦА для своего магазина, определила три портрета клиента...</div>
+          </div>
+        </div>
+        <div class="hw-card">
+          <div class="avatar av-sm" style="background:rgba(167,139,250,.12);color:#7C3AED">ДМ</div>
+          <div class="hw-card-body">
+            <div class="hw-card-top"><span class="hw-card-name">Дмитрий М.</span><span class="tag tag-new">Новое</span><span class="hw-card-time">20 мин</span></div>
+            <div class="hw-card-lesson">Маркетинг 2025 · Урок 4 · Анализ ЦА</div>
+            <div class="hw-card-preview">Анализ конкурентов в нише фитнес-оборудования...</div>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-top:6px;color:var(--a)" data-ep-screen="e-homework">Все 12 заданий →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- E-COURSES -->
+<div class="screen" id="screen-e-courses">
+  <div class="page-header">
+    <div><div class="page-title">Мои курсы</div><div class="page-sub">3 курса · 38 студентов суммарно</div></div>
+    <div class="actions-row">
+      <div class="search-input"><span>🔍</span><input placeholder="Поиск курсов..."/></div>
+      <button class="btn btn-primary btn-sm" data-ep-screen="e-builder">+ Создать курс</button>
+    </div>
+  </div>
+  <div class="grid3">
+    <div class="card" style="overflow:hidden;cursor:pointer" data-ep-screen="e-builder">
+      <div style="height:120px;background:linear-gradient(135deg,#0e2c38,#1a4a58);display:flex;align-items:center;justify-content:center">
+        <span style="font-family:var(--fd);font-size:36px;font-weight:900;color:rgba(10,168,200,.5)">МК</span>
+      </div>
+      <div style="padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span class="tag tag-live">Активен</span>
+          <span style="font-family:var(--fm);font-size:9px;color:var(--t3)">12 уроков</span>
+        </div>
+        <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px;letter-spacing:-.01em">Маркетинг в интернете 2025</div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:12px">3 модуля · 22 студента</div>
+        <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" style="width:65%"></div></div><div class="prog-val">65%</div></div>
+        <div style="font-size:10px;color:var(--t3);margin-top:4px">среднее завершение</div>
+        <div class="div"></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-outline btn-sm" style="flex:1;justify-content:center">✏️ Редактировать</button>
+          <button class="btn btn-ghost btn-sm btn-icon">📊</button>
+          <button class="btn btn-ghost btn-sm btn-icon">👁</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="overflow:hidden;cursor:pointer">
+      <div style="height:120px;background:linear-gradient(135deg,#1c1428,#2e1f4a);display:flex;align-items:center;justify-content:center">
+        <span style="font-family:var(--fd);font-size:36px;font-weight:900;color:rgba(124,58,237,.5)">ПБ</span>
+      </div>
+      <div style="padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span class="tag tag-live">Активен</span>
+          <span style="font-family:var(--fm);font-size:9px;color:var(--t3)">8 уроков</span>
+        </div>
+        <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px;letter-spacing:-.01em">Продажи без скриптов</div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:12px">2 модуля · 10 студентов</div>
+        <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" style="width:48%"></div></div><div class="prog-val">48%</div></div>
+        <div style="font-size:10px;color:var(--t3);margin-top:4px">среднее завершение</div>
+        <div class="div"></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-outline btn-sm" style="flex:1;justify-content:center">✏️ Редактировать</button>
+          <button class="btn btn-ghost btn-sm btn-icon">📊</button>
+          <button class="btn btn-ghost btn-sm btn-icon">👁</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="overflow:hidden;cursor:pointer;opacity:.8">
+      <div style="height:120px;background:linear-gradient(135deg,#1c1409,#2e2010);display:flex;align-items:center;justify-content:center">
+        <span style="font-family:var(--fd);font-size:36px;font-weight:900;color:rgba(245,158,11,.4)">ФГ</span>
+      </div>
+      <div style="padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span class="tag tag-draft">Черновик</span>
+          <span style="font-family:var(--fm);font-size:9px;color:var(--t3)">5 уроков</span>
+        </div>
+        <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px;letter-spacing:-.01em">Финансовая грамотность</div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:12px">1 модуль · 0 студентов</div>
+        <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" style="width:0%"></div></div><div class="prog-val">—</div></div>
+        <div style="font-size:10px;color:var(--t3);margin-top:4px">курс не опубликован</div>
+        <div class="div"></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-primary btn-sm" style="flex:1;justify-content:center">✏️ Продолжить</button>
+          <button class="btn btn-ghost btn-sm btn-icon">🗑</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- E-BUILDER -->
+<div class="screen" id="screen-e-builder" style="padding:0">
+  <div style="display:flex;height:calc(100vh - 56px)">
+
+    <!-- Module tree sidebar -->
+    <div style="width:260px;flex-shrink:0;background:var(--surface2);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--line);background:var(--surface)">
+        <div style="font-family:var(--fd);font-size:12px;font-weight:700;color:var(--t1);margin-bottom:2px">Маркетинг в интернете 2025</div>
+        <div style="font-size:10px;color:var(--t3);font-family:var(--fm)">3 модуля · 12 уроков</div>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:12px 8px">
+        <div class="mod-tree">
+
+          <div class="mod-item">
+            <div class="mod-head active" data-ep-mod-toggle="1">
+              <span class="mod-arrow open">▶</span>
+              <span class="mod-name">Модуль 1. Основы маркетинга</span>
+              <span class="mod-cnt">4</span>
+            </div>
+            <div class="mod-lessons open">
+              <div class="lesson-row active"><span class="lesson-ico">▶</span><span class="lesson-name">Урок 1. Введение в маркетинг</span><span class="lesson-tag" style="color:var(--ok)">✓</span></div>
+              <div class="lesson-row"><span class="lesson-ico">▶</span><span class="lesson-name">Урок 2. Целевая аудитория</span></div>
+              <div class="lesson-row"><span class="lesson-ico">📄</span><span class="lesson-name">Урок 3. Анализ конкурентов</span></div>
+              <div class="lesson-row"><span class="lesson-ico">📋</span><span class="lesson-name">ДЗ к модулю 1</span><span class="lesson-tag" style="color:var(--a)">ДЗ</span></div>
+            </div>
+          </div>
+
+          <div class="mod-item">
+            <div class="mod-head" data-ep-mod-toggle="1">
+              <span class="mod-arrow">▶</span>
+              <span class="mod-name">Модуль 2. Контент-маркетинг</span>
+              <span class="mod-cnt">3</span>
+            </div>
+            <div class="mod-lessons">
+              <div class="lesson-row"><span class="lesson-ico">▶</span><span class="lesson-name">Урок 4. Типы контента</span></div>
+              <div class="lesson-row"><span class="lesson-ico">▶</span><span class="lesson-name">Урок 5. Контент-план</span></div>
+              <div class="lesson-row"><span class="lesson-ico">📋</span><span class="lesson-name">ДЗ к модулю 2</span><span class="lesson-tag" style="color:var(--a)">ДЗ</span></div>
+            </div>
+          </div>
+
+          <div class="mod-item">
+            <div class="mod-head" data-ep-mod-toggle="1">
+              <span class="mod-arrow">▶</span>
+              <span class="mod-name">Модуль 3. Таргетированная реклама</span>
+              <span class="mod-cnt">5</span>
+            </div>
+            <div class="mod-lessons"></div>
+          </div>
+
+        </div>
+      </div>
+      <div style="padding:10px 12px;border-top:1px solid var(--line);display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm" style="flex:1;justify-content:center;font-size:11px">+ Модуль</button>
+        <button class="btn btn-outline btn-sm" style="flex:1;justify-content:center;font-size:11px">+ Урок</button>
+      </div>
+    </div>
+
+    <!-- Lesson editor -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--line)">
+        <div class="tabs" style="border-bottom:none;margin-bottom:0">
+          <button class="tab active">Контент урока</button>
+          <button class="tab">Домашнее задание</button>
+          <button class="tab">Настройки урока</button>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm">👁 Предпросмотр</button>
+          <button class="btn btn-primary btn-sm">💾 Сохранить</button>
+        </div>
+      </div>
+
+      <div style="flex:1;overflow-y:auto;padding:20px 28px;background:var(--bg)">
+
+        <div class="form-group">
+          <div class="form-label">Название урока</div>
+          <input class="form-input" value="Урок 1. Введение в маркетинг"/>
+        </div>
+
+        <!-- Video -->
+        <div style="margin-bottom:16px">
+          <div class="form-label">Видео урока</div>
+          <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);overflow:hidden">
+            <div class="video-player" style="border-radius:0">
+              <div class="play-btn">▶</div>
+              <div class="video-overlay-bottom">
+                <div class="video-progress"><div class="video-prog-fill"></div></div>
+                <div class="video-time">6:12 / 18:42</div>
+                <span style="font-size:12px">⛶</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 14px">
+              <span style="font-size:12px;color:var(--t1);font-weight:600;flex:1">урок_1_введение.mp4 · 245 МБ · 18:42</span>
+              <button class="btn btn-outline btn-sm">Заменить видео</button>
+              <button class="btn btn-ghost btn-sm btn-icon">🗑</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Text editor -->
+        <div style="margin-bottom:16px">
+          <div class="form-label">Текст урока</div>
+          <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);overflow:hidden">
+            <div style="display:flex;gap:2px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--surface2);flex-wrap:wrap">
+              <button class="btn btn-ghost btn-sm btn-icon" style="font-size:12px"><b>B</b></button>
+              <button class="btn btn-ghost btn-sm btn-icon" style="font-size:12px"><i>I</i></button>
+              <button class="btn btn-ghost btn-sm btn-icon" style="font-size:12px"><u>U</u></button>
+              <button class="btn btn-ghost btn-sm btn-icon" style="font-size:11px">H1</button>
+              <button class="btn btn-ghost btn-sm btn-icon" style="font-size:11px">H2</button>
+              <button class="btn btn-ghost btn-sm btn-icon" style="font-size:14px">•</button>
+              <button class="btn btn-ghost btn-sm btn-icon">🔗</button>
+              <button class="btn btn-ghost btn-sm btn-icon" style="font-size:11px">▶</button>
+            </div>
+            <div style="padding:14px 16px;min-height:120px;font-size:13px;color:var(--t2);line-height:1.65">В этом уроке мы разберём базовые понятия интернет-маркетинга. Вы узнаете, чем отличается SMM от таргетированной рекламы, и какие инструменты подойдут для вашего бизнеса.<br><br>Ключевые темы урока:<br>• Что такое интернет-маркетинг<br>• Основные каналы продвижения<br>• Как выбрать подходящий канал</div>
+          </div>
+        </div>
+
+        <!-- Materials -->
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div class="form-label">Материалы для скачивания</div>
+            <button class="btn btn-outline btn-sm" style="font-size:11px">+ Добавить файл</button>
+          </div>
+          <div class="material-row">
+            <div class="mat-ico" style="background:rgba(220,38,38,.08)">📕</div>
+            <div style="flex:1"><div class="mat-name">Презентация урока 1.pdf</div><div class="mat-meta">PDF · 2.4 МБ · Студенты могут скачать</div></div>
+            <button class="btn btn-ghost btn-sm btn-icon">✏️</button>
+            <button class="btn btn-ghost btn-sm btn-icon">🗑</button>
+          </div>
+          <div class="material-row">
+            <div class="mat-ico" style="background:rgba(22,163,74,.08)">📊</div>
+            <div style="flex:1"><div class="mat-name">Шаблон анализа ЦА.xlsx</div><div class="mat-meta">Excel · 156 КБ · Только просмотр</div></div>
+            <button class="btn btn-ghost btn-sm btn-icon">✏️</button>
+            <button class="btn btn-ghost btn-sm btn-icon">🗑</button>
+          </div>
+          <div class="upload-zone" style="margin-top:8px">
+            <div class="upload-zone-ico">📎</div>
+            <div class="upload-zone-title">Перетащите файл или нажмите</div>
+            <div class="upload-zone-sub">PDF, DOCX, XLSX, PPTX, MP3, ZIP · до 500 МБ</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Right: lesson settings panel -->
+    <div style="width:260px;flex-shrink:0;background:var(--surface);border-left:1px solid var(--line);padding:16px;overflow-y:auto">
+      <div class="sec-title">Параметры урока</div>
+      <div class="form-group">
+        <div class="form-label">Тип урока</div>
+        <select class="form-input" style="cursor:pointer">
+          <option>Видеоурок</option>
+          <option>Текстовый урок</option>
+          <option>Вебинар</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Доступ</div>
+        <select class="form-input" style="cursor:pointer">
+          <option>После оплаты курса</option>
+          <option>Свободный доступ</option>
+          <option>По расписанию</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Домашнее задание</div>
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg2);border-radius:8px;border:1px solid var(--line)">
+          <span style="font-size:12px;color:var(--t2);flex:1">ДЗ настроено</span>
+          <span class="tag tag-new">Есть</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Статус</div>
+        <select class="form-input" style="cursor:pointer">
+          <option>Опубликован</option>
+          <option>Черновик</option>
+        </select>
+      </div>
+      <div class="div"></div>
+      <div class="sec-title">Прохождение студентами</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--t3)">Просмотрели</span><span style="font-weight:600">18 / 22</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--t3)">Завершили</span><span style="font-weight:600">14 / 22</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--t3)">Сдали ДЗ</span><span style="font-weight:600;color:var(--a)">12 / 22</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--t3)">Ср. оценка</span><span style="font-weight:600;color:var(--ok)">87 баллов</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- E-STUDENTS -->
+<div class="screen" id="screen-e-students">
+  <div class="page-header">
+    <div><div class="page-title">Студенты</div><div class="page-sub">38 студентов во всех курсах</div></div>
+    <div class="actions-row">
+      <div class="search-input"><span>🔍</span><input placeholder="Поиск студентов..."/></div>
+      <button class="btn btn-outline btn-sm">Фильтр ▾</button>
+      <button class="btn btn-primary btn-sm">Пригласить</button>
+    </div>
+  </div>
+  <div class="stats-row stats-4" style="margin-bottom:20px">
+    <div class="stat-card"><div class="num a">38</div><div class="lbl">Всего студентов</div></div>
+    <div class="stat-card"><div class="num ok">29</div><div class="lbl">Активных (7 дней)</div></div>
+    <div class="stat-card"><div class="num">65%</div><div class="lbl">Среднее завершение</div></div>
+    <div class="stat-card"><div class="num warn">5</div><div class="lbl">Отток в этом месяце</div></div>
+  </div>
+  <div class="card" style="overflow:hidden">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Студент</th>
+          <th>Курс</th>
+          <th>Прогресс</th>
+          <th>Streak</th>
+          <th>Очки</th>
+          <th>ДЗ</th>
+          <th>Последняя активность</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div><div><div class="td-name">Алина Карпова</div><div style="font-size:10px;color:var(--t3)">Маркетинг 2025</div></div></div></td>
+          <td>Маркетинг 2025</td>
+          <td><div class="prog-wrap" style="width:120px"><div class="prog-bar"><div class="prog-fill" style="width:65%"></div></div><div class="prog-val">65%</div></div></td>
+          <td><span style="color:var(--warn)">🔥</span> 12 дн.</td>
+          <td><span style="font-weight:600">840</span></td>
+          <td><span class="tag tag-new">8 сдано</span></td>
+          <td style="font-size:11px;color:var(--t3)">2 мин назад</td>
+          <td><button class="btn btn-ghost btn-sm btn-icon">💬</button></td>
+        </tr>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm" style="background:rgba(124,58,237,.1);color:var(--purple)">ДМ</div><div><div class="td-name">Дмитрий Морозов</div><div style="font-size:10px;color:var(--t3)">Продажи</div></div></div></td>
+          <td>Продажи без скриптов</td>
+          <td><div class="prog-wrap" style="width:120px"><div class="prog-bar"><div class="prog-fill" style="width:48%"></div></div><div class="prog-val">48%</div></div></td>
+          <td><span style="color:var(--warn)">🔥</span> 7 дн.</td>
+          <td><span style="font-weight:600">520</span></td>
+          <td><span class="tag tag-new">5 сдано</span></td>
+          <td style="font-size:11px;color:var(--t3)">18 мин назад</td>
+          <td><button class="btn btn-ghost btn-sm btn-icon">💬</button></td>
+        </tr>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm" style="background:rgba(22,163,74,.1);color:var(--ok)">СВ</div><div><div class="td-name">Светлана Волкова</div><div style="font-size:10px;color:var(--t3)">Маркетинг 2025</div></div></div></td>
+          <td>Маркетинг 2025</td>
+          <td><div class="prog-wrap" style="width:120px"><div class="prog-bar"><div class="prog-fill" style="width:88%"></div></div><div class="prog-val">88%</div></div></td>
+          <td><span style="color:var(--warn)">🔥</span> 21 дн.</td>
+          <td><span style="font-weight:600">1240</span></td>
+          <td><span class="tag tag-live">11 сдано</span></td>
+          <td style="font-size:11px;color:var(--t3)">1 час назад</td>
+          <td><button class="btn btn-ghost btn-sm btn-icon">💬</button></td>
+        </tr>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm" style="background:rgba(245,158,11,.1);color:var(--warn)">ИН</div><div><div class="td-name">Иван Новиков</div><div style="font-size:10px;color:var(--t3)">Продажи</div></div></div></td>
+          <td>Продажи без скриптов</td>
+          <td><div class="prog-wrap" style="width:120px"><div class="prog-bar"><div class="prog-fill" style="width:22%"></div></div><div class="prog-val">22%</div></div></td>
+          <td>3 дн.</td>
+          <td><span style="font-weight:600">180</span></td>
+          <td><span class="tag tag-draft">2 сдано</span></td>
+          <td style="font-size:11px;color:var(--t3)">3 дня назад</td>
+          <td><button class="btn btn-ghost btn-sm btn-icon">💬</button></td>
+        </tr>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm" style="background:var(--bg2);color:var(--t3)">МК</div><div><div class="td-name">Мария Козлова</div><div style="font-size:10px;color:var(--t3)">Маркетинг 2025</div></div></div></td>
+          <td>Маркетинг 2025</td>
+          <td><div class="prog-wrap" style="width:120px"><div class="prog-bar"><div class="prog-fill" style="width:12%"></div></div><div class="prog-val">12%</div></div></td>
+          <td>—</td>
+          <td><span style="font-weight:600">80</span></td>
+          <td><span style="color:var(--t3)">0 сдано</span></td>
+          <td style="font-size:11px;color:var(--err)">8 дней назад</td>
+          <td><button class="btn btn-ghost btn-sm btn-icon">💬</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- E-HOMEWORK -->
+<div class="screen" id="screen-e-homework" style="padding:0">
+  <div style="display:flex;height:calc(100vh - 56px)">
+    <!-- List panel -->
+    <div style="width:320px;flex-shrink:0;border-right:1px solid var(--line);display:flex;flex-direction:column;background:var(--surface)">
+      <div style="padding:16px;border-bottom:1px solid var(--line)">
+        <div style="font-family:var(--fd);font-size:14px;font-weight:700;color:var(--t1);margin-bottom:10px">Домашние задания</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" style="font-size:10px;padding:4px 10px">Все (12)</button>
+          <button class="btn btn-outline btn-sm" style="font-size:10px;padding:4px 10px">Новые (8)</button>
+          <button class="btn btn-outline btn-sm" style="font-size:10px;padding:4px 10px">Проверено</button>
+          <button class="btn btn-outline btn-sm" style="font-size:10px;padding:4px 10px">Доработать</button>
+        </div>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:10px">
+        <div class="hw-card active">
+          <div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div>
+          <div class="hw-card-body">
+            <div class="hw-card-top"><span class="hw-card-name">Алина Карпова</span><span class="tag tag-new">Новое</span><span class="hw-card-time">2 мин</span></div>
+            <div class="hw-card-lesson">Маркетинг 2025 · Урок 4</div>
+            <div class="hw-card-preview">Провела анализ ЦА для своего магазина женской одежды...</div>
+          </div>
+        </div>
+        <div class="hw-card">
+          <div class="avatar av-sm" style="background:rgba(124,58,237,.1);color:var(--purple)">ДМ</div>
+          <div class="hw-card-body">
+            <div class="hw-card-top"><span class="hw-card-name">Дмитрий Морозов</span><span class="tag tag-new">Новое</span><span class="hw-card-time">20 мин</span></div>
+            <div class="hw-card-lesson">Маркетинг 2025 · Урок 4</div>
+            <div class="hw-card-preview">Анализ конкурентов в нише фитнес-оборудования...</div>
+          </div>
+        </div>
+        <div class="hw-card">
+          <div class="avatar av-sm" style="background:rgba(22,163,74,.1);color:var(--ok)">СВ</div>
+          <div class="hw-card-body">
+            <div class="hw-card-top"><span class="hw-card-name">Светлана В.</span><span class="tag tag-live">Проверено</span><span class="hw-card-time">1 ч</span></div>
+            <div class="hw-card-lesson">Продажи · Урок 2</div>
+            <div class="hw-card-preview">Написала скрипт холодного звонка по шаблону...</div>
+          </div>
+        </div>
+        <div class="hw-card">
+          <div class="avatar av-sm" style="background:rgba(245,158,11,.1);color:var(--warn)">ИН</div>
+          <div class="hw-card-body">
+            <div class="hw-card-top"><span class="hw-card-name">Иван Новиков</span><span class="tag tag-draft">Доработать</span><span class="hw-card-time">3 ч</span></div>
+            <div class="hw-card-lesson">Маркетинг 2025 · Урок 3</div>
+            <div class="hw-card-preview">SWOT-анализ проекта, не все поля заполнены...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail panel -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--line)">
+        <div class="avatar av-md" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div>
+        <div style="flex:1">
+          <div style="font-family:var(--fd);font-size:14px;font-weight:700;color:var(--t1)">Алина Карпова</div>
+          <div style="font-size:11px;color:var(--t3)">Маркетинг в интернете 2025 · Урок 4 · Анализ целевой аудитории</div>
+        </div>
+        <span class="tag tag-new" style="font-size:10px;padding:4px 10px">Ожидает проверки</span>
+      </div>
+
+      <div style="flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:14px">
+        <div class="card-sm" style="padding:16px">
+          <div style="font-family:var(--fm);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Задание</div>
+          <div style="font-size:13px;color:var(--t2);line-height:1.6;padding:12px;background:var(--bg);border-radius:8px;border-left:3px solid var(--a)">Проведите анализ целевой аудитории вашего продукта. Опишите 2–3 портрета клиента с демографией, болями и мотивацией. Можно оформить в виде таблицы или схемы.</div>
+        </div>
+
+        <div class="card-sm" style="padding:16px">
+          <div style="font-family:var(--fm);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Ответ студента</div>
+          <div style="font-size:13px;color:var(--t1);line-height:1.65">Провела анализ ЦА для своего магазина женской одежды. Определила три основных портрета:<br><br><strong>Портрет 1:</strong> Женщины 25–35 лет, работающие в офисе, доход средний+. Ищут деловую одежду — качественную, но не слишком дорогую.<br><br><strong>Портрет 2:</strong> Мамы в декрете 28–40 лет. Ценят удобство и качество, покупают в онлайн по рекомендациям.<br><br><strong>Портрет 3:</strong> Студентки 18–24, следят за трендами, ценят цену.</div>
+          <div class="material-row" style="margin-top:12px">
+            <div class="mat-ico" style="background:rgba(22,163,74,.08)">📊</div>
+            <div style="flex:1"><div class="mat-name">Таблица_анализ_ЦА_Карпова.xlsx</div><div class="mat-meta">Excel · 68 КБ · Прикреплён студентом</div></div>
+            <button class="btn btn-outline btn-sm">⬇ Скачать</button>
+          </div>
+        </div>
+
+        <div class="card-sm" style="padding:16px">
+          <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:14px">Оценить работу</div>
+          <div class="grade-row" style="margin-bottom:12px">
+            <div class="grade-btn sel"><div class="g-score">100</div><div class="g-lbl">ОТЛИЧНО</div></div>
+            <div class="grade-btn"><div class="g-score">85</div><div class="g-lbl">ХОРОШО</div></div>
+            <div class="grade-btn"><div class="g-score">70</div><div class="g-lbl">ЗАЧЁТ</div></div>
+            <div class="grade-btn"><div class="g-score" style="color:var(--err)">✗</div><div class="g-lbl">ДОРАБОТАТЬ</div></div>
+          </div>
+          <textarea class="form-input" placeholder="Комментарий для студента...">Отличная работа! Портреты проработаны детально. Особенно понравился третий портрет — точное описание. Рекомендую добавить каналы коммуникации для каждого портрета в следующем задании.</textarea>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn btn-accent" style="flex:1;justify-content:center">✅ Отправить оценку</button>
+            <button class="btn btn-outline">На доработку</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- E-TEAM -->
+<div class="screen" id="screen-e-team">
+  <div class="page-header">
+    <div><div class="page-title">Кураторы и менеджеры</div><div class="page-sub">Управление командой</div></div>
+    <button class="btn btn-primary btn-sm">+ Пригласить участника</button>
+  </div>
+  <div class="grid2">
+    <div>
+      <div class="sec-title">Участники команды</div>
+      <div class="card" style="overflow:hidden">
+        <table class="tbl">
+          <thead><tr><th>Участник</th><th>Роль</th><th>Курсы</th><th>Последняя активность</th><th></th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm" style="background:var(--al);color:var(--a)">АК</div><div><div class="td-name">Алина К. (вы)</div><div style="font-size:10px;color:var(--t3)">hello@edify.su</div></div></div></td>
+              <td><span class="tag tag-new">Эксперт (автор)</span></td>
+              <td style="color:var(--t2)">Все курсы</td>
+              <td style="color:var(--t3);font-size:11px">Сейчас онлайн <span class="dot-online"></span></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm" style="background:rgba(124,58,237,.1);color:var(--purple)">МС</div><div><div class="td-name">Мария Соколова</div><div style="font-size:10px;color:var(--t3)">m.sokolova@email.com</div></div></div></td>
+              <td><span class="tag tag-live">Куратор</span></td>
+              <td style="color:var(--t2)">Маркетинг 2025</td>
+              <td style="color:var(--t3);font-size:11px">1 час назад</td>
+              <td><button class="btn btn-ghost btn-sm btn-icon">⚙️</button></td>
+            </tr>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm" style="background:rgba(245,158,11,.1);color:var(--warn)">АП</div><div><div class="td-name">Антон Петров</div><div style="font-size:10px;color:var(--t3)">a.petrov@email.com</div></div></div></td>
+              <td><span class="tag tag-draft">Менеджер</span></td>
+              <td style="color:var(--t2)">Все курсы</td>
+              <td style="color:var(--t3);font-size:11px">Вчера</td>
+              <td><button class="btn btn-ghost btn-sm btn-icon">⚙️</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div class="sec-title">Права доступа по ролям</div>
+      <div class="card" style="padding:20px">
+        <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;font-size:12px;margin-bottom:10px">
+          <div style="color:var(--t3);font-family:var(--fm);font-size:9px;letter-spacing:.06em;text-transform:uppercase">Действие</div>
+          <div style="color:var(--t3);font-family:var(--fm);font-size:9px;text-align:center;letter-spacing:.06em;text-transform:uppercase">КУРАТОР</div>
+          <div style="color:var(--t3);font-family:var(--fm);font-size:9px;text-align:center;letter-spacing:.06em;text-transform:uppercase">МЕНЕДЖЕР</div>
+        </div>
+        <div class="div" style="margin:0 0 10px"></div>
+        <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;row-gap:10px;font-size:12px;align-items:center">
+          <span style="color:var(--t2)">Проверка домашних заданий</span><span style="text-align:center;color:var(--ok)">✓</span><span style="text-align:center;color:var(--err)">✗</span>
+          <span style="color:var(--t2)">Переписка со студентами</span><span style="text-align:center;color:var(--ok)">✓</span><span style="text-align:center;color:var(--ok)">✓</span>
+          <span style="color:var(--t2)">Просмотр аналитики</span><span style="text-align:center;color:var(--err)">✗</span><span style="text-align:center;color:var(--ok)">✓</span>
+          <span style="color:var(--t2)">Редактирование курсов</span><span style="text-align:center;color:var(--err)">✗</span><span style="text-align:center;color:var(--err)">✗</span>
+          <span style="color:var(--t2)">Приглашение студентов</span><span style="text-align:center;color:var(--err)">✗</span><span style="text-align:center;color:var(--ok)">✓</span>
+          <span style="color:var(--t2)">Доступ к финансам</span><span style="text-align:center;color:var(--err)">✗</span><span style="text-align:center;color:var(--err)">✗</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- E-FINANCE -->
+<div class="screen" id="screen-e-finance">
+  <div class="page-header">
+    <div><div class="page-title">Финансы</div><div class="page-sub">Выручка, выплаты и реферальная программа</div></div>
+    <button class="btn btn-primary btn-sm">Запросить выплату</button>
+  </div>
+  <div class="stats-row stats-4">
+    <div class="stat-card"><div class="num ok">14 200 ₽</div><div class="lbl">Выручка за апрель</div><div class="delta delta-up">↑ +17%</div></div>
+    <div class="stat-card"><div class="num a">8 900 ₽</div><div class="lbl">Доступно к выплате</div></div>
+    <div class="stat-card"><div class="num">490 ₽</div><div class="lbl">Реферальные начисления</div><div class="delta delta-up">↑ 1 реферал</div></div>
+    <div class="stat-card"><div class="num">42 300 ₽</div><div class="lbl">Всего выплачено</div></div>
+  </div>
+  <div class="grid2">
+    <div>
+      <div class="sec-title">История транзакций</div>
+      <div class="card" style="overflow:hidden">
+        <table class="tbl">
+          <thead><tr><th>Дата</th><th>Описание</th><th>Сумма</th><th>Статус</th></tr></thead>
+          <tbody>
+            <tr><td style="font-family:var(--fm);font-size:11px;color:var(--t3)">18 апр</td><td><div class="td-name">Подписка — Алина К.</div><div style="font-size:10px;color:var(--t3)">Маркетинг 2025 · 1 500 ₽</div></td><td style="font-weight:700;color:var(--ok)">+1 500 ₽</td><td><span class="tag tag-live">Получено</span></td></tr>
+            <tr><td style="font-family:var(--fm);font-size:11px;color:var(--t3)">17 апр</td><td><div class="td-name">Реферальная выплата</div><div style="font-size:10px;color:var(--t3)">Иван Н. купил подписку эксперта</div></td><td style="font-weight:700;color:var(--ok)">+490 ₽</td><td><span class="tag tag-live">Получено</span></td></tr>
+            <tr><td style="font-family:var(--fm);font-size:11px;color:var(--t3)">15 апр</td><td><div class="td-name">Подписка — Дмитрий М.</div><div style="font-size:10px;color:var(--t3)">Продажи без скриптов · 900 ₽</div></td><td style="font-weight:700;color:var(--ok)">+900 ₽</td><td><span class="tag tag-live">Получено</span></td></tr>
+            <tr><td style="font-family:var(--fm);font-size:11px;color:var(--t3)">10 апр</td><td><div class="td-name">Выплата на карту</div><div style="font-size:10px;color:var(--t3)">**** 4211 · Сбербанк</div></td><td style="font-weight:700;color:var(--err)">−5 400 ₽</td><td><span class="tag tag-new">Выплачено</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div class="sec-title">Настройки выплат</div>
+      <div class="card" style="padding:20px">
+        <div class="form-group">
+          <div class="form-label">Способ выплаты</div>
+          <select class="form-input" style="cursor:pointer"><option>Карта (СБП)</option><option>ИП расчётный счёт</option></select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Автовыплата</div>
+          <select class="form-input" style="cursor:pointer"><option>При накоплении 5 000 ₽</option><option>Еженедельно</option><option>Вручную</option></select>
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center">Запросить выплату 8 900 ₽</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- E-REFERRAL -->
+<div class="screen" id="screen-e-referral">
+  <div class="page-header">
+    <div><div class="page-title">Реферальная программа</div><div class="page-sub">Зарабатывайте с каждого приглашённого эксперта</div></div>
+  </div>
+  <div class="grid2">
+    <div>
+      <div class="sec-title">Ваша реферальная ссылка</div>
+      <div class="card" style="padding:20px">
+        <div style="font-family:var(--fm);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:6px">Ваш код</div>
+        <div style="font-family:var(--fm);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:12px;letter-spacing:.04em">REF-L29NICIN</div>
+        <div style="background:var(--bg);border:1px solid var(--al);border-radius:8px;padding:10px 14px;font-family:var(--fm);font-size:11px;color:var(--a);display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <span>https://app.edify.su/?ref=REF-L29NICIN</span>
+          <button class="btn btn-ghost btn-sm" style="color:var(--a)">Копировать</button>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" style="flex:1;justify-content:center">Поделиться</button>
+          <button class="btn btn-outline btn-sm">QR-код</button>
+        </div>
+      </div>
+      <div class="stats-row stats-3" style="margin-top:16px">
+        <div class="stat-card"><div class="num a">3</div><div class="lbl">Приглашено</div></div>
+        <div class="stat-card"><div class="num ok">1</div><div class="lbl">Оплатили</div></div>
+        <div class="stat-card"><div class="num">490 ₽</div><div class="lbl">Начислено</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="sec-title">Как это работает</div>
+      <div class="card" style="padding:20px">
+        <div style="display:flex;flex-direction:column;gap:0">
+          <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--al);border:1px solid var(--ab);color:var(--a);font-family:var(--fm);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+            <div style="font-size:13px;color:var(--t2)">Поделитесь ссылкой с коллегой-экспертом</div>
+          </div>
+          <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--al);border:1px solid var(--ab);color:var(--a);font-family:var(--fm);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+            <div style="font-size:13px;color:var(--t2)">Коллега регистрируется и оплачивает подписку эксперта</div>
+          </div>
+          <div style="display:flex;gap:12px;padding:12px 0">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--al);border:1px solid var(--ab);color:var(--a);font-family:var(--fm);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+            <div style="font-size:13px;color:var(--t2)">Вы получаете % с каждой его оплаты — автоматически, бессрочно</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- E-SETTINGS -->
+<div class="screen" id="screen-e-settings">
+  <div class="page-header">
+    <div><div class="page-title">Настройки</div><div class="page-sub">Профиль и параметры аккаунта</div></div>
+    <button class="btn btn-primary btn-sm">Сохранить изменения</button>
+  </div>
+  <div class="settings-layout">
+    <div class="settings-nav">
+      <div class="settings-nav-item active">👤 Профиль</div>
+      <div class="settings-nav-item">🎨 Оформление школы</div>
+      <div class="settings-nav-item">💳 Платёжные реквизиты</div>
+      <div class="settings-nav-item">🔔 Уведомления</div>
+      <div class="settings-nav-item">🔒 Безопасность</div>
+    </div>
+    <div class="card" style="padding:24px">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--line)">
+        <div class="avatar av-lg" style="background:rgba(10,168,200,.12);color:var(--a);font-size:16px">АК</div>
+        <div>
+          <div style="font-family:var(--fd);font-size:15px;font-weight:700;color:var(--t1);margin-bottom:4px">Алина Карпова</div>
+          <div style="font-size:12px;color:var(--t3);margin-bottom:8px">Эксперт · Подписка активна до 12.04.2026</div>
+          <button class="btn btn-outline btn-sm">Загрузить фото</button>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="form-group"><div class="form-label">Имя</div><input class="form-input" value="Алина"/></div>
+        <div class="form-group"><div class="form-label">Фамилия</div><input class="form-input" value="Карпова"/></div>
+        <div class="form-group"><div class="form-label">Email</div><input class="form-input" value="alina@email.com"/></div>
+        <div class="form-group"><div class="form-label">Никнейм</div><input class="form-input" value="@blondibabe"/></div>
+      </div>
+      <div class="form-group"><div class="form-label">О себе</div><textarea class="form-input">Маркетолог с 7-летним опытом. Автор курсов по интернет-маркетингу и продажам.</textarea></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- E-MESSAGES -->
+<div class="screen" id="screen-e-messages">
+  <div style="display:flex;height:calc(100vh - 56px)">
+    <div style="width:300px;border-right:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--line)">
+        <div style="font-family:var(--fd);font-size:13px;font-weight:700;margin-bottom:10px">Сообщения</div>
+        <div class="search-input"><span>🔍</span><input placeholder="Поиск..."/></div>
+      </div>
+      <div style="flex:1;overflow-y:auto">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer;background:var(--al)">
+          <div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div>
+          <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--t1)">Алина Карпова</div><div style="font-size:11px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Спасибо за обратную связь!</div></div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><div style="font-family:var(--fm);font-size:9px;color:var(--t3)">2 мин</div><div style="width:7px;height:7px;border-radius:50%;background:var(--a)"></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer">
+          <div class="avatar av-sm" style="background:rgba(124,58,237,.1);color:var(--purple)">ДМ</div>
+          <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--t1)">Дмитрий Морозов</div><div style="font-size:11px;color:var(--t3)">Когда будет следующий модуль?</div></div>
+          <div style="font-family:var(--fm);font-size:9px;color:var(--t3)">1 ч</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer">
+          <div class="avatar av-sm" style="background:rgba(22,163,74,.1);color:var(--ok)">СВ</div>
+          <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--t1)">Светлана В.</div><div style="font-size:11px;color:var(--t3)">Можно доп. материалы?</div></div>
+          <div style="font-family:var(--fm);font-size:9px;color:var(--t3)">3 ч</div>
+        </div>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;background:var(--bg)">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--line)">
+        <div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div>
+        <div><div style="font-size:13px;font-weight:600;color:var(--t1)">Алина Карпова</div><div style="font-size:10px;color:var(--ok)"><span class="dot-online"></span> онлайн</div></div>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:flex-end"><div style="background:var(--a);color:#fff;border-radius:12px 12px 2px 12px;padding:10px 14px;max-width:320px;font-size:13px;line-height:1.5">Алина, посмотрел ваше домашнее задание — очень хорошая работа! Оценка 100 баллов.</div></div>
+        <div style="display:flex;gap:8px;align-items:flex-end"><div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div><div style="background:var(--surface);border:1px solid var(--line);border-radius:12px 12px 12px 2px;padding:10px 14px;max-width:320px;font-size:13px;line-height:1.5">Спасибо большое! Очень рада получить такой отзыв 🙏</div></div>
+      </div>
+      <div style="padding:14px 20px;background:var(--surface);border-top:1px solid var(--line);display:flex;gap:8px">
+        <input class="form-input" placeholder="Написать сообщение..." style="flex:1"/>
+        <button class="btn btn-accent btn-icon" style="width:36px;height:36px">→</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     STUDENT SCREENS
+═══════════════════════════════════════════ -->
+
+<!-- S-CATALOG -->
+<div class="screen" id="screen-s-catalog">
+  <div class="page-header">
+    <div><div class="page-title">Каталог курсов</div><div class="page-sub">Найдите подходящий курс</div></div>
+    <div class="actions-row">
+      <div class="search-input"><span>🔍</span><input placeholder="Поиск курсов..."/></div>
+      <button class="btn btn-outline btn-sm">Категория ▾</button>
+    </div>
+  </div>
+  <div class="grid4" style="margin-bottom:16px">
+    <div style="padding:10px 14px;background:var(--t1);color:#fff;border-radius:8px;font-size:12px;font-weight:600;text-align:center;cursor:pointer">Все курсы</div>
+    <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;font-size:12px;color:var(--t2);text-align:center;cursor:pointer">Маркетинг</div>
+    <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;font-size:12px;color:var(--t2);text-align:center;cursor:pointer">Продажи</div>
+    <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;font-size:12px;color:var(--t2);text-align:center;cursor:pointer">Финансы</div>
+  </div>
+  <div class="grid3">
+    <div class="course-card-s" data-ep-screen="s-lesson">
+      <div class="cc-thumb" style="background:linear-gradient(135deg,#0e2c38,#1a4a58)"><span style="font-family:var(--fd);font-size:40px;font-weight:900;color:rgba(10,168,200,.4)">МК</span></div>
+      <div class="cc-body">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="tag tag-live">Активен</span><span style="font-family:var(--fm);font-size:10px;color:var(--t3)">12 уроков</span></div>
+        <div class="cc-title">Маркетинг в интернете 2025</div>
+        <div class="cc-author">Алина Карпова · 22 студента</div>
+        <div class="cc-price">1 500 ₽</div>
+      </div>
+    </div>
+    <div class="course-card-s">
+      <div class="cc-thumb" style="background:linear-gradient(135deg,#1c1428,#2e1f4a)"><span style="font-family:var(--fd);font-size:40px;font-weight:900;color:rgba(124,58,237,.35)">ПБ</span></div>
+      <div class="cc-body">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="tag tag-new">Новинка</span><span style="font-family:var(--fm);font-size:10px;color:var(--t3)">8 уроков</span></div>
+        <div class="cc-title">Продажи без скриптов</div>
+        <div class="cc-author">Алина Карпова · 10 студентов</div>
+        <div class="cc-price">900 ₽</div>
+      </div>
+    </div>
+    <div class="course-card-s">
+      <div class="cc-thumb" style="background:linear-gradient(135deg,#0d1f18,#143326)"><span style="font-family:var(--fd);font-size:40px;font-weight:900;color:rgba(22,163,74,.35)">UI</span></div>
+      <div class="cc-body">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="tag" style="background:var(--ok-bg);color:var(--ok);border:1px solid rgba(22,163,74,.2)">Бесплатно</span><span style="font-family:var(--fm);font-size:10px;color:var(--t3)">6 уроков</span></div>
+        <div class="cc-title">UI/UX Design основы</div>
+        <div class="cc-author">Другой эксперт · 55 студентов</div>
+        <div class="cc-price cc-price-free">Бесплатно</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- S-MYCOURSES -->
+<div class="screen" id="screen-s-mycourses">
+  <div class="page-header">
+    <div><div class="page-title">Мои курсы</div><div class="page-sub">3 активных курса</div></div>
+  </div>
+  <div class="grid3">
+    <div class="course-card-s" data-ep-screen="s-lesson">
+      <div class="cc-thumb" style="background:linear-gradient(135deg,#0e2c38,#1a4a58)"><span style="font-family:var(--fd);font-size:40px;font-weight:900;color:rgba(10,168,200,.4)">МК</span></div>
+      <div class="cc-body">
+        <div class="cc-title">Маркетинг в интернете 2025</div>
+        <div class="cc-author">Алина Карпова</div>
+        <div class="prog-wrap" style="margin:10px 0 4px"><div class="prog-bar"><div class="prog-fill" style="width:65%"></div></div><div class="prog-val">65%</div></div>
+        <div style="font-size:10px;color:var(--t3);margin-bottom:12px">8 из 12 уроков</div>
+        <button class="btn btn-accent btn-sm" style="width:100%;justify-content:center" type="button" data-ep-screen="s-lesson" data-ep-stop-prop="1">Продолжить урок 9 →</button>
+      </div>
+    </div>
+    <div class="course-card-s">
+      <div class="cc-thumb" style="background:linear-gradient(135deg,#1c1428,#2e1f4a)"><span style="font-family:var(--fd);font-size:40px;font-weight:900;color:rgba(124,58,237,.35)">ПБ</span></div>
+      <div class="cc-body">
+        <div class="cc-title">Продажи без скриптов</div>
+        <div class="cc-author">Алина Карпова</div>
+        <div class="prog-wrap" style="margin:10px 0 4px"><div class="prog-bar"><div class="prog-fill" style="width:30%"></div></div><div class="prog-val">30%</div></div>
+        <div style="font-size:10px;color:var(--t3);margin-bottom:12px">3 из 8 уроков</div>
+        <button class="btn btn-outline btn-sm" style="width:100%;justify-content:center">Продолжить →</button>
+      </div>
+    </div>
+    <div class="course-card-s">
+      <div class="cc-thumb" style="background:linear-gradient(135deg,#0d1f18,#143326)"><span style="font-family:var(--fd);font-size:40px;font-weight:900;color:rgba(22,163,74,.35)">UI</span></div>
+      <div class="cc-body">
+        <div class="cc-title">UI/UX Design основы</div>
+        <div class="cc-author">Другой эксперт</div>
+        <div class="prog-wrap" style="margin:10px 0 4px"><div class="prog-bar"><div class="prog-fill" style="width:0%"></div></div><div class="prog-val">0%</div></div>
+        <div style="font-size:10px;color:var(--t3);margin-bottom:12px">Не начат</div>
+        <button class="btn btn-outline btn-sm" style="width:100%;justify-content:center">Начать</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- S-LESSON -->
+<div class="screen" id="screen-s-lesson">
+  <div style="display:flex;gap:20px;height:calc(100vh - 56px - 56px);overflow:hidden">
+    <!-- Module tree -->
+    <div style="width:240px;flex-shrink:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);padding:14px;overflow-y:auto;height:fit-content">
+      <div style="font-family:var(--fd);font-size:11px;font-weight:700;color:var(--t1);margin-bottom:2px">Маркетинг 2025</div>
+      <div class="prog-wrap" style="margin:8px 0 14px"><div class="prog-bar"><div class="prog-fill" style="width:65%"></div></div><div class="prog-val">65%</div></div>
+      <div class="mod-tree">
+        <div class="mod-item">
+          <div class="mod-head" data-ep-mod-toggle="1">
+            <span class="mod-arrow open">▶</span><span class="mod-name">Модуль 1. Основы</span><span style="color:var(--ok);font-size:11px">✓</span>
+          </div>
+          <div class="mod-lessons open">
+            <div class="lesson-row"><span style="color:var(--ok)">✓</span><span class="lesson-name">Урок 1. Введение</span></div>
+            <div class="lesson-row"><span style="color:var(--ok)">✓</span><span class="lesson-name">Урок 2. Целевая аудитория</span></div>
+            <div class="lesson-row"><span style="color:var(--ok)">✓</span><span class="lesson-name">Урок 3. Конкуренты</span></div>
+            <div class="lesson-row"><span style="color:var(--ok)">✓</span><span class="lesson-name">ДЗ к модулю 1</span></div>
+          </div>
+        </div>
+        <div class="mod-item">
+          <div class="mod-head active" data-ep-mod-toggle="1">
+            <span class="mod-arrow open">▶</span><span class="mod-name">Модуль 2. Контент</span>
+          </div>
+          <div class="mod-lessons open">
+            <div class="lesson-row"><span style="color:var(--ok)">✓</span><span class="lesson-name">Урок 4. Типы контента</span></div>
+            <div class="lesson-row active"><span class="lesson-ico">▶</span><span class="lesson-name">Урок 5. Контент-план</span></div>
+            <div class="lesson-row" style="color:var(--t3)"><span class="lesson-ico">🔒</span><span class="lesson-name">Урок 6. SEO</span></div>
+            <div class="lesson-row" style="color:var(--t3)"><span class="lesson-ico">🔒</span><span class="lesson-name">ДЗ к модулю 2</span></div>
+          </div>
+        </div>
+        <div class="mod-item">
+          <div class="mod-head" data-ep-mod-toggle="1">
+            <span class="mod-arrow">▶</span><span class="mod-name">Модуль 3. Реклама</span>
+          </div>
+          <div class="mod-lessons"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main lesson area -->
+    <div style="flex:1;overflow-y:auto">
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;color:var(--t3);margin-bottom:4px;font-family:var(--fm)">Модуль 2 · Урок 5</div>
+        <div style="font-family:var(--fd);font-size:20px;font-weight:700;letter-spacing:-.02em;color:var(--t1);margin-bottom:16px">Контент-план: структура и инструменты</div>
+        <div class="video-player" style="margin-bottom:20px">
+          <div class="play-btn">▶</div>
+          <div class="video-overlay-bottom">
+            <div class="video-progress"><div class="video-prog-fill" style="width:32%"></div></div>
+            <div class="video-time">6:12 / 19:40</div>
+            <span style="font-size:12px;color:rgba(255,255,255,.6)">⛶</span>
+          </div>
+        </div>
+        <div style="font-size:14px;color:var(--t2);line-height:1.7;margin-bottom:16px">
+          В этом уроке мы разберём, что такое контент-план, зачем он нужен и как его составить на практике для любой ниши. Контент-план — это расписание публикаций, которое помогает систематизировать работу с контентом.<br><br>
+          <strong style="color:var(--t1)">Ключевые элементы контент-плана:</strong> дата и время публикации, тема и формат, платформа, цель публикации, ответственный исполнитель.
+        </div>
+        <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:10px">Материалы к уроку</div>
+        <div class="material-row" style="cursor:pointer">
+          <div class="mat-ico" style="background:rgba(220,38,38,.08)">📕</div>
+          <div style="flex:1"><div class="mat-name">Шаблон контент-плана.xlsx</div><div class="mat-meta">Excel · 156 КБ</div></div>
+          <button class="btn btn-outline btn-sm">⬇ Скачать</button>
+        </div>
+        <div class="material-row" style="cursor:pointer">
+          <div class="mat-ico" style="background:rgba(10,168,200,.08)">📊</div>
+          <div style="flex:1"><div class="mat-name">Презентация урока 5.pdf</div><div class="mat-meta">PDF · 2.1 МБ</div></div>
+          <button class="btn btn-outline btn-sm">⬇ Скачать</button>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:20px">
+          <button class="btn btn-outline" style="flex:1;justify-content:center">← Предыдущий урок</button>
+          <button class="btn btn-accent" style="flex:1;justify-content:center" data-ep-screen="s-homework">Следующий урок → Сдать ДЗ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats sidebar -->
+    <div style="width:200px;flex-shrink:0;display:flex;flex-direction:column;gap:12px">
+      <div class="card-sm" style="padding:16px;text-align:center">
+        <div style="font-family:var(--fd);font-size:28px;font-weight:900;color:var(--warn);margin-bottom:4px">🔥 12</div>
+        <div style="font-family:var(--fm);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em">Streak дней</div>
+      </div>
+      <div class="card-sm" style="padding:16px;text-align:center">
+        <div style="font-family:var(--fd);font-size:28px;font-weight:900;color:var(--a);margin-bottom:4px">840</div>
+        <div style="font-family:var(--fm);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em">Очков</div>
+      </div>
+      <div class="card-sm" style="padding:16px">
+        <div style="font-family:var(--fm);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Прогресс курса</div>
+        <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" style="width:65%"></div></div><div class="prog-val">65%</div></div>
+        <div style="font-size:10px;color:var(--t3);margin-top:4px">8 из 12 уроков</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- S-HOMEWORK -->
+<div class="screen" id="screen-s-homework">
+  <div class="page-header">
+    <div><div class="page-title">Домашние задания</div><div class="page-sub">2 задания ожидают сдачи</div></div>
+  </div>
+  <div class="grid2">
+    <div>
+      <div class="sec-title">Актуальные задания</div>
+      <div class="card" style="padding:20px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div><div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1)">ДЗ к уроку 5 — Контент-план</div><div style="font-size:11px;color:var(--t3)">Маркетинг в интернете 2025 · Модуль 2</div></div>
+          <span class="tag tag-err">Не сдано</span>
+        </div>
+        <div class="hw-q">Составьте контент-план для своего проекта или бизнеса на 2 недели. Используйте шаблон из урока. Опишите выбранные темы и форматы контента.</div>
+        <div style="font-family:var(--fd);font-size:12px;font-weight:700;color:var(--t1);margin-bottom:10px;margin-top:16px">Ваш ответ</div>
+        <textarea class="form-input" style="height:100px" placeholder="Напишите ответ здесь..."></textarea>
+        <div class="upload-zone" style="margin-top:10px">
+          <div class="upload-zone-ico">📎</div>
+          <div class="upload-zone-title">Прикрепить файл</div>
+          <div class="upload-zone-sub">PDF, DOCX, XLSX, изображение · до 50 МБ</div>
+        </div>
+        <button class="btn btn-accent" style="width:100%;justify-content:center;margin-top:12px">Отправить на проверку</button>
+      </div>
+    </div>
+    <div>
+      <div class="sec-title">Выполненные задания</div>
+      <div class="card" style="overflow:hidden">
+        <table class="tbl">
+          <thead><tr><th>Задание</th><th>Оценка</th><th>Статус</th></tr></thead>
+          <tbody>
+            <tr><td><div class="td-name">ДЗ к Модулю 1</div><div style="font-size:10px;color:var(--t3)">Маркетинг 2025</div></td><td><span style="font-family:var(--fd);font-weight:700;color:var(--ok)">100</span></td><td><span class="tag tag-live">Проверено</span></td></tr>
+            <tr><td><div class="td-name">Анализ ЦА</div><div style="font-size:10px;color:var(--t3)">Урок 4</div></td><td><span style="font-family:var(--fd);font-weight:700;color:var(--ok)">95</span></td><td><span class="tag tag-live">Проверено</span></td></tr>
+            <tr><td><div class="td-name">ДЗ к Уроку 2</div><div style="font-size:10px;color:var(--t3)">Продажи</div></td><td><span style="font-family:var(--fd);font-weight:700;color:var(--warn)">70</span></td><td><span class="tag tag-draft">Доработать</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- S-PROGRESS -->
+<div class="screen" id="screen-s-progress">
+  <div class="page-header"><div><div class="page-title">Мой прогресс</div><div class="page-sub">Достижения и статистика обучения</div></div></div>
+  <div class="stats-row stats-4">
+    <div class="stat-card" style="text-align:center"><div class="num warn" style="font-size:32px">🔥 12</div><div class="lbl">Дней подряд</div></div>
+    <div class="stat-card" style="text-align:center"><div class="num a">840</div><div class="lbl">Очков всего</div></div>
+    <div class="stat-card" style="text-align:center"><div class="num ok">8</div><div class="lbl">Уроков пройдено</div></div>
+    <div class="stat-card" style="text-align:center"><div class="num">87</div><div class="lbl">Средний балл за ДЗ</div></div>
+  </div>
+  <div class="grid2">
+    <div>
+      <div class="sec-title">Прогресс по курсам</div>
+      <div class="card" style="padding:16px">
+        <div style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:13px;font-weight:600;color:var(--t1)">Маркетинг в интернете 2025</span><span style="font-family:var(--fm);font-size:11px;color:var(--t3)">8/12</span></div>
+          <div class="prog-wrap"><div class="prog-bar" style="height:8px;border-radius:4px"><div class="prog-fill" style="width:65%;height:100%;border-radius:4px"></div></div></div>
+        </div>
+        <div style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:13px;font-weight:600;color:var(--t1)">Продажи без скриптов</span><span style="font-family:var(--fm);font-size:11px;color:var(--t3)">3/8</span></div>
+          <div class="prog-wrap"><div class="prog-bar" style="height:8px;border-radius:4px"><div class="prog-fill" style="width:37%;height:100%;border-radius:4px;background:var(--purple)"></div></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:13px;font-weight:600;color:var(--t1)">UI/UX Design</span><span style="font-family:var(--fm);font-size:11px;color:var(--t3)">0/6</span></div>
+          <div class="prog-wrap"><div class="prog-bar" style="height:8px;border-radius:4px"><div class="prog-fill" style="width:0%;height:100%;border-radius:4px;background:var(--ok)"></div></div></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="sec-title">Достижения</div>
+      <div class="card" style="padding:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="background:var(--al);border:1px solid var(--ab);border-radius:10px;padding:14px;text-align:center"><div style="font-size:24px;margin-bottom:6px">🏆</div><div style="font-size:11px;font-weight:600;color:var(--t1)">Первый урок</div></div>
+          <div style="background:var(--warn-bg);border:1px solid rgba(217,119,6,.2);border-radius:10px;padding:14px;text-align:center"><div style="font-size:24px;margin-bottom:6px">🔥</div><div style="font-size:11px;font-weight:600;color:var(--t1)">Streak 7 дней</div></div>
+          <div style="background:var(--ok-bg);border:1px solid rgba(22,163,74,.2);border-radius:10px;padding:14px;text-align:center"><div style="font-size:24px;margin-bottom:6px">✅</div><div style="font-size:11px;font-weight:600;color:var(--t1)">5 ДЗ сдано</div></div>
+          <div style="background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:14px;text-align:center;opacity:.4"><div style="font-size:24px;margin-bottom:6px">🎓</div><div style="font-size:11px;font-weight:600;color:var(--t1)">Курс завершён</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- S-PROFILE -->
+<div class="screen" id="screen-s-profile">
+  <div class="page-header">
+    <div><div class="page-title">Профиль</div><div class="page-sub">Личные данные и настройки</div></div>
+    <button class="btn btn-primary btn-sm">Сохранить</button>
+  </div>
+  <div class="grid2">
+    <div class="card" style="padding:24px">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--line)">
+        <div class="avatar av-lg" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div>
+        <div><div style="font-family:var(--fd);font-size:15px;font-weight:700;color:var(--t1)">Алина Карпова</div><div style="font-size:12px;color:var(--t3);margin-bottom:8px">@blondibabe · Студент</div><button class="btn btn-outline btn-sm">Загрузить фото</button></div>
+      </div>
+      <div class="form-group"><div class="form-label">Имя</div><input class="form-input" value="Алина"/></div>
+      <div class="form-group"><div class="form-label">Email</div><input class="form-input" value="alina@email.com"/></div>
+      <div class="form-group"><div class="form-label">Уведомления</div><select class="form-input"><option>Включены</option><option>Только важные</option></select></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="stat-card"><div class="num a">38</div><div class="lbl">Баллов набрано</div></div>
+      <div class="stat-card"><div class="num">3</div><div class="lbl">Активных курса</div></div>
+      <div class="stat-card" style="background:linear-gradient(135deg,var(--al),var(--surface));border-color:var(--ab)">
+        <div style="font-size:12px;color:var(--t2);margin-bottom:8px">Ваша реферальная ссылка</div>
+        <div style="font-family:var(--fm);font-size:11px;color:var(--a);background:var(--bg);border-radius:6px;padding:6px 10px;border:1px solid var(--ab)">app.edify.su/?ref=STUDENT123</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:6px">Приглашайте друзей и получайте скидки</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- S-CERTIFICATES -->
+<div class="screen" id="screen-s-certificates">
+  <div class="page-header"><div><div class="page-title">Сертификаты</div><div class="page-sub">Документы о прохождении курсов</div></div></div>
+  <div class="empty">
+    <div class="empty-ico">🎓</div>
+    <div class="empty-title">Пока нет сертификатов</div>
+    <div class="empty-sub">Завершите курс полностью, чтобы получить сертификат</div>
+  </div>
+</div>
+
+
+</div><!-- end main-content -->
