@@ -53,6 +53,72 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);font-size:15px;l
 .btn-sm{font-family:var(--fd);font-size:11px;font-weight:700;letter-spacing:.01em;padding:9px 20px;border-radius:8px;background:var(--t1);color:#fff;text-decoration:none;cursor:pointer;transition:all .2s var(--ease)}
 .btn-sm:hover{opacity:.87;transform:translateY(-1px)}
 
+/* ── Auth: слот в шапке / меню / футере (карточка как в Telegram) ── */
+.nav-auth-mount{display:inline-flex;align-items:center;vertical-align:middle;min-height:36px}
+[data-edify-nav-auth]{display:block}
+
+.edify-user-chip{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:8px 12px 8px 8px;border-radius:12px;
+  background:#1c1f26;border:1px solid rgba(255,255,255,.08);
+  max-width:min(280px,92vw);box-sizing:border-box;
+}
+.edify-user-chip__avatar{
+  width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;
+  background:#2a2f38;
+}
+.edify-user-chip__avatar--ph{
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--fd);font-size:14px;font-weight:700;color:#9bb5c9;
+  background:linear-gradient(145deg,#2a3440,#1a1d24);
+}
+.edify-user-chip__body{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px}
+.edify-user-chip__row{display:flex;align-items:center;gap:8px;min-width:0}
+.edify-user-chip__name{
+  font-size:14px;font-weight:700;color:#fff;letter-spacing:-.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.edify-user-chip__badge{
+  flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+  padding:3px 8px;border-radius:6px;background:rgba(10,168,200,.25);color:#9ee8fb;
+}
+.edify-user-chip__handle{
+  font-size:12px;color:#708499;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.edify-user-chip__idrow{display:flex;align-items:center;gap:6px;margin-top:2px}
+.edify-user-chip__tid{font-size:12px;font-family:var(--fm);color:#708499}
+.edify-user-chip__copy{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:4px;border:none;background:transparent;color:var(--a);cursor:pointer;border-radius:6px;line-height:0;
+  transition:background .15s,color .15s;
+}
+.edify-user-chip__copy:hover{background:rgba(10,168,200,.15)}
+.edify-user-chip__copy--ok{color:var(--ok)}
+.edify-user-chip__logout{
+  margin-top:6px;align-self:flex-start;font-size:11px;font-weight:600;
+  color:rgba(255,255,255,.42);background:transparent;border:none;cursor:pointer;padding:0;
+  text-decoration:underline;text-underline-offset:3px;font-family:var(--fb);
+}
+.edify-user-chip__logout:hover{color:rgba(255,255,255,.85)}
+
+.edify-user-chip--mobile{
+  margin-top:8px;margin-bottom:4px;border-radius:14px;border:1px solid var(--line2);
+}
+.edify-user-chip--footer{
+  margin-top:10px;max-width:100%;
+  padding:8px 10px 8px 8px;
+}
+.edify-user-chip--footer .edify-user-chip__name{font-size:13px}
+.edify-user-chip--footer .edify-user-chip__avatar,
+.edify-user-chip--footer .edify-user-chip__avatar--ph{width:36px;height:36px;font-size:13px}
+
+.edify-footer-login{
+  display:block;font-size:13px;color:rgba(255,255,255,.55);text-decoration:none;margin-top:6px;
+  transition:color .15s;
+}
+.edify-footer-login:hover{color:#fff}
+
 /* ── BUTTONS ── */
 .btn-primary{
   display:inline-flex;align-items:center;gap:8px;
@@ -804,7 +870,17 @@ footer{background:var(--t1);padding:56px 0 40px}
   /* NAV */
   .nav{padding:0 16px;gap:0;height:56px}
   .nav-links{display:none}
-  .nav-right .btn-ghost-sm{display:none}
+  .nav-right .edify-guest-login.btn-ghost-sm{display:none}
+  .nav-right [data-edify-nav-auth][data-variant="header"] .edify-user-chip--header{
+    max-width:152px;padding:6px 8px 6px 6px;gap:8px;
+  }
+  .nav-right [data-edify-nav-auth][data-variant="header"] .edify-user-chip__avatar,
+  .nav-right [data-edify-nav-auth][data-variant="header"] .edify-user-chip__avatar--ph{
+    width:32px;height:32px;font-size:12px;
+  }
+  .nav-right [data-edify-nav-auth][data-variant="header"] .edify-user-chip__handle,
+  .nav-right [data-edify-nav-auth][data-variant="header"] .edify-user-chip__idrow,
+  .nav-right [data-edify-nav-auth][data-variant="header"] .edify-user-chip__logout{display:none}
   .btn-sm{font-size:11px;padding:8px 14px}
 
   /* CONTAINER */

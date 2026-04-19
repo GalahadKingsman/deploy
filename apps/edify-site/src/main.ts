@@ -1,6 +1,6 @@
 import './edify.css';
-import { getTelegramBotUsername } from './env.js';
 import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
+import { refreshNavAuth } from './navAuthUi.js';
 
 function toggleMobileNav(): void {
   const nav = document.getElementById('mobile-nav');
@@ -70,31 +70,10 @@ window.showScreen = showScreen;
 window.faq = faq;
 window.toggleP = toggleP;
 
-function wireTelegramLoginLinks(): void {
-  const bot = getTelegramBotUsername();
-  document.querySelectorAll<HTMLAnchorElement>('a[data-tg-login]').forEach((a) => {
-    if (bot) {
-      a.href = `https://t.me/${bot}?start=site`;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      return;
-    }
-    a.href = '#';
-    a.removeAttribute('target');
-    a.removeAttribute('rel');
-    a.addEventListener('click', (e) => {
-      e.preventDefault();
-      window.alert(
-        'Вход через Telegram не настроен: при сборке маркетингового сайта задайте переменную VITE_TELEGRAM_BOT_USERNAME (имя бота без @). Пример:\n' +
-          'VITE_TELEGRAM_BOT_USERNAME=your_bot pnpm --filter @tracked/edify-site build',
-      );
-    });
-  });
-}
-
-/** Ссылки «Войти» не должны ждать сеть claim — иначе при сбое API кнопка остаётся пустой. */
-wireTelegramLoginLinks();
-void claimSiteLoginFromUrl();
+void (async () => {
+  await claimSiteLoginFromUrl();
+  await refreshNavAuth();
+})();
 
 const revealObserver = new IntersectionObserver(
   (entries) => {

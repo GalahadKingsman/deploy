@@ -1,6 +1,5 @@
 import { getApiBaseUrl } from './env.js';
-
-const ACCESS_TOKEN_KEY = 'tracked.accessToken.v1';
+import { setAccessToken } from './authSession.js';
 
 /**
  * Обмен `?login=` на JWT (тот же ключ, что в webapp) и очистка query в адресной строке.
@@ -26,7 +25,7 @@ export async function claimSiteLoginFromUrl(): Promise<void> {
     if (!res.ok) return;
     const data = (await res.json()) as { accessToken?: string };
     if (typeof data.accessToken === 'string' && data.accessToken.length > 0) {
-      localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
+      setAccessToken(data.accessToken);
     }
   } catch {
     // ignore
