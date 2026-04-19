@@ -4,7 +4,7 @@ import { getApiBaseUrl } from './env.js';
 import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
 import { refreshNavAuth } from './navAuthUi.js';
 import { mountPlatformShell } from './platform/mountPlatformShell.js';
-import { normalizeRutubeEmbedUrl } from '@tracked/shared';
+import { normalizeRutubeEmbedUrl } from './util/rutubeEmbed.js';
 
 function renderAuthGate(): void {
   document.body.classList.add('platform-gate');
