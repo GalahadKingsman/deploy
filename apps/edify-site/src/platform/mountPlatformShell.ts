@@ -23,6 +23,8 @@ export type PlatformShellOptions = PlatformShellHandlers & {
   initialRole?: 'expert' | 'student';
   /** Стартовый экран. Если не задан — берётся дефолт по роли. */
   initialScreenId?: string;
+  /** Вернуть false, чтобы отменить смену роли (например, нет прав на кабинет эксперта). */
+  beforeSetRole?: (role: 'expert' | 'student') => boolean;
 };
 
 export type PlatformShellController = {
@@ -64,9 +66,12 @@ function showScreen(
 function setRole(
   root: ShadowRoot,
   role: 'expert' | 'student',
-  handlers: PlatformShellHandlers,
+  options: PlatformShellOptions,
   ev: Event,
 ): void {
+  if (options.beforeSetRole && options.beforeSetRole(role) === false) {
+    return;
+  }
   root.getElementById('tab-expert')?.classList.toggle('active', role === 'expert');
   root.getElementById('tab-student')?.classList.toggle('active', role === 'student');
   const expert = root.getElementById('sidebar-expert') as HTMLElement | null;
@@ -74,12 +79,12 @@ function setRole(
   if (expert) expert.style.display = role === 'expert' ? 'flex' : 'none';
   if (student) student.style.display = role === 'student' ? 'flex' : 'none';
 
-  emit(handlers, { type: 'role', role }, ev);
+  emit(options, { type: 'role', role }, ev);
   const first = role === 'expert' ? 'e-dashboard' : 's-catalog';
-  showScreen(root, first, handlers, ev);
+  showScreen(root, first, options, ev);
 }
 
-function onShadowClick(ev: MouseEvent, root: ShadowRoot, handlers: PlatformShellHandlers): void {
+function onShadowClick(ev: MouseEvent, root: ShadowRoot, handlers: PlatformShellOptions): void {
   const target = ev.target as HTMLElement | null;
   if (!target) return;
 
@@ -129,6 +134,7 @@ function onShadowClick(ev: MouseEvent, root: ShadowRoot, handlers: PlatformShell
 
   const roleEl = target.closest('[data-ep-role]') as HTMLElement | null;
   if (roleEl?.dataset.epRole === 'expert' || roleEl?.dataset.epRole === 'student') {
+    ev.preventDefault();
     setRole(root, roleEl.dataset.epRole as 'expert' | 'student', handlers, ev);
     return;
   }

@@ -371,9 +371,25 @@ if (platformMount) {
       }
     }
 
+    /** Доступ к кабинету эксперта в шелле (обновляется после GET /me). */
+    const expertShellAccess = { allowed: false };
+
+    function isExpertPlatformRole(role: string): boolean {
+      const r = (role || '').toLowerCase();
+      return r === 'expert' || r === 'owner' || r === 'admin' || r === 'moderator';
+    }
+
     const shell = mountPlatformShell(platformMount, {
       initialRole: 'student',
       initialScreenId: 's-catalog',
+      beforeSetRole(role) {
+        if (role !== 'expert') return true;
+        if (expertShellAccess.allowed) return true;
+        window.alert(
+          'Кабинет эксперта доступен только пользователям с ролью эксперта. Если у вас уже есть доступ, обновите страницу или войдите снова.',
+        );
+        return false;
+      },
       onAction(action) {
         if (import.meta.env.DEV) console.debug('[edify-platform-page]', action);
         if (action.type === 'navigate' && action.screenId === 's-homework') {
@@ -1308,11 +1324,6 @@ if (platformMount) {
       return 'Пользователь';
     }
 
-    function isExpertRole(role: string): boolean {
-      const r = (role || '').toLowerCase();
-      return r === 'expert' || r === 'owner' || r === 'admin' || r === 'moderator';
-    }
-
     function initialsFromName(name: string): string {
       const t = (name || '').trim();
       if (!t) return 'ED';
@@ -1324,7 +1335,10 @@ if (platformMount) {
 
     async function hydrateTopbarUser(): Promise<void> {
       const token = getAccessToken();
-      if (!token) return;
+      if (!token) {
+        expertShellAccess.allowed = false;
+        return;
+      }
 
       const root = shell.shadowRoot;
       const nameEl = root.querySelector('.topbar-user .user-name') as HTMLElement | null;
@@ -1335,12 +1349,17 @@ if (platformMount) {
       try {
         const me = await fetchJson<{ user?: MeUserV1 }>('/me', token);
         const u = me.user;
-        if (!u) return;
+        if (!u) {
+          expertShellAccess.allowed = false;
+          return;
+        }
+        expertShellAccess.allowed = isExpertPlatformRole(u.platformRole);
         const name = displayName(u);
         nameEl.textContent = name;
-        roleEl.textContent = isExpertRole(u.platformRole) ? 'Эксперт' : 'Ученик';
+        roleEl.textContent = expertShellAccess.allowed ? 'Эксперт' : 'Ученик';
         avatarEl.textContent = initialsFromName(name);
       } catch {
+        expertShellAccess.allowed = false;
         // не ломаем интерфейс, если /me недоступен
       }
     }
