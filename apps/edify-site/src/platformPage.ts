@@ -863,6 +863,9 @@ if (platformMount) {
 
       // Homework + materials
       const hwPrompt = root.querySelector('#screen-s-lesson [data-ep-homework-prompt]') as HTMLElement | null;
+      const hwAssignmentFiles = root.querySelector(
+        '#screen-s-lesson [data-ep-homework-assignment-files]',
+      ) as HTMLElement | null;
       const hwWrap = root.querySelector('#screen-s-lesson [data-ep-homework]') as HTMLElement | null;
       const goHwBtn = root.querySelector('#screen-s-lesson [data-ep-go-homework]') as HTMLElement | null;
       const matsTitle = root.querySelector('#screen-s-lesson [data-ep-materials-title]') as HTMLElement | null;
@@ -883,48 +886,57 @@ if (platformMount) {
           Boolean(assignment) &&
           (homeworkPromptHasBody(assignment?.promptMarkdown ?? null) || (files?.length ?? 0) > 0);
 
-        // materials (files)
-        if (mats && files.length > 0) {
-          if (matsTitle) matsTitle.style.display = '';
-          files.forEach((f) => {
-            const row = document.createElement('div');
-            row.className = 'material-row';
-            row.style.cursor = 'pointer';
-            row.dataset.epAssignmentPreview = '1';
-            row.dataset.epAssignmentFileId = f.id;
-            row.dataset.epLessonId = lessonId;
-            row.dataset.epAssignmentFilename = encodeURIComponent(f.filename);
+        const hasPromptBody = homeworkPromptHasBody(assignment?.promptMarkdown ?? null);
 
-            const ico = document.createElement('div');
-            ico.className = 'mat-ico';
-            ico.style.background = 'rgba(10,168,200,.08)';
-            ico.textContent = '📎';
+        // Файлы задания эксперта — под текстом ДЗ (как в мини-приложении), не в «Материалы к уроку»
+        if (hwAssignmentFiles) {
+          hwAssignmentFiles.replaceChildren();
+          hwAssignmentFiles.classList.remove('hw-panel__files--after-text');
+          if (files.length > 0) {
+            hwAssignmentFiles.style.display = 'flex';
+            if (hasPromptBody) hwAssignmentFiles.classList.add('hw-panel__files--after-text');
+            files.forEach((f) => {
+              const row = document.createElement('div');
+              row.className = 'material-row';
+              row.style.cursor = 'pointer';
+              row.dataset.epAssignmentPreview = '1';
+              row.dataset.epAssignmentFileId = f.id;
+              row.dataset.epLessonId = lessonId;
+              row.dataset.epAssignmentFilename = encodeURIComponent(f.filename);
 
-            const body = document.createElement('div');
-            body.style.flex = '1';
-            const nameEl = document.createElement('div');
-            nameEl.className = 'mat-name';
-            nameEl.textContent = f.filename;
-            const metaEl = document.createElement('div');
-            metaEl.className = 'mat-meta';
-            metaEl.textContent = f.sizeBytes ? `${Math.round(f.sizeBytes / 1024)} КБ` : 'Файл';
-            body.append(nameEl, metaEl);
+              const ico = document.createElement('div');
+              ico.className = 'mat-ico';
+              ico.style.background = 'rgba(10,168,200,.08)';
+              ico.textContent = '📎';
 
-            const btn = document.createElement('button');
-            btn.className = 'btn btn-outline btn-sm';
-            btn.type = 'button';
-            btn.textContent = '⬇ Скачать';
-            btn.dataset.epAssignmentDownload = '1';
-            btn.dataset.epAssignmentFileId = f.id;
-            btn.dataset.epLessonId = lessonId;
-            btn.dataset.epAssignmentFilename = encodeURIComponent(f.filename);
+              const body = document.createElement('div');
+              body.style.flex = '1';
+              const nameEl = document.createElement('div');
+              nameEl.className = 'mat-name';
+              nameEl.textContent = f.filename;
+              const metaEl = document.createElement('div');
+              metaEl.className = 'mat-meta';
+              metaEl.textContent = f.sizeBytes ? `${Math.round(f.sizeBytes / 1024)} КБ` : 'Файл';
+              body.append(nameEl, metaEl);
 
-            row.append(ico, body, btn);
-            mats.appendChild(row);
-          });
-        } else {
-          if (matsTitle) matsTitle.style.display = 'none';
+              const btn = document.createElement('button');
+              btn.className = 'btn btn-outline btn-sm';
+              btn.type = 'button';
+              btn.textContent = '⬇ Скачать';
+              btn.dataset.epAssignmentDownload = '1';
+              btn.dataset.epAssignmentFileId = f.id;
+              btn.dataset.epLessonId = lessonId;
+              btn.dataset.epAssignmentFilename = encodeURIComponent(f.filename);
+
+              row.append(ico, body, btn);
+              hwAssignmentFiles.appendChild(row);
+            });
+          } else {
+            hwAssignmentFiles.style.display = 'none';
+          }
         }
+
+        if (matsTitle) matsTitle.style.display = 'none';
 
         // homework prompt (блок «Домашнее задание»: текст и/или смысл через материалы)
         if (hwWrap) hwWrap.style.display = hasExpertHomework ? '' : 'none';
@@ -935,11 +947,15 @@ if (platformMount) {
       } catch {
         if (matsTitle) matsTitle.style.display = 'none';
         if (hwWrap) hwWrap.style.display = 'none';
+        if (hwPrompt) hwPrompt.replaceChildren();
+        if (hwAssignmentFiles) {
+          hwAssignmentFiles.replaceChildren();
+          hwAssignmentFiles.classList.remove('hw-panel__files--after-text');
+          hwAssignmentFiles.style.display = 'none';
+        }
         homeworkPrompt = '';
         hasExpertHomework = false;
       }
-
-      setGoHomeworkButtonVisible(goHwBtn, hasExpertHomework);
 
       (root as any).__epHomework = {
         lessonId,
@@ -948,15 +964,19 @@ if (platformMount) {
         hasHomework: hasExpertHomework,
       };
 
+      let latestSub: MySubmissionV1 | null = null;
       try {
         const subsRes = await fetchJson<{ items: MySubmissionV1[] }>(
           `/lessons/${encodeURIComponent(lessonId)}/submissions/me`,
           token,
         );
-        renderMySubmission(root, subsRes.items?.[0] ?? null, hasExpertHomework);
+        latestSub = subsRes.items?.[0] ?? null;
+        renderMySubmission(root, latestSub, hasExpertHomework);
       } catch {
         renderMySubmission(root, null, hasExpertHomework);
       }
+
+      setGoHomeworkButtonVisible(goHwBtn, hasExpertHomework && !latestSub);
 
       updatePrevLessonUi(root, lessonId);
     }
@@ -987,6 +1007,14 @@ if (platformMount) {
         videoHost.querySelectorAll('iframe').forEach((x) => x.remove());
       }
       const hwWrap = root.querySelector('#screen-s-lesson [data-ep-homework]') as HTMLElement | null;
+      const hwAssignFiles0 = root.querySelector(
+        '#screen-s-lesson [data-ep-homework-assignment-files]',
+      ) as HTMLElement | null;
+      if (hwAssignFiles0) {
+        hwAssignFiles0.replaceChildren();
+        hwAssignFiles0.classList.remove('hw-panel__files--after-text');
+        hwAssignFiles0.style.display = 'none';
+      }
       const matsTitle = root.querySelector('#screen-s-lesson [data-ep-materials-title]') as HTMLElement | null;
       const mats = root.querySelector('#screen-s-lesson [data-ep-materials]') as HTMLElement | null;
       if (mats) mats.replaceChildren();

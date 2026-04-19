@@ -301,6 +301,11 @@ textarea.form-input{resize:vertical;min-height:80px}
 /* HW submission */
 .hw-submit-form{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:20px}
 .hw-q{font-size:13px;color:var(--t1);line-height:1.6;margin-bottom:16px;padding:14px;background:var(--bg);border-radius:8px;border-left:3px solid var(--a)}
+.hw-panel{
+  font-size:13px;color:var(--t1);line-height:1.6;margin-bottom:16px;padding:14px;background:var(--bg);border-radius:8px;border-left:3px solid var(--a);
+}
+.hw-panel__files{display:none;flex-direction:column;gap:10px}
+.hw-panel__files.hw-panel__files--after-text{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
 
 /* Student submission (lesson view) */
 .ep-my-sub-card{
