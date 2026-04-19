@@ -24,6 +24,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { S3StorageService } from '../../storage/s3-storage.service.js';
 import { UsersRepository } from '../../users/users.repository.js';
 import { TelegramOutboundService } from '../../integrations/telegram-outbound.service.js';
+import { ProgressRepository } from '../../student/student_progress.repository.js';
 
 @ApiTags('Expert Submissions')
 @Controller('experts/:expertId')
@@ -37,6 +38,7 @@ export class ExpertSubmissionsController {
     private readonly storage: S3StorageService,
     private readonly usersRepository: UsersRepository,
     private readonly telegramOutbound: TelegramOutboundService,
+    private readonly progressRepository: ProgressRepository,
   ) {}
 
   @Get('lessons/:lessonId/submissions')
@@ -103,6 +105,11 @@ export class ExpertSubmissionsController {
         student.telegramUserId,
         `Домашнее задание по уроку «${lessonTitle}»: ${statusRu}.`,
       );
+    }
+
+    // Unlock progression: only accepted homework completes the lesson.
+    if (updated.status === 'accepted') {
+      await this.progressRepository.markLessonCompleted({ userId: updated.studentId, lessonId });
     }
     return { submission: updated };
   }

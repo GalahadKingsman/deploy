@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ContractsV1 } from '@tracked/shared';
 import { fetchJson } from '../api/index.js';
+import { learnSummary } from './queryKeys.js';
 
 const expertLessonSubmissionsKey = (expertId: string, lessonId: string) =>
   ['expert', expertId, 'lessons', lessonId, 'submissions'] as const;
@@ -39,6 +40,21 @@ export function useDecideSubmission(expertId: string, lessonId: string) {
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: expertLessonSubmissionsKey(expertId, lessonId) });
+      // After accept, student access may change: refresh learn summary + my courses + module lesson locks.
+      await qc.invalidateQueries({ queryKey: learnSummary() });
+      await qc.invalidateQueries({ queryKey: ['me', 'courses'] });
+      await qc.invalidateQueries({
+        predicate: (q) => {
+          const k = q.queryKey;
+          return (
+            Array.isArray(k) &&
+            k.length >= 5 &&
+            k[0] === 'courses' &&
+            k[2] === 'modules' &&
+            k[4] === 'lessons'
+          );
+        },
+      });
     },
   });
 }

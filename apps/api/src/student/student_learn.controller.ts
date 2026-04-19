@@ -5,6 +5,8 @@ import { JwtAuthGuard } from '../auth/session/jwt-auth.guard.js';
 import { EnrollmentsRepository } from './student_enrollments.repository.js';
 import { StudentCoursesRepository } from './student_courses.repository.js';
 import type { FastifyRequest } from 'fastify';
+import { ProgressRepository } from './student_progress.repository.js';
+import { computeCourseLessonAccess } from './student_lesson_access.js';
 
 @ApiTags('Learn')
 @Controller()
@@ -12,6 +14,7 @@ export class LearnController {
   constructor(
     private readonly enrollmentsRepository: EnrollmentsRepository,
     private readonly coursesRepository: StudentCoursesRepository,
+    private readonly progressRepository: ProgressRepository,
   ) {}
 
   @Get('learn/summary')
@@ -32,8 +35,15 @@ export class LearnController {
     const course = await this.coursesRepository.getCourse(activeCourseId);
     if (!course) return { activeCourse: null, nextLesson: null };
 
+    const access = await computeCourseLessonAccess({
+      userId,
+      courseId: activeCourseId,
+      coursesRepository: this.coursesRepository,
+      progressRepository: this.progressRepository,
+    });
     const lessons = await this.coursesRepository.listLessonsByCourseId(activeCourseId);
-    const nextLesson = lessons[0] ?? null;
+    const nextLesson =
+      (access.nextUnlockedLessonId && lessons.find((l) => l.id === access.nextUnlockedLessonId)) ?? null;
     return { activeCourse: course, nextLesson };
   }
 }

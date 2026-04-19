@@ -17,6 +17,22 @@ export class ProgressRepository {
     );
   }
 
+  async listCompletedLessonIdsByCourse(params: { userId: string; courseId: string }): Promise<string[]> {
+    if (!this.pool) return [];
+    const res = await this.pool.query<{ lesson_id: string }>(
+      `
+      SELECT p.lesson_id
+      FROM lesson_progress p
+      JOIN lessons l ON l.id = p.lesson_id AND l.deleted_at IS NULL
+      JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+      WHERE p.user_id = $1 AND m.course_id = $2
+      ORDER BY p.completed_at ASC
+      `,
+      [params.userId, params.courseId],
+    );
+    return res.rows.map((r) => r.lesson_id);
+  }
+
   async countCompletedByCourse(params: { userId: string; courseId: string }): Promise<number> {
     if (!this.pool) return 0;
     const res = await this.pool.query<{ cnt: string }>(

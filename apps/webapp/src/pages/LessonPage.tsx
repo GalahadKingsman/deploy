@@ -12,6 +12,7 @@ import { normalizeRutubeEmbedUrl } from '@tracked/shared';
 import { downloadAuthenticatedFile } from '../shared/api/index.js';
 import { BottomSheet } from '../ui/kit/BottomSheet.js';
 import { renderTextWithLinks } from '../shared/lib/renderTextWithLinks.js';
+import { ApiClientError } from '../shared/api/errors.js';
 
 const STAR_GOLD = '#d4c090';
 const STAR_GOLD_DIM = 'rgba(212, 192, 144, 0.28)';
@@ -218,17 +219,27 @@ export function LessonPage() {
   }
 
   if (error || !data) {
+    const locked = error instanceof ApiClientError && error.status === 403;
     return (
       <div style={{ padding: 'var(--sp-4)' }}>
         <Card>
           <CardHeader>
-            <CardTitle>Не удалось загрузить урок</CardTitle>
-            <CardDescription>Попробуйте ещё раз</CardDescription>
+            <CardTitle>{locked ? 'Урок пока закрыт' : 'Не удалось загрузить урок'}</CardTitle>
+            <CardDescription>
+              {locked
+                ? 'Доступ появится после проверки домашнего задания экспертом или после завершения предыдущего урока.'
+                : 'Попробуйте ещё раз'}
+            </CardDescription>
           </CardHeader>
           <CardContent style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
             <Button variant="primary" onClick={() => refetch()}>
               Повторить
             </Button>
+            {locked ? (
+              <Button variant="secondary" onClick={() => navigate('/learn')}>
+                В обучение
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
       </div>

@@ -87,6 +87,10 @@ export const GetLessonResponseV1Schema = z.object({
  */
 export interface ListModuleLessonsResponseV1 {
   items: LessonV1[];
+  /** Lessons that are currently accessible to the student in this module (completed + next) */
+  unlockedLessonIds: string[];
+  /** Lessons already completed by the student in this module */
+  completedLessonIds: string[];
 }
 
 /**
@@ -94,4 +98,6 @@ export interface ListModuleLessonsResponseV1 {
  */
 export const ListModuleLessonsResponseV1Schema = z.object({
   items: z.array(LessonV1Schema),
+  unlockedLessonIds: z.array(z.string()),
+  completedLessonIds: z.array(z.string()),
 });
