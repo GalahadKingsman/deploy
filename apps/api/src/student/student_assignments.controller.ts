@@ -3,6 +3,7 @@ import {
   Get,
   NotFoundException,
   Param,
+  Query,
   UseGuards,
   Req,
   Res,
@@ -59,11 +60,15 @@ export class StudentAssignmentsController {
   @Get('lessons/:lessonId/assignment/files/:fileId/download')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Download assignment material file (student with access, proxied from storage)' })
+  @ApiOperation({
+    summary:
+      'Download assignment material file (student with access, proxied from storage). Use ?inline=1 for browser preview (real Content-Type + inline disposition); omit for attachment (Telegram WebApp).',
+  })
   @ApiResponse({ status: 200, description: 'File stream' })
   async downloadAssignmentFile(
     @Param('lessonId') lessonId: string,
     @Param('fileId') fileId: string,
+    @Query('inline') inline: string | undefined,
     @Req() req: FastifyRequest & { user?: { userId: string } },
     @Res() reply: FastifyReply,
   ): Promise<void> {
@@ -86,17 +91,29 @@ export class StudentAssignmentsController {
     }
 
     const obj = await this.storage.getObject({ key: file.fileKey });
-    // Force octet-stream so iOS / Telegram WebView do not open PDF/images inline (breaks WebApp "Назад").
-    reply.header('content-type', 'application/octet-stream');
-    reply.header('x-content-type-options', 'nosniff');
-    if (obj.contentLength != null) reply.header('content-length', String(obj.contentLength));
-
     const asciiFallback =
       file.filename.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_').slice(0, 180) || 'file';
-    reply.header(
-      'content-disposition',
-      `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(file.filename)}`,
-    );
+    const wantInline = inline === '1' || inline === 'true';
+
+    if (wantInline) {
+      const ct = (obj.contentType ?? '').trim() || 'application/octet-stream';
+      reply.header('content-type', ct);
+      reply.header('x-content-type-options', 'nosniff');
+      if (obj.contentLength != null) reply.header('content-length', String(obj.contentLength));
+      reply.header(
+        'content-disposition',
+        `inline; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(file.filename)}`,
+      );
+    } else {
+      // Force octet-stream so iOS / Telegram WebView do not open PDF/images inline (breaks WebApp "Назад").
+      reply.header('content-type', 'application/octet-stream');
+      reply.header('x-content-type-options', 'nosniff');
+      if (obj.contentLength != null) reply.header('content-length', String(obj.contentLength));
+      reply.header(
+        'content-disposition',
+        `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(file.filename)}`,
+      );
+    }
 
     return await reply.send(obj.body as any);
   }

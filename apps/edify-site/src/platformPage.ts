@@ -5,7 +5,8 @@ import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
 import { refreshNavAuth } from './navAuthUi.js';
 import { mountPlatformShell } from './platform/mountPlatformShell.js';
 import { normalizeRutubeEmbedUrl } from './util/rutubeEmbed.js';
-import { downloadAuthenticatedFile } from './downloadAuthenticatedFile.js';
+import { downloadAuthenticatedFile, previewAuthenticatedFile } from './downloadAuthenticatedFile.js';
+import { setRichTextWithLinks } from './renderTextWithLinksDom.js';
 
 function renderAuthGate(): void {
   document.body.classList.add('platform-gate');
@@ -366,7 +367,7 @@ if (platformMount) {
       const body = screen.querySelector('[data-ep-lesson-body]') as HTMLElement | null;
       if (meta) meta.textContent = params.moduleTitle;
       if (title) title.textContent = params.lessonTitle;
-      if (body) body.innerHTML = params.bodyText.replace(/\n/g, '<br>');
+      setRichTextWithLinks(body, params.bodyText);
     }
 
     function setActiveLessonRow(root: ShadowRoot, lessonId: string): void {
@@ -467,6 +468,7 @@ if (platformMount) {
             const row = document.createElement('div');
             row.className = 'material-row';
             row.style.cursor = 'pointer';
+            row.dataset.epAssignmentPreview = '1';
             row.dataset.epAssignmentFileId = f.id;
             row.dataset.epLessonId = lessonId;
             row.dataset.epAssignmentFilename = encodeURIComponent(f.filename);
@@ -478,14 +480,19 @@ if (platformMount) {
 
             const body = document.createElement('div');
             body.style.flex = '1';
-            body.innerHTML =
-              `<div class="mat-name">${f.filename}</div>` +
-              `<div class="mat-meta">${f.sizeBytes ? `${Math.round(f.sizeBytes / 1024)} КБ` : 'Файл'}</div>`;
+            const nameEl = document.createElement('div');
+            nameEl.className = 'mat-name';
+            nameEl.textContent = f.filename;
+            const metaEl = document.createElement('div');
+            metaEl.className = 'mat-meta';
+            metaEl.textContent = f.sizeBytes ? `${Math.round(f.sizeBytes / 1024)} КБ` : 'Файл';
+            body.append(nameEl, metaEl);
 
             const btn = document.createElement('button');
             btn.className = 'btn btn-outline btn-sm';
             btn.type = 'button';
             btn.textContent = '⬇ Скачать';
+            btn.dataset.epAssignmentDownload = '1';
             btn.dataset.epAssignmentFileId = f.id;
             btn.dataset.epLessonId = lessonId;
             btn.dataset.epAssignmentFilename = encodeURIComponent(f.filename);
@@ -500,7 +507,7 @@ if (platformMount) {
         // homework prompt
         const prompt = (assignment?.promptMarkdown ?? '').trim();
         if (hwWrap) hwWrap.style.display = prompt ? '' : 'none';
-        if (hwPrompt) hwPrompt.textContent = prompt || '';
+        setRichTextWithLinks(hwPrompt, prompt || '');
 
         // remember current homework for the submit screen
         (root as any).__epHomework = {
@@ -704,8 +711,10 @@ if (platformMount) {
       (screen.querySelector('[data-ep-course-preview-author]') as HTMLElement | null)!.textContent =
         course.authorName?.trim() ? course.authorName : 'EDIFY';
       (screen.querySelector('[data-ep-course-preview-price]') as HTMLElement | null)!.textContent = formatPrice(course);
-      (screen.querySelector('[data-ep-course-preview-desc]') as HTMLElement | null)!.textContent =
-        (course.description ?? '').trim() || 'Описание курса появится здесь.';
+      setRichTextWithLinks(
+        screen.querySelector('[data-ep-course-preview-desc]') as HTMLElement | null,
+        (course.description ?? '').trim() || 'Описание курса появится здесь.',
+      );
       (screen.querySelector('[data-ep-course-preview-sub]') as HTMLElement | null)!.textContent =
         lessonsCount > 0 ? `${lessonsCount} уроков` : 'Уроки появятся после публикации';
       (screen.querySelector('[data-ep-course-preview-lessons]') as HTMLElement | null)!.textContent =
@@ -778,24 +787,42 @@ if (platformMount) {
         void openLesson(lessonId);
       }
 
-      // Download assignment file
-      const fileEl = t?.closest('[data-ep-assignment-file-id]') as HTMLElement | null;
-      const fileId = fileEl?.dataset.epAssignmentFileId;
-      const fileLessonId = fileEl?.dataset.epLessonId;
-      if (fileId && fileLessonId) {
+      // Assignment materials: row → open preview; "Скачать" → attachment download
+      const dlEl = t?.closest('[data-ep-assignment-download]') as HTMLElement | null;
+      const dlFileId = dlEl?.dataset.epAssignmentFileId;
+      const dlLessonId = dlEl?.dataset.epLessonId;
+      if (dlFileId && dlLessonId) {
         ev.preventDefault();
+        ev.stopPropagation();
         void (async () => {
           try {
             const api = getApiBaseUrl();
             if (!api) throw new Error('API base url is empty');
-            const encName = fileEl?.dataset.epAssignmentFilename;
+            const encName = dlEl?.dataset.epAssignmentFilename;
             const fallbackFilename = encName ? decodeURIComponent(encName) : 'file';
-            const url = `${api}/lessons/${encodeURIComponent(fileLessonId)}/assignment/files/${encodeURIComponent(fileId)}/download`;
+            const url = `${api}/lessons/${encodeURIComponent(dlLessonId)}/assignment/files/${encodeURIComponent(dlFileId)}/download`;
             await downloadAuthenticatedFile({ url, fallbackFilename });
           } catch {
             window.alert('Не удалось скачать файл');
           }
         })();
+      } else {
+        const prevEl = t?.closest('[data-ep-assignment-preview]') as HTMLElement | null;
+        const prevFileId = prevEl?.dataset.epAssignmentFileId;
+        const prevLessonId = prevEl?.dataset.epLessonId;
+        if (prevFileId && prevLessonId) {
+          ev.preventDefault();
+          void (async () => {
+            try {
+              const api = getApiBaseUrl();
+              if (!api) throw new Error('API base url is empty');
+              const url = `${api}/lessons/${encodeURIComponent(prevLessonId)}/assignment/files/${encodeURIComponent(prevFileId)}/download?inline=1`;
+              await previewAuthenticatedFile({ url });
+            } catch {
+              window.alert('Не удалось открыть файл');
+            }
+          })();
+        }
       }
 
       // Go to homework submit screen
@@ -811,8 +838,10 @@ if (platformMount) {
           (shell.shadowRoot.querySelector('[data-ep-homework-title]') as HTMLElement | null)!.textContent =
             'Домашнее задание';
           (shell.shadowRoot.querySelector('[data-ep-homework-meta]') as HTMLElement | null)!.textContent = '';
-          (shell.shadowRoot.querySelector('[data-ep-homework-q]') as HTMLElement | null)!.textContent =
-            hw.prompt || '—';
+          setRichTextWithLinks(
+            shell.shadowRoot.querySelector('[data-ep-homework-q]') as HTMLElement | null,
+            hw.prompt || '—',
+          );
         }
       }
     });
