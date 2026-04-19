@@ -25,8 +25,6 @@ import { AssignmentFilesRepository } from '../assignments/assignment-files.repos
 import { SubmissionsRepository } from '../submissions/submissions.repository.js';
 import { S3StorageService } from '../storage/s3-storage.service.js';
 
-@ApiTags('Assignments')
-@Controller()
 function assignmentPromptHasBody(raw: string | null | undefined): boolean {
   if (raw == null) return false;
   let s = String(raw)
@@ -39,6 +37,8 @@ function assignmentPromptHasBody(raw: string | null | undefined): boolean {
   return collapsed.length > 0;
 }
 
+@ApiTags('Assignments')
+@Controller()
 export class StudentAssignmentsController {
   constructor(
     private readonly coursesRepository: StudentCoursesRepository,
