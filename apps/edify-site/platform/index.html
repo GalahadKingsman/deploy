@@ -11,39 +11,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;900&family=Manrope:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
-<body>
-  <!-- NAV -->
-  <header class="nav">
-    <a href="/" class="nav-logo">
-      <img class="nav-logo-img" src="/logo.jpg" alt="EDIFY logo"/>
-      <span class="nav-logo-name">EDIFY</span>
-    </a>
-    <nav class="nav-links">
-      <a href="/">← На лендинг</a>
-    </nav>
-    <div class="nav-right">
-      <div class="nav-auth-mount" data-edify-nav-auth data-variant="header"></div>
-      <a href="/#pricing" class="btn-sm">Разместить курс →</a>
-    </div>
-  </header>
-
-  <main class="platform-page">
-    <section class="s-platform">
-      <div class="container">
-        <div class="s-label reveal">Платформа</div>
-        <h1 class="s-h2 reveal" style="margin-top:10px">Интерфейс EDIFY</h1>
-        <p class="s-sub reveal">
-          Это отдельная страница с интерфейсом, который мы будем дальше настраивать и подключать к API.
-        </p>
-
-        <div
-          id="edify-platform-mount"
-          class="platform-shell-host reveal"
-          aria-label="Интерфейс платформы EDIFY"
-        ></div>
-      </div>
-    </section>
-  </main>
+<body class="platform-standalone">
+  <a class="platform-standalone-back" href="/">← На лендинг</a>
+  <div
+    id="edify-platform-mount"
+    class="platform-shell-host platform-shell-host--standalone"
+    aria-label="Интерфейс платформы EDIFY"
+  ></div>
 
   <script type="module" src="/src/platformPage.ts"></script>
 </body>
