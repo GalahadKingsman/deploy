@@ -453,6 +453,23 @@ section{position:relative}
   margin-left:auto;display:flex;gap:6px;
 }
 .le-body{flex:1;padding:20px;overflow-y:auto;background:var(--bg);display:flex;flex-direction:column;gap:12px}
+.le-panel{display:flex;flex-direction:column;gap:12px}
+.le-hw-card{
+  background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;
+}
+.le-hw-title{font-family:var(--fd);font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px}
+.le-hw-sub{font-size:11px;color:var(--t3);line-height:1.5;margin-bottom:14px}
+.le-hw-label{font-family:var(--fm);font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin-bottom:6px}
+.le-hw-ta{
+  width:100%;min-height:120px;padding:12px 14px;border-radius:8px;border:1px solid var(--line2);
+  background:var(--bg2);font-size:13px;color:var(--t2);line-height:1.55;font-family:var(--fb);resize:vertical;
+}
+.le-hw-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+.le-hw-files{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.le-hw-file-row{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;
+  border:1px solid var(--line);border-radius:8px;background:var(--bg2);margin-bottom:6px;font-size:12px;color:var(--t2);
+}
 
 /* Upload blocks */
 .upload-block{
@@ -1336,6 +1353,7 @@ footer{background:var(--t1);padding:56px 0 40px}
             </div>
           </div>
           <div class="le-body">
+            <div class="le-panel" data-le-panel="content">
             <!-- Video upload -->
             <div class="video-block">
               <div class="video-preview">
@@ -1388,6 +1406,32 @@ footer{background:var(--t1);padding:56px 0 40px}
               </div>
               <div class="mat-item" style="border:1.5px dashed var(--line2);background:var(--bg2);cursor:pointer;justify-content:center;padding:10px">
                 <span style="font-size:12px;color:var(--t3)">+ Загрузить файл · PDF, DOCX, XLSX, ZIP</span>
+              </div>
+            </div>
+            </div>
+
+            <div class="le-panel" data-le-panel="homework" style="display:none">
+              <div class="le-hw-card">
+                <div class="le-hw-title">Домашнее задание к уроку</div>
+                <div class="le-hw-sub">В продукте здесь тот же сценарий, что в Telegram-кабинете: текст задания (Markdown) и файлы-материалы для студентов. Ниже — демо макета без API.</div>
+                <div class="le-hw-label">Текст задания</div>
+                <textarea class="le-hw-ta" placeholder="Опишите задание для студентов…">Например: подготовьте портрет целевой аудитории для своего проекта и приложите ссылку на документ.</textarea>
+                <div class="le-hw-actions">
+                  <button type="button" class="app-btn app-btn-primary" style="font-size:10px;padding:6px 14px">Сохранить задание</button>
+                  <button type="button" class="app-btn app-btn-outline" style="font-size:10px;padding:6px 14px">+ Прикрепить файлы</button>
+                </div>
+                <div class="le-hw-files">
+                  <div class="le-hw-label" style="margin-top:0">Материалы к заданию</div>
+                  <div class="le-hw-file-row"><span>ТЗ_шаблон.pdf</span><button type="button" class="app-btn app-btn-outline" style="font-size:9px;padding:4px 8px">Удалить</button></div>
+                  <div style="font-size:10px;color:var(--t3);font-family:var(--fm)">В приложении файлы загружаются на сервер и доступны ученикам на уроке.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="le-panel" data-le-panel="settings" style="display:none">
+              <div class="le-hw-card">
+                <div class="le-hw-title">Настройки урока</div>
+                <div class="le-hw-sub">Дополнительные параметры (доступ, порядок) подключаются к API в рабочей версии платформы. В демо-версии страницы используйте вкладки «Контент» и «Домашнее задание».</div>
               </div>
             </div>
 
@@ -1840,6 +1884,30 @@ function showScreen(btn, id) {
   document.querySelectorAll('[id^=screen-]').forEach(s => s.style.display='none')
   document.getElementById('screen-'+id).style.display='block'
 }
+
+/** Вкладки «Контент / Домашнее задание / Настройки» в конструкторе урока (макет mobile). */
+function wireLessonEditorTabs() {
+  const root = document.getElementById('screen-builder')
+  if (!root || root.dataset.leTabsWired === '1') return
+  root.dataset.leTabsWired = '1'
+  root.addEventListener('click', function (ev) {
+    var tab = ev.target.closest('.le-tab')
+    if (!tab || !root.contains(tab)) return
+    var editor = tab.closest('.lesson-editor')
+    if (!editor) return
+    var label = (tab.textContent || '').trim()
+    editor.querySelectorAll('.le-tab').forEach(function (t) {
+      t.classList.toggle('active', t === tab)
+    })
+    var panel = 'content'
+    if (label.indexOf('Домашнее') !== -1) panel = 'homework'
+    else if (label.indexOf('Настройки') !== -1) panel = 'settings'
+    editor.querySelectorAll('[data-le-panel]').forEach(function (p) {
+      p.style.display = p.getAttribute('data-le-panel') === panel ? '' : 'none'
+    })
+  })
+}
+wireLessonEditorTabs()
 
 // FAQ
 function faq(btn) {
