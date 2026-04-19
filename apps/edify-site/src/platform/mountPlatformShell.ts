@@ -4,6 +4,8 @@ import shellHtml from './shellBody.html?raw';
 export type PlatformShellAction =
   | { type: 'role'; role: 'expert' | 'student' }
   | { type: 'navigate'; screenId: string }
+  | { type: 'open_course'; courseId: string }
+  | { type: 'open_lesson'; lessonId: string }
   | { type: 'module_toggle' }
   | { type: 'builder_tab'; tabLabel: string }
   | { type: 'grade_select' };
@@ -80,6 +82,20 @@ function setRole(
 function onShadowClick(ev: MouseEvent, root: ShadowRoot, handlers: PlatformShellHandlers): void {
   const target = ev.target as HTMLElement | null;
   if (!target) return;
+
+  const courseEl = target.closest('[data-ep-course-id]') as HTMLElement | null;
+  const courseId = courseEl?.dataset.epCourseId;
+  if (courseEl && courseId) {
+    emit(handlers, { type: 'open_course', courseId }, ev);
+    return;
+  }
+
+  const lessonEl = target.closest('[data-ep-lesson-id]') as HTMLElement | null;
+  const lessonId = lessonEl?.dataset.epLessonId;
+  if (lessonEl && lessonId) {
+    emit(handlers, { type: 'open_lesson', lessonId }, ev);
+    return;
+  }
 
   const modToggle = target.closest('[data-ep-mod-toggle]');
   if (modToggle) {

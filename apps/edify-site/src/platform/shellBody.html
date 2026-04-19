@@ -924,6 +924,64 @@
 </div>
 
 
+<!-- S-COURSE (preview from catalog) -->
+<div class="screen" id="screen-s-course">
+  <div class="page-header">
+    <div>
+      <div class="page-title" data-ep-course-preview-title>Курс</div>
+      <div class="page-sub" data-ep-course-preview-sub>Описание</div>
+    </div>
+    <div class="actions-row">
+      <button class="btn btn-outline btn-sm" type="button" data-ep-screen="s-catalog">← В каталог</button>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card" style="overflow:hidden">
+      <div style="height:180px;background:var(--bg2);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden" data-ep-course-preview-cover>
+        <span style="font-family:var(--fd);font-size:48px;font-weight:900;color:rgba(10,168,200,.35)" data-ep-course-preview-initials>ED</span>
+      </div>
+      <div style="padding:18px 20px">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <div style="font-family:var(--fd);font-size:18px;font-weight:800;letter-spacing:-.02em;line-height:1.2" data-ep-course-preview-h1>Название курса</div>
+            <div style="margin-top:6px;color:var(--t3);font-size:12px" data-ep-course-preview-author>Автор</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-family:var(--fd);font-size:18px;font-weight:900" data-ep-course-preview-price>—</div>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;color:var(--t2);font-size:13px;line-height:1.7" data-ep-course-preview-desc>
+          Описание курса появится здесь.
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+          <button class="btn btn-accent" style="flex:1;justify-content:center;min-width:220px" type="button" data-ep-course-preview-cta>
+            Записаться / Купить
+          </button>
+          <button class="btn btn-outline" style="justify-content:center" type="button" data-ep-course-preview-open disabled>
+            Перейти к урокам
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sec-title">Что внутри</div>
+      <div class="card" style="padding:16px">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;color:var(--t2);font-size:12px">
+          <span>📦</span><span data-ep-course-preview-lessons>Уроков: —</span>
+        </div>
+        <div style="color:var(--t3);font-size:12px;line-height:1.7">
+          После зачисления откроется первый урок. Следующие уроки будут открываться после проверки домашних заданий экспертом.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 <!-- S-MYCOURSES -->
 <div class="screen" id="screen-s-mycourses">
   <div class="page-header">
@@ -969,7 +1027,7 @@
   <div style="display:flex;gap:20px;height:calc(100vh - 56px - 56px);overflow:hidden">
     <!-- Module tree -->
     <div style="width:240px;flex-shrink:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);padding:14px;overflow-y:auto;height:fit-content">
-      <div style="font-family:var(--fd);font-size:11px;font-weight:700;color:var(--t1);margin-bottom:2px">Маркетинг 2025</div>
+      <div data-ep-course-title style="font-family:var(--fd);font-size:11px;font-weight:700;color:var(--t1);margin-bottom:2px">Маркетинг 2025</div>
       <div class="prog-wrap" style="margin:8px 0 14px"><div class="prog-bar"><div class="prog-fill" style="width:65%"></div></div><div class="prog-val">65%</div></div>
       <div class="mod-tree">
         <div class="mod-item">
@@ -1006,9 +1064,9 @@
     <!-- Main lesson area -->
     <div style="flex:1;overflow-y:auto">
       <div style="margin-bottom:16px">
-        <div style="font-size:11px;color:var(--t3);margin-bottom:4px;font-family:var(--fm)">Модуль 2 · Урок 5</div>
-        <div style="font-family:var(--fd);font-size:20px;font-weight:700;letter-spacing:-.02em;color:var(--t1);margin-bottom:16px">Контент-план: структура и инструменты</div>
-        <div class="video-player" style="margin-bottom:20px">
+        <div data-ep-lesson-meta style="font-size:11px;color:var(--t3);margin-bottom:4px;font-family:var(--fm)">Модуль 2 · Урок 5</div>
+        <div data-ep-lesson-title style="font-family:var(--fd);font-size:20px;font-weight:700;letter-spacing:-.02em;color:var(--t1);margin-bottom:16px">Контент-план: структура и инструменты</div>
+        <div class="video-player" style="margin-bottom:20px" data-ep-video>
           <div class="play-btn">▶</div>
           <div class="video-overlay-bottom">
             <div class="video-progress"><div class="video-prog-fill" style="width:32%"></div></div>
@@ -1016,24 +1074,20 @@
             <span style="font-size:12px;color:rgba(255,255,255,.6)">⛶</span>
           </div>
         </div>
-        <div style="font-size:14px;color:var(--t2);line-height:1.7;margin-bottom:16px">
+        <div data-ep-lesson-body style="font-size:14px;color:var(--t2);line-height:1.7;margin-bottom:16px">
           В этом уроке мы разберём, что такое контент-план, зачем он нужен и как его составить на практике для любой ниши. Контент-план — это расписание публикаций, которое помогает систематизировать работу с контентом.<br><br>
           <strong style="color:var(--t1)">Ключевые элементы контент-плана:</strong> дата и время публикации, тема и формат, платформа, цель публикации, ответственный исполнитель.
         </div>
-        <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:10px">Материалы к уроку</div>
-        <div class="material-row" style="cursor:pointer">
-          <div class="mat-ico" style="background:rgba(220,38,38,.08)">📕</div>
-          <div style="flex:1"><div class="mat-name">Шаблон контент-плана.xlsx</div><div class="mat-meta">Excel · 156 КБ</div></div>
-          <button class="btn btn-outline btn-sm">⬇ Скачать</button>
-        </div>
-        <div class="material-row" style="cursor:pointer">
-          <div class="mat-ico" style="background:rgba(10,168,200,.08)">📊</div>
-          <div style="flex:1"><div class="mat-name">Презентация урока 5.pdf</div><div class="mat-meta">PDF · 2.1 МБ</div></div>
-          <button class="btn btn-outline btn-sm">⬇ Скачать</button>
+        <div data-ep-materials-title style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:10px">Материалы к уроку</div>
+        <div data-ep-materials></div>
+
+        <div data-ep-homework style="margin-top:16px">
+          <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:10px">Домашнее задание</div>
+          <div class="hw-q" data-ep-homework-prompt>—</div>
         </div>
         <div style="display:flex;gap:10px;margin-top:20px">
           <button class="btn btn-outline" style="flex:1;justify-content:center">← Предыдущий урок</button>
-          <button class="btn btn-accent" style="flex:1;justify-content:center" data-ep-screen="s-homework">Следующий урок → Сдать ДЗ</button>
+          <button class="btn btn-accent" style="flex:1;justify-content:center" type="button" data-ep-go-homework>Сдать ДЗ →</button>
         </div>
       </div>
     </div>
@@ -1051,7 +1105,7 @@
       <div class="card-sm" style="padding:16px">
         <div style="font-family:var(--fm);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Прогресс курса</div>
         <div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" style="width:65%"></div></div><div class="prog-val">65%</div></div>
-        <div style="font-size:10px;color:var(--t3);margin-top:4px">8 из 12 уроков</div>
+        <div data-ep-progress-caption style="font-size:10px;color:var(--t3);margin-top:4px">8 из 12 уроков</div>
       </div>
     </div>
   </div>
@@ -1061,17 +1115,20 @@
 <!-- S-HOMEWORK -->
 <div class="screen" id="screen-s-homework">
   <div class="page-header">
-    <div><div class="page-title">Домашние задания</div><div class="page-sub">2 задания ожидают сдачи</div></div>
+    <div><div class="page-title">Домашние задания</div><div class="page-sub" data-ep-homework-sub>—</div></div>
   </div>
   <div class="grid2">
     <div>
       <div class="sec-title">Актуальные задания</div>
       <div class="card" style="padding:20px;margin-bottom:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <div><div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1)">ДЗ к уроку 5 — Контент-план</div><div style="font-size:11px;color:var(--t3)">Маркетинг в интернете 2025 · Модуль 2</div></div>
+          <div>
+            <div data-ep-homework-title style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1)">—</div>
+            <div data-ep-homework-meta style="font-size:11px;color:var(--t3)">—</div>
+          </div>
           <span class="tag tag-err">Не сдано</span>
         </div>
-        <div class="hw-q">Составьте контент-план для своего проекта или бизнеса на 2 недели. Используйте шаблон из урока. Опишите выбранные темы и форматы контента.</div>
+        <div class="hw-q" data-ep-homework-q>—</div>
         <div style="font-family:var(--fd);font-size:12px;font-weight:700;color:var(--t1);margin-bottom:10px;margin-top:16px">Ваш ответ</div>
         <textarea class="form-input" style="height:100px" placeholder="Напишите ответ здесь..."></textarea>
         <div class="upload-zone" style="margin-top:10px">
