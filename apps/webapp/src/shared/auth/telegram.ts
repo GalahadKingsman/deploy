@@ -183,6 +183,43 @@ export function getTelegramStartParam(): string | null {
   }
 }
 
+/** `start_param` из подписанной строки initData (часть клиентов не заполняет initDataUnsafe сразу). */
+function getStartParamFromSignedInitData(): string | null {
+  const raw = getTelegramInitData();
+  if (!raw) return null;
+  try {
+    for (const part of raw.split('&')) {
+      const eq = part.indexOf('=');
+      if (eq < 0) continue;
+      const key = part.slice(0, eq);
+      if (key !== 'start_param') continue;
+      const val = part.slice(eq + 1);
+      const s = decodeURIComponent(val.replace(/\+/g, ' ')).trim();
+      return s || null;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+/**
+ * Пользователь открыл Mini App для завершения входа с маркетинга (бот: URL с ?startapp=site).
+ * Проверяем несколько источников — Telegram клиенты заполняют их по-разному.
+ */
+export function hasSiteMarketingLoginIntent(): boolean {
+  if (getTelegramStartParam() === 'site') return true;
+  if (getStartParamFromSignedInitData() === 'site') return true;
+  if (typeof window === 'undefined') return false;
+  try {
+    const u = new URL(window.location.href);
+    if (u.searchParams.get('startapp') === 'site') return true;
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
 const INIT_DATA_RETRY_MS = 200;
 const INIT_DATA_RETRIES = 15;
 

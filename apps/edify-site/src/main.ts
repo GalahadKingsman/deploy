@@ -70,10 +70,25 @@ window.showScreen = showScreen;
 window.faq = faq;
 window.toggleP = toggleP;
 
-void (async () => {
+async function runAuthFlow(): Promise<void> {
   await claimSiteLoginFromUrl();
   await refreshNavAuth();
-})();
+}
+
+void runAuthFlow();
+
+/** Возврат из внешнего браузера (openLink) с ?login= — bfcache и переключение вкладок. */
+window.addEventListener('pageshow', (ev) => {
+  if (ev.persisted) void runAuthFlow();
+});
+
+window.addEventListener('focus', () => {
+  try {
+    if (new URL(window.location.href).searchParams.has('login')) void runAuthFlow();
+  } catch {
+    /* ignore */
+  }
+});
 
 const revealObserver = new IntersectionObserver(
   (entries) => {
