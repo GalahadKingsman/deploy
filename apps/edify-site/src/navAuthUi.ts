@@ -77,17 +77,18 @@ export function renderGuestSlots(): void {
   });
 }
 
-async function fetchMe(api: string, token: string): Promise<MeUserV1 | null> {
+/** `null` — 401 (сессия недействительна). `undefined` — сеть/CORS/5xx (токен не трогаем). */
+async function fetchMe(api: string, token: string): Promise<MeUserV1 | null | undefined> {
   try {
     const res = await fetch(`${api}/me`, {
       headers: { Authorization: `Bearer ${token}`, accept: 'application/json' },
     });
     if (res.status === 401) return null;
-    if (!res.ok) return null;
+    if (!res.ok) return undefined;
     const data = (await res.json()) as { user?: MeUserV1 };
-    return data?.user && typeof data.user.id === 'string' ? data.user : null;
+    return data?.user && typeof data.user.id === 'string' ? data.user : undefined;
   } catch {
-    return null;
+    return undefined;
   }
 }
 
@@ -191,8 +192,13 @@ export async function refreshNavAuth(): Promise<void> {
     return;
   }
   const user = await fetchMe(api, token);
-  if (!user) {
+  if (user === null) {
     clearAccessToken();
+    renderGuestSlots();
+    return;
+  }
+  if (user === undefined) {
+    console.warn('[edify] GET /me: сеть или CORS; токен сохранён, профиль не загружен.');
     renderGuestSlots();
     return;
   }

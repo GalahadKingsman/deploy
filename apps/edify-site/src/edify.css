@@ -54,8 +54,19 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);font-size:15px;l
 .btn-sm:hover{opacity:.87;transform:translateY(-1px)}
 
 /* ── Auth: слот в шапке / меню / футере (карточка как в Telegram) ── */
-.nav-auth-mount{display:inline-flex;align-items:center;vertical-align:middle;min-height:36px}
-[data-edify-nav-auth]{display:block}
+/* Слот авторизации: в шапке — в строке с кнопками; не использовать display:block на header (ломает выравнивание). */
+.nav-auth-mount,
+[data-edify-nav-auth][data-variant="header"]{
+  display:inline-flex;
+  align-items:center;
+  align-self:center;
+  min-height:36px;
+}
+[data-edify-nav-auth][data-variant="mobile"],
+[data-edify-nav-auth][data-variant="footer"]{
+  display:block;
+  width:100%;
+}
 
 .edify-user-chip{
   display:flex;align-items:flex-start;gap:10px;

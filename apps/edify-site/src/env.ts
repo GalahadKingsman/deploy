@@ -1,7 +1,12 @@
-/** База URL бэкенда для будущих fetch (логин, каталог и т.д.). Пустая строка — только статика. */
+/** База URL бэкенда (claim /me). Сначала Vite env, затем `<meta name="edify-api-base" content="https://api…">` на сервере. */
 export function getApiBaseUrl(): string {
-  const v = import.meta.env.VITE_API_BASE_URL;
-  return typeof v === 'string' ? v.replace(/\/$/, '') : '';
+  const fromEnv = import.meta.env.VITE_API_BASE_URL;
+  if (typeof fromEnv === 'string' && fromEnv.trim()) return fromEnv.trim().replace(/\/$/, '');
+  if (typeof document !== 'undefined') {
+    const m = document.querySelector('meta[name="edify-api-base"]')?.getAttribute('content');
+    if (typeof m === 'string' && m.trim()) return m.trim().replace(/\/$/, '');
+  }
+  return '';
 }
 
 /** Имя бота без @ для ссылки t.me/...?start=site */
