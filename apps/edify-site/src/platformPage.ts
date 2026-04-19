@@ -292,6 +292,22 @@ if (platformMount) {
       return (await res.json()) as T;
     }
 
+    async function putJson<T>(path: string, body: unknown, token?: string): Promise<T> {
+      const api = getApiBaseUrl();
+      if (!api) throw new Error('API base url is empty');
+      const res = await fetch(`${api}${path}`, {
+        method: 'PUT',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${path}`);
+      return (await res.json()) as T;
+    }
+
     async function deleteJson(path: string, token?: string): Promise<void> {
       const api = getApiBaseUrl();
       if (!api) throw new Error('API base url is empty');
@@ -424,6 +440,19 @@ if (platformMount) {
     let expertCoursesSearchTimer: ReturnType<typeof setTimeout> | undefined;
     /** Последний курс, открытый в конструкторе (для пункта меню «Конструктор»). */
     let expertBuilderCourseId: string | null = null;
+    type BuilderCourseDetailV1 = {
+      id: string;
+      title: string;
+      status: string;
+      visibility?: string;
+      description?: string | null;
+      coverUrl?: string | null;
+    };
+    let builderCourseDetail: BuilderCourseDetailV1 | null = null;
+    type BuilderTopicV1 = { id: string; title: string };
+    let builderCourseSettingsAllTopics: BuilderTopicV1[] = [];
+    let builderCourseSettingsExtraTopics: BuilderTopicV1[] = [];
+    let builderCourseSettingsSelectedTopicIds = new Set<string>();
     /** Не дублировать загрузку конструктора при navigate от showScreen после ручного открытия курса. */
     let suppressBuilderNavigateHydrate = false;
     let builderSelectedModuleId: string | null = null;
@@ -474,7 +503,7 @@ if (platformMount) {
           }
         }
         if (action.type === 'builder_tab') {
-          switchExpertBuilderTab(action.shadowRoot, action.tabLabel);
+          void switchExpertBuilderTab(action.shadowRoot, action.tabLabel);
         }
       },
     });
@@ -1835,10 +1864,11 @@ if (platformMount) {
         totalLessons += ls.length;
       }
 
-      const course = await fetchJson<{ title: string; status: string }>(
+      const course = await fetchJson<BuilderCourseDetailV1>(
         `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}`,
         token,
       );
+      builderCourseDetail = { ...course, id: cid };
       const titleHost = root.querySelector('[data-ep-builder-course-title]');
       const metaHost = root.querySelector('[data-ep-builder-course-meta]');
       const statusHost = root.querySelector('[data-ep-builder-course-status]');
@@ -1846,7 +1876,10 @@ if (platformMount) {
       if (metaHost) {
         metaHost.textContent = `${builderModulesCache.length} ${pluralRu(builderModulesCache.length, ['модуль', 'модуля', 'модулей'])} · ${totalLessons} ${pluralRu(totalLessons, ['урок', 'урока', 'уроков'])}`;
       }
-      if (statusHost) statusHost.textContent = course.status;
+      if (statusHost) {
+        const vis = (course.visibility ?? 'private').trim() || 'private';
+        statusHost.textContent = `${course.status} · ${vis}`;
+      }
 
       let best: { mid: string; lid: string; t: number } | null = null;
       for (const m of builderModulesCache) {
@@ -1918,19 +1951,43 @@ if (platformMount) {
       }
     }
 
+    function syncBuilderHomeworkLessonGate(root: ShadowRoot, hasLesson: boolean): void {
+      const noLessonEl = root.querySelector('[data-ep-builder-hw-no-lesson]') as HTMLElement | null;
+      const workspaceEl = root.querySelector('[data-ep-builder-hw-workspace]') as HTMLElement | null;
+      if (noLessonEl) noLessonEl.style.display = hasLesson ? 'none' : '';
+      if (workspaceEl) workspaceEl.style.display = hasLesson ? '' : 'none';
+    }
+
     async function applyBuilderLessonToForm(root: ShadowRoot, eid: string, token: string): Promise<void> {
       const titleInp = root.querySelector('[data-ep-builder-lesson-title]') as HTMLInputElement | null;
       const rutubeInp = root.querySelector('[data-ep-builder-rutube]') as HTMLInputElement | null;
       const bodyTa = root.querySelector('[data-ep-builder-lesson-body]') as HTMLTextAreaElement | null;
       const hwTa = root.querySelector('[data-ep-builder-hw-body]') as HTMLTextAreaElement | null;
       const filesHost = root.querySelector('[data-ep-builder-hw-files]') as HTMLElement | null;
+      const forbiddenEl = root.querySelector('[data-ep-builder-hw-forbidden]') as HTMLElement | null;
+      const filesEmptyEl = root.querySelector('[data-ep-builder-hw-files-empty]') as HTMLElement | null;
+      const hwActions = root.querySelector('[data-ep-builder-hw-actions]') as HTMLElement | null;
+
+      const resetHwEditorState = (): void => {
+        if (forbiddenEl) forbiddenEl.style.display = 'none';
+        if (hwTa) {
+          hwTa.value = '';
+          hwTa.disabled = false;
+        }
+        if (hwActions) {
+          hwActions.style.opacity = '';
+          hwActions.style.pointerEvents = '';
+        }
+        if (filesHost) filesHost.replaceChildren();
+        if (filesEmptyEl) filesEmptyEl.style.display = '';
+      };
 
       if (!builderSelectedLessonId || !builderSelectedModuleId) {
         if (titleInp) titleInp.value = '';
         if (rutubeInp) rutubeInp.value = '';
         if (bodyTa) bodyTa.value = '';
-        if (hwTa) hwTa.value = '';
-        if (filesHost) filesHost.replaceChildren();
+        syncBuilderHomeworkLessonGate(root, false);
+        resetHwEditorState();
         return;
       }
       const list = builderLessonsByModule.get(builderSelectedModuleId) ?? [];
@@ -1939,31 +1996,34 @@ if (platformMount) {
         if (titleInp) titleInp.value = '';
         if (rutubeInp) rutubeInp.value = '';
         if (bodyTa) bodyTa.value = '';
-        if (hwTa) hwTa.value = '';
-        if (filesHost) filesHost.replaceChildren();
+        syncBuilderHomeworkLessonGate(root, false);
+        resetHwEditorState();
         return;
       }
+
+      syncBuilderHomeworkLessonGate(root, true);
       if (titleInp) titleInp.value = lesson.title;
       if (bodyTa) bodyTa.value = lesson.contentMarkdown ?? '';
       const v = lesson.video;
       if (rutubeInp) rutubeInp.value = v && v.kind === 'rutube' && v.url ? v.url : '';
 
-      if (hwTa) hwTa.value = '';
-      if (filesHost) filesHost.replaceChildren();
+      resetHwEditorState();
       try {
         const a = await fetchJson<{
           assignment?: { promptMarkdown?: string | null } | null;
           files?: { id: string; filename: string }[];
         }>(`/experts/${encodeURIComponent(eid)}/lessons/${encodeURIComponent(lesson.id)}/assignment`, token);
         if (hwTa) hwTa.value = a.assignment?.promptMarkdown ?? '';
-        if (filesHost && Array.isArray(a.files)) {
-          for (const f of a.files) {
+        const fileItems = Array.isArray(a.files) ? a.files : [];
+        if (filesEmptyEl) filesEmptyEl.style.display = fileItems.length ? 'none' : '';
+        if (filesHost && fileItems.length) {
+          for (const f of fileItems) {
             const row = document.createElement('div');
             row.style.display = 'flex';
             row.style.justifyContent = 'space-between';
             row.style.alignItems = 'center';
             row.style.gap = '8px';
-            row.style.padding = '6px 8px';
+            row.style.padding = '8px 10px';
             row.style.border = '1px solid var(--line)';
             row.style.borderRadius = '8px';
             row.style.background = 'var(--surface2)';
@@ -1971,6 +2031,8 @@ if (platformMount) {
             lab.textContent = f.filename;
             lab.style.overflow = 'hidden';
             lab.style.textOverflow = 'ellipsis';
+            lab.style.fontSize = '12px';
+            lab.style.color = 'var(--t2)';
             const del = document.createElement('button');
             del.type = 'button';
             del.className = 'btn btn-ghost btn-sm';
@@ -1980,8 +2042,23 @@ if (platformMount) {
             filesHost.appendChild(row);
           }
         }
-      } catch {
-        /* нет ДЗ — ок */
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes('403')) {
+          if (forbiddenEl) forbiddenEl.style.display = '';
+          if (hwTa) {
+            hwTa.value = '';
+            hwTa.disabled = true;
+          }
+          if (hwActions) {
+            hwActions.style.opacity = '0.5';
+            hwActions.style.pointerEvents = 'none';
+          }
+          if (filesEmptyEl) filesEmptyEl.style.display = 'none';
+        } else {
+          if (hwTa) hwTa.value = '';
+          if (filesEmptyEl) filesEmptyEl.style.display = '';
+        }
       }
     }
 
@@ -2092,6 +2169,10 @@ if (platformMount) {
         return;
       }
       const hwTa = root.querySelector('[data-ep-builder-hw-body]') as HTMLTextAreaElement | null;
+      if (hwTa?.disabled) {
+        window.alert('Недостаточно прав для сохранения задания.');
+        return;
+      }
       const text = (hwTa?.value ?? '').trim();
       try {
         await patchJson(
@@ -2152,7 +2233,7 @@ if (platformMount) {
       }
     }
 
-    function switchExpertBuilderTab(root: ShadowRoot, tabLabel: string): void {
+    async function switchExpertBuilderTab(root: ShadowRoot, tabLabel: string): Promise<void> {
       const screen = builderScreen(root);
       if (!screen) return;
       const tabs = screen.querySelectorAll('[data-ep-builder-tabs] .tab');
@@ -2167,9 +2248,19 @@ if (platformMount) {
         const k = (p as HTMLElement).dataset.epBuilderPanel;
         (p as HTMLElement).style.display = k === panel ? '' : 'none';
       });
+      if (panel === 'homework') {
+        const token = getAccessToken();
+        const eid = await resolveActiveExpertId();
+        if (token && eid) await applyBuilderLessonToForm(root, eid, token);
+      }
     }
 
     async function builderDeleteHwFile(root: ShadowRoot, fileId: string): Promise<void> {
+      const hwTa = root.querySelector('[data-ep-builder-hw-body]') as HTMLTextAreaElement | null;
+      if (hwTa?.disabled) {
+        window.alert('Недостаточно прав для изменения материалов задания.');
+        return;
+      }
       const token = getAccessToken();
       const eid = await resolveActiveExpertId();
       const lid = builderSelectedLessonId;
@@ -2189,6 +2280,11 @@ if (platformMount) {
 
     async function builderUploadHwFiles(root: ShadowRoot, files: FileList | null): Promise<void> {
       if (!files?.length) return;
+      const hwTa = root.querySelector('[data-ep-builder-hw-body]') as HTMLTextAreaElement | null;
+      if (hwTa?.disabled) {
+        window.alert('Недостаточно прав для загрузки файлов к заданию.');
+        return;
+      }
       const token = getAccessToken();
       const eid = await resolveActiveExpertId();
       const lid = builderSelectedLessonId;
@@ -2206,6 +2302,304 @@ if (platformMount) {
         await applyBuilderLessonToForm(root, eid, token);
       } catch {
         window.alert('Не удалось загрузить файлы.');
+      }
+    }
+
+    function setBuilderCourseAsideFromDetail(root: ShadowRoot): void {
+      const statusHost = root.querySelector('[data-ep-builder-course-status]') as HTMLElement | null;
+      const titleHost = root.querySelector('[data-ep-builder-course-title]') as HTMLElement | null;
+      if (!builderCourseDetail) return;
+      if (titleHost) titleHost.textContent = builderCourseDetail.title;
+      if (statusHost) {
+        const vis = (builderCourseDetail.visibility ?? 'private').trim() || 'private';
+        statusHost.textContent = `${builderCourseDetail.status} · ${vis}`;
+      }
+    }
+
+    function syncCourseDrawerPublishButton(root: ShadowRoot): void {
+      const btn = root.querySelector('[data-ep-course-publish]') as HTMLButtonElement | null;
+      if (!btn) return;
+      if (builderCourseDetail?.status === 'published') btn.textContent = 'Снять с публикации';
+      else btn.textContent = 'Опубликовать';
+    }
+
+    function renderBuilderCourseTopicsCheckboxes(root: ShadowRoot): void {
+      const host = root.querySelector('[data-ep-course-topics-list]') as HTMLElement | null;
+      if (!host) return;
+      host.replaceChildren();
+      const seen = new Set<string>();
+      const merged = [...builderCourseSettingsAllTopics, ...builderCourseSettingsExtraTopics];
+      for (const t of merged) {
+        if (seen.has(t.id)) continue;
+        seen.add(t.id);
+        const lab = document.createElement('label');
+        lab.style.cssText =
+          'display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--t2);cursor:pointer;padding:4px 0';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = builderCourseSettingsSelectedTopicIds.has(t.id);
+        cb.addEventListener('change', () => {
+          if (cb.checked) builderCourseSettingsSelectedTopicIds.add(t.id);
+          else builderCourseSettingsSelectedTopicIds.delete(t.id);
+        });
+        const span = document.createElement('span');
+        span.textContent = t.title;
+        span.style.lineHeight = '1.35';
+        lab.append(cb, span);
+        host.appendChild(lab);
+      }
+      if (merged.length === 0) {
+        const empty = document.createElement('div');
+        empty.style.fontSize = '12px';
+        empty.style.color = 'var(--t3)';
+        empty.textContent = 'Справочник тем пуст или не загрузился.';
+        host.appendChild(empty);
+      }
+    }
+
+    function closeBuilderCourseSettingsDrawer(root: ShadowRoot): void {
+      const bd = root.querySelector('[data-ep-course-drawer-backdrop]') as HTMLElement | null;
+      const dr = root.querySelector('[data-ep-course-drawer]') as HTMLElement | null;
+      if (bd) bd.style.display = 'none';
+      if (dr) dr.style.display = 'none';
+    }
+
+    async function openBuilderCourseSettingsDrawer(root: ShadowRoot): Promise<void> {
+      const cid = expertBuilderCourseId;
+      const token = getAccessToken();
+      const eid = await resolveActiveExpertId();
+      if (!token || !eid || !cid) {
+        window.alert('Откройте курс в конструкторе.');
+        return;
+      }
+      const bd = root.querySelector('[data-ep-course-drawer-backdrop]') as HTMLElement | null;
+      const dr = root.querySelector('[data-ep-course-drawer]') as HTMLElement | null;
+      const loading = root.querySelector('[data-ep-course-settings-loading]') as HTMLElement | null;
+      const form = root.querySelector('[data-ep-course-settings-form]') as HTMLElement | null;
+      if (!bd || !dr) return;
+      bd.style.display = 'block';
+      dr.style.display = 'flex';
+      if (loading) {
+        loading.style.display = '';
+        loading.textContent = 'Загрузка…';
+      }
+      if (form) form.style.display = 'none';
+
+      try {
+        const course = await fetchJson<BuilderCourseDetailV1>(
+          `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}`,
+          token,
+        );
+        builderCourseDetail = { ...course, id: cid };
+        setBuilderCourseAsideFromDetail(root);
+
+        let allItems: BuilderTopicV1[] = [];
+        try {
+          allItems = (await fetchJson<{ items?: BuilderTopicV1[] }>('/topics', token)).items ?? [];
+        } catch {
+          allItems = [];
+        }
+
+        let courseItems: BuilderTopicV1[] = [];
+        let topicsLocked = false;
+        try {
+          courseItems = (
+            await fetchJson<{ items?: BuilderTopicV1[] }>(
+              `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/topics`,
+              token,
+            )
+          ).items ?? [];
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          if (msg.includes('403')) topicsLocked = true;
+        }
+
+        const titleInp = root.querySelector('[data-ep-course-title]') as HTMLInputElement | null;
+        const descTa = root.querySelector('[data-ep-course-desc]') as HTMLTextAreaElement | null;
+        const visSel = root.querySelector('[data-ep-course-visibility]') as HTMLSelectElement | null;
+        const coverInp = root.querySelector('[data-ep-course-cover-url]') as HTMLInputElement | null;
+        if (titleInp) titleInp.value = course.title ?? '';
+        if (descTa) descTa.value = (course.description ?? '').trim();
+        if (visSel) visSel.value = (course.visibility ?? 'private') === 'public' ? 'public' : 'private';
+        if (coverInp) coverInp.value = (course.coverUrl ?? '').trim();
+
+        builderCourseSettingsAllTopics = allItems;
+        const baseIds = new Set(allItems.map((t) => t.id));
+        builderCourseSettingsExtraTopics = courseItems.filter((t) => !baseIds.has(t.id));
+        builderCourseSettingsSelectedTopicIds = new Set(courseItems.map((t) => t.id));
+
+        const coverFile = root.querySelector('[data-ep-course-cover-file]') as HTMLInputElement | null;
+        if (coverFile) coverFile.value = '';
+        const customInp = root.querySelector('[data-ep-course-custom-topic]') as HTMLInputElement | null;
+        if (customInp) {
+          customInp.value = '';
+          customInp.disabled = topicsLocked;
+        }
+
+        const lockedEl = root.querySelector('[data-ep-course-topics-locked]') as HTMLElement | null;
+        if (lockedEl) lockedEl.style.display = topicsLocked ? '' : 'none';
+        const saveTopicsBtn = root.querySelector('[data-ep-course-save-topics]') as HTMLButtonElement | null;
+        const addCustomBtn = root.querySelector('[data-ep-course-add-custom-topic]') as HTMLButtonElement | null;
+        if (saveTopicsBtn) saveTopicsBtn.disabled = topicsLocked;
+        if (addCustomBtn) addCustomBtn.disabled = topicsLocked;
+
+        renderBuilderCourseTopicsCheckboxes(root);
+        const listHost = root.querySelector('[data-ep-course-topics-list]') as HTMLElement | null;
+        if (listHost) {
+          listHost.style.opacity = topicsLocked ? '0.55' : '';
+          listHost.style.pointerEvents = topicsLocked ? 'none' : '';
+        }
+
+        syncCourseDrawerPublishButton(root);
+
+        if (loading) loading.style.display = 'none';
+        if (form) form.style.display = '';
+      } catch {
+        if (loading) loading.textContent = 'Не удалось загрузить настройки.';
+        window.alert('Не удалось загрузить настройки курса.');
+        closeBuilderCourseSettingsDrawer(root);
+      }
+    }
+
+    async function saveBuilderCourseSettingsDrawer(root: ShadowRoot): Promise<void> {
+      const cid = expertBuilderCourseId;
+      const token = getAccessToken();
+      const eid = await resolveActiveExpertId();
+      if (!token || !eid || !cid) return;
+      const titleInp = root.querySelector('[data-ep-course-title]') as HTMLInputElement | null;
+      const descTa = root.querySelector('[data-ep-course-desc]') as HTMLTextAreaElement | null;
+      const visSel = root.querySelector('[data-ep-course-visibility]') as HTMLSelectElement | null;
+      const coverInp = root.querySelector('[data-ep-course-cover-url]') as HTMLInputElement | null;
+      const title = (titleInp?.value ?? '').trim();
+      if (!title) {
+        window.alert('Укажите название курса.');
+        return;
+      }
+      const visibility = visSel?.value === 'public' ? 'public' : 'private';
+      const description = (descTa?.value ?? '').trim();
+      const coverUrl = (coverInp?.value ?? '').trim();
+      try {
+        const updated = await patchJson<BuilderCourseDetailV1>(
+          `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}`,
+          {
+            title,
+            description: description ? description : null,
+            visibility,
+            coverUrl: coverUrl ? coverUrl : null,
+          },
+          token,
+        );
+        builderCourseDetail = { ...updated, id: cid };
+        setBuilderCourseAsideFromDetail(root);
+        syncCourseDrawerPublishButton(root);
+        window.alert('Курс сохранён.');
+      } catch {
+        window.alert('Не удалось сохранить курс.');
+      }
+    }
+
+    async function toggleBuilderCoursePublishFromDrawer(root: ShadowRoot): Promise<void> {
+      const cid = expertBuilderCourseId;
+      const token = getAccessToken();
+      const eid = await resolveActiveExpertId();
+      if (!token || !eid || !cid) return;
+      const pub = builderCourseDetail?.status !== 'published';
+      try {
+        const updated = await postJson<BuilderCourseDetailV1>(
+          `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/${pub ? 'publish' : 'unpublish'}`,
+          {},
+          token,
+        );
+        builderCourseDetail = { ...updated, id: cid };
+        setBuilderCourseAsideFromDetail(root);
+        syncCourseDrawerPublishButton(root);
+        window.alert(pub ? 'Курс опубликован.' : 'Курс снят с публикации.');
+      } catch {
+        window.alert(pub ? 'Не удалось опубликовать.' : 'Не удалось снять с публикации.');
+      }
+    }
+
+    async function uploadBuilderCourseCoverFromDrawer(root: ShadowRoot): Promise<void> {
+      const cid = expertBuilderCourseId;
+      const token = getAccessToken();
+      const eid = await resolveActiveExpertId();
+      if (!token || !eid || !cid) return;
+      const fileInp = root.querySelector('[data-ep-course-cover-file]') as HTMLInputElement | null;
+      const coverUrlInp = root.querySelector('[data-ep-course-cover-url]') as HTMLInputElement | null;
+      const f = fileInp?.files?.[0] ?? null;
+      if (!f) {
+        window.alert('Выберите файл изображения.');
+        return;
+      }
+      try {
+        const form = new FormData();
+        form.append('file', f, f.name);
+        const updated = await fetchMultipartJson<BuilderCourseDetailV1>(
+          `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/cover`,
+          form,
+          token,
+        );
+        builderCourseDetail = { ...updated, id: cid };
+        if (coverUrlInp) coverUrlInp.value = (updated.coverUrl ?? '').trim();
+        if (fileInp) fileInp.value = '';
+        window.alert('Обложка загружена.');
+      } catch {
+        window.alert('Не удалось загрузить обложку.');
+      }
+    }
+
+    async function addBuilderCourseCustomTopic(root: ShadowRoot): Promise<void> {
+      const cid = expertBuilderCourseId;
+      const token = getAccessToken();
+      const eid = await resolveActiveExpertId();
+      if (!token || !eid || !cid) return;
+      const customInp = root.querySelector('[data-ep-course-custom-topic]') as HTMLInputElement | null;
+      const title = (customInp?.value ?? '').trim();
+      if (!title) {
+        window.alert('Введите название темы.');
+        return;
+      }
+      try {
+        const topic = await postJson<BuilderTopicV1>(
+          `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/topics/custom`,
+          { title },
+          token,
+        );
+        if (customInp) customInp.value = '';
+        if (!builderCourseSettingsExtraTopics.some((x) => x.id === topic.id)) {
+          builderCourseSettingsExtraTopics = [...builderCourseSettingsExtraTopics, topic];
+        }
+        builderCourseSettingsSelectedTopicIds.add(topic.id);
+        renderBuilderCourseTopicsCheckboxes(root);
+        window.alert('Тема добавлена. Не забудьте нажать «Сохранить темы».');
+      } catch {
+        window.alert('Не удалось добавить тему.');
+      }
+    }
+
+    async function saveBuilderCourseTopicsFromDrawer(root: ShadowRoot): Promise<void> {
+      const cid = expertBuilderCourseId;
+      const token = getAccessToken();
+      const eid = await resolveActiveExpertId();
+      if (!token || !eid || !cid) return;
+      try {
+        await putJson<{ items?: BuilderTopicV1[] }>(
+          `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/topics`,
+          { topicIds: [...builderCourseSettingsSelectedTopicIds] },
+          token,
+        );
+        const refreshed = await fetchJson<{ items?: BuilderTopicV1[] }>(
+          `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/topics`,
+          token,
+        );
+        const courseItems = refreshed.items ?? [];
+        const baseIds = new Set(builderCourseSettingsAllTopics.map((t) => t.id));
+        builderCourseSettingsExtraTopics = courseItems.filter((t) => !baseIds.has(t.id));
+        builderCourseSettingsSelectedTopicIds = new Set(courseItems.map((t) => t.id));
+        renderBuilderCourseTopicsCheckboxes(root);
+        window.alert('Темы сохранены.');
+      } catch {
+        window.alert('Не удалось сохранить темы.');
       }
     }
 
@@ -2408,6 +2802,41 @@ if (platformMount) {
       if (t?.closest('[data-ep-builder-save-hw]')) {
         ev.preventDefault();
         void saveBuilderHomework(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-builder-open-course-settings]')) {
+        ev.preventDefault();
+        void openBuilderCourseSettingsDrawer(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-course-drawer-backdrop]') || t?.closest('[data-ep-course-drawer-close]')) {
+        ev.preventDefault();
+        closeBuilderCourseSettingsDrawer(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-course-save]')) {
+        ev.preventDefault();
+        void saveBuilderCourseSettingsDrawer(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-course-publish]')) {
+        ev.preventDefault();
+        void toggleBuilderCoursePublishFromDrawer(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-course-upload-cover]')) {
+        ev.preventDefault();
+        void uploadBuilderCourseCoverFromDrawer(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-course-add-custom-topic]')) {
+        ev.preventDefault();
+        void addBuilderCourseCustomTopic(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-course-save-topics]')) {
+        ev.preventDefault();
+        void saveBuilderCourseTopicsFromDrawer(shell.shadowRoot);
         return;
       }
       if (t?.closest('[data-ep-builder-preview-lesson]')) {
