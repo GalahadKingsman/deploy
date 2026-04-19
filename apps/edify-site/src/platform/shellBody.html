@@ -1124,23 +1124,33 @@
   <div class="grid2">
     <div>
       <div class="sec-title">Актуальные задания</div>
-      <div class="card" style="padding:20px;margin-bottom:16px">
+      <div class="card" style="padding:20px;margin-bottom:16px" data-ep-homework-form>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
           <div>
             <div data-ep-homework-title style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1)">—</div>
             <div data-ep-homework-meta style="font-size:11px;color:var(--t3)">—</div>
           </div>
-          <span class="tag tag-err">Не сдано</span>
+          <span class="tag tag-err" data-ep-homework-status>Не сдано</span>
         </div>
         <div class="hw-q" data-ep-homework-q>—</div>
-        <div style="font-family:var(--fd);font-size:12px;font-weight:700;color:var(--t1);margin-bottom:10px;margin-top:16px">Ваш ответ</div>
-        <textarea class="form-input" style="height:100px" placeholder="Напишите ответ здесь..."></textarea>
-        <div class="upload-zone" style="margin-top:10px">
-          <div class="upload-zone-ico">📎</div>
-          <div class="upload-zone-title">Прикрепить файл</div>
-          <div class="upload-zone-sub">PDF, DOCX, XLSX, изображение · до 50 МБ</div>
+        <div data-ep-homework-accepted style="display:none;margin-top:14px;padding:14px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-size:13px;color:var(--t2);line-height:1.55">
+          Эксперт уже принял ваш ответ. Отправленные материалы нельзя изменить.
         </div>
-        <button class="btn btn-accent" style="width:100%;justify-content:center;margin-top:12px">Отправить на проверку</button>
+        <div data-ep-homework-editable>
+          <div style="font-family:var(--fd);font-size:12px;font-weight:700;color:var(--t1);margin-bottom:10px;margin-top:16px">Ваш ответ</div>
+          <textarea class="form-input" data-ep-homework-textarea style="height:100px" placeholder="Напишите ответ здесь..."></textarea>
+          <div data-ep-homework-file-row style="display:none;margin-top:10px;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface2);align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <span style="font-size:12px;color:var(--t2);word-break:break-all;flex:1;min-width:0"><span style="color:var(--t3)">Файл: </span><span data-ep-homework-file-label></span></span>
+            <button type="button" class="btn btn-ghost btn-sm" data-ep-homework-clear-file>Удалить</button>
+          </div>
+          <input type="file" data-ep-homework-file-input accept=".pdf,.doc,.docx,.xls,.xlsx,image/*,application/pdf" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none" tabindex="-1" aria-hidden="true"/>
+          <div class="upload-zone" style="margin-top:10px;cursor:pointer" data-ep-homework-upload-zone role="button" tabindex="0">
+            <div class="upload-zone-ico">📎</div>
+            <div class="upload-zone-title">Прикрепить файл</div>
+            <div class="upload-zone-sub">PDF, DOCX, XLSX, изображение · до 50 МБ</div>
+          </div>
+          <button type="button" class="btn btn-accent" data-ep-homework-submit style="width:100%;justify-content:center;margin-top:12px">Отправить на проверку</button>
+        </div>
       </div>
     </div>
     <div>

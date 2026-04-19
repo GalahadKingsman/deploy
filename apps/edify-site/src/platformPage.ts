@@ -226,6 +226,39 @@ if (platformMount) {
       return (await res.json()) as T;
     }
 
+    async function fetchMultipartJson<T>(path: string, form: FormData, token?: string): Promise<T> {
+      const api = getApiBaseUrl();
+      if (!api) throw new Error('API base url is empty');
+      const res = await fetch(`${api}${path}`, {
+        method: 'POST',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: form,
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${path}`);
+      return (await res.json()) as T;
+    }
+
+    async function postJson<T>(path: string, body: unknown, token?: string): Promise<T> {
+      const api = getApiBaseUrl();
+      if (!api) throw new Error('API base url is empty');
+      const res = await fetch(`${api}${path}`, {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        throw new Error(detail ? `HTTP ${res.status}: ${detail.slice(0, 200)}` : `HTTP ${res.status}`);
+      }
+      return (await res.json()) as T;
+    }
+
     const shell = mountPlatformShell(platformMount, {
       initialRole: 'student',
       initialScreenId: 's-catalog',
@@ -542,6 +575,189 @@ if (platformMount) {
         | null)?.classList.add('active');
     }
 
+    function labelFromSubmissionFileKey(key: string): string {
+      const tail = key.includes('/') ? key.slice(key.lastIndexOf('/') + 1) : key;
+      const withoutTs = tail.replace(/^\d+-/, '');
+      return (withoutTs || tail || 'файл').trim() || 'файл';
+    }
+
+    let hwDraft: { lessonId: string | null; uploadedFileKey: string | null; selectedFile: File | null } = {
+      lessonId: null,
+      uploadedFileKey: null,
+      selectedFile: null,
+    };
+
+    function syncHomeworkFileRow(root: ShadowRoot): void {
+      const row = root.querySelector('#screen-s-homework [data-ep-homework-file-row]') as HTMLElement | null;
+      const lbl = root.querySelector('#screen-s-homework [data-ep-homework-file-label]') as HTMLElement | null;
+      if (!row || !lbl) return;
+      if (hwDraft.selectedFile) {
+        row.style.display = 'flex';
+        lbl.textContent = hwDraft.selectedFile.name;
+      } else if (hwDraft.uploadedFileKey) {
+        row.style.display = 'flex';
+        lbl.textContent = labelFromSubmissionFileKey(hwDraft.uploadedFileKey);
+      } else {
+        row.style.display = 'none';
+        lbl.textContent = '';
+      }
+    }
+
+    function setHomeworkStatusBadge(el: HTMLElement | null, status: string | undefined): void {
+      if (!el) return;
+      el.className = 'tag';
+      if (status === 'accepted') {
+        el.classList.add('tag-live');
+        el.textContent = 'Принято';
+      } else if (status === 'rework') {
+        el.classList.add('tag-draft');
+        el.textContent = 'На доработку';
+      } else if (status === 'submitted') {
+        el.classList.add('tag-live');
+        el.textContent = 'На проверке';
+      } else {
+        el.classList.add('tag-err');
+        el.textContent = 'Не сдано';
+      }
+    }
+
+    async function prepareHomeworkScreen(): Promise<void> {
+      const root = shell.shadowRoot;
+      const hw = (root as any).__epHomework as
+        | { lessonId?: string; lessonTitle?: string; prompt?: string }
+        | undefined;
+      if (!hw?.lessonId) {
+        window.alert('Сначала откройте урок с заданием.');
+        return;
+      }
+      shell.showScreen('s-homework');
+      const token = getAccessToken() ?? undefined;
+
+      const subEl = root.querySelector('#screen-s-homework [data-ep-homework-sub]') as HTMLElement | null;
+      const titleEl = root.querySelector('#screen-s-homework [data-ep-homework-title]') as HTMLElement | null;
+      const metaEl = root.querySelector('#screen-s-homework [data-ep-homework-meta]') as HTMLElement | null;
+      const qEl = root.querySelector('#screen-s-homework [data-ep-homework-q]') as HTMLElement | null;
+      const ta = root.querySelector('#screen-s-homework [data-ep-homework-textarea]') as HTMLTextAreaElement | null;
+      const statusEl = root.querySelector('#screen-s-homework [data-ep-homework-status]') as HTMLElement | null;
+      const acceptedBanner = root.querySelector('#screen-s-homework [data-ep-homework-accepted]') as HTMLElement | null;
+      const editable = root.querySelector('#screen-s-homework [data-ep-homework-editable]') as HTMLElement | null;
+      const fileInp = root.querySelector('#screen-s-homework [data-ep-homework-file-input]') as HTMLInputElement | null;
+
+      if (subEl) subEl.textContent = 'Задание к текущему уроку';
+      if (titleEl) titleEl.textContent = 'Домашнее задание';
+      if (metaEl) metaEl.textContent = (hw.lessonTitle ?? '').trim() || '—';
+      const prompt = (hw.prompt ?? '').trim();
+      setRichTextWithLinks(qEl, prompt || 'Формулировка задания не указана.');
+
+      hwDraft = { lessonId: hw.lessonId, uploadedFileKey: null, selectedFile: null };
+      if (fileInp) fileInp.value = '';
+
+      let latest: MySubmissionV1 | undefined;
+      try {
+        const subsRes = await fetchJson<{ items: MySubmissionV1[] }>(
+          `/lessons/${encodeURIComponent(hw.lessonId)}/submissions/me`,
+          token,
+        );
+        latest = subsRes.items?.[0];
+      } catch {
+        latest = undefined;
+      }
+
+      if (latest?.status === 'accepted') {
+        if (acceptedBanner) acceptedBanner.style.display = '';
+        if (editable) editable.style.display = 'none';
+        setHomeworkStatusBadge(statusEl, 'accepted');
+        if (ta) {
+          ta.value = '';
+          ta.disabled = true;
+        }
+        return;
+      }
+
+      if (acceptedBanner) acceptedBanner.style.display = 'none';
+      if (editable) editable.style.display = 'block';
+      if (ta) {
+        ta.disabled = false;
+        ta.value =
+          latest && latest.status !== 'accepted' && typeof latest.text === 'string' && latest.text.trim()
+            ? latest.text
+            : '';
+      }
+      hwDraft.uploadedFileKey =
+        latest && latest.status !== 'accepted' && latest.fileKey?.trim() ? latest.fileKey.trim() : null;
+      hwDraft.selectedFile = null;
+      setHomeworkStatusBadge(statusEl, latest?.status);
+      syncHomeworkFileRow(root);
+    }
+
+    async function submitHomeworkFromForm(): Promise<void> {
+      const root = shell.shadowRoot;
+      const lessonId = hwDraft.lessonId;
+      if (!lessonId) return;
+      const token = getAccessToken() ?? undefined;
+      const ta = root.querySelector('#screen-s-homework [data-ep-homework-textarea]') as HTMLTextAreaElement | null;
+      const submitBtn = root.querySelector('#screen-s-homework [data-ep-homework-submit]') as HTMLButtonElement | null;
+      let fileKey = hwDraft.uploadedFileKey;
+      const text = (ta?.value ?? '').trim();
+
+      if (hwDraft.selectedFile && !fileKey) {
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Загрузка…';
+        }
+        try {
+          const form = new FormData();
+          form.append('lessonId', lessonId);
+          form.append('file', hwDraft.selectedFile, hwDraft.selectedFile.name);
+          const up = await fetchMultipartJson<{ fileKey: string }>('/uploads/submissions', form, token);
+          fileKey = up.fileKey;
+          hwDraft.uploadedFileKey = fileKey;
+          hwDraft.selectedFile = null;
+          const fileInp = root.querySelector('#screen-s-homework [data-ep-homework-file-input]') as HTMLInputElement | null;
+          if (fileInp) fileInp.value = '';
+          syncHomeworkFileRow(root);
+        } catch (e) {
+          window.alert(e instanceof Error ? e.message : 'Не удалось загрузить файл');
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Отправить на проверку';
+          }
+          return;
+        }
+        if (submitBtn) {
+          submitBtn.textContent = 'Отправить на проверку';
+          submitBtn.disabled = false;
+        }
+      }
+
+      if (!text && !fileKey) {
+        window.alert('Добавьте текст ответа и/или файл.');
+        return;
+      }
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Отправка…';
+      }
+      try {
+        await postJson<{ submission: MySubmissionV1 }>(
+          `/lessons/${encodeURIComponent(lessonId)}/submissions`,
+          { text: text ? text : null, link: null, fileKey: fileKey ?? null },
+          token,
+        );
+        window.alert('Домашнее задание отправлено.');
+        shell.showScreen('s-lesson');
+        await openLesson(lessonId);
+      } catch (e) {
+        window.alert(e instanceof Error ? e.message : 'Не удалось отправить ответ');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Отправить на проверку';
+        }
+      }
+    }
+
     async function openLesson(lessonId: string): Promise<void> {
       if (!currentCourseId) return;
       if (!unlockedLessonIds.has(lessonId)) {
@@ -618,6 +834,7 @@ if (platformMount) {
       const mats = root.querySelector('#screen-s-lesson [data-ep-materials]') as HTMLElement | null;
       if (mats) mats.replaceChildren();
 
+      let homeworkPrompt = '';
       try {
         const assRes = await fetchJson<{ assignment: AssignmentV1 | null; files: any[] }>(
           `/lessons/${encodeURIComponent(lessonId)}/assignment`,
@@ -625,6 +842,7 @@ if (platformMount) {
         );
         const assignment = assRes.assignment;
         const files = (assRes.files ?? []) as Array<{ id: string; filename: string; sizeBytes?: number | null }>;
+        homeworkPrompt = (assignment?.promptMarkdown ?? '').trim();
 
         // materials (files)
         if (mats && files.length > 0) {
@@ -670,20 +888,19 @@ if (platformMount) {
         }
 
         // homework prompt
-        const prompt = (assignment?.promptMarkdown ?? '').trim();
-        if (hwWrap) hwWrap.style.display = prompt ? '' : 'none';
-        setRichTextWithLinks(hwPrompt, prompt || '');
-
-        // remember current homework for the submit screen
-        (root as any).__epHomework = {
-          lessonId,
-          title: assignment ? `ДЗ к уроку` : '',
-          prompt,
-        };
+        if (hwWrap) hwWrap.style.display = homeworkPrompt ? '' : 'none';
+        setRichTextWithLinks(hwPrompt, homeworkPrompt || '');
       } catch {
         if (matsTitle) matsTitle.style.display = 'none';
         if (hwWrap) hwWrap.style.display = 'none';
+        homeworkPrompt = '';
       }
+
+      (root as any).__epHomework = {
+        lessonId,
+        lessonTitle: lesson?.title ?? 'Урок',
+        prompt: homeworkPrompt,
+      };
 
       try {
         const subsRes = await fetchJson<{ items: MySubmissionV1[] }>(
@@ -1045,25 +1262,58 @@ if (platformMount) {
         }
       }
 
+      const clearHwFile = t?.closest('[data-ep-homework-clear-file]') as HTMLElement | null;
+      if (clearHwFile) {
+        ev.preventDefault();
+        hwDraft.selectedFile = null;
+        hwDraft.uploadedFileKey = null;
+        const inp = shell.shadowRoot.querySelector(
+          '#screen-s-homework [data-ep-homework-file-input]',
+        ) as HTMLInputElement | null;
+        if (inp) inp.value = '';
+        syncHomeworkFileRow(shell.shadowRoot);
+        return;
+      }
+
+      const uploadZone = t?.closest('[data-ep-homework-upload-zone]') as HTMLElement | null;
+      if (uploadZone) {
+        ev.preventDefault();
+        const inp = shell.shadowRoot.querySelector(
+          '#screen-s-homework [data-ep-homework-file-input]',
+        ) as HTMLInputElement | null;
+        inp?.click();
+        return;
+      }
+
+      const submitHw = t?.closest('[data-ep-homework-submit]') as HTMLElement | null;
+      if (submitHw) {
+        ev.preventDefault();
+        void submitHomeworkFromForm();
+        return;
+      }
+
       // Go to homework submit screen
       const goHw = t?.closest('[data-ep-go-homework]') as HTMLElement | null;
       if (goHw) {
         ev.preventDefault();
-        shell.showScreen('s-homework');
-        const root = shell.shadowRoot as any;
-        const hw = root.__epHomework as { lessonId: string; prompt: string } | undefined;
-        if (hw) {
-          (shell.shadowRoot.querySelector('[data-ep-homework-sub]') as HTMLElement | null)!.textContent =
-            'Задание к текущему уроку';
-          (shell.shadowRoot.querySelector('[data-ep-homework-title]') as HTMLElement | null)!.textContent =
-            'Домашнее задание';
-          (shell.shadowRoot.querySelector('[data-ep-homework-meta]') as HTMLElement | null)!.textContent = '';
-          setRichTextWithLinks(
-            shell.shadowRoot.querySelector('[data-ep-homework-q]') as HTMLElement | null,
-            hw.prompt || '—',
-          );
-        }
+        void prepareHomeworkScreen();
       }
+    });
+
+    shell.shadowRoot.addEventListener('change', (ev) => {
+      const t = ev.target as HTMLElement | null;
+      if (!t?.matches('input[data-ep-homework-file-input]')) return;
+      const inp = t as HTMLInputElement;
+      const f = inp.files?.[0] ?? null;
+      const maxBytes = 50 * 1024 * 1024;
+      if (f && f.size > maxBytes) {
+        window.alert('Файл больше 50 МБ.');
+        inp.value = '';
+        return;
+      }
+      hwDraft.selectedFile = f;
+      if (f) hwDraft.uploadedFileKey = null;
+      syncHomeworkFileRow(shell.shadowRoot);
     });
   }
 }
