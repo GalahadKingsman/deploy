@@ -762,6 +762,24 @@ if (platformMount) {
       }
     }
 
+    /** Есть ли у эксперта осмысленный текст задания (не только пробелы / пустой HTML). */
+    function homeworkPromptHasBody(raw: string | null | undefined): boolean {
+      if (raw == null) return false;
+      let s = String(raw)
+        .replace(/^\uFEFF/, '')
+        .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, ' ')
+        .trim();
+      if (!s) return false;
+      const noTags = s.replace(/<[^>]+>/g, ' ');
+      const collapsed = noTags.replace(/\s+/g, ' ').trim();
+      return collapsed.length > 0;
+    }
+
+    function setGoHomeworkButtonVisible(btn: HTMLElement | null, visible: boolean): void {
+      if (!btn) return;
+      btn.classList.toggle('ep-hw-submit--hidden', !visible);
+    }
+
     async function openLesson(lessonId: string): Promise<void> {
       if (!currentCourseId) return;
       if (!unlockedLessonIds.has(lessonId)) {
@@ -850,7 +868,8 @@ if (platformMount) {
         const files = (assRes.files ?? []) as Array<{ id: string; filename: string; sizeBytes?: number | null }>;
         homeworkPrompt = (assignment?.promptMarkdown ?? '').trim();
         hasExpertHomework =
-          Boolean(assignment) && (homeworkPrompt.length > 0 || (files?.length ?? 0) > 0);
+          Boolean(assignment) &&
+          (homeworkPromptHasBody(assignment?.promptMarkdown ?? null) || (files?.length ?? 0) > 0);
 
         // materials (files)
         if (mats && files.length > 0) {
@@ -908,7 +927,7 @@ if (platformMount) {
         hasExpertHomework = false;
       }
 
-      if (goHwBtn) goHwBtn.style.display = hasExpertHomework ? '' : 'none';
+      setGoHomeworkButtonVisible(goHwBtn, hasExpertHomework);
 
       (root as any).__epHomework = {
         lessonId,
@@ -969,7 +988,7 @@ if (platformMount) {
       const subWrap0 = root.querySelector('#screen-s-lesson [data-ep-my-submission-wrap]') as HTMLElement | null;
       if (subWrap0) subWrap0.style.display = 'none';
       const goHwBtn0 = root.querySelector('#screen-s-lesson [data-ep-go-homework]') as HTMLElement | null;
-      if (goHwBtn0) goHwBtn0.style.display = 'none';
+      setGoHomeworkButtonVisible(goHwBtn0, false);
 
       const modules = await fetchModules(courseId);
       const moduleLessons = await Promise.all(
@@ -1035,7 +1054,7 @@ if (platformMount) {
           delete (prevDone as HTMLButtonElement).dataset.epPrevTarget;
         }
         const goDone = root.querySelector('#screen-s-lesson [data-ep-go-homework]') as HTMLElement | null;
-        if (goDone) goDone.style.display = 'none';
+        setGoHomeworkButtonVisible(goDone, false);
         renderMySubmission(root, null);
       }
     }
