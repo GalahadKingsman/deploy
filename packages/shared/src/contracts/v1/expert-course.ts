@@ -52,6 +52,33 @@ export const ListExpertCoursesResponseV1Schema = z.object({
   items: z.array(ExpertCourseV1Schema),
 });
 
+/** Course row + counts for expert «Мои курсы» dashboard cards (support+). */
+export type ExpertCourseDashboardItemV1 = ExpertCourseV1 & {
+  modulesCount: number;
+  lessonsCount: number;
+  activeStudentsCount: number;
+  /**
+   * Mean completion % across active enrollments (distinct completed lessons / total lessons), capped at 100.
+   * `null` when the course is not published, has no lessons, or has no active students with a computable rate.
+   */
+  avgCompletionPercent: number | null;
+};
+
+export const ExpertCourseDashboardItemV1Schema = ExpertCourseV1Schema.extend({
+  modulesCount: z.number().int().min(0),
+  lessonsCount: z.number().int().min(0),
+  activeStudentsCount: z.number().int().min(0),
+  avgCompletionPercent: z.number().int().min(0).max(100).nullable(),
+});
+
+export interface ListExpertCoursesDashboardResponseV1 {
+  items: ExpertCourseDashboardItemV1[];
+}
+
+export const ListExpertCoursesDashboardResponseV1Schema = z.object({
+  items: z.array(ExpertCourseDashboardItemV1Schema),
+});
+
 export interface CreateExpertCourseRequestV1 {
   title: string;
   description?: string | null;

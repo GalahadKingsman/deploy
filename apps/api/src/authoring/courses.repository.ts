@@ -40,6 +40,47 @@ function mapRow(row: CourseRow): ContractsV1.ExpertCourseV1 {
   };
 }
 
+function parseIntCol(v: unknown): number {
+  if (typeof v === 'number' && Number.isFinite(v)) return Math.trunc(v);
+  const n = parseInt(String(v ?? '0'), 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function parseAvgPct(v: unknown): number | null {
+  if (v == null) return null;
+  if (typeof v === 'number' && Number.isFinite(v)) return Math.round(v);
+  const n = parseFloat(String(v));
+  return Number.isFinite(n) ? Math.round(n) : null;
+}
+
+interface CourseDashboardSqlRow extends CourseRow {
+  modules_count: unknown;
+  lessons_count: unknown;
+  active_students_count: unknown;
+  avg_completion_percent: unknown;
+}
+
+function mapDashboardRow(row: CourseDashboardSqlRow): ContractsV1.ExpertCourseDashboardItemV1 {
+  const base = mapRow(row);
+  const modulesCount = parseIntCol(row.modules_count);
+  const lessonsCount = parseIntCol(row.lessons_count);
+  const activeStudentsCount = parseIntCol(row.active_students_count);
+  const rawAvg = parseAvgPct(row.avg_completion_percent);
+  const avgCompletionPercent =
+    (base.status === 'published' || base.status === 'archived') &&
+    lessonsCount > 0 &&
+    activeStudentsCount > 0
+      ? rawAvg
+      : null;
+  return {
+    ...base,
+    modulesCount,
+    lessonsCount,
+    activeStudentsCount,
+    avgCompletionPercent,
+  };
+}
+
 export class CoursesRepository {
   constructor(
     private readonly pool: Pool | null,
@@ -120,6 +161,120 @@ export class CoursesRepository {
     );
 
     return result.rows.map(mapRow);
+  }
+
+  /**
+   * Expert «Мои курсы» cards: module/lesson/student counts + mean completion % (same completion rules as student progress).
+   */
+  async listDashboardByExpertId(params: {
+    expertId: string;
+    status?: CourseStatus;
+    query?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ContractsV1.ExpertCourseDashboardItemV1[]> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+
+    const limit = Math.min(Math.max(params.limit ?? 50, 1), 200);
+    const offset = Math.max(params.offset ?? 0, 0);
+
+    const conditions: string[] = ['c.expert_id = $1', 'c.deleted_at IS NULL'];
+    const values: unknown[] = [params.expertId];
+    let i = 2;
+
+    if (params.status) {
+      conditions.push(`c.status = $${i}`);
+      values.push(params.status);
+      i += 1;
+    }
+
+    if (params.query && params.query.trim()) {
+      conditions.push(`c.title ILIKE $${i}`);
+      values.push(`%${params.query.trim()}%`);
+      i += 1;
+    }
+
+    values.push(limit, offset);
+
+    const result = await this.pool.query<CourseDashboardSqlRow>(
+      `
+      SELECT
+        c.*,
+        COALESCE(mc.cnt, 0)::int AS modules_count,
+        COALESCE(lc.cnt, 0)::int AS lessons_count,
+        COALESCE(ec.cnt, 0)::int AS active_students_count,
+        (
+          SELECT ROUND(AVG(per.pct))::int
+          FROM (
+            SELECT
+              CASE
+                WHEN COALESCE(lc_inner.cnt, 0) = 0 THEN NULL
+                ELSE LEAST(
+                  100,
+                  ROUND((100.0 * COALESCE(cd.done_cnt, 0) / NULLIF(lc_inner.cnt, 0)))::numeric
+                )::int
+              END AS pct
+            FROM enrollments e
+            LEFT JOIN (
+              SELECT cl.user_id, COUNT(DISTINCT cl.lesson_id)::int AS done_cnt
+              FROM (
+                SELECT p.user_id, p.lesson_id
+                FROM lesson_progress p
+                JOIN lessons l ON l.id = p.lesson_id AND l.deleted_at IS NULL
+                JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+                WHERE m.course_id = c.id
+                UNION ALL
+                SELECT s.student_user_id AS user_id, a.lesson_id
+                FROM submissions s
+                JOIN assignments a ON a.id = s.assignment_id
+                JOIN lessons l ON l.id = a.lesson_id AND l.deleted_at IS NULL
+                JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+                WHERE m.course_id = c.id AND s.status = 'accepted'
+              ) cl
+              GROUP BY cl.user_id
+            ) cd ON cd.user_id = e.user_id
+            CROSS JOIN (
+              SELECT COUNT(l.id)::int AS cnt
+              FROM lessons l
+              JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+              WHERE m.course_id = c.id AND l.deleted_at IS NULL
+            ) lc_inner
+            WHERE e.course_id = c.id
+              AND e.revoked_at IS NULL
+              AND (e.access_end IS NULL OR e.access_end > NOW())
+          ) per
+          WHERE per.pct IS NOT NULL
+        ) AS avg_completion_percent
+      FROM courses c
+      LEFT JOIN (
+        SELECT course_id, COUNT(*)::int AS cnt
+        FROM course_modules
+        WHERE deleted_at IS NULL
+        GROUP BY course_id
+      ) mc ON mc.course_id = c.id
+      LEFT JOIN (
+        SELECT m.course_id, COUNT(l.id)::int AS cnt
+        FROM lessons l
+        JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+        WHERE l.deleted_at IS NULL
+        GROUP BY m.course_id
+      ) lc ON lc.course_id = c.id
+      LEFT JOIN (
+        SELECT course_id, COUNT(*)::int AS cnt
+        FROM enrollments
+        WHERE revoked_at IS NULL AND (access_end IS NULL OR access_end > NOW())
+        GROUP BY course_id
+      ) ec ON ec.course_id = c.id
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY c.updated_at DESC
+      LIMIT $${i} OFFSET $${i + 1}
+      `,
+      values,
+    );
+
+    return result.rows.map(mapDashboardRow);
   }
 
   async getById(params: { expertId: string; courseId: string }): Promise<ContractsV1.ExpertCourseV1> {

@@ -77,6 +77,41 @@ export class ExpertCoursesController {
     return { items };
   }
 
+  @Get('dashboard')
+  @RequireExpertRole('support')
+  @ApiOperation({ summary: 'List expert courses with dashboard stats (support+)' })
+  @ApiResponse({ status: 200, description: 'Courses with module/student/completion aggregates' })
+  async listDashboard(
+    @Param('expertId') expertId: string,
+    @Query('status') status?: string,
+    @Query('q') q?: string,
+    @Query('limit') limitStr?: string,
+    @Query('offset') offsetStr?: string,
+  ): Promise<ContractsV1.ListExpertCoursesDashboardResponseV1> {
+    const statusParsed = status
+      ? ContractsV1.CourseStatusV1Schema.safeParse(status)
+      : ({ success: true, data: undefined } as const);
+    if (!statusParsed.success) {
+      throw new BadRequestException({
+        code: ErrorCodes.VALIDATION_ERROR,
+        message: 'Invalid status',
+        errors: statusParsed.error.errors,
+      });
+    }
+
+    const limit = limitStr ? parseInt(limitStr, 10) : undefined;
+    const offset = offsetStr ? parseInt(offsetStr, 10) : undefined;
+
+    const items = await this.coursesRepository.listDashboardByExpertId({
+      expertId,
+      status: statusParsed.data,
+      query: q ?? undefined,
+      limit,
+      offset,
+    });
+    return { items };
+  }
+
   @Post()
   @RequireExpertRole('manager')
   @HttpCode(HttpStatus.CREATED)

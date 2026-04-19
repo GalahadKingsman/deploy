@@ -44,6 +44,8 @@ export type {
   CourseStatusV1,
   CourseVisibilityV1,
   ListExpertCoursesResponseV1,
+  ExpertCourseDashboardItemV1,
+  ListExpertCoursesDashboardResponseV1,
   CreateExpertCourseRequestV1,
   UpdateExpertCourseRequestV1,
 } from './expert-course.js';
@@ -165,6 +167,8 @@ export {
   CourseVisibilityV1Schema,
   ExpertCourseV1Schema,
   ListExpertCoursesResponseV1Schema,
+  ListExpertCoursesDashboardResponseV1Schema,
+  ExpertCourseDashboardItemV1Schema,
   CreateExpertCourseRequestV1Schema,
   UpdateExpertCourseRequestV1Schema,
   ExpertCourseModuleV1Schema,

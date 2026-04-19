@@ -42,6 +42,8 @@ export {
   CourseVisibilityV1Schema,
   ExpertCourseV1Schema,
   ListExpertCoursesResponseV1Schema,
+  ListExpertCoursesDashboardResponseV1Schema,
+  ExpertCourseDashboardItemV1Schema,
   CreateExpertCourseRequestV1Schema,
   UpdateExpertCourseRequestV1Schema,
 } from './expert-course.js';

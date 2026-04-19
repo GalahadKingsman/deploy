@@ -71,6 +71,28 @@ if (platformMount) {
     type MyCoursesResponseV1 = { items: { course: CourseV1; progressPercent: number }[] };
     type CourseDetailResponseV1 = { course: CourseV1; lessons: { id: string }[] };
 
+    type ExpertCourseStatusV1 = 'draft' | 'published' | 'archived';
+    type ExpertCourseDashboardItemV1 = {
+      id: string;
+      expertId: string;
+      title: string;
+      description?: string | null;
+      coverUrl?: string | null;
+      priceCents: number;
+      currency: string;
+      status: ExpertCourseStatusV1;
+      visibility: string;
+      publishedAt?: string | null;
+      deletedAt?: string | null;
+      createdAt: string;
+      updatedAt: string;
+      modulesCount: number;
+      lessonsCount: number;
+      activeStudentsCount: number;
+      avgCompletionPercent: number | null;
+    };
+    type ListExpertCoursesDashboardResponseV1 = { items: ExpertCourseDashboardItemV1[] };
+
     const myCourseIds = new Set<string>();
 
     function formatPrice(course: CourseV1): string {
@@ -259,6 +281,19 @@ if (platformMount) {
       return (await res.json()) as T;
     }
 
+    async function deleteJson(path: string, token?: string): Promise<void> {
+      const api = getApiBaseUrl();
+      if (!api) throw new Error('API base url is empty');
+      const res = await fetch(`${api}${path}`, {
+        method: 'DELETE',
+        headers: {
+          accept: 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${path}`);
+    }
+
     type MyRecentSubmissionRowV1 = {
       id: string;
       lessonId: string;
@@ -373,6 +408,9 @@ if (platformMount) {
 
     /** Доступ к кабинету эксперта: только при членстве в команде эксперта (GET /me/expert-memberships). */
     const expertShellAccess = { allowed: false };
+    /** Первый expertId из членств (рабочее пространство для API `/experts/:id/...`). */
+    let activeExpertId: string | null = null;
+    let expertCoursesSearchTimer: ReturnType<typeof setTimeout> | undefined;
 
     const shell = mountPlatformShell(platformMount, {
       initialRole: 'student',
@@ -390,6 +428,9 @@ if (platformMount) {
         if (action.type === 'navigate' && action.screenId === 's-homework') {
           void hydrateRecentSubmissionsTable(action.shadowRoot);
           void hydratePendingHomeworkHub(action.shadowRoot);
+        }
+        if (action.type === 'navigate' && action.screenId === 'e-courses') {
+          void hydrateExpertCourses(action.shadowRoot);
         }
       },
     });
@@ -1332,6 +1373,7 @@ if (platformMount) {
       const token = getAccessToken();
       if (!token) {
         expertShellAccess.allowed = false;
+        activeExpertId = null;
         return;
       }
 
@@ -1346,14 +1388,19 @@ if (platformMount) {
         const u = me.user;
         if (!u) {
           expertShellAccess.allowed = false;
+          activeExpertId = null;
           return;
         }
         let inExpertTeam = false;
+        activeExpertId = null;
         try {
-          const mem = await fetchJson<{ items?: unknown[] }>('/me/expert-memberships', token);
-          inExpertTeam = Array.isArray(mem.items) && mem.items.length > 0;
+          const mem = await fetchJson<{ items?: { expertId: string }[] }>('/me/expert-memberships', token);
+          const mItems = mem.items ?? [];
+          inExpertTeam = mItems.length > 0;
+          activeExpertId = mItems[0]?.expertId ?? null;
         } catch {
           inExpertTeam = false;
+          activeExpertId = null;
         }
         expertShellAccess.allowed = inExpertTeam;
         const name = displayName(u);
@@ -1362,6 +1409,7 @@ if (platformMount) {
         avatarEl.textContent = initialsFromName(name);
       } catch {
         expertShellAccess.allowed = false;
+        activeExpertId = null;
         // не ломаем интерфейс, если /me недоступен
       }
     }
@@ -1394,6 +1442,300 @@ if (platformMount) {
 
       const sub = screen?.querySelector('.page-sub');
       if (sub) sub.textContent = `${items.length} активных курса`;
+    }
+
+    function pluralRu(n: number, forms: readonly [string, string, string]): string {
+      const k = Math.abs(Math.trunc(n)) % 100;
+      const k1 = k % 10;
+      if (k > 10 && k < 20) return forms[2];
+      if (k1 > 1 && k1 < 5) return forms[1];
+      if (k1 === 1) return forms[0];
+      return forms[2];
+    }
+
+    async function resolveActiveExpertId(): Promise<string | null> {
+      if (activeExpertId) return activeExpertId;
+      const token = getAccessToken();
+      if (!token) return null;
+      try {
+        const mem = await fetchJson<{ items?: { expertId: string }[] }>('/me/expert-memberships', token);
+        activeExpertId = mem.items?.[0]?.expertId ?? null;
+      } catch {
+        activeExpertId = null;
+      }
+      return activeExpertId;
+    }
+
+    function renderExpertCourseDashboardCard(item: ExpertCourseDashboardItemV1, index: number): HTMLElement {
+      const gradients = [
+        ['linear-gradient(135deg,#0e2c38,#1a4a58)', 'rgba(10,168,200,.5)'],
+        ['linear-gradient(135deg,#1c1428,#2e1f4a)', 'rgba(124,58,237,.5)'],
+        ['linear-gradient(135deg,#1c1409,#2e2010)', 'rgba(245,158,11,.4)'],
+      ] as const;
+      const [bg, ac] = gradients[index % gradients.length]!;
+
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.dataset.epExpertCourseCard = '1';
+      card.style.overflow = 'hidden';
+      card.style.cursor = 'pointer';
+      if (item.status === 'draft') card.style.opacity = '0.88';
+
+      const thumb = document.createElement('div');
+      thumb.style.height = '120px';
+      thumb.style.display = 'flex';
+      thumb.style.alignItems = 'center';
+      thumb.style.justifyContent = 'center';
+      thumb.style.position = 'relative';
+      thumb.style.background = bg;
+
+      const initials = document.createElement('span');
+      initials.style.fontFamily = 'var(--fd)';
+      initials.style.fontSize = '36px';
+      initials.style.fontWeight = '900';
+      initials.style.color = ac;
+      initials.textContent = initialsFromTitle(item.title);
+
+      const cover = normalizeAssetUrl(item.coverUrl ?? null);
+      if (cover) {
+        const img = document.createElement('img');
+        img.alt = '';
+        img.src = cover;
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.referrerPolicy = 'no-referrer';
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'cover';
+        img.style.position = 'absolute';
+        img.style.inset = '0';
+        img.addEventListener(
+          'error',
+          () => {
+            img.remove();
+            thumb.appendChild(initials);
+          },
+          { once: true },
+        );
+        thumb.appendChild(img);
+      } else {
+        thumb.appendChild(initials);
+      }
+
+      const body = document.createElement('div');
+      body.style.padding = '16px';
+
+      const row1 = document.createElement('div');
+      row1.style.display = 'flex';
+      row1.style.alignItems = 'center';
+      row1.style.justifyContent = 'space-between';
+      row1.style.marginBottom = '8px';
+
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      if (item.status === 'published') {
+        tag.classList.add('tag-live');
+        tag.textContent = 'Активен';
+      } else if (item.status === 'archived') {
+        tag.classList.add('tag-purple');
+        tag.textContent = 'Архив';
+      } else {
+        tag.classList.add('tag-draft');
+        tag.textContent = 'Черновик';
+      }
+
+      const lessonsMeta = document.createElement('span');
+      lessonsMeta.style.fontFamily = 'var(--fm)';
+      lessonsMeta.style.fontSize = '9px';
+      lessonsMeta.style.color = 'var(--t3)';
+      lessonsMeta.textContent = `${item.lessonsCount} ${pluralRu(item.lessonsCount, ['урок', 'урока', 'уроков'])}`;
+      row1.append(tag, lessonsMeta);
+
+      const titleEl = document.createElement('div');
+      titleEl.style.fontFamily = 'var(--fd)';
+      titleEl.style.fontSize = '13px';
+      titleEl.style.fontWeight = '700';
+      titleEl.style.color = 'var(--t1)';
+      titleEl.style.marginBottom = '4px';
+      titleEl.style.letterSpacing = '-.01em';
+      titleEl.textContent = item.title;
+
+      const meta = document.createElement('div');
+      meta.style.fontSize = '11px';
+      meta.style.color = 'var(--t3)';
+      meta.style.marginBottom = '12px';
+      meta.textContent = `${item.modulesCount} ${pluralRu(item.modulesCount, ['модуль', 'модуля', 'модулей'])} · ${item.activeStudentsCount} ${pluralRu(item.activeStudentsCount, ['студент', 'студента', 'студентов'])}`;
+
+      const progWrap = document.createElement('div');
+      progWrap.className = 'prog-wrap';
+      const progBar = document.createElement('div');
+      progBar.className = 'prog-bar';
+      const progFill = document.createElement('div');
+      progFill.className = 'prog-fill';
+      const progVal = document.createElement('div');
+      progVal.className = 'prog-val';
+
+      const pct = item.avgCompletionPercent;
+      const showDraftProg = item.status === 'draft';
+      if (showDraftProg) {
+        progFill.style.width = '0%';
+        progVal.textContent = '—';
+      } else if (pct != null) {
+        progFill.style.width = `${pct}%`;
+        progVal.textContent = `${pct}%`;
+      } else {
+        progFill.style.width = '0%';
+        progVal.textContent = '—';
+      }
+      progBar.appendChild(progFill);
+      progWrap.append(progBar, progVal);
+
+      const progCaption = document.createElement('div');
+      progCaption.style.fontSize = '10px';
+      progCaption.style.color = 'var(--t3)';
+      progCaption.style.marginTop = '4px';
+      progCaption.textContent = showDraftProg ? 'курс не опубликован' : 'среднее завершение';
+
+      const div = document.createElement('div');
+      div.className = 'div';
+
+      const foot = document.createElement('div');
+      foot.style.display = 'flex';
+      foot.style.gap = '6px';
+
+      if (item.status === 'draft') {
+        const bMain = document.createElement('button');
+        bMain.type = 'button';
+        bMain.className = 'btn btn-primary btn-sm';
+        bMain.style.flex = '1';
+        bMain.style.justifyContent = 'center';
+        bMain.dataset.epExpertCourseEdit = '1';
+        bMain.dataset.epExpertCourseId = item.id;
+        bMain.textContent = '✏️ Продолжить';
+
+        const bDel = document.createElement('button');
+        bDel.type = 'button';
+        bDel.className = 'btn btn-ghost btn-sm btn-icon';
+        bDel.dataset.epExpertCourseDelete = '1';
+        bDel.dataset.epExpertCourseId = item.id;
+        bDel.setAttribute('aria-label', 'Удалить курс');
+        bDel.textContent = '🗑';
+        foot.append(bMain, bDel);
+      } else {
+        const bEdit = document.createElement('button');
+        bEdit.type = 'button';
+        bEdit.className = 'btn btn-outline btn-sm';
+        bEdit.style.flex = '1';
+        bEdit.style.justifyContent = 'center';
+        bEdit.dataset.epExpertCourseEdit = '1';
+        bEdit.dataset.epExpertCourseId = item.id;
+        bEdit.textContent = '✏️ Редактировать';
+
+        const bChart = document.createElement('button');
+        bChart.type = 'button';
+        bChart.className = 'btn btn-ghost btn-sm btn-icon';
+        bChart.dataset.epExpertCourseAnalytics = '1';
+        bChart.dataset.epExpertCourseId = item.id;
+        bChart.setAttribute('aria-label', 'Аналитика');
+        bChart.textContent = '📊';
+
+        const bEye = document.createElement('button');
+        bEye.type = 'button';
+        bEye.className = 'btn btn-ghost btn-sm btn-icon';
+        bEye.dataset.epExpertCoursePreview = '1';
+        bEye.dataset.epExpertCourseId = item.id;
+        bEye.setAttribute('aria-label', 'Предпросмотр');
+        bEye.textContent = '👁';
+        foot.append(bEdit, bChart, bEye);
+      }
+
+      body.append(row1, titleEl, meta, progWrap, progCaption, div, foot);
+      card.append(thumb, body);
+      return card;
+    }
+
+    async function hydrateExpertCourses(
+      root: ShadowRoot | null | undefined,
+      opts?: { q?: string },
+    ): Promise<void> {
+      if (!root) return;
+      const screen = root.getElementById('screen-e-courses');
+      const grid = screen?.querySelector('[data-ep-expert-courses-grid]') as HTMLElement | null;
+      const sub = screen?.querySelector('[data-ep-expert-courses-sub]') as HTMLElement | null;
+      if (!grid || !sub) return;
+
+      const token = getAccessToken();
+      if (!token) {
+        grid.replaceChildren();
+        const msg = document.createElement('div');
+        msg.className = 'card';
+        msg.style.padding = '20px';
+        msg.style.textAlign = 'center';
+        msg.style.color = 'var(--t3)';
+        msg.textContent = 'Войдите, чтобы видеть свои курсы.';
+        grid.appendChild(msg);
+        sub.textContent = '—';
+        return;
+      }
+
+      const eid = await resolveActiveExpertId();
+      if (!eid) {
+        grid.replaceChildren();
+        const msg = document.createElement('div');
+        msg.className = 'card';
+        msg.style.padding = '20px';
+        msg.style.textAlign = 'center';
+        msg.style.color = 'var(--t3)';
+        msg.textContent = 'Нет доступа к команде эксперта.';
+        grid.appendChild(msg);
+        sub.textContent = '—';
+        return;
+      }
+
+      grid.replaceChildren();
+      const loading = document.createElement('div');
+      loading.className = 'card';
+      loading.style.padding = '20px';
+      loading.style.textAlign = 'center';
+      loading.style.color = 'var(--t3)';
+      loading.textContent = 'Загрузка курсов…';
+      grid.appendChild(loading);
+      sub.textContent = 'Загрузка…';
+
+      const qRaw = opts?.q?.trim() ?? '';
+      const qParam = qRaw ? `&q=${encodeURIComponent(qRaw)}` : '';
+
+      try {
+        const data = await fetchJson<ListExpertCoursesDashboardResponseV1>(
+          `/experts/${encodeURIComponent(eid)}/courses/dashboard?limit=100${qParam}`,
+          token,
+        );
+        grid.replaceChildren();
+        const items = data.items ?? [];
+        const totalStud = items.reduce((s, it) => s + (it.activeStudentsCount ?? 0), 0);
+        sub.textContent = `${items.length} ${pluralRu(items.length, ['курс', 'курса', 'курсов'])} · ${totalStud} ${pluralRu(totalStud, ['студент', 'студента', 'студентов'])} суммарно`;
+        if (items.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'card';
+          empty.style.padding = '22px';
+          empty.style.textAlign = 'center';
+          empty.style.color = 'var(--t3)';
+          empty.textContent = qRaw ? 'Ничего не найдено по запросу.' : 'У вас пока нет курсов. Создайте первый курс.';
+          grid.appendChild(empty);
+          return;
+        }
+        items.forEach((it, i) => grid.appendChild(renderExpertCourseDashboardCard(it, i)));
+      } catch {
+        grid.replaceChildren();
+        const err = document.createElement('div');
+        err.className = 'card';
+        err.style.padding = '20px';
+        err.style.textAlign = 'center';
+        err.style.color = 'var(--err)';
+        err.textContent = 'Не удалось загрузить курсы.';
+        grid.appendChild(err);
+        sub.textContent = '—';
+      }
     }
 
     // Подгружаем данные на старте
@@ -1511,6 +1853,52 @@ if (platformMount) {
         return;
       }
 
+      const exCard = t?.closest('[data-ep-expert-course-card]') as HTMLElement | null;
+      if (exCard) {
+        const btn = t?.closest('button') as HTMLButtonElement | null;
+        const exCid = btn?.dataset.epExpertCourseId;
+        if (btn?.dataset.epExpertCourseEdit && exCid) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          shell.showScreen('e-builder');
+          return;
+        }
+        if (btn?.dataset.epExpertCourseAnalytics && exCid) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          window.alert('Аналитика курса появится в этом разделе позже.');
+          return;
+        }
+        if (btn?.dataset.epExpertCoursePreview && exCid) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          void openCoursePreview(exCid);
+          return;
+        }
+        if (btn?.dataset.epExpertCourseDelete && exCid) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          void (async () => {
+            const tok = getAccessToken();
+            const eid = await resolveActiveExpertId();
+            if (!tok || !eid) return;
+            if (!window.confirm('Удалить курс? Доступ учеников будет отозван после удаления.')) return;
+            try {
+              await deleteJson(`/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(exCid)}`, tok);
+              await hydrateExpertCourses(shell.shadowRoot);
+            } catch {
+              window.alert('Не удалось удалить курс. Нужна роль менеджера или выше.');
+            }
+          })();
+          return;
+        }
+        if (!btn) {
+          ev.preventDefault();
+          shell.showScreen('e-builder');
+        }
+        return;
+      }
+
       const courseId = (t?.closest('[data-ep-course-id]') as HTMLElement | null)?.dataset.epCourseId;
       if (courseId) {
         // If enrolled -> go to current lesson; else open preview screen
@@ -1622,6 +2010,15 @@ if (platformMount) {
       hwDraft.selectedFile = f;
       if (f) hwDraft.uploadedFileKey = null;
       syncHomeworkFileRow(shell.shadowRoot);
+    });
+
+    shell.shadowRoot.addEventListener('input', (ev) => {
+      const inp = ev.target as HTMLInputElement | null;
+      if (!inp?.matches?.('[data-ep-expert-courses-search]')) return;
+      window.clearTimeout(expertCoursesSearchTimer);
+      expertCoursesSearchTimer = window.setTimeout(() => {
+        void hydrateExpertCourses(shell.shadowRoot, { q: inp.value });
+      }, 350);
     });
   }
 }
