@@ -371,13 +371,8 @@ if (platformMount) {
       }
     }
 
-    /** Доступ к кабинету эксперта в шелле (обновляется после GET /me). */
+    /** Доступ к кабинету эксперта: только при членстве в команде эксперта (GET /me/expert-memberships). */
     const expertShellAccess = { allowed: false };
-
-    function isExpertPlatformRole(role: string): boolean {
-      const r = (role || '').toLowerCase();
-      return r === 'expert' || r === 'owner' || r === 'admin' || r === 'moderator';
-    }
 
     const shell = mountPlatformShell(platformMount, {
       initialRole: 'student',
@@ -386,7 +381,7 @@ if (platformMount) {
         if (role !== 'expert') return true;
         if (expertShellAccess.allowed) return true;
         window.alert(
-          'Кабинет эксперта доступен только пользователям с ролью эксперта. Если у вас уже есть доступ, обновите страницу или войдите снова.',
+          'Кабинет эксперта доступен только участникам команды эксперта. Если вас добавили в команду, обновите страницу.',
         );
         return false;
       },
@@ -1353,10 +1348,17 @@ if (platformMount) {
           expertShellAccess.allowed = false;
           return;
         }
-        expertShellAccess.allowed = isExpertPlatformRole(u.platformRole);
+        let inExpertTeam = false;
+        try {
+          const mem = await fetchJson<{ items?: unknown[] }>('/me/expert-memberships', token);
+          inExpertTeam = Array.isArray(mem.items) && mem.items.length > 0;
+        } catch {
+          inExpertTeam = false;
+        }
+        expertShellAccess.allowed = inExpertTeam;
         const name = displayName(u);
         nameEl.textContent = name;
-        roleEl.textContent = expertShellAccess.allowed ? 'Эксперт' : 'Ученик';
+        roleEl.textContent = inExpertTeam ? 'Эксперт' : 'Ученик';
         avatarEl.textContent = initialsFromName(name);
       } catch {
         expertShellAccess.allowed = false;
