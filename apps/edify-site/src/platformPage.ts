@@ -227,6 +227,59 @@ if (platformMount) {
       },
     });
 
+    type MeUserV1 = {
+      id: string;
+      username?: string;
+      firstName?: string;
+      lastName?: string;
+      avatarUrl?: string | null;
+      platformRole: string;
+    };
+
+    function displayName(u: MeUserV1): string {
+      const n = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
+      if (n) return n;
+      if (u.username) return u.username;
+      return 'Пользователь';
+    }
+
+    function isExpertRole(role: string): boolean {
+      const r = (role || '').toLowerCase();
+      return r === 'expert' || r === 'owner' || r === 'admin' || r === 'moderator';
+    }
+
+    function initialsFromName(name: string): string {
+      const t = (name || '').trim();
+      if (!t) return 'ED';
+      const parts = t.split(/\s+/).filter(Boolean);
+      const a = (parts[0]?.[0] ?? '').toUpperCase();
+      const b = (parts[1]?.[0] ?? parts[0]?.[1] ?? '').toUpperCase();
+      return (a + b).slice(0, 2) || 'ED';
+    }
+
+    async function hydrateTopbarUser(): Promise<void> {
+      const token = getAccessToken();
+      if (!token) return;
+
+      const root = shell.shadowRoot;
+      const nameEl = root.querySelector('.topbar-user .user-name') as HTMLElement | null;
+      const roleEl = root.querySelector('.topbar-user .user-role') as HTMLElement | null;
+      const avatarEl = root.querySelector('.topbar-user .avatar') as HTMLElement | null;
+      if (!nameEl || !roleEl || !avatarEl) return;
+
+      try {
+        const me = await fetchJson<{ user?: MeUserV1 }>('/me', token);
+        const u = me.user;
+        if (!u) return;
+        const name = displayName(u);
+        nameEl.textContent = name;
+        roleEl.textContent = isExpertRole(u.platformRole) ? 'Эксперт' : 'Ученик';
+        avatarEl.textContent = initialsFromName(name);
+      } catch {
+        // не ломаем интерфейс, если /me недоступен
+      }
+    }
+
     async function hydrateStudentCatalog(): Promise<void> {
       const root = shell.shadowRoot;
       const screen = root.getElementById('screen-s-catalog');
@@ -256,6 +309,7 @@ if (platformMount) {
     }
 
     // Подгружаем данные на старте
+    void hydrateTopbarUser();
     void hydrateStudentCatalog();
     void hydrateMyCourses();
   }
