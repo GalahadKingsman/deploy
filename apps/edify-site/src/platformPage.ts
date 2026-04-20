@@ -461,6 +461,7 @@ if (platformMount) {
     let builderCourseSettingsAllTopics: BuilderTopicV1[] = [];
     let builderCourseSettingsExtraTopics: BuilderTopicV1[] = [];
     let builderCourseSettingsSelectedTopicIds = new Set<string>();
+    let builderAccessGrantDaysByEnrollmentId: Record<string, string> = {};
     /** Не дублировать загрузку конструктора при navigate от showScreen после ручного открытия курса. */
     let suppressBuilderNavigateHydrate = false;
     let builderSelectedModuleId: string | null = null;
@@ -2537,6 +2538,215 @@ if (platformMount) {
       }
     }
 
+    function closeBuilderCourseAccessDrawer(root: ShadowRoot): void {
+      const bd = root.querySelector('[data-ep-access-drawer-backdrop]') as HTMLElement | null;
+      const dr = root.querySelector('[data-ep-access-drawer]') as HTMLElement | null;
+      if (bd) bd.style.display = 'none';
+      if (dr) dr.style.display = 'none';
+    }
+
+    function buildInviteDeepLink(code: string): string | null {
+      try {
+        const meta = document.querySelector('meta[name="edify-telegram-bot"]') as HTMLMetaElement | null;
+        const unameRaw = (meta?.content ?? '').trim().replace(/^@/, '');
+        if (!unameRaw) return null;
+        return `https://t.me/${encodeURIComponent(unameRaw)}?start=${encodeURIComponent(`inv_${code}`)}`;
+      } catch {
+        return null;
+      }
+    }
+
+    async function copyText(text: string): Promise<boolean> {
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+          return true;
+        }
+      } catch {
+        // ignore
+      }
+      return false;
+    }
+
+    function renderAccessEnrollments(root: ShadowRoot, items: Array<{ enrollment: any; studentTelegramUserId: string; studentUsername: string | null }>): void {
+      const host = root.querySelector('[data-ep-access-enrollments]') as HTMLElement | null;
+      const empty = root.querySelector('[data-ep-access-enrollments-empty]') as HTMLElement | null;
+      if (!host || !empty) return;
+      host.replaceChildren();
+      const rows = items ?? [];
+      empty.style.display = rows.length ? 'none' : '';
+      for (const r of rows) {
+        const e = r.enrollment;
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.flexWrap = 'wrap';
+        row.style.gap = '10px';
+        row.style.alignItems = 'center';
+        row.style.justifyContent = 'space-between';
+        row.style.padding = '10px 12px';
+        row.style.border = '1px solid var(--line)';
+        row.style.borderRadius = '12px';
+        row.style.background = 'var(--surface2)';
+
+        const left = document.createElement('div');
+        left.style.flex = '1';
+        left.style.minWidth = '220px';
+        const title = document.createElement('div');
+        title.style.fontSize = '12px';
+        title.style.fontWeight = '700';
+        title.style.color = 'var(--t1)';
+        title.textContent = r.studentUsername ? `@${r.studentUsername}` : `Telegram ID: ${r.studentTelegramUserId}`;
+        const meta = document.createElement('div');
+        meta.style.fontSize = '10px';
+        meta.style.color = 'var(--t3)';
+        meta.style.fontFamily = 'var(--fm)';
+        const end = e?.accessEnd ? new Date(e.accessEnd).toLocaleDateString('ru-RU') : '∞';
+        const revoked = e?.revokedAt ? 'отозван' : 'активен';
+        meta.textContent = `доступ до: ${end} · ${revoked}`;
+        left.append(title, meta);
+
+        const controls = document.createElement('div');
+        controls.style.display = 'flex';
+        controls.style.gap = '8px';
+        controls.style.alignItems = 'center';
+        controls.style.flexWrap = 'wrap';
+
+        const inp = document.createElement('input');
+        inp.className = 'form-input';
+        inp.style.width = '110px';
+        inp.placeholder = 'дней';
+        inp.value = builderAccessGrantDaysByEnrollmentId[e.id] ?? '';
+        inp.addEventListener('input', () => {
+          builderAccessGrantDaysByEnrollmentId = { ...builderAccessGrantDaysByEnrollmentId, [e.id]: inp.value };
+        });
+
+        const extendBtn = document.createElement('button');
+        extendBtn.type = 'button';
+        extendBtn.className = 'btn btn-outline btn-sm';
+        extendBtn.textContent = 'Продлить';
+        extendBtn.dataset.epAccessExtend = e.id;
+
+        const revokeBtn = document.createElement('button');
+        revokeBtn.type = 'button';
+        revokeBtn.className = 'btn btn-ghost btn-sm';
+        revokeBtn.textContent = 'Отозвать';
+        revokeBtn.dataset.epAccessRevoke = e.id;
+
+        controls.append(inp, extendBtn, revokeBtn);
+        row.append(left, controls);
+        host.appendChild(row);
+      }
+    }
+
+    function renderAccessInvites(root: ShadowRoot, items: Array<any>): void {
+      const host = root.querySelector('[data-ep-access-invites]') as HTMLElement | null;
+      const empty = root.querySelector('[data-ep-access-invites-empty]') as HTMLElement | null;
+      if (!host || !empty) return;
+      host.replaceChildren();
+      const rows = items ?? [];
+      empty.style.display = rows.length ? 'none' : '';
+      for (const i of rows) {
+        const card = document.createElement('div');
+        card.style.padding = '10px 12px';
+        card.style.border = '1px solid var(--line)';
+        card.style.borderRadius = '12px';
+        card.style.background = 'var(--surface2)';
+        card.style.display = 'flex';
+        card.style.flexDirection = 'column';
+        card.style.gap = '8px';
+
+        const top = document.createElement('div');
+        top.style.display = 'flex';
+        top.style.gap = '8px';
+        top.style.flexWrap = 'wrap';
+        top.style.alignItems = 'center';
+        const strong = document.createElement('strong');
+        strong.textContent = i.code;
+        const limit = i.maxUses == null ? '∞' : String(i.maxUses);
+        const used = i.usesCount ?? 0;
+        const meta = document.createElement('span');
+        meta.style.fontSize = '10px';
+        meta.style.color = 'var(--t3)';
+        meta.style.fontFamily = 'var(--fm)';
+        meta.textContent = `использований: ${used}/${limit}`;
+        top.append(strong, meta);
+
+        const link = buildInviteDeepLink(i.code);
+        const linkEl = document.createElement('div');
+        linkEl.style.fontSize = '12px';
+        linkEl.style.color = 'var(--t2)';
+        linkEl.style.wordBreak = 'break-all';
+        linkEl.textContent = link ?? `Код: ${i.code}`;
+
+        const actions = document.createElement('div');
+        actions.style.display = 'flex';
+        actions.style.gap = '8px';
+        actions.style.flexWrap = 'wrap';
+
+        const copyBtn = document.createElement('button');
+        copyBtn.type = 'button';
+        copyBtn.className = 'btn btn-outline btn-sm';
+        copyBtn.textContent = 'Скопировать';
+        copyBtn.dataset.epAccessInviteCopy = i.code;
+        copyBtn.disabled = !link;
+
+        const revokeBtn = document.createElement('button');
+        revokeBtn.type = 'button';
+        revokeBtn.className = 'btn btn-ghost btn-sm';
+        revokeBtn.textContent = 'Отозвать';
+        revokeBtn.dataset.epAccessInviteRevoke = i.code;
+
+        actions.append(copyBtn, revokeBtn);
+        card.append(top, linkEl, actions);
+        host.appendChild(card);
+      }
+    }
+
+    async function openBuilderCourseAccessDrawer(root: ShadowRoot): Promise<void> {
+      const cid = expertBuilderCourseId;
+      const token = getAccessToken();
+      const eid = await resolveBuilderExpertId();
+      if (!token || !eid || !cid) {
+        window.alert('Откройте курс в конструкторе.');
+        return;
+      }
+      const bd = root.querySelector('[data-ep-access-drawer-backdrop]') as HTMLElement | null;
+      const dr = root.querySelector('[data-ep-access-drawer]') as HTMLElement | null;
+      const loading = root.querySelector('[data-ep-access-loading]') as HTMLElement | null;
+      const form = root.querySelector('[data-ep-access-form]') as HTMLElement | null;
+      const locked = root.querySelector('[data-ep-access-locked]') as HTMLElement | null;
+      if (!bd || !dr) return;
+      bd.style.display = 'block';
+      dr.style.display = 'flex';
+      if (loading) {
+        loading.style.display = '';
+        loading.textContent = 'Загрузка…';
+      }
+      if (form) form.style.display = 'none';
+      if (locked) locked.style.display = 'none';
+
+      try {
+        const [enrollments, invites] = await Promise.all([
+          fetchJson<{ items: any[] }>(`/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/enrollments`, token),
+          fetchJson<{ items: any[] }>(`/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/invites`, token),
+        ]);
+        renderAccessEnrollments(root, enrollments.items ?? []);
+        renderAccessInvites(root, invites.items ?? []);
+        if (loading) loading.style.display = 'none';
+        if (form) form.style.display = '';
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes('403') || msg.includes('401')) {
+          if (locked) locked.style.display = '';
+          if (loading) loading.style.display = 'none';
+          if (form) form.style.display = 'none';
+          return;
+        }
+        closeBuilderCourseAccessDrawer(root);
+        window.alert('Не удалось загрузить «Доступ к курсу».');
+      }
+    }
+
     async function openBuilderCourseSettingsDrawer(root: ShadowRoot): Promise<void> {
       const cid = expertBuilderCourseId;
       const token = getAccessToken();
@@ -2995,9 +3205,19 @@ if (platformMount) {
         void openBuilderCourseSettingsDrawer(shell.shadowRoot);
         return;
       }
+      if (t?.closest('[data-ep-builder-open-course-access]')) {
+        ev.preventDefault();
+        void openBuilderCourseAccessDrawer(shell.shadowRoot);
+        return;
+      }
       if (t?.closest('[data-ep-course-drawer-backdrop]') || t?.closest('[data-ep-course-drawer-close]')) {
         ev.preventDefault();
         closeBuilderCourseSettingsDrawer(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-access-drawer-backdrop]') || t?.closest('[data-ep-access-drawer-close]')) {
+        ev.preventDefault();
+        closeBuilderCourseAccessDrawer(shell.shadowRoot);
         return;
       }
       if (t?.closest('[data-ep-course-save]')) {
@@ -3033,6 +3253,203 @@ if (platformMount) {
       if (t?.closest('[data-ep-lesson-preview-backdrop]') || t?.closest('[data-ep-lesson-preview-close]')) {
         ev.preventDefault();
         closeBuilderLessonPreview(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-access-enroll-by-username]')) {
+        ev.preventDefault();
+        void (async () => {
+          const cid = expertBuilderCourseId;
+          const token = getAccessToken();
+          const eid = await resolveBuilderExpertId();
+          if (!token || !eid || !cid) return;
+          const inp = shell.shadowRoot.querySelector('[data-ep-access-enroll-username]') as HTMLInputElement | null;
+          const username = (inp?.value ?? '').trim();
+          if (!username) {
+            window.alert('Введите username.');
+            return;
+          }
+          try {
+            await postJson(
+              `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/enroll/by-username/${encodeURIComponent(username.startsWith('@') ? username.slice(1) : username)}`,
+              {},
+              token,
+            );
+            if (inp) inp.value = '';
+            const enrollments = await fetchJson<{ items: any[] }>(
+              `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/enrollments`,
+              token,
+            );
+            renderAccessEnrollments(shell.shadowRoot, enrollments.items ?? []);
+            window.alert('Пользователь зачислен.');
+          } catch {
+            window.alert('Не удалось зачислить (проверьте роль manager+ и существование пользователя).');
+          }
+        })();
+        return;
+      }
+      if (t?.closest('[data-ep-access-enroll-by-telegram]')) {
+        ev.preventDefault();
+        void (async () => {
+          const cid = expertBuilderCourseId;
+          const token = getAccessToken();
+          const eid = await resolveBuilderExpertId();
+          if (!token || !eid || !cid) return;
+          const inp = shell.shadowRoot.querySelector('[data-ep-access-enroll-telegram-id]') as HTMLInputElement | null;
+          const tid = (inp?.value ?? '').trim();
+          if (!tid) {
+            window.alert('Введите Telegram user id.');
+            return;
+          }
+          try {
+            await postJson(
+              `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/enroll/by-telegram/${encodeURIComponent(tid)}`,
+              {},
+              token,
+            );
+            if (inp) inp.value = '';
+            const enrollments = await fetchJson<{ items: any[] }>(
+              `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/enrollments`,
+              token,
+            );
+            renderAccessEnrollments(shell.shadowRoot, enrollments.items ?? []);
+            window.alert('Пользователь зачислен.');
+          } catch {
+            window.alert('Не удалось зачислить (проверьте роль manager+ и существование пользователя).');
+          }
+        })();
+        return;
+      }
+      const extendBtn = t?.closest('[data-ep-access-extend]') as HTMLElement | null;
+      const extendId = extendBtn?.dataset.epAccessExtend;
+      if (extendId) {
+        ev.preventDefault();
+        void (async () => {
+          const cid = expertBuilderCourseId;
+          const token = getAccessToken();
+          const eid = await resolveBuilderExpertId();
+          if (!token || !eid || !cid) return;
+          const raw = (builderAccessGrantDaysByEnrollmentId[extendId] ?? '').trim();
+          const n = parseInt(raw || '0', 10);
+          if (!Number.isFinite(n) || n < 1 || n > 3650) {
+            window.alert('Введите количество дней (1…3650).');
+            return;
+          }
+          try {
+            await postJson(
+              `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/enrollments/${encodeURIComponent(extendId)}/extend`,
+              { grantDays: n },
+              token,
+            );
+            builderAccessGrantDaysByEnrollmentId = { ...builderAccessGrantDaysByEnrollmentId, [extendId]: '' };
+            const enrollments = await fetchJson<{ items: any[] }>(
+              `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/enrollments`,
+              token,
+            );
+            renderAccessEnrollments(shell.shadowRoot, enrollments.items ?? []);
+            window.alert('Доступ продлён.');
+          } catch {
+            window.alert('Не удалось продлить доступ.');
+          }
+        })();
+        return;
+      }
+      const revokeBtn = t?.closest('[data-ep-access-revoke]') as HTMLElement | null;
+      const revokeId = revokeBtn?.dataset.epAccessRevoke;
+      if (revokeId) {
+        ev.preventDefault();
+        void (async () => {
+          const cid = expertBuilderCourseId;
+          const token = getAccessToken();
+          const eid = await resolveBuilderExpertId();
+          if (!token || !eid || !cid) return;
+          if (!window.confirm('Отозвать доступ у ученика?')) return;
+          try {
+            await postJson(
+              `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/enrollments/${encodeURIComponent(revokeId)}/revoke`,
+              {},
+              token,
+            );
+            const enrollments = await fetchJson<{ items: any[] }>(
+              `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/enrollments`,
+              token,
+            );
+            renderAccessEnrollments(shell.shadowRoot, enrollments.items ?? []);
+            window.alert('Доступ отозван.');
+          } catch {
+            window.alert('Не удалось отозвать доступ.');
+          }
+        })();
+        return;
+      }
+      if (t?.closest('[data-ep-access-invite-create]')) {
+        ev.preventDefault();
+        void (async () => {
+          const cid = expertBuilderCourseId;
+          const token = getAccessToken();
+          const eid = await resolveBuilderExpertId();
+          if (!token || !eid || !cid) return;
+          const inp = shell.shadowRoot.querySelector('[data-ep-access-invite-maxuses]') as HTMLInputElement | null;
+          const raw = (inp?.value ?? '1').trim();
+          const n = parseInt(raw || '1', 10);
+          if (!Number.isFinite(n) || n < 1 || n > 10000) {
+            window.alert('Лимит: 1…10000');
+            return;
+          }
+          try {
+            await postJson(
+              `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/invites`,
+              { maxUses: n },
+              token,
+            );
+            const invites = await fetchJson<{ items: any[] }>(
+              `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/invites`,
+              token,
+            );
+            renderAccessInvites(shell.shadowRoot, invites.items ?? []);
+            window.alert('Инвайт создан.');
+          } catch {
+            window.alert('Не удалось создать инвайт.');
+          }
+        })();
+        return;
+      }
+      const invCopyBtn = t?.closest('[data-ep-access-invite-copy]') as HTMLElement | null;
+      const invCopyCode = invCopyBtn?.dataset.epAccessInviteCopy;
+      if (invCopyCode) {
+        ev.preventDefault();
+        const link = buildInviteDeepLink(invCopyCode);
+        if (!link) {
+          window.alert('Не удалось сформировать ссылку: укажите meta[name="edify-telegram-bot"] на странице.');
+          return;
+        }
+        void (async () => {
+          const ok = await copyText(link);
+          window.alert(ok ? 'Ссылка скопирована.' : `Ссылка: ${link}`);
+        })();
+        return;
+      }
+      const invRevokeBtn = t?.closest('[data-ep-access-invite-revoke]') as HTMLElement | null;
+      const invRevokeCode = invRevokeBtn?.dataset.epAccessInviteRevoke;
+      if (invRevokeCode) {
+        ev.preventDefault();
+        void (async () => {
+          const cid = expertBuilderCourseId;
+          const token = getAccessToken();
+          const eid = await resolveBuilderExpertId();
+          if (!token || !eid || !cid) return;
+          if (!window.confirm('Отозвать инвайт?')) return;
+          try {
+            await postJson(`/experts/${encodeURIComponent(eid)}/invites/${encodeURIComponent(invRevokeCode)}/revoke`, {}, token);
+            const invites = await fetchJson<{ items: any[] }>(
+              `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/invites`,
+              token,
+            );
+            renderAccessInvites(shell.shadowRoot, invites.items ?? []);
+            window.alert('Инвайт отозван.');
+          } catch {
+            window.alert('Не удалось отозвать инвайт.');
+          }
+        })();
         return;
       }
       if (t?.closest('[data-ep-builder-hw-add-files]')) {

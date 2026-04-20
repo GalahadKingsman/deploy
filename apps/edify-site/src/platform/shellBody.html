@@ -295,6 +295,7 @@
         <div style="font-size:12px;color:var(--t2)" data-ep-builder-course-status>—</div>
       </div>
       <button type="button" class="btn btn-outline btn-sm" style="width:100%;justify-content:center;margin-bottom:8px" data-ep-builder-open-course-settings>Настройки курса</button>
+      <button type="button" class="btn btn-outline btn-sm" style="width:100%;justify-content:center;margin-bottom:8px" data-ep-builder-open-course-access>Доступ к курсу</button>
       <div class="div"></div>
       <div class="sec-title">Подсказка</div>
       <div style="font-size:11px;color:var(--t3);line-height:1.55">Модули и уроки создаются через API, как в Telegram-кабинете эксперта.</div>
@@ -352,6 +353,65 @@
       </div>
     </div>
   </div>
+
+  <!-- Доступ к курсу (как в TG mini app) -->
+  <div class="ep-access-drawer-backdrop" data-ep-access-drawer-backdrop style="display:none" aria-hidden="true"></div>
+  <aside class="ep-access-drawer" data-ep-access-drawer style="display:none" aria-label="Доступ к курсу">
+    <div class="ep-access-drawer-head">
+      <div>
+        <div class="ep-access-drawer-kicker">Курс</div>
+        <div class="ep-access-drawer-title">Доступ</div>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm ep-access-drawer-close" data-ep-access-drawer-close aria-label="Закрыть">✕</button>
+    </div>
+    <div class="ep-access-drawer-body">
+      <div data-ep-access-loading style="font-size:13px;color:var(--t3);padding:8px 0">Загрузка…</div>
+      <div data-ep-access-locked style="display:none;margin-bottom:12px;padding:10px 12px;border-radius:10px;background:var(--warn-bg);border:1px solid rgba(217,119,6,0.25);font-size:12px;color:var(--t2);line-height:1.5">
+        Раздел «Доступ» доступен только роли <strong>менеджера</strong> и выше в команде эксперта.
+      </div>
+      <div data-ep-access-form style="display:none">
+        <div class="card" style="padding:16px 18px;border-radius:var(--r2);margin-bottom:12px">
+          <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Выдать доступ вручную</div>
+          <div style="font-size:12px;color:var(--t3);line-height:1.55;margin-bottom:12px">Зачисление по Telegram username или Telegram user id — как в мини‑приложении.</div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+            <div style="flex:1;min-width:190px">
+              <div class="form-label">Telegram username</div>
+              <input class="form-input" data-ep-access-enroll-username placeholder="@username" autocomplete="off"/>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" data-ep-access-enroll-by-username>Зачислить</button>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:10px">
+            <div style="flex:1;min-width:190px">
+              <div class="form-label">Telegram user id</div>
+              <input class="form-input" data-ep-access-enroll-telegram-id placeholder="123456789" autocomplete="off"/>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" data-ep-access-enroll-by-telegram>Зачислить по ID</button>
+          </div>
+        </div>
+
+        <div class="card" style="padding:16px 18px;border-radius:var(--r2);margin-bottom:12px">
+          <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Ученики с доступом</div>
+          <div style="font-size:12px;color:var(--t3);line-height:1.55;margin-bottom:12px">Продление доступа в днях и отзыв зачисления.</div>
+          <div data-ep-access-enrollments-empty style="font-size:12px;color:var(--t3);display:none">Пока никто не зачислен.</div>
+          <div data-ep-access-enrollments style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+
+        <div class="card" style="padding:16px 18px;border-radius:var(--r2)">
+          <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Инвайт‑ссылки</div>
+          <div style="font-size:12px;color:var(--t3);line-height:1.55;margin-bottom:12px">Создайте инвайт и отправьте ученику. Лимит активаций настраивается.</div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px">
+            <div style="width:140px">
+              <div class="form-label">Лимит</div>
+              <input class="form-input" data-ep-access-invite-maxuses value="1" autocomplete="off"/>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" data-ep-access-invite-create>Создать</button>
+          </div>
+          <div data-ep-access-invites-empty style="font-size:12px;color:var(--t3);display:none">Инвайтов пока нет.</div>
+          <div data-ep-access-invites style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+      </div>
+    </div>
+  </aside>
 
   <div class="ep-course-drawer-backdrop" data-ep-course-drawer-backdrop style="display:none" aria-hidden="true"></div>
   <aside class="ep-course-drawer" data-ep-course-drawer style="display:none" aria-label="Настройки курса">
