@@ -2383,6 +2383,160 @@ if (platformMount) {
       if (dr) dr.style.display = 'none';
     }
 
+    function closeBuilderLessonPreview(root: ShadowRoot): void {
+      const bd = root.querySelector('[data-ep-lesson-preview-backdrop]') as HTMLElement | null;
+      const pr = root.querySelector('[data-ep-lesson-preview]') as HTMLElement | null;
+      if (bd) bd.style.display = 'none';
+      if (pr) pr.style.display = 'none';
+      const iframe = root.querySelector('[data-ep-lesson-preview-video-iframe]') as HTMLIFrameElement | null;
+      if (iframe) iframe.src = 'about:blank';
+    }
+
+    function setPreviewFiles(root: ShadowRoot, files: { filename: string }[]): void {
+      const wrap = root.querySelector('[data-ep-lesson-preview-hw-files]') as HTMLElement | null;
+      const host = root.querySelector('[data-ep-lesson-preview-hw-files-list]') as HTMLElement | null;
+      if (!wrap || !host) return;
+      host.replaceChildren();
+      if (!files.length) {
+        wrap.style.display = 'none';
+        return;
+      }
+      wrap.style.display = '';
+      for (const f of files) {
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.alignItems = 'center';
+        row.style.justifyContent = 'space-between';
+        row.style.gap = '10px';
+        row.style.padding = '10px 12px';
+        row.style.border = '1px solid var(--line)';
+        row.style.borderRadius = '10px';
+        row.style.background = 'var(--surface2)';
+
+        const name = document.createElement('div');
+        name.style.flex = '1';
+        name.style.minWidth = '0';
+        name.style.fontSize = '12px';
+        name.style.color = 'var(--t2)';
+        name.style.overflow = 'hidden';
+        name.style.textOverflow = 'ellipsis';
+        name.style.whiteSpace = 'nowrap';
+        name.textContent = f.filename;
+
+        const btns = document.createElement('div');
+        btns.style.display = 'flex';
+        btns.style.gap = '6px';
+
+        const open = document.createElement('button');
+        open.type = 'button';
+        open.className = 'btn btn-ghost btn-sm';
+        open.textContent = 'Открыть';
+        open.disabled = true;
+
+        const dl = document.createElement('button');
+        dl.type = 'button';
+        dl.className = 'btn btn-ghost btn-sm';
+        dl.textContent = 'Скачать';
+        dl.disabled = true;
+
+        btns.append(open, dl);
+        row.append(name, btns);
+        host.appendChild(row);
+      }
+    }
+
+    async function openBuilderLessonPreview(root: ShadowRoot): Promise<void> {
+      const bd = root.querySelector('[data-ep-lesson-preview-backdrop]') as HTMLElement | null;
+      const pr = root.querySelector('[data-ep-lesson-preview]') as HTMLElement | null;
+      if (!bd || !pr) return;
+      bd.style.display = 'block';
+      pr.style.display = 'flex';
+
+      const empty = root.querySelector('[data-ep-lesson-preview-empty]') as HTMLElement | null;
+      const titleEl = root.querySelector('[data-ep-lesson-preview-title]') as HTMLElement | null;
+      const bodyEl = root.querySelector('[data-ep-lesson-preview-body]') as HTMLElement | null;
+      const videoCard = root.querySelector('[data-ep-lesson-preview-video]') as HTMLElement | null;
+      const iframe = root.querySelector('[data-ep-lesson-preview-video-iframe]') as HTMLIFrameElement | null;
+      const hwBody = root.querySelector('[data-ep-lesson-preview-hw-body]') as HTMLElement | null;
+      const hwEmpty = root.querySelector('[data-ep-lesson-preview-hw-empty]') as HTMLElement | null;
+      const hwTag = root.querySelector('[data-ep-lesson-preview-hw-tag]') as HTMLElement | null;
+
+      const titleInp = root.querySelector('[data-ep-builder-lesson-title]') as HTMLInputElement | null;
+      const rutubeInp = root.querySelector('[data-ep-builder-rutube]') as HTMLInputElement | null;
+      const lessonBodyTa = root.querySelector('[data-ep-builder-lesson-body]') as HTMLTextAreaElement | null;
+      const hwTa = root.querySelector('[data-ep-builder-hw-body]') as HTMLTextAreaElement | null;
+
+      if (!builderSelectedLessonId) {
+        if (empty) empty.style.display = '';
+        if (titleEl) titleEl.textContent = 'Урок';
+        if (bodyEl) bodyEl.textContent = '';
+        if (videoCard) videoCard.style.display = 'none';
+        if (hwBody) hwBody.textContent = '';
+        if (hwEmpty) hwEmpty.style.display = '';
+        if (hwTag) hwTag.textContent = 'не заполнено';
+        setPreviewFiles(root, []);
+        return;
+      }
+      if (empty) empty.style.display = 'none';
+
+      const title = (titleInp?.value ?? '').trim() || 'Урок';
+      if (titleEl) titleEl.textContent = title;
+      if (bodyEl) bodyEl.textContent = (lessonBodyTa?.value ?? '').trim() || '—';
+
+      const ru = (rutubeInp?.value ?? '').trim();
+      const embed = ru ? normalizeRutubeEmbedUrl(ru) : null;
+      if (videoCard && iframe) {
+        if (embed) {
+          videoCard.style.display = '';
+          iframe.src = embed;
+          iframe.allow = 'autoplay; fullscreen; picture-in-picture';
+          (iframe as any).allowFullscreen = true;
+        } else {
+          videoCard.style.display = 'none';
+          iframe.src = 'about:blank';
+        }
+      }
+
+      const hwText = (hwTa?.value ?? '').trim();
+      if (!hwText) {
+        if (hwEmpty) hwEmpty.style.display = '';
+        if (hwBody) hwBody.textContent = '';
+        if (hwTag) hwTag.textContent = 'не заполнено';
+      } else {
+        if (hwEmpty) hwEmpty.style.display = 'none';
+        if (hwBody) hwBody.textContent = hwText;
+        if (hwTag) hwTag.textContent = 'заполнено';
+      }
+
+      // Files: try to reuse already-loaded list in editor; if empty but user has permission, try fetching.
+      const filesFromUi: { filename: string }[] = [];
+      root.querySelectorAll('[data-ep-builder-hw-files] > div').forEach((row) => {
+        const lab = row.querySelector('span');
+        const txt = (lab?.textContent ?? '').trim();
+        if (txt) filesFromUi.push({ filename: txt });
+      });
+      if (filesFromUi.length) {
+        setPreviewFiles(root, filesFromUi);
+      } else {
+        // if user hasn't opened homework tab yet — attempt fetch (reviewer+), ignore failures
+        const token = getAccessToken();
+        const eid = await resolveBuilderExpertId();
+        if (token && eid) {
+          try {
+            const a = await fetchJson<{ files?: { filename: string }[] }>(
+              `/experts/${encodeURIComponent(eid)}/lessons/${encodeURIComponent(builderSelectedLessonId)}/assignment`,
+              token,
+            );
+            setPreviewFiles(root, (a.files ?? []).map((f) => ({ filename: f.filename })));
+          } catch {
+            setPreviewFiles(root, []);
+          }
+        } else {
+          setPreviewFiles(root, []);
+        }
+      }
+    }
+
     async function openBuilderCourseSettingsDrawer(root: ShadowRoot): Promise<void> {
       const cid = expertBuilderCourseId;
       const token = getAccessToken();
@@ -2873,9 +3027,12 @@ if (platformMount) {
       }
       if (t?.closest('[data-ep-builder-preview-lesson]')) {
         ev.preventDefault();
-        const cid = expertBuilderCourseId;
-        if (cid) void openCoursePreview(cid);
-        else window.alert('Сначала выберите курс.');
+        void openBuilderLessonPreview(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-lesson-preview-backdrop]') || t?.closest('[data-ep-lesson-preview-close]')) {
+        ev.preventDefault();
+        closeBuilderLessonPreview(shell.shadowRoot);
         return;
       }
       if (t?.closest('[data-ep-builder-hw-add-files]')) {
