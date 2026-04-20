@@ -462,6 +462,9 @@ if (platformMount) {
     let builderCourseSettingsExtraTopics: BuilderTopicV1[] = [];
     let builderCourseSettingsSelectedTopicIds = new Set<string>();
     let builderAccessGrantDaysByEnrollmentId: Record<string, string> = {};
+    let builderAccessSelectedUserIdByField: { username?: string; name?: string } = {};
+    let accessUserSearchTimer: ReturnType<typeof setTimeout> | null = null;
+    let accessUserSearchLast: { q: string; target: 'username' | 'name' } | null = null;
     /** Не дублировать загрузку конструктора при navigate от showScreen после ручного открытия курса. */
     let suppressBuilderNavigateHydrate = false;
     let builderSelectedModuleId: string | null = null;
@@ -2556,6 +2559,109 @@ if (platformMount) {
       }
     }
 
+    function formatUserTitle(u: { username?: string | null; firstName?: string | null; lastName?: string | null; telegramUserId?: string | null }): string {
+      const un = (u.username ?? '').trim();
+      const fn = (u.firstName ?? '').trim();
+      const ln = (u.lastName ?? '').trim();
+      const name = `${fn} ${ln}`.trim();
+      const right = un ? `@${un}` : u.telegramUserId ? `id:${u.telegramUserId}` : '';
+      if (name && right) return `${name} · ${right}`;
+      return name || (un ? `@${un}` : right || 'пользователь');
+    }
+
+    function renderAccessSuggest(
+      root: ShadowRoot,
+      items: Array<{ id: string; telegramUserId: string; username?: string; firstName?: string; lastName?: string }>,
+      target: 'username' | 'name',
+    ): void {
+      const host = root.querySelector('[data-ep-access-suggest]') as HTMLElement | null;
+      if (!host) return;
+      host.replaceChildren();
+      if (!items.length) {
+        host.style.display = 'none';
+        return;
+      }
+      host.style.display = '';
+      const card = document.createElement('div');
+      card.style.border = '1px solid var(--line)';
+      card.style.borderRadius = '12px';
+      card.style.background = 'var(--surface)';
+      card.style.boxShadow = 'var(--sh2)';
+      card.style.overflow = 'hidden';
+
+      items.slice(0, 10).forEach((u) => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.style.display = 'flex';
+        row.style.alignItems = 'center';
+        row.style.justifyContent = 'space-between';
+        row.style.gap = '10px';
+        row.style.width = '100%';
+        row.style.padding = '10px 12px';
+        row.style.border = 'none';
+        row.style.background = 'transparent';
+        row.style.cursor = 'pointer';
+        row.addEventListener('mouseenter', () => (row.style.background = 'var(--bg2)'));
+        row.addEventListener('mouseleave', () => (row.style.background = 'transparent'));
+
+        const title = document.createElement('div');
+        title.style.flex = '1';
+        title.style.minWidth = '0';
+        title.style.textAlign = 'left';
+        title.style.fontSize = '12px';
+        title.style.color = 'var(--t2)';
+        title.style.overflow = 'hidden';
+        title.style.textOverflow = 'ellipsis';
+        title.style.whiteSpace = 'nowrap';
+        title.textContent = formatUserTitle(u);
+
+        const pick = document.createElement('span');
+        pick.style.fontFamily = 'var(--fm)';
+        pick.style.fontSize = '9px';
+        pick.style.color = 'var(--t3)';
+        pick.textContent = 'выбрать';
+
+        row.append(title, pick);
+        row.addEventListener('click', () => {
+          if (target === 'username') {
+            const inp = root.querySelector('[data-ep-access-enroll-username]') as HTMLInputElement | null;
+            if (inp) inp.value = u.username ? `@${u.username}` : '';
+            builderAccessSelectedUserIdByField = { ...builderAccessSelectedUserIdByField, username: u.id };
+          } else {
+            const inp = root.querySelector('[data-ep-access-enroll-name]') as HTMLInputElement | null;
+            const fn = (u.firstName ?? '').trim();
+            const ln = (u.lastName ?? '').trim();
+            const nm = `${fn} ${ln}`.trim();
+            if (inp) inp.value = nm || (u.username ? `@${u.username}` : '');
+            builderAccessSelectedUserIdByField = { ...builderAccessSelectedUserIdByField, name: u.id };
+          }
+          host.style.display = 'none';
+        });
+        card.appendChild(row);
+      });
+
+      host.appendChild(card);
+    }
+
+    async function accessSearchUsers(root: ShadowRoot, q: string, target: 'username' | 'name'): Promise<void> {
+      const token = getAccessToken();
+      const eid = await resolveBuilderExpertId();
+      if (!token || !eid) return;
+      const qq = q.trim();
+      if (!qq) {
+        renderAccessSuggest(root, [], target);
+        return;
+      }
+      try {
+        const res = await fetchJson<{
+          items: Array<{ id: string; telegramUserId: string; username?: string; firstName?: string; lastName?: string }>;
+        }>(`/experts/${encodeURIComponent(eid)}/users/search?q=${encodeURIComponent(qq)}`, token);
+        renderAccessSuggest(root, res.items ?? [], target);
+      } catch {
+        renderAccessSuggest(root, [], target);
+      }
+    }
+
     async function copyText(text: string): Promise<boolean> {
       try {
         if (navigator.clipboard?.writeText) {
@@ -2724,6 +2830,12 @@ if (platformMount) {
       }
       if (form) form.style.display = 'none';
       if (locked) locked.style.display = 'none';
+      builderAccessSelectedUserIdByField = {};
+      const suggestHost = root.querySelector('[data-ep-access-suggest]') as HTMLElement | null;
+      if (suggestHost) {
+        suggestHost.style.display = 'none';
+        suggestHost.replaceChildren();
+      }
 
       try {
         const [enrollments, invites] = await Promise.all([
@@ -3066,6 +3178,18 @@ if (platformMount) {
     shell.shadowRoot.addEventListener('click', (ev) => {
       const t = ev.target as HTMLElement | null;
 
+      // Close access suggestions when clicking outside input/list
+      const suggestHost = shell.shadowRoot.querySelector('[data-ep-access-suggest]') as HTMLElement | null;
+      if (
+        suggestHost &&
+        suggestHost.style.display !== 'none' &&
+        !t?.closest('[data-ep-access-suggest]') &&
+        !t?.closest('[data-ep-access-enroll-username]') &&
+        !t?.closest('[data-ep-access-enroll-name]')
+      ) {
+        suggestHost.style.display = 'none';
+      }
+
       // Builder top tabs (robust fallback in case shell action hook isn't triggered)
       const builderTab = t?.closest('[data-ep-builder-tabs] .tab') as HTMLButtonElement | null;
       if (builderTab) {
@@ -3220,6 +3344,14 @@ if (platformMount) {
         closeBuilderCourseAccessDrawer(shell.shadowRoot);
         return;
       }
+      // When focusing inputs, show suggestions for current value
+      if (t?.closest('[data-ep-access-enroll-username]')) {
+        const inp = t.closest('[data-ep-access-enroll-username]') as HTMLInputElement | null;
+        if (inp) void accessSearchUsers(shell.shadowRoot, inp.value, 'username');
+      } else if (t?.closest('[data-ep-access-enroll-name]')) {
+        const inp = t.closest('[data-ep-access-enroll-name]') as HTMLInputElement | null;
+        if (inp) void accessSearchUsers(shell.shadowRoot, inp.value, 'name');
+      }
       if (t?.closest('[data-ep-course-save]')) {
         ev.preventDefault();
         void saveBuilderCourseSettingsDrawer(shell.shadowRoot);
@@ -3269,12 +3401,22 @@ if (platformMount) {
             return;
           }
           try {
-            await postJson(
-              `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/enroll/by-username/${encodeURIComponent(username.startsWith('@') ? username.slice(1) : username)}`,
-              {},
-              token,
-            );
+            const selected = builderAccessSelectedUserIdByField.username;
+            if (selected) {
+              await postJson(
+                `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/enroll/by-user/${encodeURIComponent(selected)}`,
+                {},
+                token,
+              );
+            } else {
+              await postJson(
+                `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/enroll/by-username/${encodeURIComponent(username.startsWith('@') ? username.slice(1) : username)}`,
+                {},
+                token,
+              );
+            }
             if (inp) inp.value = '';
+            builderAccessSelectedUserIdByField = { ...builderAccessSelectedUserIdByField, username: undefined };
             const enrollments = await fetchJson<{ items: any[] }>(
               `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/enrollments`,
               token,
@@ -3287,26 +3429,28 @@ if (platformMount) {
         })();
         return;
       }
-      if (t?.closest('[data-ep-access-enroll-by-telegram]')) {
+      if (t?.closest('[data-ep-access-enroll-by-name]')) {
         ev.preventDefault();
         void (async () => {
           const cid = expertBuilderCourseId;
           const token = getAccessToken();
           const eid = await resolveBuilderExpertId();
           if (!token || !eid || !cid) return;
-          const inp = shell.shadowRoot.querySelector('[data-ep-access-enroll-telegram-id]') as HTMLInputElement | null;
-          const tid = (inp?.value ?? '').trim();
-          if (!tid) {
-            window.alert('Введите Telegram user id.');
+          const inp = shell.shadowRoot.querySelector('[data-ep-access-enroll-name]') as HTMLInputElement | null;
+          const name = (inp?.value ?? '').trim();
+          const selected = builderAccessSelectedUserIdByField.name;
+          if (!name || !selected) {
+            window.alert('Выберите пользователя из списка по имени.');
             return;
           }
           try {
             await postJson(
-              `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/enroll/by-telegram/${encodeURIComponent(tid)}`,
+              `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/enroll/by-user/${encodeURIComponent(selected)}`,
               {},
               token,
             );
             if (inp) inp.value = '';
+            builderAccessSelectedUserIdByField = { ...builderAccessSelectedUserIdByField, name: undefined };
             const enrollments = await fetchJson<{ items: any[] }>(
               `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/enrollments`,
               token,
@@ -3314,7 +3458,7 @@ if (platformMount) {
             renderAccessEnrollments(shell.shadowRoot, enrollments.items ?? []);
             window.alert('Пользователь зачислен.');
           } catch {
-            window.alert('Не удалось зачислить (проверьте роль manager+ и существование пользователя).');
+            window.alert('Не удалось зачислить.');
           }
         })();
         return;
@@ -3587,11 +3731,39 @@ if (platformMount) {
 
     shell.shadowRoot.addEventListener('input', (ev) => {
       const inp = ev.target as HTMLInputElement | null;
-      if (!inp?.matches?.('[data-ep-expert-courses-search]')) return;
-      window.clearTimeout(expertCoursesSearchTimer);
-      expertCoursesSearchTimer = window.setTimeout(() => {
-        void hydrateExpertCourses(shell.shadowRoot, { q: inp.value });
-      }, 350);
+      if (!inp?.matches) return;
+
+      if (inp.matches('[data-ep-expert-courses-search]')) {
+        window.clearTimeout(expertCoursesSearchTimer);
+        expertCoursesSearchTimer = window.setTimeout(() => {
+          void hydrateExpertCourses(shell.shadowRoot, { q: inp.value });
+        }, 350);
+        return;
+      }
+
+      if (inp.matches('[data-ep-access-enroll-username]')) {
+        builderAccessSelectedUserIdByField = { ...builderAccessSelectedUserIdByField, username: undefined };
+        const q = inp.value;
+        if (accessUserSearchTimer) window.clearTimeout(accessUserSearchTimer);
+        accessUserSearchLast = { q, target: 'username' };
+        accessUserSearchTimer = window.setTimeout(() => {
+          if (!accessUserSearchLast) return;
+          void accessSearchUsers(shell.shadowRoot, accessUserSearchLast.q, accessUserSearchLast.target);
+        }, 180);
+        return;
+      }
+
+      if (inp.matches('[data-ep-access-enroll-name]')) {
+        builderAccessSelectedUserIdByField = { ...builderAccessSelectedUserIdByField, name: undefined };
+        const q = inp.value;
+        if (accessUserSearchTimer) window.clearTimeout(accessUserSearchTimer);
+        accessUserSearchLast = { q, target: 'name' };
+        accessUserSearchTimer = window.setTimeout(() => {
+          if (!accessUserSearchLast) return;
+          void accessSearchUsers(shell.shadowRoot, accessUserSearchLast.q, accessUserSearchLast.target);
+        }, 180);
+        return;
+      }
     });
   }
 }

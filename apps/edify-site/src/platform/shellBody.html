@@ -370,9 +370,9 @@
         Раздел «Доступ» доступен только роли <strong>менеджера</strong> и выше в команде эксперта.
       </div>
       <div data-ep-access-form style="display:none">
-        <div class="card" style="padding:16px 18px;border-radius:var(--r2);margin-bottom:12px">
+        <div class="card" style="padding:16px 18px;border-radius:var(--r2);margin-bottom:12px;position:relative">
           <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Выдать доступ вручную</div>
-          <div style="font-size:12px;color:var(--t3);line-height:1.55;margin-bottom:12px">Зачисление по Telegram username или Telegram user id — как в мини‑приложении.</div>
+          <div style="font-size:12px;color:var(--t3);line-height:1.55;margin-bottom:12px">Зачисление по Telegram username или по имени из контакта Telegram — как в мини‑приложении.</div>
           <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
             <div style="flex:1;min-width:190px">
               <div class="form-label">Telegram username</div>
@@ -382,11 +382,13 @@
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:10px">
             <div style="flex:1;min-width:190px">
-              <div class="form-label">Telegram user id</div>
-              <input class="form-input" data-ep-access-enroll-telegram-id placeholder="123456789" autocomplete="off"/>
+              <div class="form-label">Имя в Telegram (контакт)</div>
+              <input class="form-input" data-ep-access-enroll-name placeholder="Например: Иван" autocomplete="off"/>
             </div>
-            <button type="button" class="btn btn-outline btn-sm" data-ep-access-enroll-by-telegram>Зачислить по ID</button>
+            <button type="button" class="btn btn-outline btn-sm" data-ep-access-enroll-by-name>Зачислить по имени</button>
           </div>
+
+          <div data-ep-access-suggest style="display:none;position:absolute;left:18px;right:18px;top:100%;margin-top:8px;z-index:2"></div>
         </div>
 
         <div class="card" style="padding:16px 18px;border-radius:var(--r2);margin-bottom:12px">

@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Param,
+  Query,
   Body,
   UseGuards,
   HttpCode,
@@ -44,7 +45,7 @@ export class ExpertAccessController {
     @Param('courseId') courseId: string,
   ): Promise<{ items: ContractsV1.InviteV1[] }> {
     await this.coursesRepository.getById({ expertId, courseId });
-    const items = await this.invitesRepository.listByCourseId(courseId);
+    const items = await this.invitesRepository.listActiveByCourseId(courseId);
     return { items };
   }
 
@@ -133,6 +134,45 @@ export class ExpertAccessController {
       throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'User not found' });
     }
     return await this.enrollmentsRepository.upsertActive({ userId: user.id, courseId, accessEnd: null });
+  }
+
+  @Post('courses/:courseId/enroll/by-user/:userId')
+  @RequireExpertRole('manager')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Manual enroll user by userId (manager+)' })
+  @ApiResponse({ status: 200, description: 'Enrollment created/updated' })
+  async enrollByUserId(
+    @Param('expertId') expertId: string,
+    @Param('courseId') courseId: string,
+    @Param('userId') userId: string,
+  ): Promise<ContractsV1.EnrollmentV1> {
+    await this.coursesRepository.getById({ expertId, courseId });
+    const user = await this.usersRepository.findById(userId);
+    if (!user) {
+      throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'User not found' });
+    }
+    return await this.enrollmentsRepository.upsertActive({ userId: user.id, courseId, accessEnd: null });
+  }
+
+  @Get('users/search')
+  @RequireExpertRole('manager')
+  @ApiOperation({ summary: 'Search users for manual enroll (manager+)' })
+  @ApiResponse({ status: 200, description: 'Users' })
+  async searchUsers(
+    @Query('q') q: string | undefined,
+  ): Promise<{ items: Array<Pick<ContractsV1.UserV1, 'id' | 'telegramUserId' | 'username' | 'firstName' | 'lastName'>> }> {
+    const qq = typeof q === 'string' ? q.trim() : '';
+    if (!qq) return { items: [] };
+    const res = await this.usersRepository.adminList({ q: qq, limit: 20, offset: 0 });
+    return {
+      items: (res.items ?? []).map((u) => ({
+        id: u.id,
+        telegramUserId: u.telegramUserId,
+        username: u.username ?? undefined,
+        firstName: u.firstName ?? undefined,
+        lastName: u.lastName ?? undefined,
+      })),
+    };
   }
 
   @Get('courses/:courseId/enrollments')

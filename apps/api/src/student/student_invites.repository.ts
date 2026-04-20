@@ -64,6 +64,24 @@ export class InvitesRepository {
     return res.rows.map(mapRow);
   }
 
+  async listActiveByCourseId(courseId: string): Promise<ContractsV1.InviteV1[]> {
+    if (!this.pool) return [];
+    const res = await this.pool.query<InviteRow>(
+      `
+      SELECT *
+      FROM course_invites
+      WHERE course_id = $1
+        AND revoked_at IS NULL
+        AND (expires_at IS NULL OR expires_at > NOW())
+        AND (max_uses IS NULL OR uses_count < max_uses)
+      ORDER BY created_at DESC
+      LIMIT 200
+      `,
+      [courseId],
+    );
+    return res.rows.map(mapRow);
+  }
+
   async revoke(code: string): Promise<void> {
     if (!this.pool) {
       throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
