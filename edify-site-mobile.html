@@ -1343,9 +1343,9 @@ footer{background:var(--t1);padding:56px 0 40px}
         <!-- Lesson editor -->
         <div class="lesson-editor">
           <div class="le-toolbar">
-            <button class="le-tab active">Контент урока</button>
-            <button class="le-tab">Домашнее задание</button>
-            <button class="le-tab">Настройки</button>
+            <button type="button" class="le-tab active" onclick="return lessonEditorSetTab(this,'content')">Контент урока</button>
+            <button type="button" class="le-tab" onclick="return lessonEditorSetTab(this,'homework')">Домашнее задание</button>
+            <button type="button" class="le-tab" onclick="return lessonEditorSetTab(this,'settings')">Настройки</button>
             <div class="le-sep"></div>
             <div class="le-action">
               <button class="app-btn app-btn-outline">Предпросмотр</button>
@@ -1885,29 +1885,24 @@ function showScreen(btn, id) {
   document.getElementById('screen-'+id).style.display='block'
 }
 
-/** Вкладки «Контент / Домашнее задание / Настройки» в конструкторе урока (макет mobile). */
-function wireLessonEditorTabs() {
-  const root = document.getElementById('screen-builder')
-  if (!root || root.dataset.leTabsWired === '1') return
-  root.dataset.leTabsWired = '1'
-  root.addEventListener('click', function (ev) {
-    var tab = ev.target.closest('.le-tab')
-    if (!tab || !root.contains(tab)) return
-    var editor = tab.closest('.lesson-editor')
-    if (!editor) return
-    var label = (tab.textContent || '').trim()
+/**
+ * Вкладки редактора урока в макете «Конструктор» (edify-site-mobile.html).
+ * Явный onclick — как у platform-tabs (showScreen), без делегирования на контейнер.
+ */
+function lessonEditorSetTab(btn, panel) {
+  try {
+    var editor = btn.closest('.lesson-editor')
+    if (!editor) return false
     editor.querySelectorAll('.le-tab').forEach(function (t) {
-      t.classList.toggle('active', t === tab)
+      t.classList.toggle('active', t === btn)
     })
-    var panel = 'content'
-    if (label.indexOf('Домашнее') !== -1) panel = 'homework'
-    else if (label.indexOf('Настройки') !== -1) panel = 'settings'
     editor.querySelectorAll('[data-le-panel]').forEach(function (p) {
-      p.style.display = p.getAttribute('data-le-panel') === panel ? '' : 'none'
+      var key = p.getAttribute('data-le-panel')
+      p.style.display = key === panel ? '' : 'none'
     })
-  })
+  } catch (e) {}
+  return false
 }
-wireLessonEditorTabs()
 
 // FAQ
 function faq(btn) {
