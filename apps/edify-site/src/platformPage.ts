@@ -2702,6 +2702,14 @@ if (platformMount) {
     shell.shadowRoot.addEventListener('click', (ev) => {
       const t = ev.target as HTMLElement | null;
 
+      // Builder top tabs (robust fallback in case shell action hook isn't triggered)
+      const builderTab = t?.closest('[data-ep-builder-tabs] .tab') as HTMLButtonElement | null;
+      if (builderTab) {
+        ev.preventDefault();
+        void switchExpertBuilderTab(shell.shadowRoot, (builderTab.textContent ?? '').trim());
+        return;
+      }
+
       const prevLessonBtn = t?.closest('[data-ep-prev-lesson]') as HTMLButtonElement | null;
       const prevTarget = prevLessonBtn?.dataset.epPrevTarget;
       if (prevLessonBtn && prevTarget) {
