@@ -4,6 +4,7 @@ import { clearAccessToken, getAccessToken, setAccessToken } from './authSession.
 declare global {
   interface Window {
     closeMobileNav?: () => void;
+    edifyOpenAuthModal?: (mode: 'login' | 'register') => void;
   }
 }
 
@@ -180,6 +181,9 @@ function openAuthModal(mode: AuthMode): void {
   document.body.appendChild(backdrop);
   setModeUi(mode);
 }
+
+// Expose for non-auth-slot buttons on the landing page (CTA -> registration, etc.)
+window.edifyOpenAuthModal = (mode: AuthMode) => openAuthModal(mode);
 
 export function renderGuestSlots(): void {
   document.querySelectorAll<HTMLElement>('[data-edify-nav-auth]').forEach((slot) => {

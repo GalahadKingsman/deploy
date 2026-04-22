@@ -95,6 +95,18 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') void refreshNavAuth();
 });
 
+// Landing CTA: open auth modal (register/login) in-place
+document.addEventListener('click', (ev) => {
+  const t = ev.target as HTMLElement | null;
+  const el = t?.closest('[data-edify-auth-open]') as HTMLElement | null;
+  if (!el) return;
+  const mode = (el.getAttribute('data-edify-auth-open') || '').trim();
+  if (mode !== 'login' && mode !== 'register') return;
+  ev.preventDefault();
+  window.closeMobileNav?.();
+  window.edifyOpenAuthModal?.(mode);
+});
+
 const revealObserver = new IntersectionObserver(
   (entries) => {
     entries.forEach((e) => {
