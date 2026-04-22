@@ -175,6 +175,19 @@
   justify-content:center;
 }
 .ep-telegram-connect__ico svg{width:18px;height:18px;display:block}
+
+.ep-telegram-status{
+  width:100%;
+  margin-top:10px;
+  padding:12px 14px;
+  border-radius:12px;
+  background:var(--al);
+  border:1px solid var(--ab);
+  color:var(--t2);
+  font-size:13px;
+  font-weight:600;
+}
+.ep-telegram-status strong{color:var(--a)}
 /* Скрытие «Сдать ДЗ», когда задания нет (перебивает .btn { display: inline-flex }) */
 #screen-s-lesson [data-ep-go-homework].ep-hw-submit--hidden{display:none !important}
 

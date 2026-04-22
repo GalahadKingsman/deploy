@@ -670,6 +670,22 @@ if (platformMount) {
             av.appendChild(img);
           }
         }
+
+        const tgBtn = screen.querySelector('[data-ep-profile-connect-telegram]') as HTMLButtonElement | null;
+        const tgStatus = screen.querySelector('[data-ep-profile-telegram-status]') as HTMLElement | null;
+        const tgId = typeof u.telegramUserId === 'string' && u.telegramUserId.trim() ? u.telegramUserId.trim() : '';
+        if (tgId) {
+          const handle =
+            typeof u.username === 'string' && u.username.trim() ? `@${u.username.trim()}` : `ID ${tgId}`;
+          if (tgStatus) {
+            tgStatus.style.display = '';
+            tgStatus.innerHTML = `Привязан Telegram аккаунт <strong>${handle}</strong>`;
+          }
+          if (tgBtn) tgBtn.style.display = 'none';
+        } else {
+          if (tgStatus) tgStatus.style.display = 'none';
+          if (tgBtn) tgBtn.style.display = '';
+        }
       } catch {
         // ignore
       }
