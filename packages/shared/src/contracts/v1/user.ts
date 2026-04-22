@@ -12,6 +12,7 @@ export interface UserV1 {
   firstName?: string;
   lastName?: string;
   avatarUrl?: UrlString | null;
+  email?: string | null;
   platformRole: import('./platform-role.js').PlatformRoleV1;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;
@@ -27,6 +28,7 @@ export const UserV1Schema = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   avatarUrl: z.string().nullable().optional(),
+  email: z.string().email().nullable().optional(),
   platformRole: PlatformRoleV1Schema,
   createdAt: z.string(),
   updatedAt: z.string(),

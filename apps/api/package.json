@@ -33,7 +33,8 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "swagger-ui-dist": "^5.31.0",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "bcryptjs": "^2.4.3"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10",

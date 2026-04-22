@@ -19,6 +19,12 @@ import { CommissionsRepository } from '../../payments/commissions.repository.js'
 import { EnrollmentsRepository } from '../../student/student_enrollments.repository.js';
 import { OrdersRepository } from '../../payments/orders.repository.js';
 import { PayoutRequestsRepository } from '../../payments/payout-requests.repository.js';
+import { S3StorageService } from '../../storage/s3-storage.service.js';
+import { ErrorCodes } from '@tracked/shared';
+import { validateTelegramInitData, TelegramInitDataValidationError } from '../../auth/telegram/telegram-init-data.js';
+import { ApiEnvSchema, validateOrThrow } from '@tracked/shared';
+
+const env = validateOrThrow(ApiEnvSchema, process.env);
 
 @ApiTags('User')
 @Controller()
@@ -31,6 +37,7 @@ export class MeController {
     private readonly enrollmentsRepository: EnrollmentsRepository,
     private readonly ordersRepository: OrdersRepository,
     private readonly payoutRequestsRepository: PayoutRequestsRepository,
+    private readonly storage: S3StorageService,
   ) {}
 
   @Get('me')
@@ -89,12 +96,139 @@ export class MeController {
       firstName: user.firstName,
       lastName: user.lastName,
       avatarUrl: user.avatarUrl,
+      email: (user as any).email ?? null,
       platformRole: ((user as { platformRole?: ContractsV1.PlatformRoleV1 }).platformRole ??
         'user') as ContractsV1.PlatformRoleV1,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
     return { user: userV1 };
+  }
+
+  @Patch('me/profile')
+  @ApiOperation({ summary: 'Update my profile (first/last/email)' })
+  @ApiResponse({ status: 200, description: 'Profile updated' })
+  async updateMyProfile(
+    @Body() body: unknown,
+    @Request()
+    request: { user?: { userId: string; telegramUserId: string } },
+  ): Promise<ContractsV1.GetMeResponseV1> {
+    const userId = request.user?.userId;
+    if (!userId) {
+      throw new UnauthorizedException({ message: 'User not found in request', error: 'Unauthorized' });
+    }
+    const parsed = ContractsV1.UpdateMyProfileRequestV1Schema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Validation failed' });
+    }
+    const data = parsed.data;
+    const updated = await this.usersRepository.updateProfile({
+      userId,
+      firstName: data.firstName ?? undefined,
+      lastName: data.lastName ?? undefined,
+      email: data.email ?? undefined,
+    });
+    return { user: updated as any };
+  }
+
+  @Post('me/avatar')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Upload my avatar (multipart)' })
+  @ApiResponse({ status: 201, description: 'Avatar updated' })
+  async uploadMyAvatar(
+    @Req()
+    req: import('fastify').FastifyRequest & {
+      user?: { userId: string };
+      file?: (opts?: any) => Promise<any>;
+    },
+  ): Promise<ContractsV1.GetMeResponseV1> {
+    const userId = (req as any).user?.userId as string | undefined;
+    if (!userId) throw new UnauthorizedException({ message: 'Unauthorized', error: 'Unauthorized' });
+    const file = await (req as any).file?.();
+    if (!file) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'file is required' });
+    }
+    const buf: Buffer = await file.toBuffer();
+    if (!buf || buf.length === 0) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Empty file' });
+    }
+    const original = typeof file.filename === 'string' && file.filename ? file.filename : 'avatar';
+    const safeName = original.replace(/[^\w.\-]+/g, '_').slice(0, 120);
+    const key = `avatars/${userId}/${Date.now()}-${safeName}`;
+    await this.storage.putObject({
+      key,
+      body: new Uint8Array(buf),
+      contentType: file.mimetype ?? null,
+    });
+    // API uses relative URLs in many places; keep consistent
+    const url = `/files?key=${encodeURIComponent(key)}`;
+    const updated = await this.usersRepository.updateAvatarUrl(userId, url);
+    return { user: updated as any };
+  }
+
+  @Post('me/telegram/connect')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Connect Telegram WebApp identity to my account' })
+  @ApiResponse({ status: 200, description: 'Telegram connected' })
+  async connectTelegram(
+    @Body() body: unknown,
+    @Request() request: { user?: { userId: string } },
+  ): Promise<ContractsV1.GetMeResponseV1> {
+    const userId = request.user?.userId;
+    if (!userId) {
+      throw new UnauthorizedException({ message: 'Unauthorized', error: 'Unauthorized' });
+    }
+    const parsed = ContractsV1.AuthTelegramRequestV1Schema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Validation failed' });
+    }
+    if (!env.TELEGRAM_BOT_TOKEN) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Telegram is not configured' });
+    }
+    try {
+      const validated = validateTelegramInitData(
+        parsed.data.initData,
+        env.TELEGRAM_BOT_TOKEN,
+        env.TELEGRAM_INITDATA_MAX_AGE_SECONDS,
+      );
+
+      // If this telegram is already linked to a different user:
+      // - if that account is TG-first (no email/password) → migrate student progress into current account and detach
+      // - else → reject
+      const existing = await this.usersRepository.findByTelegramUserId(validated.telegramUserId);
+      if (existing && existing.id !== userId) {
+        const tgFirst = !existing.email && !existing.passwordHash;
+        if (!tgFirst) {
+          throw new BadRequestException({
+            code: ErrorCodes.VALIDATION_ERROR,
+            message: 'Telegram already linked to another account',
+          });
+        }
+        await this.usersRepository.mergeStudentProgress({ fromUserId: existing.id, toUserId: userId });
+        await this.usersRepository.unlinkTelegram(existing.id);
+      }
+
+      const res = await this.usersRepository.connectTelegram({
+        userId,
+        telegramUserId: validated.telegramUserId,
+        username: validated.username ?? null,
+        firstName: validated.firstName ?? null,
+        lastName: validated.lastName ?? null,
+        avatarUrl: validated.avatarUrl ?? null,
+      });
+      if (!res.ok) {
+        throw new BadRequestException({
+          code: ErrorCodes.VALIDATION_ERROR,
+          message: 'Telegram already linked to another account',
+        });
+      }
+      return { user: res.user as any };
+    } catch (e) {
+      if (e instanceof TelegramInitDataValidationError) {
+        throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: e.message });
+      }
+      throw e;
+    }
   }
 
   @Get('me/referral')

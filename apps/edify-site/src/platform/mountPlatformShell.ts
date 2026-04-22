@@ -89,6 +89,13 @@ function onShadowClick(ev: MouseEvent, root: ShadowRoot, handlers: PlatformShell
   const target = ev.target as HTMLElement | null;
   if (!target) return;
 
+  const topUser = target.closest('.topbar-user') as HTMLElement | null;
+  if (topUser) {
+    ev.preventDefault();
+    showScreen(root, 's-profile', handlers, ev, topUser);
+    return;
+  }
+
   const courseEl = target.closest('[data-ep-course-id]') as HTMLElement | null;
   const courseId = courseEl?.dataset.epCourseId;
   if (courseEl && courseId) {

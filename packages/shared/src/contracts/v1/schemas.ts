@@ -96,6 +96,7 @@ export {
   UpdateMyContactRequestV1Schema,
   UpdateMyContactResponseV1Schema,
 } from './contact.js';
+export { UpdateMyProfileRequestV1Schema, UpdateMyProfileResponseV1Schema } from './profile.js';
 export { ApiErrorV1Schema, ApiErrorResponseV1Schema } from './errors.js';
 export {
   GetMeResponseV1Schema,
@@ -110,6 +111,9 @@ export {
   AuthTelegramResponseV1Schema,
   AuthSiteBridgeIssueResponseV1Schema,
   AuthSiteBridgeClaimRequestV1Schema,
+  AuthRegisterRequestV1Schema,
+  AuthLoginRequestV1Schema,
+  AuthPasswordResponseV1Schema,
 } from './auth.js';
 export { AuditLogEntryV1Schema, AuditLogListResponseV1Schema } from './audit-log.js';
 export {

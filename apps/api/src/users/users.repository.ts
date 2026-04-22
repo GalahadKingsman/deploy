@@ -7,7 +7,7 @@ import { randomBytes } from 'node:crypto';
  */
 interface UserDbModel {
   id: string;
-  telegram_user_id: string;
+  telegram_user_id: string | null;
   username: string | null;
   first_name: string | null;
   last_name: string | null;
@@ -15,6 +15,7 @@ interface UserDbModel {
   referral_code?: string | null;
   email?: string | null;
   phone?: string | null;
+  password_hash?: string | null;
   created_at: Date;
   updated_at: Date;
   banned_at: Date | null;
@@ -191,7 +192,7 @@ export class UsersRepository {
     return this.mapRowToUserWithBan(result.rows[0]);
   }
 
-  async findByTelegramUserId(telegramUserId: string): Promise<UserWithBan | null> {
+  async findByTelegramUserId(telegramUserId: string): Promise<(UserWithBan & { email?: string | null; passwordHash?: string | null }) | null> {
     if (!this.pool) {
       throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
     }
@@ -200,7 +201,209 @@ export class UsersRepository {
       [telegramUserId],
     );
     if (result.rows.length === 0) return null;
-    return this.mapRowToUserWithBan(result.rows[0]);
+    const row = result.rows[0];
+    return {
+      ...this.mapRowToUserWithBan(row),
+      email: row.email ?? null,
+      passwordHash: row.password_hash ?? null,
+    };
+  }
+
+  async findByEmail(email: string): Promise<(UserWithBan & { passwordHash?: string | null }) | null> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    const clean = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    if (!clean) return null;
+    const res = await this.pool.query<UserDbModel>(`SELECT * FROM users WHERE LOWER(email) = $1 LIMIT 1`, [clean]);
+    const row = res.rows[0];
+    if (!row) return null;
+    return { ...this.mapRowToUserWithBan(row), passwordHash: row.password_hash ?? null };
+  }
+
+  async createEmailUser(params: {
+    email: string;
+    passwordHash: string;
+    firstName: string;
+    lastName: string;
+  }): Promise<UserWithBan> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    const email = params.email.trim().toLowerCase();
+    const firstName = params.firstName.trim();
+    const lastName = params.lastName.trim();
+    const passwordHash = params.passwordHash;
+    const res = await this.pool.query<UserDbModel>(
+      `
+      INSERT INTO users (telegram_user_id, email, password_hash, first_name, last_name, avatar_url, created_at, updated_at)
+      VALUES (NULL, $1, $2, $3, $4, NULL, NOW(), NOW())
+      RETURNING *
+      `,
+      [email, passwordHash, firstName, lastName],
+    );
+    return this.mapRowToUserWithBan(res.rows[0]);
+  }
+
+  async updateProfile(params: {
+    userId: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+  }): Promise<UserWithBan> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    const sets: string[] = [];
+    const values: unknown[] = [params.userId];
+    let i = 2;
+    if (params.firstName !== undefined) {
+      sets.push(`first_name = $${i}`);
+      values.push(params.firstName);
+      i += 1;
+    }
+    if (params.lastName !== undefined) {
+      sets.push(`last_name = $${i}`);
+      values.push(params.lastName);
+      i += 1;
+    }
+    if (params.email !== undefined) {
+      sets.push(`email = $${i}`);
+      values.push(params.email);
+      i += 1;
+    }
+    if (sets.length === 0) {
+      const cur = await this.pool.query<UserDbModel>(`SELECT * FROM users WHERE id = $1 LIMIT 1`, [params.userId]);
+      if (!cur.rows[0]) throw new Error('User not found');
+      return this.mapRowToUserWithBan(cur.rows[0]);
+    }
+    sets.push(`updated_at = NOW()`);
+    const res = await this.pool.query<UserDbModel>(
+      `
+      UPDATE users
+      SET ${sets.join(', ')}
+      WHERE id = $1
+      RETURNING *
+      `,
+      values,
+    );
+    if (!res.rows[0]) throw new Error('User not found');
+    return this.mapRowToUserWithBan(res.rows[0]);
+  }
+
+  async updateAvatarUrl(userId: string, avatarUrl: string | null): Promise<UserWithBan> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    const res = await this.pool.query<UserDbModel>(
+      `UPDATE users SET avatar_url = $2, updated_at = NOW() WHERE id = $1 RETURNING *`,
+      [userId, avatarUrl],
+    );
+    if (!res.rows[0]) throw new Error('User not found');
+    return this.mapRowToUserWithBan(res.rows[0]);
+  }
+
+  async connectTelegram(params: {
+    userId: string;
+    telegramUserId: string;
+    username?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    avatarUrl?: string | null;
+  }): Promise<{ ok: true; user: UserWithBan } | { ok: false; reason: 'telegram_already_linked' }> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    // If telegram id already linked to a different user → reject
+    const existing = await this.pool.query<{ id: string }>(`SELECT id FROM users WHERE telegram_user_id = $1 LIMIT 1`, [
+      params.telegramUserId,
+    ]);
+    const found = existing.rows[0]?.id ?? null;
+    if (found && found !== params.userId) return { ok: false, reason: 'telegram_already_linked' };
+
+    const res = await this.pool.query<UserDbModel>(
+      `
+      UPDATE users
+      SET telegram_user_id = $2,
+          username = COALESCE($3, username),
+          first_name = COALESCE($4, first_name),
+          last_name = COALESCE($5, last_name),
+          avatar_url = COALESCE($6, avatar_url),
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+      `,
+      [params.userId, params.telegramUserId, params.username ?? null, params.firstName ?? null, params.lastName ?? null, params.avatarUrl ?? null],
+    );
+    if (!res.rows[0]) throw new Error('User not found');
+    return { ok: true, user: this.mapRowToUserWithBan(res.rows[0]) };
+  }
+
+  async unlinkTelegram(userId: string): Promise<void> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    await this.pool.query(`UPDATE users SET telegram_user_id = NULL, updated_at = NOW() WHERE id = $1`, [userId]);
+  }
+
+  async mergeStudentProgress(params: { fromUserId: string; toUserId: string }): Promise<void> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    if (params.fromUserId === params.toUserId) return;
+
+    await this.pool.query('BEGIN');
+    try {
+      // Enrollments: move access (keep best access_end, and never re-add revoked if target is active)
+      await this.pool.query(
+        `
+        INSERT INTO enrollments (id, user_id, course_id, access_end, revoked_at, created_at, updated_at)
+        SELECT gen_random_uuid(), $2, e.course_id, e.access_end, e.revoked_at, e.created_at, NOW()
+        FROM enrollments e
+        WHERE e.user_id = $1
+        ON CONFLICT (user_id, course_id)
+        DO UPDATE SET
+          access_end = CASE
+            WHEN EXCLUDED.access_end IS NULL THEN enrollments.access_end
+            WHEN enrollments.access_end IS NULL THEN EXCLUDED.access_end
+            ELSE GREATEST(enrollments.access_end, EXCLUDED.access_end)
+          END,
+          revoked_at = CASE
+            WHEN enrollments.revoked_at IS NULL THEN NULL
+            ELSE EXCLUDED.revoked_at
+          END,
+          updated_at = NOW()
+        `,
+        [params.fromUserId, params.toUserId],
+      );
+
+      // Lesson progress: union
+      await this.pool.query(
+        `
+        INSERT INTO lesson_progress (user_id, lesson_id, completed_at)
+        SELECT $2, lp.lesson_id, lp.completed_at
+        FROM lesson_progress lp
+        WHERE lp.user_id = $1
+        ON CONFLICT (user_id, lesson_id) DO NOTHING
+        `,
+        [params.fromUserId, params.toUserId],
+      );
+
+      // Submissions: reassign
+      await this.pool.query(`UPDATE submissions SET student_user_id = $2 WHERE student_user_id = $1`, [
+        params.fromUserId,
+        params.toUserId,
+      ]);
+
+      // Cleanup: remove moved rows that are now redundant
+      await this.pool.query(`DELETE FROM lesson_progress WHERE user_id = $1`, [params.fromUserId]);
+      await this.pool.query(`DELETE FROM enrollments WHERE user_id = $1`, [params.fromUserId]);
+
+      await this.pool.query('COMMIT');
+    } catch (e) {
+      await this.pool.query('ROLLBACK');
+      throw e;
+    }
   }
 
   async findByUsername(username: string): Promise<UserWithBan | null> {
@@ -317,11 +520,12 @@ export class UsersRepository {
     const role = row.platform_role ?? 'user';
     return {
       id: row.id,
-      telegramUserId: row.telegram_user_id,
+      telegramUserId: row.telegram_user_id ?? undefined,
       username: row.username ?? undefined,
       firstName: row.first_name ?? undefined,
       lastName: row.last_name ?? undefined,
       avatarUrl: row.avatar_url ?? null,
+      email: row.email ?? null,
       platformRole: role as 'user' | 'moderator' | 'admin' | 'owner',
       createdAt: row.created_at.toISOString(),
       updatedAt: row.updated_at.toISOString(),

@@ -49,3 +49,40 @@ export interface AuthSiteBridgeClaimRequestV1 {
 export const AuthSiteBridgeClaimRequestV1Schema = z.object({
   code: z.string().min(16).max(128),
 });
+
+/** POST /auth/register */
+export interface AuthRegisterRequestV1 {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+}
+
+export const AuthRegisterRequestV1Schema = z.object({
+  firstName: z.string().min(1).max(80),
+  lastName: z.string().min(1).max(80),
+  email: z.string().email().max(320),
+  password: z.string().min(8).max(200),
+});
+
+/** POST /auth/login */
+export interface AuthLoginRequestV1 {
+  email: string;
+  password: string;
+}
+
+export const AuthLoginRequestV1Schema = z.object({
+  email: z.string().email().max(320),
+  password: z.string().min(1).max(200),
+});
+
+/** Auth response for email+password */
+export interface AuthPasswordResponseV1 {
+  user: UserV1;
+  accessToken: string;
+}
+
+export const AuthPasswordResponseV1Schema = z.object({
+  user: UserV1Schema,
+  accessToken: z.string().min(1),
+});

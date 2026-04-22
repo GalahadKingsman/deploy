@@ -1,5 +1,5 @@
 import { getApiBaseUrl, getTelegramBotUsername } from './env.js';
-import { clearAccessToken, getAccessToken } from './authSession.js';
+import { clearAccessToken, getAccessToken, setAccessToken } from './authSession.js';
 
 declare global {
   interface Window {
@@ -32,20 +32,153 @@ function guestLoginAlert(): void {
 }
 
 function wireGuestLink(a: HTMLAnchorElement): void {
-  const bot = getTelegramBotUsername();
-  if (bot) {
-    a.href = `https://t.me/${bot}?start=site`;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    return;
-  }
+  // Email+password auth: open modal instead of Telegram deep-link.
   a.href = '#';
   a.removeAttribute('target');
   a.removeAttribute('rel');
   a.addEventListener('click', (e) => {
     e.preventDefault();
-    guestLoginAlert();
+    openAuthModal('login');
   });
+}
+
+type AuthMode = 'login' | 'register';
+
+function openAuthModal(mode: AuthMode): void {
+  const existing = document.getElementById('edify-auth-modal');
+  if (existing) existing.remove();
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'edify-auth-modal';
+  backdrop.style.cssText =
+    'position:fixed;inset:0;z-index:1000;background:rgba(12,18,32,0.45);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;padding:18px;';
+
+  const card = document.createElement('div');
+  card.style.cssText =
+    'width:min(520px,100%);background:var(--card,#fff);border:1px solid var(--line,rgba(0,0,0,0.08));border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,0.18);padding:18px 18px 16px;';
+
+  const head = document.createElement('div');
+  head.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px;';
+  const title = document.createElement('div');
+  title.style.cssText = 'font-family:var(--fd,Unbounded),sans-serif;font-size:18px;font-weight:700;color:var(--t1,#0C1220);';
+  title.textContent = mode === 'register' ? 'Регистрация' : 'Вход';
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'btn-ghost-sm';
+  close.style.cssText = 'padding:6px 10px;border-radius:10px;';
+  close.textContent = '✕';
+  close.addEventListener('click', () => backdrop.remove());
+  head.append(title, close);
+
+  const tabs = document.createElement('div');
+  tabs.style.cssText = 'display:flex;gap:8px;margin-bottom:12px;';
+  const tLogin = document.createElement('button');
+  tLogin.type = 'button';
+  tLogin.className = 'btn-ghost-sm';
+  tLogin.textContent = 'Вход';
+  const tReg = document.createElement('button');
+  tReg.type = 'button';
+  tReg.className = 'btn-ghost-sm';
+  tReg.textContent = 'Регистрация';
+  const setModeUi = (m: AuthMode) => {
+    mode = m;
+    title.textContent = mode === 'register' ? 'Регистрация' : 'Вход';
+    tLogin.style.borderColor = mode === 'login' ? 'var(--a-border,rgba(10,168,200,0.22))' : 'var(--line2,rgba(0,0,0,0.12))';
+    tReg.style.borderColor = mode === 'register' ? 'var(--a-border,rgba(10,168,200,0.22))' : 'var(--line2,rgba(0,0,0,0.12))';
+    regFields.style.display = mode === 'register' ? '' : 'none';
+    submit.textContent = mode === 'register' ? 'Создать аккаунт' : 'Войти';
+    msg.textContent = '';
+  };
+  tLogin.addEventListener('click', () => setModeUi('login'));
+  tReg.addEventListener('click', () => setModeUi('register'));
+  tabs.append(tLogin, tReg);
+
+  const form = document.createElement('form');
+  form.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
+
+  const regFields = document.createElement('div');
+  regFields.style.cssText = 'display:none;grid-template-columns:1fr 1fr;gap:10px;';
+
+  const firstName = document.createElement('input');
+  firstName.className = 'form-input';
+  firstName.placeholder = 'Имя';
+  const lastName = document.createElement('input');
+  lastName.className = 'form-input';
+  lastName.placeholder = 'Фамилия';
+  regFields.append(firstName, lastName);
+
+  const email = document.createElement('input');
+  email.className = 'form-input';
+  email.placeholder = 'Email';
+  email.type = 'email';
+  email.autocomplete = 'email';
+
+  const password = document.createElement('input');
+  password.className = 'form-input';
+  password.placeholder = 'Пароль (минимум 8 символов)';
+  password.type = 'password';
+  password.autocomplete = mode === 'register' ? 'new-password' : 'current-password';
+
+  const msg = document.createElement('div');
+  msg.style.cssText = 'font-size:12px;color:var(--t3,#8E94A8);line-height:1.5;min-height:18px;';
+
+  const submit = document.createElement('button');
+  submit.type = 'submit';
+  submit.className = 'btn-sm';
+  submit.style.cssText = 'width:100%;justify-content:center;margin-top:2px;';
+  submit.textContent = mode === 'register' ? 'Создать аккаунт' : 'Войти';
+
+  form.append(regFields, email, password, msg, submit);
+
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    msg.textContent = '…';
+    const api = getApiBaseUrl();
+    if (!api) {
+      msg.textContent = 'Не задан API base url.';
+      return;
+    }
+    try {
+      const path = mode === 'register' ? '/auth/register' : '/auth/login';
+      const body =
+        mode === 'register'
+          ? {
+              firstName: firstName.value.trim(),
+              lastName: lastName.value.trim(),
+              email: email.value.trim(),
+              password: password.value,
+            }
+          : { email: email.value.trim(), password: password.value };
+      const res = await fetch(`${api}${path}`, {
+        method: 'POST',
+        headers: { accept: 'application/json', 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        msg.textContent = text ? `Ошибка: ${text.slice(0, 160)}` : `Ошибка входа (HTTP ${res.status})`;
+        return;
+      }
+      const data = (await res.json()) as { accessToken?: string };
+      if (!data.accessToken) {
+        msg.textContent = 'Не удалось получить токен.';
+        return;
+      }
+      setAccessToken(data.accessToken);
+      backdrop.remove();
+      await refreshNavAuth();
+    } catch {
+      msg.textContent = 'Не удалось выполнить запрос. Проверьте сеть.';
+    }
+  });
+
+  card.append(head, tabs, form);
+  backdrop.appendChild(card);
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) backdrop.remove();
+  });
+  document.body.appendChild(backdrop);
+  setModeUi(mode);
 }
 
 export function renderGuestSlots(): void {
@@ -115,19 +248,32 @@ function buildUserChip(user: MeUserV1, variant: string): HTMLElement {
     handle.textContent = `@${user.username}`;
     body.appendChild(handle);
   }
-
-  const out = document.createElement('button');
-  out.type = 'button';
-  out.className = 'edify-user-chip__logout';
-  out.textContent = 'Выйти';
-  out.addEventListener('click', () => {
-    clearAccessToken();
-    renderGuestSlots();
-    window.closeMobileNav?.();
-  });
-  body.appendChild(out);
-
   root.appendChild(body);
+
+  // Click → profile inside platform
+  root.style.cursor = 'pointer';
+  root.addEventListener('click', (ev) => {
+    const t = ev.target as HTMLElement | null;
+    if (t?.closest('.edify-user-chip__logout')) return;
+    window.location.href = '/platform/?screen=s-profile';
+  });
+
+  // Optional logout for mobile/footer variants (not shown in header anyway)
+  if (variant !== 'header') {
+    const out = document.createElement('button');
+    out.type = 'button';
+    out.className = 'edify-user-chip__logout';
+    out.textContent = 'Выйти';
+    out.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      clearAccessToken();
+      renderGuestSlots();
+      window.closeMobileNav?.();
+    });
+    body.appendChild(out);
+  }
+
   return root;
 }
 

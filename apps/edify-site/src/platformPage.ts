@@ -1,6 +1,6 @@
 import './edify.css';
 import { ACCESS_TOKEN_KEY, getAccessToken } from './authSession.js';
-import { getApiBaseUrl } from './env.js';
+import { getApiBaseUrl, getTelegramBotUsername } from './env.js';
 import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
 import { refreshNavAuth } from './navAuthUi.js';
 import { mountPlatformShell } from './platform/mountPlatformShell.js';
@@ -483,9 +483,19 @@ if (platformMount) {
     const builderLessonsByModule = new Map<string, BuilderLessonV1[]>();
     let builderModulesCache: BuilderModuleV1[] = [];
 
+    const urlParams = (() => {
+      try {
+        return new URL(window.location.href).searchParams;
+      } catch {
+        return new URLSearchParams();
+      }
+    })();
+    const initialScreen = (urlParams.get('screen') || '').trim();
+    const initialRole = (urlParams.get('role') || '').trim();
+
     const shell = mountPlatformShell(platformMount, {
-      initialRole: 'student',
-      initialScreenId: 's-catalog',
+      initialRole: initialRole === 'expert' ? 'expert' : 'student',
+      initialScreenId: initialScreen ? initialScreen : 's-catalog',
       beforeSetRole(role) {
         if (role !== 'expert') return true;
         if (expertShellAccess.allowed) return true;
@@ -499,6 +509,9 @@ if (platformMount) {
         if (action.type === 'navigate' && action.screenId === 's-homework') {
           void hydrateRecentSubmissionsTable(action.shadowRoot);
           void hydratePendingHomeworkHub(action.shadowRoot);
+        }
+        if (action.type === 'navigate' && action.screenId === 's-profile') {
+          void hydrateProfileScreen(action.shadowRoot);
         }
         if (action.type === 'navigate' && action.screenId === 'e-courses') {
           expertBuilderExpertId = null;
@@ -541,6 +554,113 @@ if (platformMount) {
     const unlockedLessonIds = new Set<string>();
     /** Lesson ids per module (API order) — for «previous lesson» within the same module only */
     let modulesOrderedLessonIds: string[][] = [];
+
+    function profileDisplayName(u: { firstName?: string; lastName?: string; username?: string }): string {
+      const n = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
+      if (n) return n;
+      if (u.username) return u.username;
+      return 'Пользователь';
+    }
+
+    function initialsFromNameLocal(name: string): string {
+      const t = (name || '').trim();
+      if (!t) return 'ED';
+      const parts = t.split(/\s+/).filter(Boolean);
+      const a = (parts[0]?.[0] ?? '').toUpperCase();
+      const b = (parts[1]?.[0] ?? parts[0]?.[1] ?? '').toUpperCase();
+      return (a + b).slice(0, 2) || 'ED';
+    }
+
+    async function hydrateProfileScreen(root: ShadowRoot): Promise<void> {
+      const token = getAccessToken();
+      if (!token) return;
+      const screen = root.getElementById('screen-s-profile') as HTMLElement | null;
+      if (!screen) return;
+      try {
+        const me = await fetchJson<{ user?: any }>('/me', token);
+        const u = me.user;
+        if (!u) return;
+
+        (screen.querySelector('[data-ep-profile-first-name]') as HTMLInputElement | null)?.setAttribute('value', '');
+        const fn = screen.querySelector('[data-ep-profile-first-name]') as HTMLInputElement | null;
+        const ln = screen.querySelector('[data-ep-profile-last-name]') as HTMLInputElement | null;
+        const em = screen.querySelector('[data-ep-profile-email]') as HTMLInputElement | null;
+        if (fn) fn.value = (u.firstName ?? '').trim();
+        if (ln) ln.value = (u.lastName ?? '').trim();
+        if (em) em.value = (u.email ?? '').trim();
+
+        const title = screen.querySelector('[data-ep-profile-title]') as HTMLElement | null;
+        const sub = screen.querySelector('[data-ep-profile-sub]') as HTMLElement | null;
+        const disp = profileDisplayName(u);
+        if (title) title.textContent = disp;
+        if (sub) sub.textContent = `${u.username ? '@' + u.username : '—'} · ${u.platformRole === 'owner' || u.platformRole === 'admin' ? 'Эксперт' : 'Пользователь'}`;
+
+        const av = screen.querySelector('[data-ep-profile-avatar]') as HTMLElement | null;
+        if (av) av.textContent = initialsFromNameLocal(disp);
+      } catch {
+        // ignore
+      }
+    }
+
+    async function saveProfileFromScreen(root: ShadowRoot): Promise<void> {
+      const token = getAccessToken();
+      if (!token) return;
+      const screen = root.getElementById('screen-s-profile') as HTMLElement | null;
+      if (!screen) return;
+      const firstName = (screen.querySelector('[data-ep-profile-first-name]') as HTMLInputElement | null)?.value ?? '';
+      const lastName = (screen.querySelector('[data-ep-profile-last-name]') as HTMLInputElement | null)?.value ?? '';
+      const email = (screen.querySelector('[data-ep-profile-email]') as HTMLInputElement | null)?.value ?? '';
+      try {
+        await patchJson(
+          '/me/profile',
+          { firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim() },
+          token,
+        );
+        await hydrateProfileScreen(root);
+        window.alert('Сохранено');
+      } catch {
+        window.alert('Не удалось сохранить профиль');
+      }
+    }
+
+    async function uploadProfileAvatar(root: ShadowRoot, file: File): Promise<void> {
+      const token = getAccessToken();
+      if (!token) return;
+      const form = new FormData();
+      form.append('file', file, file.name || 'avatar');
+      try {
+        await fetchMultipartJson('/me/avatar', form, token);
+        await hydrateProfileScreen(root);
+        try {
+          const me = await fetchJson<{ user?: any }>('/me', token);
+          if (me?.user) shell.setUser(me.user);
+        } catch {
+          // ignore
+        }
+      } catch {
+        window.alert('Не удалось загрузить фото');
+      }
+    }
+
+    async function startTelegramConnect(): Promise<void> {
+      const token = getAccessToken();
+      if (!token) return;
+      const bot = getTelegramBotUsername();
+      if (!bot) {
+        window.alert('Telegram бот не настроен (meta[name="edify-telegram-bot"]).');
+        return;
+      }
+      try {
+        const issued = await postJson<{ code: string }>('/auth/site-bridge/issue', {}, token);
+        const code = (issued?.code ?? '').trim();
+        if (!code) throw new Error('no code');
+        const url = `https://t.me/${bot}?start=link_${encodeURIComponent(code)}`;
+        window.open(url, '_blank', 'noopener,noreferrer');
+        window.alert('Откройте Telegram и подтвердите привязку в мини‑приложении.');
+      } catch {
+        window.alert('Не удалось начать привязку Telegram');
+      }
+    }
 
     function previousLessonInModule(lessonId: string): string | null {
       for (const ids of modulesOrderedLessonIds) {
@@ -3314,6 +3434,23 @@ if (platformMount) {
         void builderAddLesson(shell.shadowRoot);
         return;
       }
+      if (t?.closest('[data-ep-profile-save]')) {
+        ev.preventDefault();
+        void saveProfileFromScreen(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-profile-upload]')) {
+        ev.preventDefault();
+        const screen = shell.shadowRoot.getElementById('screen-s-profile') as HTMLElement | null;
+        const inp = screen?.querySelector('[data-ep-profile-avatar-input]') as HTMLInputElement | null;
+        inp?.click();
+        return;
+      }
+      if (t?.closest('[data-ep-profile-connect-telegram]')) {
+        ev.preventDefault();
+        void startTelegramConnect();
+        return;
+      }
       if (t?.closest('[data-ep-builder-save-lesson]')) {
         ev.preventDefault();
         void saveBuilderLesson(shell.shadowRoot);
@@ -3708,6 +3845,21 @@ if (platformMount) {
 
     shell.shadowRoot.addEventListener('change', (ev) => {
       const t = ev.target as HTMLElement | null;
+      if (t?.matches('input[data-ep-profile-avatar-input]')) {
+        const inp = t as HTMLInputElement;
+        const f = inp.files?.[0] ?? null;
+        const maxBytes = 10 * 1024 * 1024;
+        if (!f) return;
+        if (f.size > maxBytes) {
+          window.alert('Фото больше 10 МБ.');
+          inp.value = '';
+          return;
+        }
+        void uploadProfileAvatar(shell.shadowRoot, f).finally(() => {
+          inp.value = '';
+        });
+        return;
+      }
       if (t?.matches('input[data-ep-builder-hw-file-input]')) {
         const inp = t as HTMLInputElement;
         void builderUploadHwFiles(shell.shadowRoot, inp.files).finally(() => {
