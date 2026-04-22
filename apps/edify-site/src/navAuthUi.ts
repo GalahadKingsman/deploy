@@ -26,6 +26,15 @@ function displayName(u: MeUserV1): string {
   return 'Пользователь';
 }
 
+function resolvePublicUrl(url: string): string {
+  const raw = (url || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  if (!raw.startsWith('/')) return raw;
+  const api = getApiBaseUrl();
+  return api ? `${api}${raw}` : raw;
+}
+
 function roleLabel(u: MeUserV1): string {
   // On landing we only need a short label like inside platform UI.
   if (u.platformRole === 'owner' || u.platformRole === 'admin') return 'Эксперт';
@@ -239,7 +248,7 @@ function buildUserChip(user: MeUserV1, variant: string): HTMLElement {
     const avatar = document.createElement('img');
     avatar.className = 'edify-user-chip__avatar';
     avatar.alt = '';
-    avatar.src = user.avatarUrl;
+    avatar.src = resolvePublicUrl(user.avatarUrl);
     avatar.referrerPolicy = 'no-referrer';
     root.appendChild(avatar);
   } else {

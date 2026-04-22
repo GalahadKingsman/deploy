@@ -31,6 +31,15 @@ async function runAuthFlow(): Promise<void> {
 
 void runAuthFlow();
 
+function resolvePublicUrl(url: string): string {
+  const raw = (url || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  if (!raw.startsWith('/')) return raw;
+  const api = getApiBaseUrl();
+  return api ? `${api}${raw}` : raw;
+}
+
 /** Возврат из внешнего браузера (openLink) с ?login= — bfcache и переключение вкладок. */
 window.addEventListener('pageshow', (ev) => {
   if (ev.persisted) void runAuthFlow();
@@ -597,7 +606,7 @@ if (platformMount) {
 
         const av = screen.querySelector('[data-ep-profile-avatar]') as HTMLElement | null;
         if (av) {
-          const url = typeof u.avatarUrl === 'string' && u.avatarUrl.trim() ? u.avatarUrl.trim() : '';
+          const url = typeof u.avatarUrl === 'string' && u.avatarUrl.trim() ? resolvePublicUrl(u.avatarUrl) : '';
           if (url) {
             av.replaceChildren();
             const img = document.createElement('img');
