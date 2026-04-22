@@ -498,6 +498,11 @@ if (platformMount) {
     let builderAccessSelectedUserIdByField: { username?: string; name?: string } = {};
     let accessUserSearchTimer: ReturnType<typeof setTimeout> | null = null;
     let accessUserSearchLast: { q: string; target: 'username' | 'name' } | null = null;
+    let currentMe: MeUserV1 | null = null;
+    let currentPlatformRole: string | null = null;
+    let adminUserSearchTimer: ReturnType<typeof setTimeout> | null = null;
+    let adminUserSearchLast: { q: string; host: 'create-owner' | 'members-user' | 'platform-user' } | null = null;
+    let adminSelectedUserIdByField: { createOwner?: string; membersUser?: string; platformUser?: string } = {};
     /** Не дублировать загрузку конструктора при navigate от showScreen после ручного открытия курса. */
     let suppressBuilderNavigateHydrate = false;
     let builderSelectedModuleId: string | null = null;
@@ -525,10 +530,12 @@ if (platformMount) {
     })();
     const initialScreen = (urlParams.get('screen') || '').trim();
     const initialRole = (urlParams.get('role') || '').trim();
+    const shouldOpenAdminOnLoad = initialScreen === 'admin';
+    const initialScreenId = shouldOpenAdminOnLoad ? 's-catalog' : initialScreen ? initialScreen : 's-catalog';
 
     const shell = mountPlatformShell(platformMount, {
       initialRole: initialRole === 'expert' ? 'expert' : 'student',
-      initialScreenId: initialScreen ? initialScreen : 's-catalog',
+      initialScreenId,
       beforeSetRole(role) {
         if (role !== 'expert') return true;
         if (expertShellAccess.allowed) return true;
@@ -1726,6 +1733,8 @@ if (platformMount) {
       if (!token) {
         expertShellAccess.allowed = false;
         activeExpertId = null;
+        currentMe = null;
+        currentPlatformRole = null;
         return;
       }
 
@@ -1743,8 +1752,12 @@ if (platformMount) {
         if (!u) {
           expertShellAccess.allowed = false;
           activeExpertId = null;
+          currentMe = null;
+          currentPlatformRole = null;
           return;
         }
+        currentMe = u;
+        currentPlatformRole = u.platformRole ?? null;
         let inExpertTeam = false;
         activeExpertId = null;
         try {
@@ -1779,6 +1792,8 @@ if (platformMount) {
       } catch {
         expertShellAccess.allowed = false;
         activeExpertId = null;
+        currentMe = null;
+        currentPlatformRole = null;
         // не ломаем интерфейс, если /me недоступен
       }
     }
@@ -2788,6 +2803,157 @@ if (platformMount) {
       if (dr) dr.style.display = 'none';
     }
 
+    function closeAdminDrawer(root: ShadowRoot): void {
+      const bd = root.querySelector('[data-ep-admin-drawer-backdrop]') as HTMLElement | null;
+      const dr = root.querySelector('[data-ep-admin-drawer]') as HTMLElement | null;
+      if (bd) bd.style.display = 'none';
+      if (dr) dr.style.display = 'none';
+      root.querySelectorAll<HTMLElement>('[data-ep-admin-suggest]').forEach((el) => (el.style.display = 'none'));
+    }
+
+    function renderAdminSuggest(
+      root: ShadowRoot,
+      items: Array<{ id: string; telegramUserId?: string; username?: string; firstName?: string; lastName?: string; platformRole: string }>,
+      host: 'create-owner' | 'members-user' | 'platform-user',
+    ): void {
+      const hostEl = root.querySelector(`[data-ep-admin-suggest="${host}"]`) as HTMLElement | null;
+      if (!hostEl) return;
+      hostEl.replaceChildren();
+      if (!items.length) {
+        hostEl.style.display = 'none';
+        return;
+      }
+      hostEl.style.display = '';
+
+      const card = document.createElement('div');
+      card.style.border = '1px solid var(--line)';
+      card.style.borderRadius = '12px';
+      card.style.background = 'var(--surface)';
+      card.style.boxShadow = 'var(--sh2)';
+      card.style.overflow = 'hidden';
+
+      items.slice(0, 10).forEach((u) => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.style.display = 'flex';
+        row.style.alignItems = 'center';
+        row.style.justifyContent = 'space-between';
+        row.style.gap = '10px';
+        row.style.width = '100%';
+        row.style.padding = '10px 12px';
+        row.style.border = 'none';
+        row.style.background = 'transparent';
+        row.style.cursor = 'pointer';
+        row.addEventListener('mouseenter', () => (row.style.background = 'var(--bg2)'));
+        row.addEventListener('mouseleave', () => (row.style.background = 'transparent'));
+
+        const title = document.createElement('div');
+        title.style.flex = '1';
+        title.style.minWidth = '0';
+        title.style.textAlign = 'left';
+        title.style.fontSize = '12px';
+        title.style.color = 'var(--t2)';
+        title.style.overflow = 'hidden';
+        title.style.textOverflow = 'ellipsis';
+        title.style.whiteSpace = 'nowrap';
+        title.textContent = formatUserTitle(u);
+
+        const pick = document.createElement('span');
+        pick.style.fontFamily = 'var(--fm)';
+        pick.style.fontSize = '9px';
+        pick.style.color = 'var(--t3)';
+        pick.textContent = u.platformRole ? String(u.platformRole) : 'выбрать';
+
+        row.append(title, pick);
+        row.addEventListener('click', () => {
+          if (host === 'create-owner') {
+            const inp = root.querySelector('[data-ep-admin-create-expert-owner-search]') as HTMLInputElement | null;
+            if (inp) inp.value = formatUserTitle(u);
+            adminSelectedUserIdByField = { ...adminSelectedUserIdByField, createOwner: u.id };
+          } else if (host === 'members-user') {
+            const inp = root.querySelector('[data-ep-admin-members-user-search]') as HTMLInputElement | null;
+            if (inp) inp.value = formatUserTitle(u);
+            const idInp = root.querySelector('[data-ep-admin-members-user-id]') as HTMLInputElement | null;
+            if (idInp) idInp.value = u.id;
+            adminSelectedUserIdByField = { ...adminSelectedUserIdByField, membersUser: u.id };
+          } else {
+            const inp = root.querySelector('[data-ep-admin-platform-user-search]') as HTMLInputElement | null;
+            if (inp) inp.value = formatUserTitle(u);
+            adminSelectedUserIdByField = { ...adminSelectedUserIdByField, platformUser: u.id };
+          }
+          hostEl.style.display = 'none';
+        });
+        card.appendChild(row);
+      });
+
+      hostEl.appendChild(card);
+    }
+
+    async function adminSearchUsers(
+      root: ShadowRoot,
+      q: string,
+      host: 'create-owner' | 'members-user' | 'platform-user',
+    ): Promise<void> {
+      const token = getAccessToken();
+      if (!token) return;
+      const qq = q.trim();
+      if (!qq) {
+        renderAdminSuggest(root, [], host);
+        return;
+      }
+      try {
+        const res = await fetchJson<{
+          items: Array<{ id: string; telegramUserId?: string; username?: string; firstName?: string; lastName?: string; platformRole: string }>;
+        }>(`/admin/users?q=${encodeURIComponent(qq)}`, token);
+        renderAdminSuggest(root, res.items ?? [], host);
+      } catch {
+        renderAdminSuggest(root, [], host);
+      }
+    }
+
+    async function openAdminDrawer(root: ShadowRoot): Promise<void> {
+      const bd = root.querySelector('[data-ep-admin-drawer-backdrop]') as HTMLElement | null;
+      const dr = root.querySelector('[data-ep-admin-drawer]') as HTMLElement | null;
+      if (bd) bd.style.display = '';
+      if (dr) dr.style.display = '';
+
+      const loading = root.querySelector('[data-ep-admin-loading]') as HTMLElement | null;
+      const locked = root.querySelector('[data-ep-admin-locked]') as HTMLElement | null;
+      const form = root.querySelector('[data-ep-admin-form]') as HTMLElement | null;
+      if (loading) loading.style.display = '';
+      if (locked) locked.style.display = 'none';
+      if (form) form.style.display = 'none';
+
+      if (!currentMe || !currentPlatformRole) {
+        await hydrateTopbarUser();
+      }
+
+      const role = (currentPlatformRole ?? '').trim();
+      const isAdmin = role === 'admin' || role === 'owner';
+      const isOwner = role === 'owner';
+
+      if (loading) loading.style.display = 'none';
+      if (!isAdmin) {
+        if (locked) locked.style.display = '';
+        if (form) form.style.display = 'none';
+        return;
+      }
+
+      if (locked) locked.style.display = 'none';
+      if (form) form.style.display = '';
+
+      const ownerOnly = root.querySelector('[data-ep-admin-owner-only]') as HTMLElement | null;
+      if (ownerOnly) ownerOnly.style.display = isOwner ? 'none' : '';
+
+      const grant = root.querySelector('[data-ep-admin-sub-grant]') as HTMLButtonElement | null;
+      const expire = root.querySelector('[data-ep-admin-sub-expire]') as HTMLButtonElement | null;
+      if (grant) grant.disabled = !isOwner;
+      if (expire) expire.disabled = !isOwner;
+
+      const platformCard = root.querySelector('[data-ep-admin-platform-set]')?.closest('.card') as HTMLElement | null;
+      if (platformCard) platformCard.style.display = isOwner ? '' : 'none';
+    }
+
     function buildInviteDeepLink(code: string): string | null {
       try {
         const meta = document.querySelector('meta[name="edify-telegram-bot"]') as HTMLMetaElement | null;
@@ -3339,7 +3505,9 @@ if (platformMount) {
     }
 
     // Подгружаем данные на старте
-    void hydrateTopbarUser();
+    void hydrateTopbarUser().then(() => {
+      if (shouldOpenAdminOnLoad) void openAdminDrawer(shell.shadowRoot);
+    });
     void hydrateStudentCatalog();
     void hydrateMyCourses();
 
@@ -3428,6 +3596,20 @@ if (platformMount) {
         !t?.closest('[data-ep-access-enroll-name]')
       ) {
         suggestHost.style.display = 'none';
+      }
+
+      // Close admin suggestions when clicking outside input/list
+      const anyAdminOpen = Array.from(shell.shadowRoot.querySelectorAll<HTMLElement>('[data-ep-admin-suggest]')).some(
+        (el) => el.style.display !== 'none' && el.childElementCount > 0,
+      );
+      if (
+        anyAdminOpen &&
+        !t?.closest('[data-ep-admin-suggest]') &&
+        !t?.closest('[data-ep-admin-create-expert-owner-search]') &&
+        !t?.closest('[data-ep-admin-members-user-search]') &&
+        !t?.closest('[data-ep-admin-platform-user-search]')
+      ) {
+        shell.shadowRoot.querySelectorAll<HTMLElement>('[data-ep-admin-suggest]').forEach((el) => (el.style.display = 'none'));
       }
 
       // Builder top tabs (robust fallback in case shell action hook isn't triggered)
@@ -3591,6 +3773,11 @@ if (platformMount) {
         void openBuilderCourseAccessDrawer(shell.shadowRoot);
         return;
       }
+      if (t?.closest('[data-ep-admin-drawer-backdrop]') || t?.closest('[data-ep-admin-drawer-close]')) {
+        ev.preventDefault();
+        closeAdminDrawer(shell.shadowRoot);
+        return;
+      }
       if (t?.closest('[data-ep-course-drawer-backdrop]') || t?.closest('[data-ep-course-drawer-close]')) {
         ev.preventDefault();
         closeBuilderCourseSettingsDrawer(shell.shadowRoot);
@@ -3608,6 +3795,167 @@ if (platformMount) {
       } else if (t?.closest('[data-ep-access-enroll-name]')) {
         const inp = t.closest('[data-ep-access-enroll-name]') as HTMLInputElement | null;
         if (inp) void accessSearchUsers(shell.shadowRoot, inp.value, 'name');
+      }
+      if (t?.closest('[data-ep-admin-create-expert-owner-search]')) {
+        const inp = t.closest('[data-ep-admin-create-expert-owner-search]') as HTMLInputElement | null;
+        if (inp) void adminSearchUsers(shell.shadowRoot, inp.value, 'create-owner');
+      } else if (t?.closest('[data-ep-admin-members-user-search]')) {
+        const inp = t.closest('[data-ep-admin-members-user-search]') as HTMLInputElement | null;
+        if (inp) void adminSearchUsers(shell.shadowRoot, inp.value, 'members-user');
+      } else if (t?.closest('[data-ep-admin-platform-user-search]')) {
+        const inp = t.closest('[data-ep-admin-platform-user-search]') as HTMLInputElement | null;
+        if (inp) void adminSearchUsers(shell.shadowRoot, inp.value, 'platform-user');
+      }
+      if (t?.closest('[data-ep-admin-create-expert]')) {
+        ev.preventDefault();
+        void (async () => {
+          const token = getAccessToken();
+          if (!token) return;
+          const titleInp = shell.shadowRoot.querySelector('[data-ep-admin-create-expert-title]') as HTMLInputElement | null;
+          const slugInp = shell.shadowRoot.querySelector('[data-ep-admin-create-expert-slug]') as HTMLInputElement | null;
+          const title = (titleInp?.value ?? '').trim();
+          const slug = (slugInp?.value ?? '').trim();
+          const ownerUserId = adminSelectedUserIdByField.createOwner;
+          if (!title) return window.alert('Введите название эксперта.');
+          if (!ownerUserId) return window.alert('Выберите owner пользователя.');
+          try {
+            const res = await postJson<{ id: string }>('/admin/experts', { title, ownerUserId, slug: slug || undefined }, token);
+            window.alert(`Эксперт создан: ${res.id}`);
+            if (titleInp) titleInp.value = '';
+            if (slugInp) slugInp.value = '';
+            const ownerSearch = shell.shadowRoot.querySelector('[data-ep-admin-create-expert-owner-search]') as HTMLInputElement | null;
+            if (ownerSearch) ownerSearch.value = '';
+            adminSelectedUserIdByField = { ...adminSelectedUserIdByField, createOwner: undefined };
+          } catch {
+            window.alert('Не удалось создать эксперта. Нужна роль admin или выше.');
+          }
+        })();
+        return;
+      }
+      if (t?.closest('[data-ep-admin-members-add]')) {
+        ev.preventDefault();
+        void (async () => {
+          const token = getAccessToken();
+          if (!token) return;
+          const expertInp = shell.shadowRoot.querySelector('[data-ep-admin-members-expert-id]') as HTMLInputElement | null;
+          const userIdInp = shell.shadowRoot.querySelector('[data-ep-admin-members-user-id]') as HTMLInputElement | null;
+          const roleSel = shell.shadowRoot.querySelector('[data-ep-admin-members-role]') as HTMLSelectElement | null;
+          const expertId = (expertInp?.value ?? '').trim();
+          const userId = (adminSelectedUserIdByField.membersUser ?? (userIdInp?.value ?? '')).trim();
+          const role = (roleSel?.value ?? '').trim();
+          if (!expertId) return window.alert('Введите Expert ID.');
+          if (!userId) return window.alert('Выберите пользователя.');
+          if (!role) return window.alert('Выберите роль.');
+          try {
+            await postJson(`/admin/experts/${encodeURIComponent(expertId)}/members`, { userId, role }, token);
+            window.alert('Участник добавлен.');
+          } catch {
+            window.alert('Не удалось добавить участника. Проверьте права и входные данные.');
+          }
+        })();
+        return;
+      }
+      if (t?.closest('[data-ep-admin-members-set-role]')) {
+        ev.preventDefault();
+        void (async () => {
+          const token = getAccessToken();
+          if (!token) return;
+          const expertInp = shell.shadowRoot.querySelector('[data-ep-admin-members-expert-id]') as HTMLInputElement | null;
+          const userIdInp = shell.shadowRoot.querySelector('[data-ep-admin-members-user-id]') as HTMLInputElement | null;
+          const roleSel = shell.shadowRoot.querySelector('[data-ep-admin-members-role]') as HTMLSelectElement | null;
+          const expertId = (expertInp?.value ?? '').trim();
+          const userId = (userIdInp?.value ?? '').trim();
+          const role = (roleSel?.value ?? '').trim();
+          if (!expertId) return window.alert('Введите Expert ID.');
+          if (!userId) return window.alert('Введите User ID.');
+          if (!role) return window.alert('Выберите роль.');
+          try {
+            await patchJson(`/admin/experts/${encodeURIComponent(expertId)}/members/${encodeURIComponent(userId)}`, { role }, token);
+            window.alert('Роль обновлена.');
+          } catch {
+            window.alert('Не удалось обновить роль.');
+          }
+        })();
+        return;
+      }
+      if (t?.closest('[data-ep-admin-members-remove]')) {
+        ev.preventDefault();
+        void (async () => {
+          const token = getAccessToken();
+          if (!token) return;
+          const expertInp = shell.shadowRoot.querySelector('[data-ep-admin-members-expert-id]') as HTMLInputElement | null;
+          const userIdInp = shell.shadowRoot.querySelector('[data-ep-admin-members-user-id]') as HTMLInputElement | null;
+          const expertId = (expertInp?.value ?? '').trim();
+          const userId = (userIdInp?.value ?? '').trim();
+          if (!expertId) return window.alert('Введите Expert ID.');
+          if (!userId) return window.alert('Введите User ID.');
+          if (!window.confirm('Удалить участника из команды эксперта?')) return;
+          try {
+            await deleteJson(`/admin/experts/${encodeURIComponent(expertId)}/members/${encodeURIComponent(userId)}`, token);
+            window.alert('Участник удалён.');
+          } catch {
+            window.alert('Не удалось удалить участника.');
+          }
+        })();
+        return;
+      }
+      if (t?.closest('[data-ep-admin-sub-grant]')) {
+        ev.preventDefault();
+        void (async () => {
+          const token = getAccessToken();
+          if (!token) return;
+          const expertInp = shell.shadowRoot.querySelector('[data-ep-admin-sub-expert-id]') as HTMLInputElement | null;
+          const daysInp = shell.shadowRoot.querySelector('[data-ep-admin-sub-days]') as HTMLInputElement | null;
+          const expertId = (expertInp?.value ?? '').trim();
+          const daysRaw = (daysInp?.value ?? '').trim();
+          const days = Number(daysRaw);
+          if (!expertId) return window.alert('Введите Expert ID.');
+          if (!Number.isFinite(days) || !Number.isInteger(days) || days < 1) return window.alert('Введите корректное число дней.');
+          try {
+            await postJson(`/admin/experts/${encodeURIComponent(expertId)}/subscription/grant-days`, { days }, token);
+            window.alert('Дни подписки выданы.');
+          } catch {
+            window.alert('Не удалось выдать дни. Доступно только owner.');
+          }
+        })();
+        return;
+      }
+      if (t?.closest('[data-ep-admin-sub-expire]')) {
+        ev.preventDefault();
+        void (async () => {
+          const token = getAccessToken();
+          if (!token) return;
+          const expertInp = shell.shadowRoot.querySelector('[data-ep-admin-sub-expert-id]') as HTMLInputElement | null;
+          const expertId = (expertInp?.value ?? '').trim();
+          if (!expertId) return window.alert('Введите Expert ID.');
+          if (!window.confirm('Сделать подписку эксперта истёкшей прямо сейчас?')) return;
+          try {
+            await postJson(`/admin/experts/${encodeURIComponent(expertId)}/subscription/expire`, {}, token);
+            window.alert('Подписка сделана истёкшей.');
+          } catch {
+            window.alert('Не удалось. Доступно только owner.');
+          }
+        })();
+        return;
+      }
+      if (t?.closest('[data-ep-admin-platform-set]')) {
+        ev.preventDefault();
+        void (async () => {
+          const token = getAccessToken();
+          if (!token) return;
+          const roleSel = shell.shadowRoot.querySelector('[data-ep-admin-platform-role]') as HTMLSelectElement | null;
+          const role = (roleSel?.value ?? '').trim();
+          const userId = (adminSelectedUserIdByField.platformUser ?? '').trim();
+          if (!userId) return window.alert('Выберите пользователя.');
+          if (!role) return window.alert('Выберите роль.');
+          try {
+            await postJson(`/admin/users/${encodeURIComponent(userId)}/platform-role`, { role }, token);
+            window.alert('Роль платформы обновлена.');
+          } catch {
+            window.alert('Не удалось. Доступно только owner.');
+          }
+        })();
+        return;
       }
       if (t?.closest('[data-ep-course-save]')) {
         ev.preventDefault();
@@ -4034,6 +4382,42 @@ if (platformMount) {
           if (!accessUserSearchLast) return;
           void accessSearchUsers(shell.shadowRoot, accessUserSearchLast.q, accessUserSearchLast.target);
         }, 180);
+        return;
+      }
+
+      if (inp.matches('[data-ep-admin-create-expert-owner-search]')) {
+        adminSelectedUserIdByField = { ...adminSelectedUserIdByField, createOwner: undefined };
+        const q = inp.value;
+        if (adminUserSearchTimer) window.clearTimeout(adminUserSearchTimer);
+        adminUserSearchLast = { q, host: 'create-owner' };
+        adminUserSearchTimer = window.setTimeout(() => {
+          if (!adminUserSearchLast) return;
+          void adminSearchUsers(shell.shadowRoot, adminUserSearchLast.q, adminUserSearchLast.host);
+        }, 220);
+        return;
+      }
+
+      if (inp.matches('[data-ep-admin-members-user-search]')) {
+        adminSelectedUserIdByField = { ...adminSelectedUserIdByField, membersUser: undefined };
+        const q = inp.value;
+        if (adminUserSearchTimer) window.clearTimeout(adminUserSearchTimer);
+        adminUserSearchLast = { q, host: 'members-user' };
+        adminUserSearchTimer = window.setTimeout(() => {
+          if (!adminUserSearchLast) return;
+          void adminSearchUsers(shell.shadowRoot, adminUserSearchLast.q, adminUserSearchLast.host);
+        }, 220);
+        return;
+      }
+
+      if (inp.matches('[data-ep-admin-platform-user-search]')) {
+        adminSelectedUserIdByField = { ...adminSelectedUserIdByField, platformUser: undefined };
+        const q = inp.value;
+        if (adminUserSearchTimer) window.clearTimeout(adminUserSearchTimer);
+        adminUserSearchLast = { q, host: 'platform-user' };
+        adminUserSearchTimer = window.setTimeout(() => {
+          if (!adminUserSearchLast) return;
+          void adminSearchUsers(shell.shadowRoot, adminUserSearchLast.q, adminUserSearchLast.host);
+        }, 220);
         return;
       }
     });

@@ -354,6 +354,22 @@ export class UsersRepository {
 
     await this.pool.query('BEGIN');
     try {
+      // Platform role: keep the "highest" role between two users.
+      // Order: user < moderator < admin < owner
+      const roles = await this.pool.query<{ id: string; platform_role: string }>(
+        `SELECT id, platform_role FROM users WHERE id = ANY($1::uuid[])`,
+        [[params.fromUserId, params.toUserId]],
+      );
+      const roleById = new Map(roles.rows.map((r) => [r.id, (r.platform_role ?? 'user') as string]));
+      const a = roleById.get(params.fromUserId) ?? 'user';
+      const b = roleById.get(params.toUserId) ?? 'user';
+      const rank = (r: string) => (r === 'owner' ? 3 : r === 'admin' ? 2 : r === 'moderator' ? 1 : 0);
+      const nextRole = rank(a) > rank(b) ? a : b;
+      await this.pool.query(`UPDATE users SET platform_role = $2, updated_at = NOW() WHERE id = $1`, [
+        params.toUserId,
+        nextRole,
+      ]);
+
       // Expert memberships: copy roles into target
       await this.pool.query(
         `

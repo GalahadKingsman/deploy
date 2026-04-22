@@ -369,6 +369,16 @@ export function renderUserSlots(user: MeUserV1): void {
     if (variant === 'header') {
       const wrap = document.createElement('div');
       wrap.className = 'edify-nav-user';
+      if (user.platformRole === 'admin' || user.platformRole === 'owner') {
+        const admin = document.createElement('button');
+        admin.type = 'button';
+        admin.className = 'edify-nav-admin';
+        admin.textContent = 'Админ‑панель';
+        admin.addEventListener('click', () => {
+          window.location.href = '/platform/?screen=admin';
+        });
+        wrap.appendChild(admin);
+      }
       wrap.appendChild(buildUserChip(user, variant, token));
       const out = document.createElement('button');
       out.type = 'button';

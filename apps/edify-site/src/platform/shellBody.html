@@ -1315,5 +1315,119 @@
   </div>
 </div>
 
+<!-- Admin panel drawer (platform role: admin/owner) -->
+<div class="ep-admin-drawer-backdrop" data-ep-admin-drawer-backdrop style="display:none" aria-hidden="true"></div>
+<aside class="ep-admin-drawer" data-ep-admin-drawer style="display:none" aria-label="Админ-панель">
+  <div class="ep-admin-drawer-head">
+    <div>
+      <div class="ep-admin-drawer-kicker">Платформа</div>
+      <div class="ep-admin-drawer-title">Админ‑панель</div>
+    </div>
+    <button type="button" class="btn btn-ghost btn-sm ep-admin-drawer-close" data-ep-admin-drawer-close aria-label="Закрыть">✕</button>
+  </div>
+  <div class="ep-admin-drawer-body">
+    <div data-ep-admin-loading style="font-size:13px;color:var(--t3);padding:8px 0">Загрузка…</div>
+    <div data-ep-admin-locked style="display:none;margin-bottom:12px;padding:10px 12px;border-radius:10px;background:var(--warn-bg);border:1px solid rgba(217,119,6,0.25);font-size:12px;color:var(--t2);line-height:1.5">
+      Нет доступа. Админ‑панель доступна только платформенным ролям <strong>admin</strong> или <strong>owner</strong>.
+    </div>
+    <div data-ep-admin-form style="display:none">
+      <div class="card" style="padding:16px 18px;border-radius:var(--r2);margin-bottom:12px;position:relative">
+        <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Создать эксперта</div>
+        <div style="font-size:12px;color:var(--t3);line-height:1.55;margin-bottom:12px">Создаёт новую эксперт‑организацию на платформе.</div>
+        <div class="form-group" style="margin-bottom:10px">
+          <div class="form-label">Название эксперта</div>
+          <input class="form-input" data-ep-admin-create-expert-title placeholder="Например: Школа Алексея" autocomplete="off"/>
+        </div>
+        <div class="form-group" style="margin-bottom:10px">
+          <div class="form-label">Slug</div>
+          <input class="form-input" data-ep-admin-create-expert-slug placeholder="Например: alexey-school" autocomplete="off"/>
+        </div>
+        <div class="form-group" style="margin-bottom:10px">
+          <div class="form-label">Owner user</div>
+          <input class="form-input" data-ep-admin-create-expert-owner-search placeholder="Начните вводить имя / username / email" autocomplete="off"/>
+        </div>
+        <div data-ep-admin-suggest="create-owner" style="display:none;position:absolute;left:18px;right:18px;top:100%;margin-top:8px;z-index:2"></div>
+        <button type="button" class="btn btn-primary btn-sm" data-ep-admin-create-expert style="margin-top:4px">Создать эксперта</button>
+      </div>
+
+      <div class="card" style="padding:16px 18px;border-radius:var(--r2);margin-bottom:12px;position:relative">
+        <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Команда эксперта</div>
+        <div style="font-size:12px;color:var(--t3);line-height:1.55;margin-bottom:12px">Добавление/удаление участников и смена роли.</div>
+        <div class="form-group" style="margin-bottom:10px">
+          <div class="form-label">Expert ID</div>
+          <input class="form-input" data-ep-admin-members-expert-id placeholder="UUID эксперта" autocomplete="off"/>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:10px">
+          <div style="flex:1;min-width:220px">
+            <div class="form-label">User</div>
+            <input class="form-input" data-ep-admin-members-user-search placeholder="Поиск пользователя" autocomplete="off"/>
+          </div>
+          <div style="width:160px">
+            <div class="form-label">Роль</div>
+            <select class="form-input" data-ep-admin-members-role>
+              <option value="support">support</option>
+              <option value="reviewer">reviewer</option>
+              <option value="manager">manager</option>
+              <option value="owner">owner</option>
+            </select>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" data-ep-admin-members-add>Добавить</button>
+        </div>
+        <div data-ep-admin-suggest="members-user" style="display:none;position:absolute;left:18px;right:18px;top:100%;margin-top:8px;z-index:2"></div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+          <div style="flex:1;min-width:220px">
+            <div class="form-label">User ID (для обновления/удаления)</div>
+            <input class="form-input" data-ep-admin-members-user-id placeholder="UUID пользователя" autocomplete="off"/>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" data-ep-admin-members-set-role>Сменить роль</button>
+          <button type="button" class="btn btn-ghost btn-sm" style="color:var(--err)" data-ep-admin-members-remove>Удалить</button>
+        </div>
+      </div>
+
+      <div class="card" style="padding:16px 18px;border-radius:var(--r2);margin-bottom:12px">
+        <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Подписка эксперта (owner)</div>
+        <div style="font-size:12px;color:var(--t3);line-height:1.55;margin-bottom:12px">Grant days / expire now.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+          <div style="flex:1;min-width:220px">
+            <div class="form-label">Expert ID</div>
+            <input class="form-input" data-ep-admin-sub-expert-id placeholder="UUID эксперта" autocomplete="off"/>
+          </div>
+          <div style="width:130px">
+            <div class="form-label">Дней</div>
+            <input class="form-input" data-ep-admin-sub-days value="30" autocomplete="off"/>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" data-ep-admin-sub-grant>Выдать</button>
+          <button type="button" class="btn btn-outline btn-sm" data-ep-admin-sub-expire>Сделать истёкшей</button>
+        </div>
+        <div data-ep-admin-owner-only style="display:none;margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--warn-bg);border:1px solid rgba(217,119,6,0.25);font-size:12px;color:var(--t2);line-height:1.5">
+          Доступно только владельцу платформы (owner).
+        </div>
+      </div>
+
+      <div class="card" style="padding:16px 18px;border-radius:var(--r2);position:relative">
+        <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Platform role (owner)</div>
+        <div style="font-size:12px;color:var(--t3);line-height:1.55;margin-bottom:12px">Назначение `platform_role` пользователю.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+          <div style="flex:1;min-width:220px">
+            <div class="form-label">User</div>
+            <input class="form-input" data-ep-admin-platform-user-search placeholder="Поиск пользователя" autocomplete="off"/>
+          </div>
+          <div style="width:170px">
+            <div class="form-label">Роль</div>
+            <select class="form-input" data-ep-admin-platform-role>
+              <option value="user">user</option>
+              <option value="moderator">moderator</option>
+              <option value="admin">admin</option>
+              <option value="owner">owner</option>
+            </select>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" data-ep-admin-platform-set>Назначить</button>
+        </div>
+        <div data-ep-admin-suggest="platform-user" style="display:none;position:absolute;left:18px;right:18px;top:100%;margin-top:8px;z-index:2"></div>
+      </div>
+    </div>
+  </div>
+</aside>
+
 
 </div><!-- end main-content -->
