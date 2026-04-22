@@ -8,6 +8,7 @@ import { bootstrapAuth } from './shared/auth/bootstrapAuth.js';
 import { getAccessToken, clearAccessToken } from './shared/auth/tokenStorage.js';
 import { waitForTelegramWebApp, waitForTelegramInitData } from './shared/auth/telegram.js';
 import { tryFinishSiteMarketingLogin } from './shared/auth/siteMarketingBridge.js';
+import { tryFinishTelegramLink } from './shared/auth/siteTelegramLinkBridge.js';
 import { setReferral } from './shared/referrals/referralStorage.js';
 import {
   AuthDiagnosticProvider,
@@ -131,6 +132,7 @@ async function bootstrap() {
   // Вход с маркетинга: MainButton после первого кадра (поверх UI), иначе openLink без жеста часто не открывает вкладку.
   requestAnimationFrame(() => {
     void tryFinishSiteMarketingLogin(authResult);
+    void tryFinishTelegramLink();
   });
 }
 

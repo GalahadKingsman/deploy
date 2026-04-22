@@ -70,6 +70,18 @@ bot.command('start', async (ctx) => {
       return;
     }
   }
+  // Привязка аккаунта с сайта: t.me/bot?start=link_<code> → Mini App с start_param=link_<code>
+  if (payloadRaw.startsWith('link_')) {
+    const code = payloadRaw.slice('link_'.length).trim();
+    if (code && isInviteCode(code)) {
+      const url = webAppUrlWithStartApp(`link_${code}`);
+      const kb = new InlineKeyboard().webApp('Open WebApp', url);
+      await ctx.reply('Нажмите кнопку, чтобы завершить привязку Telegram к аккаунту на сайте:', {
+        reply_markup: kb,
+      });
+      return;
+    }
+  }
   // Вход с маркетингового сайта: t.me/bot?start=site → Mini App с start_param=site
   if (payloadRaw.toLowerCase() === 'site') {
     const url = webAppUrlWithStartApp('site');
