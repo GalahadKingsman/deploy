@@ -1704,7 +1704,9 @@ if (platformMount) {
       const root = shell.shadowRoot;
       const nameEl = root.querySelector('.topbar-user .user-name') as HTMLElement | null;
       const roleEl = root.querySelector('.topbar-user .user-role') as HTMLElement | null;
-      const avatarEl = root.querySelector('.topbar-user .avatar') as HTMLElement | null;
+      const avatarEl =
+        (root.querySelector('.topbar-user .user-avatar') as HTMLElement | null) ??
+        (root.querySelector('.topbar-user .avatar') as HTMLElement | null);
       if (!nameEl || !roleEl || !avatarEl) return;
 
       try {
@@ -1728,7 +1730,24 @@ if (platformMount) {
         const name = displayName(u);
         nameEl.textContent = name;
         roleEl.textContent = inExpertTeam ? 'Эксперт' : 'Ученик';
-        avatarEl.textContent = initialsFromName(name);
+        const raw = typeof u.avatarUrl === 'string' ? u.avatarUrl.trim() : '';
+        if (raw) {
+          // Same approach as course covers: user.avatarUrl is public API path (/public/avatar?key=...)
+          const imgUrl = resolvePublicUrl(raw);
+          avatarEl.replaceChildren();
+          const img = document.createElement('img');
+          img.alt = '';
+          img.src = imgUrl;
+          img.referrerPolicy = 'no-referrer';
+          img.style.width = '100%';
+          img.style.height = '100%';
+          img.style.borderRadius = '50%';
+          img.style.objectFit = 'cover';
+          avatarEl.appendChild(img);
+        } else {
+          avatarEl.replaceChildren();
+          avatarEl.textContent = initialsFromName(name);
+        }
       } catch {
         expertShellAccess.allowed = false;
         activeExpertId = null;
