@@ -17,6 +17,14 @@ export interface JwtPayload {
   exp: number;
 }
 
+type FileTokenPayload = {
+  typ: 'file';
+  sub: string; // userId
+  k: string; // file key
+  iat: number;
+  exp: number;
+};
+
 /**
  * JWT service for signing and verifying access tokens
  */
@@ -88,6 +96,32 @@ export class JwtService {
         message: 'Invalid token',
         error: 'Unauthorized',
       });
+    }
+  }
+
+  signFileToken(params: { userId: string; key: string; ttlSeconds?: number }): string {
+    const now = Math.floor(Date.now() / 1000);
+    const ttl = params.ttlSeconds ?? 120;
+    const payload: FileTokenPayload = {
+      typ: 'file',
+      sub: params.userId,
+      k: params.key,
+      iat: now,
+      exp: now + ttl,
+    };
+    return jwt.sign(payload, this.secret, { algorithm: 'HS256' });
+  }
+
+  verifyFileToken(token: string): { userId: string; key: string } {
+    try {
+      const decoded = jwt.verify(token, this.secret, { algorithms: ['HS256'] }) as FileTokenPayload;
+      if (decoded.typ !== 'file' || !decoded.sub || !decoded.k) {
+        throw new UnauthorizedException({ message: 'Invalid token', error: 'Unauthorized' });
+      }
+      return { userId: decoded.sub, key: decoded.k };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) throw error;
+      throw new UnauthorizedException({ message: 'Invalid token', error: 'Unauthorized' });
     }
   }
 }

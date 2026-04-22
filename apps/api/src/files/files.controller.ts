@@ -17,12 +17,14 @@ import { JwtAuthGuard } from '../auth/session/jwt-auth.guard.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { S3StorageService } from '../storage/s3-storage.service.js';
 import { Pool } from 'pg';
+import { JwtService } from '../auth/session/jwt.service.js';
 
 @ApiTags('Files')
 @Controller()
 export class FilesController {
   constructor(
     private readonly storage: S3StorageService,
+    private readonly jwtService: JwtService,
     @Optional() @Inject(Pool) private readonly pool: Pool | null,
   ) {}
 
@@ -119,7 +121,50 @@ export class FilesController {
         throw new ForbiddenException({ code: ErrorCodes.FORBIDDEN, message: 'Forbidden' });
       }
     }
-    return await this.storage.getSignedGetUrl({ key: cleanKey, expiresSeconds: 120 });
+    const t = this.jwtService.signFileToken({ userId, key: cleanKey, ttlSeconds: 120 });
+    return { url: `/files/public?t=${encodeURIComponent(t)}` };
+  }
+
+  @Get('files/public')
+  @ApiOperation({ summary: 'Public file proxy by short-lived token (no auth header required)' })
+  @ApiResponse({ status: 200, description: 'File stream' })
+  async getPublic(
+    @Query('t') token: string,
+    @Res() reply: FastifyReply,
+  ): Promise<void> {
+    const cleanToken = String(token ?? '').trim();
+    if (!cleanToken) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 't is required' });
+    }
+    const decoded = this.jwtService.verifyFileToken(cleanToken);
+    const key = decoded.key;
+    const userId = decoded.userId;
+
+    if (!key.startsWith('submissions/') && !key.startsWith(`avatars/${userId}/`)) {
+      throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'File not found' });
+    }
+
+    const obj = await this.storage.getObject({ key });
+
+    // Guess content type for avatars
+    if (key.startsWith('avatars/')) {
+      reply.header('content-type', obj.contentType ?? 'image/jpeg');
+      reply.header('cache-control', 'private, max-age=120');
+      reply.header('x-content-type-options', 'nosniff');
+      if (obj.contentLength != null) reply.header('content-length', String(obj.contentLength));
+      return await reply.send(obj.body as any);
+    }
+
+    const lastSeg = key.includes('/') ? key.slice(key.lastIndexOf('/') + 1) : key;
+    const asciiName = lastSeg.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_').slice(0, 180) || 'file';
+    reply.header('content-type', 'application/octet-stream');
+    reply.header('x-content-type-options', 'nosniff');
+    reply.header(
+      'content-disposition',
+      `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(lastSeg)}`,
+    );
+    if (obj.contentLength != null) reply.header('content-length', String(obj.contentLength));
+    return await reply.send(obj.body as any);
   }
 }
 

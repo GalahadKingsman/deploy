@@ -60,7 +60,7 @@ async function resolveAvatarImgSrc(avatarUrl: string, token: string): Promise<st
   });
   if (!res.ok) return resolvePublicUrl(avatarUrl);
   const data = (await res.json()) as { url?: string };
-  return typeof data.url === 'string' && data.url ? data.url : resolvePublicUrl(avatarUrl);
+  return typeof data.url === 'string' && data.url ? resolvePublicUrl(data.url) : resolvePublicUrl(avatarUrl);
 }
 function roleLabel(u: MeUserV1): string {
   // On landing we only need a short label like inside platform UI.
@@ -272,20 +272,34 @@ function buildUserChip(user: MeUserV1, variant: string, token?: string | null): 
   root.className = `edify-user-chip edify-user-chip--${variant}`;
 
   if (user.avatarUrl) {
-    const avatar = document.createElement('img');
-    avatar.className = 'edify-user-chip__avatar';
-    avatar.alt = '';
-    avatar.src = resolvePublicUrl(user.avatarUrl);
-    avatar.referrerPolicy = 'no-referrer';
-    root.appendChild(avatar);
-    if (token) {
+    const key = extractFileKey(user.avatarUrl);
+    if (key && token) {
+      // Start with placeholder initials (avoid broken image icon), then swap to real avatar.
+      const ph = document.createElement('div');
+      ph.className = 'edify-user-chip__avatar edify-user-chip__avatar--ph';
+      ph.textContent = (displayName(user).charAt(0) || '?').toUpperCase();
+      root.appendChild(ph);
       void (async () => {
         try {
+          const avatar = document.createElement('img');
+          avatar.className = 'edify-user-chip__avatar';
+          avatar.alt = '';
+          avatar.referrerPolicy = 'no-referrer';
           avatar.src = await resolveAvatarImgSrc(user.avatarUrl!, token);
+          avatar.addEventListener('load', () => {
+            root.replaceChild(avatar, ph);
+          });
         } catch {
-          // ignore
+          // ignore (keep placeholder)
         }
       })();
+    } else {
+      const avatar = document.createElement('img');
+      avatar.className = 'edify-user-chip__avatar';
+      avatar.alt = '';
+      avatar.src = resolvePublicUrl(user.avatarUrl);
+      avatar.referrerPolicy = 'no-referrer';
+      root.appendChild(avatar);
     }
   } else {
     const ph = document.createElement('div');

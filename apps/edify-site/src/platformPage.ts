@@ -629,10 +629,12 @@ if (platformMount) {
             img.alt = '';
             try {
               const signed = await fetchJson<{ url: string }>(`/files/signed?key=${encodeURIComponent(key)}`, token);
-              img.src = signed.url;
+              img.src = resolvePublicUrl(signed.url);
             } catch {
-              // fallback: try legacy direct url (might still work in some envs)
-              img.src = resolvePublicUrl(u.avatarUrl);
+              // fallback: show initials instead of broken image
+              av.replaceChildren();
+              av.textContent = initialsFromNameLocal(disp);
+              return;
             }
             img.referrerPolicy = 'no-referrer';
             img.style.width = '100%';
