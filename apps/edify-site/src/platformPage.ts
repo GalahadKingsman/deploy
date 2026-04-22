@@ -596,7 +596,24 @@ if (platformMount) {
         if (sub) sub.textContent = `${u.username ? '@' + u.username : '—'} · ${u.platformRole === 'owner' || u.platformRole === 'admin' ? 'Эксперт' : 'Пользователь'}`;
 
         const av = screen.querySelector('[data-ep-profile-avatar]') as HTMLElement | null;
-        if (av) av.textContent = initialsFromNameLocal(disp);
+        if (av) {
+          const url = typeof u.avatarUrl === 'string' && u.avatarUrl.trim() ? u.avatarUrl.trim() : '';
+          if (url) {
+            av.replaceChildren();
+            const img = document.createElement('img');
+            img.alt = '';
+            img.src = url;
+            img.referrerPolicy = 'no-referrer';
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.borderRadius = '50%';
+            img.style.objectFit = 'cover';
+            av.appendChild(img);
+          } else {
+            av.replaceChildren();
+            av.textContent = initialsFromNameLocal(disp);
+          }
+        }
       } catch {
         // ignore
       }
