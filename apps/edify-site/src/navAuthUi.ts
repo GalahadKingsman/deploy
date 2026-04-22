@@ -51,41 +51,38 @@ function openAuthModal(mode: AuthMode): void {
 
   const backdrop = document.createElement('div');
   backdrop.id = 'edify-auth-modal';
-  backdrop.style.cssText =
-    'position:fixed;inset:0;z-index:1000;background:rgba(12,18,32,0.45);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;padding:18px;';
+  backdrop.className = 'edify-auth';
 
   const card = document.createElement('div');
-  card.style.cssText =
-    'width:min(520px,100%);background:var(--card,#fff);border:1px solid var(--line,rgba(0,0,0,0.08));border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,0.18);padding:18px 18px 16px;';
+  card.className = 'edify-auth__card';
 
   const head = document.createElement('div');
-  head.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px;';
+  head.className = 'edify-auth__head';
   const title = document.createElement('div');
-  title.style.cssText = 'font-family:var(--fd,Unbounded),sans-serif;font-size:18px;font-weight:700;color:var(--t1,#0C1220);';
+  title.className = 'edify-auth__title';
   title.textContent = mode === 'register' ? 'Регистрация' : 'Вход';
   const close = document.createElement('button');
   close.type = 'button';
-  close.className = 'btn-ghost-sm';
-  close.style.cssText = 'padding:6px 10px;border-radius:10px;';
-  close.textContent = '✕';
+  close.className = 'edify-auth__close';
+  close.innerHTML = '&times;';
   close.addEventListener('click', () => backdrop.remove());
   head.append(title, close);
 
   const tabs = document.createElement('div');
-  tabs.style.cssText = 'display:flex;gap:8px;margin-bottom:12px;';
+  tabs.className = 'edify-auth__tabs';
   const tLogin = document.createElement('button');
   tLogin.type = 'button';
-  tLogin.className = 'btn-ghost-sm';
+  tLogin.className = 'edify-auth__tab';
   tLogin.textContent = 'Вход';
   const tReg = document.createElement('button');
   tReg.type = 'button';
-  tReg.className = 'btn-ghost-sm';
+  tReg.className = 'edify-auth__tab';
   tReg.textContent = 'Регистрация';
   const setModeUi = (m: AuthMode) => {
     mode = m;
     title.textContent = mode === 'register' ? 'Регистрация' : 'Вход';
-    tLogin.style.borderColor = mode === 'login' ? 'var(--a-border,rgba(10,168,200,0.22))' : 'var(--line2,rgba(0,0,0,0.12))';
-    tReg.style.borderColor = mode === 'register' ? 'var(--a-border,rgba(10,168,200,0.22))' : 'var(--line2,rgba(0,0,0,0.12))';
+    tLogin.classList.toggle('is-active', mode === 'login');
+    tReg.classList.toggle('is-active', mode === 'register');
     regFields.style.display = mode === 'register' ? '' : 'none';
     submit.textContent = mode === 'register' ? 'Создать аккаунт' : 'Войти';
     msg.textContent = '';
@@ -95,38 +92,38 @@ function openAuthModal(mode: AuthMode): void {
   tabs.append(tLogin, tReg);
 
   const form = document.createElement('form');
-  form.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
+  form.className = 'edify-auth__form';
 
   const regFields = document.createElement('div');
-  regFields.style.cssText = 'display:none;grid-template-columns:1fr 1fr;gap:10px;';
+  regFields.className = 'edify-auth__row2';
+  regFields.style.display = 'none';
 
   const firstName = document.createElement('input');
-  firstName.className = 'form-input';
+  firstName.className = 'edify-auth__input';
   firstName.placeholder = 'Имя';
   const lastName = document.createElement('input');
-  lastName.className = 'form-input';
+  lastName.className = 'edify-auth__input';
   lastName.placeholder = 'Фамилия';
   regFields.append(firstName, lastName);
 
   const email = document.createElement('input');
-  email.className = 'form-input';
+  email.className = 'edify-auth__input';
   email.placeholder = 'Email';
   email.type = 'email';
   email.autocomplete = 'email';
 
   const password = document.createElement('input');
-  password.className = 'form-input';
+  password.className = 'edify-auth__input';
   password.placeholder = 'Пароль (минимум 8 символов)';
   password.type = 'password';
   password.autocomplete = mode === 'register' ? 'new-password' : 'current-password';
 
   const msg = document.createElement('div');
-  msg.style.cssText = 'font-size:12px;color:var(--t3,#8E94A8);line-height:1.5;min-height:18px;';
+  msg.className = 'edify-auth__msg';
 
   const submit = document.createElement('button');
   submit.type = 'submit';
-  submit.className = 'btn-sm';
-  submit.style.cssText = 'width:100%;justify-content:center;margin-top:2px;';
+  submit.className = 'edify-auth__submit';
   submit.textContent = mode === 'register' ? 'Создать аккаунт' : 'Войти';
 
   form.append(regFields, email, password, msg, submit);

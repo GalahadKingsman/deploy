@@ -123,6 +123,123 @@ body.platform-gate{background:var(--bg);color:var(--t1)}
 .btn-sm{font-family:var(--fd);font-size:11px;font-weight:700;letter-spacing:.01em;padding:9px 20px;border-radius:8px;background:var(--t1);color:#fff;text-decoration:none;cursor:pointer;transition:all .2s var(--ease)}
 .btn-sm:hover{opacity:.87;transform:translateY(-1px)}
 
+/* ── Auth modal (Landing): вход / регистрация ── */
+.edify-auth{
+  position:fixed;inset:0;z-index:1000;
+  background:rgba(12,18,32,0.45);
+  backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;
+  padding:18px;
+}
+.edify-auth__card{
+  width:min(560px,100%);
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:18px;
+  box-shadow:0 18px 60px rgba(0,0,0,0.18);
+  padding:18px 18px 16px;
+}
+.edify-auth__head{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:10px;
+  margin-bottom:14px;
+}
+.edify-auth__title{
+  font-family:var(--fd);
+  font-size:28px;
+  font-weight:900;
+  letter-spacing:-.03em;
+  color:var(--t1);
+  line-height:1.05;
+}
+.edify-auth__close{
+  width:44px;height:44px;
+  display:inline-flex;align-items:center;justify-content:center;
+  border-radius:14px;
+  border:1px solid var(--line2);
+  background:rgba(255,255,255,0.7);
+  color:var(--t2);
+  font-size:22px;
+  cursor:pointer;
+  transition:all .15s;
+}
+.edify-auth__close:hover{border-color:var(--a-border);color:var(--t1);transform:translateY(-1px)}
+.edify-auth__tabs{
+  display:flex;gap:10px;
+  margin-bottom:14px;
+}
+.edify-auth__tab{
+  border-radius:14px;
+  padding:12px 18px;
+  border:1px solid var(--line2);
+  background:transparent;
+  font-family:var(--fb);
+  font-size:14px;
+  font-weight:700;
+  color:var(--t2);
+  cursor:pointer;
+  transition:all .15s;
+}
+.edify-auth__tab:hover{border-color:var(--a-border);color:var(--t1)}
+.edify-auth__tab.is-active{
+  background:linear-gradient(160deg,#EBF9FC,var(--card) 60%);
+  border-color:var(--a-border);
+  box-shadow:0 1px 3px rgba(0,0,0,.08);
+  color:var(--t1);
+}
+.edify-auth__form{display:flex;flex-direction:column;gap:10px}
+.edify-auth__row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.edify-auth__input{
+  width:100%;
+  box-sizing:border-box;
+  border-radius:12px;
+  padding:12px 14px;
+  border:1px solid var(--line2);
+  background:rgba(247,246,242,0.7);
+  color:var(--t1);
+  font-family:var(--fb);
+  font-size:14px;
+  outline:none;
+  transition:border-color .15s, box-shadow .15s, background .15s;
+}
+.edify-auth__input::placeholder{color:rgba(142,148,168,.9)}
+.edify-auth__input:focus{
+  background:#fff;
+  border-color:var(--a-border);
+  box-shadow:0 0 0 4px rgba(10,168,200,.16);
+}
+.edify-auth__msg{
+  font-size:12px;
+  color:var(--t3);
+  line-height:1.45;
+  min-height:18px;
+  margin-top:2px;
+}
+.edify-auth__submit{
+  margin-top:6px;
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border:none;
+  cursor:pointer;
+  font-family:var(--fd);
+  font-size:13px;
+  font-weight:800;
+  letter-spacing:.01em;
+  padding:14px 16px;
+  border-radius:14px;
+  background:linear-gradient(180deg,#0C1220,#0A0F1A);
+  color:#fff;
+  box-shadow:var(--shadow2);
+  transition:transform .2s var(--ease), opacity .2s var(--ease);
+}
+.edify-auth__submit:hover{opacity:.92;transform:translateY(-2px)}
+.edify-auth__submit:active{transform:scale(.99)}
+@media (max-width: 520px){
+  .edify-auth__title{font-size:22px}
+  .edify-auth__row2{grid-template-columns:1fr}
+}
+
 /* ── Auth: профиль в стилистике сайта (шапка / меню / футер) ── */
 .nav-auth-mount,
 [data-edify-nav-auth][data-variant="header"]{
