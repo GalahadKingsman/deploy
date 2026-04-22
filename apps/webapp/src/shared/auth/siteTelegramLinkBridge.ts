@@ -2,6 +2,7 @@ import { ContractsV1 } from '@tracked/shared';
 import { fetchJson } from '../api/fetchJson.js';
 import { waitForTelegramInitData } from './telegram.js';
 import { getAccessToken, setAccessToken } from './tokenStorage.js';
+import { isApiClientError } from '../api/errors.js';
 
 const START_PARAM_POLL_MS = 100;
 const START_PARAM_POLL_MAX = 16;
@@ -58,6 +59,7 @@ export async function tryFinishTelegramLink(): Promise<void> {
   if (!code) return;
 
   const tg = window.Telegram?.WebApp;
+  tg?.showAlert?.('Запускаю привязку Telegram к аккаунту на сайте…');
   try {
     const initData = await waitForTelegramInitData();
     if (!initData) {
@@ -90,16 +92,24 @@ export async function tryFinishTelegramLink(): Promise<void> {
       tg?.close?.();
     } catch (e) {
       console.warn('telegram connect failed', e);
-      const msg = e instanceof Error ? e.message : 'ошибка сети';
-      tg?.showAlert?.(`Не удалось подключить Telegram: ${msg}`);
+      if (isApiClientError(e)) {
+        tg?.showAlert?.(`Не удалось подключить Telegram: HTTP ${e.status} ${e.code} (${e.requestId})`);
+      } else {
+        const msg = e instanceof Error ? e.message : 'ошибка сети';
+        tg?.showAlert?.(`Не удалось подключить Telegram: ${msg}`);
+      }
     } finally {
       // Restore previous token so Mini App stays logged in as Telegram user
       if (prev) setAccessToken(prev);
     }
   } catch (e) {
     console.warn('link flow failed', e);
-    const msg = e instanceof Error ? e.message : 'ошибка сети';
-    tg?.showAlert?.(`Не удалось завершить привязку: ${msg}`);
+    if (isApiClientError(e)) {
+      tg?.showAlert?.(`Не удалось завершить привязку: HTTP ${e.status} ${e.code} (${e.requestId})`);
+    } else {
+      const msg = e instanceof Error ? e.message : 'ошибка сети';
+      tg?.showAlert?.(`Не удалось завершить привязку: ${msg}`);
+    }
   }
 }
 
