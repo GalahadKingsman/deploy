@@ -261,6 +261,7 @@ table.tbl tr:hover td{background:var(--bg)}
 }
 .search-input:focus-within{border-color:var(--a)}
 .search-input input{border:none;outline:none;background:transparent;font-size:13px;color:var(--t1);width:200px;font-family:var(--fb)}
+.search-input.ep-admin-user-search input{flex:1;min-width:0;width:100%}
 .search-input input::placeholder{color:var(--t3)}
 
 /* Form elements */

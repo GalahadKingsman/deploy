@@ -502,7 +502,7 @@ if (platformMount) {
     let currentMe: MeUserV1 | null = null;
     let currentPlatformRole: string | null = null;
     let adminUserSearchTimer: ReturnType<typeof setTimeout> | null = null;
-    let adminUserSearchLast: { host: 'create-owner' | 'members-user' | 'platform-user' } | null = null;
+    let adminUserSearchLast: { q: string; host: 'create-owner' | 'members-user' | 'platform-user' } | null = null;
     let adminSelectedUserIdByField: { createOwner?: string; membersUser?: string; platformUser?: string } = {};
     /** Не дублировать загрузку конструктора при navigate от showScreen после ручного открытия курса. */
     let suppressBuilderNavigateHydrate = false;
@@ -2947,22 +2947,16 @@ if (platformMount) {
       root.querySelectorAll<HTMLElement>('[data-ep-admin-suggest]').forEach((el) => (el.style.display = 'none'));
     }
 
-    function adminPairQuery(
+    function adminSearchInputQ(
       root: ShadowRoot,
       host: 'create-owner' | 'members-user' | 'platform-user',
     ): string {
-      const sels: Record<typeof host, [string, string]> = {
-        'create-owner': [
-          '[data-ep-admin-create-expert-owner-first]',
-          '[data-ep-admin-create-expert-owner-last]',
-        ],
-        'members-user': ['[data-ep-admin-members-user-first]', '[data-ep-admin-members-user-last]'],
-        'platform-user': ['[data-ep-admin-platform-user-first]', '[data-ep-admin-platform-user-last]'],
+      const sel: Record<typeof host, string> = {
+        'create-owner': '[data-ep-admin-create-expert-owner-search]',
+        'members-user': '[data-ep-admin-members-user-search]',
+        'platform-user': '[data-ep-admin-platform-user-search]',
       };
-      const [a, b] = sels[host];
-      const av = (root.querySelector(a) as HTMLInputElement | null)?.value ?? '';
-      const bv = (root.querySelector(b) as HTMLInputElement | null)?.value ?? '';
-      return `${av} ${bv}`.trim();
+      return (root.querySelector(sel[host]) as HTMLInputElement | null)?.value?.trim() ?? '';
     }
 
     function renderAdminSuggest(
@@ -3020,38 +3014,22 @@ if (platformMount) {
 
         row.append(title, pick);
         row.addEventListener('click', () => {
-          const applyName = (f1: HTMLInputElement | null, f2: HTMLInputElement | null) => {
-            const fn = (u.firstName ?? '').trim();
-            const ln = (u.lastName ?? '').trim();
-            if (f1 && f2) {
-              if (fn || ln) {
-                f1.value = fn;
-                f2.value = ln;
-              } else {
-                f1.value = formatUserTitle(u);
-                f2.value = '';
-              }
-            }
-          };
           if (host === 'create-owner') {
-            const f1 = root.querySelector('[data-ep-admin-create-expert-owner-first]') as HTMLInputElement | null;
-            const f2 = root.querySelector('[data-ep-admin-create-expert-owner-last]') as HTMLInputElement | null;
+            const inp = root.querySelector('[data-ep-admin-create-expert-owner-search]') as HTMLInputElement | null;
+            if (inp) inp.value = formatUserTitle(u);
             const idInp = root.querySelector('[data-ep-admin-create-expert-owner-id]') as HTMLInputElement | null;
-            applyName(f1, f2);
             if (idInp) idInp.value = u.id;
             adminSelectedUserIdByField = { ...adminSelectedUserIdByField, createOwner: u.id };
           } else if (host === 'members-user') {
-            const f1 = root.querySelector('[data-ep-admin-members-user-first]') as HTMLInputElement | null;
-            const f2 = root.querySelector('[data-ep-admin-members-user-last]') as HTMLInputElement | null;
-            applyName(f1, f2);
+            const inp = root.querySelector('[data-ep-admin-members-user-search]') as HTMLInputElement | null;
+            if (inp) inp.value = formatUserTitle(u);
             const idInp = root.querySelector('[data-ep-admin-members-user-id]') as HTMLInputElement | null;
             if (idInp) idInp.value = u.id;
             adminSelectedUserIdByField = { ...adminSelectedUserIdByField, membersUser: u.id };
           } else {
-            const f1 = root.querySelector('[data-ep-admin-platform-user-first]') as HTMLInputElement | null;
-            const f2 = root.querySelector('[data-ep-admin-platform-user-last]') as HTMLInputElement | null;
+            const inp = root.querySelector('[data-ep-admin-platform-user-search]') as HTMLInputElement | null;
+            if (inp) inp.value = formatUserTitle(u);
             const idInp = root.querySelector('[data-ep-admin-platform-user-id]') as HTMLInputElement | null;
-            applyName(f1, f2);
             if (idInp) idInp.value = u.id;
             adminSelectedUserIdByField = { ...adminSelectedUserIdByField, platformUser: u.id };
           }
@@ -3974,7 +3952,7 @@ if (platformMount) {
           | 'members-user'
           | 'platform-user';
         if (h === 'create-owner' || h === 'members-user' || h === 'platform-user') {
-          void adminSearchUsers(shell.shadowRoot, adminPairQuery(shell.shadowRoot, h), h);
+          void adminSearchUsers(shell.shadowRoot, adminSearchInputQ(shell.shadowRoot, h), h);
         }
       }
       if (t?.closest('[data-ep-admin-create-expert]')) {
@@ -3995,11 +3973,9 @@ if (platformMount) {
             window.alert(`Эксперт создан: ${newExpertId}`);
             if (titleInp) titleInp.value = '';
             if (slugInp) slugInp.value = '';
-            const of1 = shell.shadowRoot.querySelector('[data-ep-admin-create-expert-owner-first]') as HTMLInputElement | null;
-            const of2 = shell.shadowRoot.querySelector('[data-ep-admin-create-expert-owner-last]') as HTMLInputElement | null;
+            const oSearch = shell.shadowRoot.querySelector('[data-ep-admin-create-expert-owner-search]') as HTMLInputElement | null;
             const oid = shell.shadowRoot.querySelector('[data-ep-admin-create-expert-owner-id]') as HTMLInputElement | null;
-            if (of1) of1.value = '';
-            if (of2) of2.value = '';
+            if (oSearch) oSearch.value = '';
             if (oid) oid.value = '';
             adminSelectedUserIdByField = { ...adminSelectedUserIdByField, createOwner: undefined };
             const memEx = shell.shadowRoot.querySelector('[data-ep-admin-members-expert-id]') as HTMLInputElement | null;
@@ -4565,56 +4541,44 @@ if (platformMount) {
         return;
       }
 
-      if (
-        inp.matches('[data-ep-admin-create-expert-owner-first]') ||
-        inp.matches('[data-ep-admin-create-expert-owner-last]')
-      ) {
+      if (inp.matches('[data-ep-admin-create-expert-owner-search]')) {
         adminSelectedUserIdByField = { ...adminSelectedUserIdByField, createOwner: undefined };
         const idInp = shell.shadowRoot.querySelector('[data-ep-admin-create-expert-owner-id]') as HTMLInputElement | null;
         if (idInp) idInp.value = '';
+        const q = inp.value;
         if (adminUserSearchTimer) window.clearTimeout(adminUserSearchTimer);
-        adminUserSearchLast = { host: 'create-owner' };
+        adminUserSearchLast = { q, host: 'create-owner' };
         adminUserSearchTimer = window.setTimeout(() => {
           if (!adminUserSearchLast) return;
-          void adminSearchUsers(
-            shell.shadowRoot,
-            adminPairQuery(shell.shadowRoot, 'create-owner'),
-            'create-owner',
-          );
+          void adminSearchUsers(shell.shadowRoot, adminUserSearchLast.q, adminUserSearchLast.host);
         }, 220);
         return;
       }
 
-      if (inp.matches('[data-ep-admin-members-user-first]') || inp.matches('[data-ep-admin-members-user-last]')) {
+      if (inp.matches('[data-ep-admin-members-user-search]')) {
         adminSelectedUserIdByField = { ...adminSelectedUserIdByField, membersUser: undefined };
         const idInp = shell.shadowRoot.querySelector('[data-ep-admin-members-user-id]') as HTMLInputElement | null;
         if (idInp) idInp.value = '';
+        const q = inp.value;
         if (adminUserSearchTimer) window.clearTimeout(adminUserSearchTimer);
-        adminUserSearchLast = { host: 'members-user' };
+        adminUserSearchLast = { q, host: 'members-user' };
         adminUserSearchTimer = window.setTimeout(() => {
           if (!adminUserSearchLast) return;
-          void adminSearchUsers(
-            shell.shadowRoot,
-            adminPairQuery(shell.shadowRoot, 'members-user'),
-            'members-user',
-          );
+          void adminSearchUsers(shell.shadowRoot, adminUserSearchLast.q, adminUserSearchLast.host);
         }, 220);
         return;
       }
 
-      if (inp.matches('[data-ep-admin-platform-user-first]') || inp.matches('[data-ep-admin-platform-user-last]')) {
+      if (inp.matches('[data-ep-admin-platform-user-search]')) {
         adminSelectedUserIdByField = { ...adminSelectedUserIdByField, platformUser: undefined };
         const idInp = shell.shadowRoot.querySelector('[data-ep-admin-platform-user-id]') as HTMLInputElement | null;
         if (idInp) idInp.value = '';
+        const q = inp.value;
         if (adminUserSearchTimer) window.clearTimeout(adminUserSearchTimer);
-        adminUserSearchLast = { host: 'platform-user' };
+        adminUserSearchLast = { q, host: 'platform-user' };
         adminUserSearchTimer = window.setTimeout(() => {
           if (!adminUserSearchLast) return;
-          void adminSearchUsers(
-            shell.shadowRoot,
-            adminPairQuery(shell.shadowRoot, 'platform-user'),
-            'platform-user',
-          );
+          void adminSearchUsers(shell.shadowRoot, adminUserSearchLast.q, adminUserSearchLast.host);
         }, 220);
         return;
       }

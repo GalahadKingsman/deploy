@@ -1361,11 +1361,16 @@
           <input class="form-input" data-ep-admin-create-expert-slug placeholder="Например: alexey-school" autocomplete="off"/>
         </div>
         <div class="form-group" style="margin-bottom:10px;position:relative">
-          <div class="form-label">Владелец (поиск: имя и фамилия, затем выбор из списка)</div>
+          <div class="form-label">Поиск пользователя (владелец)</div>
           <div data-ep-admin-name-pair="create-owner" style="position:relative;z-index:1">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-              <input class="form-input" data-ep-admin-create-expert-owner-first placeholder="Имя" type="search" autocomplete="off"/>
-              <input class="form-input" data-ep-admin-create-expert-owner-last placeholder="Фамилия" type="search" autocomplete="off"/>
+            <div class="search-input ep-admin-user-search" style="width:100%;margin:0">
+              <span>🔍</span>
+              <input
+                data-ep-admin-create-expert-owner-search
+                type="search"
+                placeholder="Имя, фамилия, @username, UUID — затем выберите в списке"
+                autocomplete="off"
+              />
             </div>
             <div
               data-ep-admin-suggest="create-owner"
@@ -1395,13 +1400,20 @@
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:10px">
           <div style="flex:1;min-width:240px;position:relative;z-index:1">
-            <div class="form-label">User (имя и фамилия → список)</div>
-            <div data-ep-admin-name-pair="members-user" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;position:relative">
-              <input class="form-input" data-ep-admin-members-user-first placeholder="Имя" type="search" autocomplete="off"/>
-              <input class="form-input" data-ep-admin-members-user-last placeholder="Фамилия" type="search" autocomplete="off"/>
+            <div class="form-label">Поиск пользователя</div>
+            <div data-ep-admin-name-pair="members-user" style="position:relative">
+              <div class="search-input ep-admin-user-search" style="width:100%;margin:0">
+                <span>🔍</span>
+                <input
+                  data-ep-admin-members-user-search
+                  type="search"
+                  placeholder="Имя, фамилия, @username, UUID"
+                  autocomplete="off"
+                />
+              </div>
               <div
                 data-ep-admin-suggest="members-user"
-                style="display:none;position:absolute;left:0;right:0;top:100%;grid-column:1/-1;margin-top:6px;z-index:3"
+                style="display:none;position:absolute;left:0;right:0;top:100%;margin-top:6px;z-index:3"
               ></div>
             </div>
           </div>
@@ -1450,18 +1462,25 @@
         <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Platform role (owner)</div>
         <div style="font-size:12px;color:var(--t3);line-height:1.55;margin-bottom:12px">Назначение `platform_role` пользователю.</div>
         <div style="display:flex;flex-direction:column;gap:10px">
-          <div style="position:relative;z-index:1">
-            <div class="form-label">Пользователь (имя и фамилия → список)</div>
-            <div data-ep-admin-name-pair="platform-user" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:520px;position:relative">
-              <input class="form-input" data-ep-admin-platform-user-first placeholder="Имя" type="search" autocomplete="off"/>
-              <input class="form-input" data-ep-admin-platform-user-last placeholder="Фамилия" type="search" autocomplete="off"/>
+          <div style="position:relative;z-index:1;max-width:520px">
+            <div class="form-label">Поиск пользователя</div>
+            <div data-ep-admin-name-pair="platform-user" style="position:relative">
+              <div class="search-input ep-admin-user-search" style="width:100%;margin:0">
+                <span>🔍</span>
+                <input
+                  data-ep-admin-platform-user-search
+                  type="search"
+                  placeholder="Имя, фамилия, @username, UUID"
+                  autocomplete="off"
+                />
+              </div>
               <div
                 data-ep-admin-suggest="platform-user"
-                style="display:none;position:absolute;left:0;right:0;top:100%;grid-column:1/-1;margin-top:6px;z-index:3"
+                style="display:none;position:absolute;left:0;right:0;top:100%;margin-top:6px;z-index:3"
               ></div>
             </div>
-            <div style="margin-top:8px;max-width:520px">
-              <div class="form-label" style="font-size:11px">User ID</div>
+            <div style="margin-top:8px">
+              <div class="form-label" style="font-size:11px">User ID (после выбора)</div>
               <input
                 class="form-input"
                 data-ep-admin-platform-user-id
