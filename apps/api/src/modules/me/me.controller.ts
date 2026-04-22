@@ -161,8 +161,9 @@ export class MeController {
       body: new Uint8Array(buf),
       contentType: file.mimetype ?? null,
     });
-    // Store S3 object key; UI resolves it via /files/signed.
-    const updated = await this.usersRepository.updateAvatarUrl(userId, key);
+    // Same approach as course cover: store a public API path.
+    const publicPath = `/public/avatar?key=${encodeURIComponent(key)}`;
+    const updated = await this.usersRepository.updateAvatarUrl(userId, publicPath);
     return { user: updated as any };
   }
 

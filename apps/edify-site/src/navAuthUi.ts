@@ -39,6 +39,14 @@ function extractFileKey(raw: string): string {
   const v = (raw || '').trim();
   if (!v) return '';
   if (v.startsWith('submissions/') || v.startsWith('avatars/')) return v;
+  if (v.startsWith('/public/avatar?')) {
+    try {
+      const u = new URL(v, 'https://x.local');
+      return (u.searchParams.get('key') || '').trim();
+    } catch {
+      return '';
+    }
+  }
   if (v.startsWith('/files?')) {
     try {
       const u = new URL(v, 'https://x.local');
@@ -53,6 +61,8 @@ function extractFileKey(raw: string): string {
 async function resolveAvatarImgSrc(avatarUrl: string, token: string): Promise<string> {
   const key = extractFileKey(avatarUrl);
   if (!key) return resolvePublicUrl(avatarUrl);
+  // If it's already public avatar endpoint, no need for signed flow.
+  if (avatarUrl.trim().startsWith('/public/avatar?')) return resolvePublicUrl(avatarUrl);
   const api = getApiBaseUrl();
   if (!api) return resolvePublicUrl(avatarUrl);
   const res = await fetch(`${api}/files/signed?key=${encodeURIComponent(key)}`, {

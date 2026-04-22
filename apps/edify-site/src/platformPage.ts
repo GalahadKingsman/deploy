@@ -44,6 +44,14 @@ function extractFileKey(raw: string): string {
   const v = (raw || '').trim();
   if (!v) return '';
   if (v.startsWith('submissions/') || v.startsWith('avatars/')) return v;
+  if (v.startsWith('/public/avatar?')) {
+    try {
+      const u = new URL(v, 'https://x.local');
+      return (u.searchParams.get('key') || '').trim();
+    } catch {
+      return '';
+    }
+  }
   // legacy: "/files?key=..."
   if (v.startsWith('/files?')) {
     try {
@@ -622,8 +630,26 @@ if (platformMount) {
 
         const av = screen.querySelector('[data-ep-profile-avatar]') as HTMLElement | null;
         if (av) {
-          const key = typeof u.avatarUrl === 'string' ? extractFileKey(u.avatarUrl) : '';
-          if (key) {
+          const raw = typeof u.avatarUrl === 'string' ? u.avatarUrl.trim() : '';
+          if (raw.startsWith('/public/avatar?') || raw.startsWith('http')) {
+            const url = resolvePublicUrl(raw);
+            av.replaceChildren();
+            const img = document.createElement('img');
+            img.alt = '';
+            img.src = url;
+            img.referrerPolicy = 'no-referrer';
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.borderRadius = '50%';
+            img.style.objectFit = 'cover';
+            av.appendChild(img);
+          } else {
+            const key = raw ? extractFileKey(raw) : '';
+            if (!key) {
+              av.replaceChildren();
+              av.textContent = initialsFromNameLocal(disp);
+              return;
+            }
             av.replaceChildren();
             const img = document.createElement('img');
             img.alt = '';
@@ -642,9 +668,6 @@ if (platformMount) {
             img.style.borderRadius = '50%';
             img.style.objectFit = 'cover';
             av.appendChild(img);
-          } else {
-            av.replaceChildren();
-            av.textContent = initialsFromNameLocal(disp);
           }
         }
       } catch {
