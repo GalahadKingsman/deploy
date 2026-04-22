@@ -12,7 +12,9 @@ import {
   BadRequestException,
   NotFoundException,
   ConflictException,
+  Inject,
 } from '@nestjs/common';
+import { Pool } from 'pg';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { randomUUID } from 'node:crypto';
 import { ContractsV1, ErrorCodes } from '@tracked/shared';
@@ -21,6 +23,7 @@ import { PlatformRoleGuard } from '../../auth/rbac/platform-role.guard.js';
 import { RequirePlatformRole } from '../../auth/rbac/require-platform-role.decorator.js';
 import { ExpertsRepository } from '../../experts/experts.repository.js';
 import { ExpertMembersRepository } from '../../experts/expert-members.repository.js';
+import { ExpertMemberCourseAccessRepository } from '../../experts/expert-member-course-access.repository.js';
 import { ExpertSubscriptionsRepository } from '../../subscriptions/expert-subscriptions.repository.js';
 import { UsersRepository } from '../../users/users.repository.js';
 import { AuditService } from '../../audit/audit.service.js';
@@ -39,6 +42,8 @@ export class AdminExpertsController {
   constructor(
     private readonly expertsRepository: ExpertsRepository,
     private readonly expertMembersRepository: ExpertMembersRepository,
+    @Inject(Pool) private readonly pool: Pool,
+    private readonly expertMemberCourseAccessRepository: ExpertMemberCourseAccessRepository,
     private readonly expertSubscriptionsRepository: ExpertSubscriptionsRepository,
     private readonly usersRepository: UsersRepository,
     private readonly auditService: AuditService,
@@ -187,6 +192,14 @@ export class AdminExpertsController {
     }
 
     await this.expertMembersRepository.addMember({ expertId, userId, role });
+    if (role !== 'owner') {
+      const c = await this.pool.connect();
+      try {
+        await this.expertMemberCourseAccessRepository.grantAllNonDeletedCoursesForMember(c, expertId, userId);
+      } finally {
+        c.release();
+      }
+    }
 
     const h = req.headers?.['x-request-id'];
     const traceId =
@@ -243,6 +256,19 @@ export class AdminExpertsController {
     const from = existing.role;
 
     await this.expertMembersRepository.updateMemberRole(expertId, userId, to);
+    if (to === 'owner') {
+      await this.expertMemberCourseAccessRepository.deleteAllForMember(expertId, userId);
+    } else {
+      const cnt = await this.expertMemberCourseAccessRepository.countForMember(expertId, userId);
+      if (cnt === 0) {
+        const c = await this.pool.connect();
+        try {
+          await this.expertMemberCourseAccessRepository.grantAllNonDeletedCoursesForMember(c, expertId, userId);
+        } finally {
+          c.release();
+        }
+      }
+    }
 
     const h = req.headers?.['x-request-id'];
     const traceId =

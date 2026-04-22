@@ -5,15 +5,19 @@ import {
   Controller,
   Delete,
   ForbiddenException,
+  Get,
   HttpCode,
   HttpStatus,
+  Inject,
   NotFoundException,
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { Pool } from 'pg';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ContractsV1, ErrorCodes } from '@tracked/shared';
 import type { FastifyRequest } from 'fastify';
@@ -22,8 +26,10 @@ import { ExpertRoleGuard } from '../../auth/expert-rbac/expert-role.guard.js';
 import { ExpertSubscriptionGuard } from '../../subscriptions/guards/expert-subscription.guard.js';
 import { RequireExpertRole } from '../../auth/expert-rbac/require-expert-role.decorator.js';
 import { ExpertMembersRepository } from '../../experts/expert-members.repository.js';
+import { ExpertMemberCourseAccessRepository } from '../../experts/expert-member-course-access.repository.js';
 import { UsersRepository } from '../../users/users.repository.js';
 import { AuditService } from '../../audit/audit.service.js';
+import { CoursesRepository } from '../../authoring/courses.repository.js';
 
 function traceIdFrom(req: FastifyRequest & { traceId?: string }): string | null {
   const h = req.headers?.['x-request-id'];
@@ -38,10 +44,97 @@ function traceIdFrom(req: FastifyRequest & { traceId?: string }): string | null 
 @ApiBearerAuth()
 export class ExpertTeamController {
   constructor(
+    @Inject(Pool) private readonly pool: Pool,
     private readonly expertMembersRepository: ExpertMembersRepository,
+    private readonly expertMemberCourseAccessRepository: ExpertMemberCourseAccessRepository,
     private readonly usersRepository: UsersRepository,
     private readonly auditService: AuditService,
+    private readonly coursesRepository: CoursesRepository,
   ) {}
+
+  @Get('users/search')
+  @RequireExpertRole('owner')
+  @ApiOperation({ summary: 'Search users to add to team (owner only)' })
+  @ApiResponse({ status: 200, description: 'Users' })
+  async searchUsersForTeam(
+    @Query('q') q: string | undefined,
+  ): Promise<{ items: Array<Pick<ContractsV1.UserV1, 'id' | 'telegramUserId' | 'username' | 'firstName' | 'lastName'>> }> {
+    const qq = typeof q === 'string' ? q.trim() : '';
+    if (!qq) return { items: [] };
+    const res = await this.usersRepository.adminList({ q: qq, limit: 20, offset: 0 });
+    return {
+      items: (res.items ?? []).map((u) => ({
+        id: u.id,
+        telegramUserId: u.telegramUserId,
+        username: u.username ?? undefined,
+        firstName: u.firstName ?? undefined,
+        lastName: u.lastName ?? undefined,
+      })),
+    };
+  }
+
+  @Post('members')
+  @RequireExpertRole('owner')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Add team member by user id with course scope (owner only)' })
+  @ApiResponse({ status: 201, description: 'Member added' })
+  async addByUserId(
+    @Param('expertId') expertId: string,
+    @Body() body: unknown,
+    @Req() req: FastifyRequest & { user?: { userId: string }; traceId?: string },
+  ): Promise<{ member: ContractsV1.ExpertMemberV1 }> {
+    const parsed = ContractsV1.AddExpertTeamMemberByUserRequestV1Schema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Validation failed' });
+    }
+    const target = await this.usersRepository.findById(parsed.data.userId);
+    if (!target) {
+      throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'User not found' });
+    }
+    const existing = await this.expertMembersRepository.findMember(expertId, parsed.data.userId);
+    if (existing) {
+      throw new ConflictException({ code: ErrorCodes.CONFLICT, message: 'User is already a team member' });
+    }
+    await this.coursesRepository.assertAllCoursesBelongToExpert(expertId, parsed.data.courseIds);
+
+    const client = await this.pool.connect();
+    let member: ContractsV1.ExpertMemberV1;
+    try {
+      await client.query('BEGIN');
+      member = await this.expertMembersRepository.addMemberWithClient(client, {
+        expertId,
+        userId: parsed.data.userId,
+        role: parsed.data.role,
+      });
+      await this.expertMemberCourseAccessRepository.insertPairsForMember(
+        client,
+        expertId,
+        parsed.data.userId,
+        parsed.data.courseIds,
+      );
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+
+    await this.auditService.write({
+      actorUserId: req.user?.userId ?? null,
+      action: 'expert.team.add_by_user',
+      entityType: 'expert',
+      entityId: expertId,
+      meta: {
+        expertId,
+        addedUserId: parsed.data.userId,
+        role: parsed.data.role,
+        courseIds: parsed.data.courseIds,
+      },
+      traceId: traceIdFrom(req),
+    });
+    return { member };
+  }
 
   @Post('members/by-telegram/:telegramUserId')
   @RequireExpertRole('owner')
@@ -75,6 +168,14 @@ export class ExpertTeamController {
       userId: user.id,
       role: parsed.data.role,
     });
+    if (parsed.data.role !== 'owner') {
+      const c = await this.pool.connect();
+      try {
+        await this.expertMemberCourseAccessRepository.grantAllNonDeletedCoursesForMember(c, expertId, user.id);
+      } finally {
+        c.release();
+      }
+    }
     await this.auditService.write({
       actorUserId: req.user?.userId ?? null,
       action: 'expert.team.add',
@@ -118,6 +219,23 @@ export class ExpertTeamController {
       targetUserId,
       parsed.data.role,
     );
+    if (parsed.data.role === 'owner') {
+      await this.expertMemberCourseAccessRepository.deleteAllForMember(expertId, targetUserId);
+    } else {
+      const cnt = await this.expertMemberCourseAccessRepository.countForMember(expertId, targetUserId);
+      if (cnt === 0) {
+        const c = await this.pool.connect();
+        try {
+          await this.expertMemberCourseAccessRepository.grantAllNonDeletedCoursesForMember(
+            c,
+            expertId,
+            targetUserId,
+          );
+        } finally {
+          c.release();
+        }
+      }
+    }
     await this.auditService.write({
       actorUserId: req.user?.userId ?? null,
       action: 'expert.team.role_change',

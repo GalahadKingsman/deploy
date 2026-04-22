@@ -19,10 +19,10 @@ import { JwtAuthGuard } from '../../auth/session/jwt-auth.guard.js';
 import { ExpertRoleGuard } from '../../auth/expert-rbac/expert-role.guard.js';
 import { ExpertSubscriptionGuard } from '../../subscriptions/guards/expert-subscription.guard.js';
 import { RequireExpertRole } from '../../auth/expert-rbac/require-expert-role.decorator.js';
-import { CoursesRepository } from '../../authoring/courses.repository.js';
 import { LessonsRepository } from '../../authoring/lessons.repository.js';
 import { AuditService } from '../../audit/audit.service.js';
 import type { FastifyRequest } from 'fastify';
+import { ExpertCourseAccessService } from './expert-course-access.service.js';
 
 function normalizeRutubeInVideo(
   v: ContractsV1.LessonVideoV1 | undefined | null,
@@ -50,9 +50,9 @@ function getTraceId(req: FastifyRequest & { traceId?: string }): string | null {
 @ApiBearerAuth()
 export class ExpertLessonsController {
   constructor(
-    private readonly coursesRepository: CoursesRepository,
     private readonly lessonsRepository: LessonsRepository,
     private readonly auditService: AuditService,
+    private readonly expertCourseAccessService: ExpertCourseAccessService,
   ) {}
 
   @Get()
@@ -62,8 +62,13 @@ export class ExpertLessonsController {
   async list(
     @Param('expertId') expertId: string,
     @Param('moduleId') moduleId: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.ListExpertLessonsResponseV1> {
-    await this.coursesRepository.assertModuleBelongsToExpert({ expertId, moduleId });
+    await this.expertCourseAccessService.assertCanAccessModule({
+      expertId,
+      userId: req.user!.userId,
+      moduleId,
+    });
     const items = await this.lessonsRepository.listByModuleId(moduleId);
     return { items };
   }
@@ -79,7 +84,11 @@ export class ExpertLessonsController {
     @Body() body: ContractsV1.CreateExpertLessonRequestV1,
     @Req() req: FastifyRequest & { user?: { userId: string }; traceId?: string },
   ): Promise<ContractsV1.ExpertLessonV1> {
-    await this.coursesRepository.assertModuleBelongsToExpert({ expertId, moduleId });
+    await this.expertCourseAccessService.assertCanAccessModule({
+      expertId,
+      userId: req.user!.userId,
+      moduleId,
+    });
     const parsed = ContractsV1.CreateExpertLessonRequestV1Schema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException({
@@ -117,7 +126,11 @@ export class ExpertLessonsController {
     @Body() body: ContractsV1.UpdateExpertLessonRequestV1,
     @Req() req: FastifyRequest & { user?: { userId: string }; traceId?: string },
   ): Promise<ContractsV1.ExpertLessonV1> {
-    await this.coursesRepository.assertModuleBelongsToExpert({ expertId, moduleId });
+    await this.expertCourseAccessService.assertCanAccessModule({
+      expertId,
+      userId: req.user!.userId,
+      moduleId,
+    });
     const parsed = ContractsV1.UpdateExpertLessonRequestV1Schema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException({
@@ -157,7 +170,11 @@ export class ExpertLessonsController {
     @Body() body: ContractsV1.ReorderExpertLessonsRequestV1,
     @Req() req: FastifyRequest & { user?: { userId: string }; traceId?: string },
   ): Promise<{ ok: true }> {
-    await this.coursesRepository.assertModuleBelongsToExpert({ expertId, moduleId });
+    await this.expertCourseAccessService.assertCanAccessModule({
+      expertId,
+      userId: req.user!.userId,
+      moduleId,
+    });
     const parsed = ContractsV1.ReorderExpertLessonsRequestV1Schema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException({
@@ -189,7 +206,11 @@ export class ExpertLessonsController {
     @Param('lessonId') lessonId: string,
     @Req() req: FastifyRequest & { user?: { userId: string }; traceId?: string },
   ): Promise<{ ok: true }> {
-    await this.coursesRepository.assertModuleBelongsToExpert({ expertId, moduleId });
+    await this.expertCourseAccessService.assertCanAccessModule({
+      expertId,
+      userId: req.user!.userId,
+      moduleId,
+    });
     await this.lessonsRepository.softDelete({ moduleId, lessonId });
     await this.auditService.write({
       actorUserId: req.user?.userId ?? null,

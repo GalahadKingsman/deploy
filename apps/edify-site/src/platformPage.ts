@@ -127,6 +127,19 @@ if (platformMount) {
     };
     type ListExpertCoursesDashboardResponseV1 = { items: ExpertCourseDashboardItemV1[] };
 
+    type ExpertTeamMemberRowV1 = {
+      userId: string;
+      role: string;
+      createdAt: string;
+      username?: string | null;
+      firstName?: string | null;
+      lastName?: string | null;
+      email: string | null;
+      coursesLabel: string;
+      lastActivityAt: string | null;
+    };
+    type ListExpertTeamResponseV1 = { items: ExpertTeamMemberRowV1[] };
+
     const myCourseIds = new Set<string>();
 
     function formatPrice(course: CourseV1): string {
@@ -471,6 +484,10 @@ if (platformMount) {
     const expertShellAccess = { allowed: false };
     /** Первый expertId из членств (рабочее пространство для API `/experts/:id/...`). */
     let activeExpertId: string | null = null;
+    /** Роль текущего пользователя в выбранном workspace эксперта (из /me/expert-memberships). */
+    let expertWorkspaceMyRole: string | null = null;
+    let expertTeamUserSearchTimer: ReturnType<typeof setTimeout> | null = null;
+    let expertTeamDrawerSelectedUserId: string | null = null;
     /** expertId владельца курса в конструкторе — при нескольких командах эксперта не путать с «активным» из подписки. */
     let expertBuilderExpertId: string | null = null;
 
@@ -610,6 +627,9 @@ if (platformMount) {
           expertBuilderExpertId = null;
           void hydrateExpertCourses(action.shadowRoot);
         }
+        if (action.type === 'navigate' && action.screenId === 'e-team') {
+          void hydrateExpertTeam(action.shadowRoot);
+        }
         if (action.type === 'navigate' && action.screenId === 'e-builder') {
           if (suppressBuilderNavigateHydrate) return;
           const src = action.sourceElement ?? null;
@@ -653,6 +673,9 @@ if (platformMount) {
 
     if (initialScreenId === 's-lesson' && isShellStudentMode(shell.shadowRoot)) {
       void enterStudentCurrentLessonOrEmpty(shell.shadowRoot);
+    }
+    if (initialScreenId === 'e-team') {
+      void hydrateExpertTeam(shell.shadowRoot);
     }
 
     type ModuleV1 = { id: string; title: string; position?: number };
@@ -1832,10 +1855,14 @@ if (platformMount) {
       return memberships[0]?.expertId ?? null;
     }
 
-    async function fetchExpertWorkspaceId(token: string): Promise<string | null> {
-      let memberships: { expertId: string }[] = [];
+    async function fetchExpertWorkspaceId(token: string, userId: string): Promise<string | null> {
+      expertWorkspaceMyRole = null;
+      let memberships: { expertId: string; userId: string; role: string }[] = [];
       try {
-        const mem = await fetchJson<{ items?: { expertId: string }[] }>('/me/expert-memberships', token);
+        const mem = await fetchJson<{ items?: { expertId: string; userId: string; role: string }[] }>(
+          '/me/expert-memberships',
+          token,
+        );
         memberships = mem.items ?? [];
       } catch {
         return null;
@@ -1849,7 +1876,20 @@ if (platformMount) {
       } catch {
         subscription = null;
       }
-      return pickWorkspaceExpertId(memberships, subscription);
+      const eid = pickWorkspaceExpertId(memberships, subscription);
+      if (eid && userId) {
+        const row = memberships.find((m) => m.expertId === eid && m.userId === userId);
+        expertWorkspaceMyRole = row?.role ?? null;
+      }
+      return eid;
+    }
+
+    function syncExpertTeamOwnerButton(root: ShadowRoot | null): void {
+      if (!root) return;
+      const btn = root.querySelector('[data-ep-team-add-open]') as HTMLButtonElement | null;
+      if (!btn) return;
+      const show = expertWorkspaceMyRole === 'owner';
+      btn.style.display = show ? '' : 'none';
     }
 
     async function hydrateTopbarUser(): Promise<void> {
@@ -1857,8 +1897,10 @@ if (platformMount) {
       if (!token) {
         expertShellAccess.allowed = false;
         activeExpertId = null;
+        expertWorkspaceMyRole = null;
         currentMe = null;
         currentPlatformRole = null;
+        syncExpertTeamOwnerButton(root);
         return;
       }
 
@@ -1876,8 +1918,10 @@ if (platformMount) {
         if (!u) {
           expertShellAccess.allowed = false;
           activeExpertId = null;
+          expertWorkspaceMyRole = null;
           currentMe = null;
           currentPlatformRole = null;
+          syncExpertTeamOwnerButton(root);
           return;
         }
         currentMe = u;
@@ -1885,13 +1929,16 @@ if (platformMount) {
         let inExpertTeam = false;
         activeExpertId = null;
         try {
-          activeExpertId = await fetchExpertWorkspaceId(token);
+          activeExpertId = await fetchExpertWorkspaceId(token, u.id);
           inExpertTeam = !!activeExpertId;
+          syncExpertTeamOwnerButton(shell.shadowRoot);
         } catch {
           inExpertTeam = false;
           activeExpertId = null;
+          expertWorkspaceMyRole = null;
         }
         expertShellAccess.allowed = inExpertTeam;
+        syncExpertTeamOwnerButton(root);
         const name = displayName(u);
         nameEl.textContent = name;
         roleEl.textContent = inExpertTeam ? 'Эксперт' : 'Ученик';
@@ -1928,8 +1975,10 @@ if (platformMount) {
       } catch {
         expertShellAccess.allowed = false;
         activeExpertId = null;
+        expertWorkspaceMyRole = null;
         currentMe = null;
         currentPlatformRole = null;
+        syncExpertTeamOwnerButton(root);
         // не ломаем интерфейс, если /me недоступен
       }
     }
@@ -1977,7 +2026,7 @@ if (platformMount) {
       if (activeExpertId) return activeExpertId;
       const token = getAccessToken();
       if (!token) return null;
-      activeExpertId = await fetchExpertWorkspaceId(token);
+      activeExpertId = await fetchExpertWorkspaceId(token, currentMe?.id ?? '');
       return activeExpertId;
     }
 
@@ -2237,6 +2286,299 @@ if (platformMount) {
         grid.appendChild(err);
         sub.textContent = '—';
       }
+    }
+
+    function expertMemberDisplayName(m: ExpertTeamMemberRowV1): string {
+      const n = [m.firstName, m.lastName].filter(Boolean).join(' ').trim();
+      if (n) return n;
+      if (m.username) return `@${m.username}`;
+      return 'Участник';
+    }
+
+    function expertMemberRoleUi(role: string): { label: string; cls: string } {
+      if (role === 'owner') return { label: 'Эксперт (автор)', cls: 'tag tag-new' };
+      if (role === 'manager') return { label: 'Менеджер', cls: 'tag tag-draft' };
+      if (role === 'reviewer') return { label: 'Куратор', cls: 'tag tag-live' };
+      return { label: 'Поддержка', cls: 'tag' };
+    }
+
+    function formatExpertLastActivity(iso: string | null | undefined): string {
+      if (!iso) return '—';
+      try {
+        return new Date(iso).toLocaleString('ru-RU', {
+          day: 'numeric',
+          month: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      } catch {
+        return '—';
+      }
+    }
+
+    async function hydrateExpertTeam(root: ShadowRoot | null): Promise<void> {
+      if (!root) return;
+      const tbody = root.querySelector('[data-ep-expert-team-tbody]') as HTMLElement | null;
+      if (!tbody) return;
+      syncExpertTeamOwnerButton(root);
+      const token = getAccessToken();
+      if (!token) {
+        tbody.replaceChildren();
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 5;
+        td.style.textAlign = 'center';
+        td.style.color = 'var(--t3)';
+        td.style.padding = '20px';
+        td.textContent = 'Войдите, чтобы видеть команду.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+      const eid = await resolveActiveExpertId();
+      if (!eid) {
+        tbody.replaceChildren();
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 5;
+        td.style.textAlign = 'center';
+        td.style.color = 'var(--t3)';
+        td.style.padding = '20px';
+        td.textContent = 'Нет доступа к команде эксперта.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+      tbody.replaceChildren();
+      const loading = document.createElement('tr');
+      const ltd = document.createElement('td');
+      ltd.colSpan = 5;
+      ltd.style.textAlign = 'center';
+      ltd.style.color = 'var(--t3)';
+      ltd.style.padding = '20px';
+      ltd.textContent = 'Загрузка…';
+      loading.appendChild(ltd);
+      tbody.appendChild(loading);
+      try {
+        const data = await fetchJson<ListExpertTeamResponseV1>(
+          `/experts/${encodeURIComponent(eid)}/team/members`,
+          token,
+        );
+        tbody.replaceChildren();
+        const items = data.items ?? [];
+        if (items.length === 0) {
+          const tr = document.createElement('tr');
+          const td = document.createElement('td');
+          td.colSpan = 5;
+          td.style.textAlign = 'center';
+          td.style.color = 'var(--t3)';
+          td.style.padding = '18px';
+          td.textContent = 'В команде пока нет участников.';
+          tr.appendChild(td);
+          tbody.appendChild(tr);
+          return;
+        }
+        const selfId = currentMe?.id ?? '';
+        for (const m of items) {
+          const tr = document.createElement('tr');
+          const name = expertMemberDisplayName(m);
+          const initials = initialsFromName(name);
+          const roleUi = expertMemberRoleUi(m.role);
+          const isSelf = Boolean(selfId && m.userId === selfId);
+          const email = (m.email ?? '').trim();
+
+          const td1 = document.createElement('td');
+          const wrap = document.createElement('div');
+          wrap.style.display = 'flex';
+          wrap.style.alignItems = 'center';
+          wrap.style.gap = '8px';
+          const av = document.createElement('div');
+          av.className = 'avatar av-sm';
+          av.style.background = 'var(--al)';
+          av.style.color = 'var(--a)';
+          av.textContent = initials;
+          const nameCol = document.createElement('div');
+          const nm = document.createElement('div');
+          nm.className = 'td-name';
+          nm.textContent = isSelf ? `${name} (вы)` : name;
+          const em = document.createElement('div');
+          em.style.fontSize = '10px';
+          em.style.color = 'var(--t3)';
+          em.textContent = email || '—';
+          nameCol.append(nm, em);
+          wrap.append(av, nameCol);
+          td1.appendChild(wrap);
+
+          const td2 = document.createElement('td');
+          const tag = document.createElement('span');
+          tag.className = roleUi.cls;
+          tag.textContent = roleUi.label;
+          td2.appendChild(tag);
+
+          const td3 = document.createElement('td');
+          td3.style.color = 'var(--t2)';
+          td3.textContent = m.coursesLabel ?? '—';
+
+          const td4 = document.createElement('td');
+          td4.style.color = 'var(--t3)';
+          td4.style.fontSize = '11px';
+          td4.textContent = formatExpertLastActivity(m.lastActivityAt);
+
+          const td5 = document.createElement('td');
+          tr.append(td1, td2, td3, td4, td5);
+          tbody.appendChild(tr);
+        }
+      } catch {
+        tbody.replaceChildren();
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 5;
+        td.style.textAlign = 'center';
+        td.style.color = 'var(--err)';
+        td.style.padding = '18px';
+        td.textContent = 'Не удалось загрузить команду.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+      }
+    }
+
+    function closeExpertTeamDrawer(root: ShadowRoot): void {
+      const bd = root.querySelector('[data-ep-team-drawer-backdrop]') as HTMLElement | null;
+      const dr = root.querySelector('[data-ep-team-drawer]') as HTMLElement | null;
+      if (bd) bd.style.display = 'none';
+      if (dr) dr.style.display = 'none';
+      const sg = root.querySelector('[data-ep-team-user-suggest]') as HTMLElement | null;
+      if (sg) sg.style.display = 'none';
+    }
+
+    function renderExpertTeamUserSuggest(
+      root: ShadowRoot,
+      items: Array<{ id: string; telegramUserId?: string; username?: string; firstName?: string; lastName?: string }>,
+    ): void {
+      const hostEl = root.querySelector('[data-ep-team-user-suggest]') as HTMLElement | null;
+      if (!hostEl) return;
+      hostEl.replaceChildren();
+      if (!items.length) {
+        hostEl.style.display = 'none';
+        return;
+      }
+      hostEl.style.display = '';
+      const card = document.createElement('div');
+      card.style.border = '1px solid var(--line)';
+      card.style.borderRadius = '12px';
+      card.style.background = 'var(--surface)';
+      card.style.boxShadow = 'var(--sh2)';
+      card.style.overflow = 'hidden';
+      items.slice(0, 10).forEach((u) => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.style.display = 'flex';
+        row.style.alignItems = 'center';
+        row.style.width = '100%';
+        row.style.padding = '10px 12px';
+        row.style.border = 'none';
+        row.style.background = 'transparent';
+        row.style.cursor = 'pointer';
+        row.addEventListener('mouseenter', () => (row.style.background = 'var(--bg2)'));
+        row.addEventListener('mouseleave', () => (row.style.background = 'transparent'));
+        row.textContent = formatUserTitle(u);
+        row.addEventListener('click', () => {
+          const inp = root.querySelector('[data-ep-team-user-search]') as HTMLInputElement | null;
+          const hid = root.querySelector('[data-ep-team-user-id]') as HTMLInputElement | null;
+          if (inp) inp.value = formatUserTitle(u);
+          if (hid) hid.value = u.id;
+          expertTeamDrawerSelectedUserId = u.id;
+          hostEl.style.display = 'none';
+        });
+        card.appendChild(row);
+      });
+      hostEl.appendChild(card);
+    }
+
+    async function expertTeamSearchUsers(root: ShadowRoot, q: string): Promise<void> {
+      const token = getAccessToken();
+      if (!token) return;
+      const eid = await resolveActiveExpertId();
+      if (!eid) return;
+      const qq = q.trim();
+      if (!qq) {
+        renderExpertTeamUserSuggest(root, []);
+        return;
+      }
+      try {
+        const res = await fetchJson<{
+          items: Array<{ id: string; telegramUserId?: string; username?: string; firstName?: string; lastName?: string }>;
+        }>(`/experts/${encodeURIComponent(eid)}/team/users/search?q=${encodeURIComponent(qq)}`, token);
+        renderExpertTeamUserSuggest(root, res.items ?? []);
+      } catch {
+        renderExpertTeamUserSuggest(root, []);
+      }
+    }
+
+    async function fillExpertTeamCourseCheckboxes(root: ShadowRoot): Promise<void> {
+      const host = root.querySelector('[data-ep-team-courses-list]') as HTMLElement | null;
+      const allChk = root.querySelector('[data-ep-team-courses-select-all]') as HTMLInputElement | null;
+      if (!host) return;
+      host.replaceChildren();
+      if (allChk) allChk.checked = false;
+      const token = getAccessToken();
+      if (!token) return;
+      const eid = await resolveActiveExpertId();
+      if (!eid) return;
+      try {
+        const data = await fetchJson<ListExpertCoursesDashboardResponseV1>(
+          `/experts/${encodeURIComponent(eid)}/courses/dashboard?limit=200`,
+          token,
+        );
+        const items = data.items ?? [];
+        if (items.length === 0) {
+          const p = document.createElement('div');
+          p.style.color = 'var(--t3)';
+          p.style.fontSize = '12px';
+          p.textContent = 'Нет курсов — сначала создайте курс.';
+          host.appendChild(p);
+          return;
+        }
+        for (const c of items) {
+          const lab = document.createElement('label');
+          lab.style.display = 'flex';
+          lab.style.alignItems = 'center';
+          lab.style.gap = '8px';
+          lab.style.cursor = 'pointer';
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.dataset.epTeamCourseId = c.id;
+          const span = document.createElement('span');
+          span.style.color = 'var(--t2)';
+          span.textContent = c.title;
+          lab.append(cb, span);
+          host.appendChild(lab);
+        }
+      } catch {
+        const p = document.createElement('div');
+        p.style.color = 'var(--err)';
+        p.style.fontSize = '12px';
+        p.textContent = 'Не удалось загрузить список курсов.';
+        host.appendChild(p);
+      }
+    }
+
+    async function openExpertTeamDrawer(root: ShadowRoot): Promise<void> {
+      if (expertWorkspaceMyRole !== 'owner') return;
+      const bd = root.querySelector('[data-ep-team-drawer-backdrop]') as HTMLElement | null;
+      const dr = root.querySelector('[data-ep-team-drawer]') as HTMLElement | null;
+      if (!bd || !dr) return;
+      bd.style.display = '';
+      dr.style.display = '';
+      const search = root.querySelector('[data-ep-team-user-search]') as HTMLInputElement | null;
+      const hid = root.querySelector('[data-ep-team-user-id]') as HTMLInputElement | null;
+      const role = root.querySelector('[data-ep-team-role]') as HTMLSelectElement | null;
+      if (search) search.value = '';
+      if (hid) hid.value = '';
+      if (role) role.value = 'manager';
+      expertTeamDrawerSelectedUserId = null;
+      renderExpertTeamUserSuggest(root, []);
+      await fillExpertTeamCourseCheckboxes(root);
     }
 
     function builderScreen(root: ShadowRoot): HTMLElement | null {
@@ -3937,6 +4279,50 @@ if (platformMount) {
         closeBuilderCourseAccessDrawer(shell.shadowRoot);
         return;
       }
+      if (t?.closest('[data-ep-team-drawer-backdrop]') || t?.closest('[data-ep-team-drawer-close]')) {
+        ev.preventDefault();
+        closeExpertTeamDrawer(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-team-add-open]')) {
+        ev.preventDefault();
+        void openExpertTeamDrawer(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-team-submit]')) {
+        ev.preventDefault();
+        void (async () => {
+          const token = getAccessToken();
+          const eid = await resolveActiveExpertId();
+          if (!token || !eid) return;
+          const hid = shell.shadowRoot.querySelector('[data-ep-team-user-id]') as HTMLInputElement | null;
+          const roleSel = shell.shadowRoot.querySelector('[data-ep-team-role]') as HTMLSelectElement | null;
+          const userId = (hid?.value ?? expertTeamDrawerSelectedUserId ?? '').trim();
+          const role = (roleSel?.value ?? 'manager').trim() as 'manager' | 'reviewer' | 'support';
+          if (!userId) {
+            window.alert('Выберите пользователя из подсказки поиска.');
+            return;
+          }
+          const boxes = shell.shadowRoot.querySelectorAll<HTMLInputElement>('input[type="checkbox"][data-ep-team-course-id]');
+          const courseIds: string[] = [];
+          boxes.forEach((cb) => {
+            if (cb.checked && cb.dataset.epTeamCourseId) courseIds.push(cb.dataset.epTeamCourseId);
+          });
+          if (courseIds.length === 0) {
+            window.alert('Выберите хотя бы один курс.');
+            return;
+          }
+          try {
+            await postJson(`/experts/${encodeURIComponent(eid)}/team/members`, { userId, role, courseIds }, token);
+            closeExpertTeamDrawer(shell.shadowRoot);
+            void hydrateExpertTeam(shell.shadowRoot);
+            window.alert('Участник добавлен.');
+          } catch {
+            window.alert('Не удалось добавить участника. Нужны права владельца и корректные данные.');
+          }
+        })();
+        return;
+      }
       // When focusing inputs, show suggestions for current value
       if (t?.closest('[data-ep-access-enroll-username]')) {
         const inp = t.closest('[data-ep-access-enroll-username]') as HTMLInputElement | null;
@@ -4581,6 +4967,29 @@ if (platformMount) {
           void adminSearchUsers(shell.shadowRoot, adminUserSearchLast.q, adminUserSearchLast.host);
         }, 220);
         return;
+      }
+
+      if (inp.matches('[data-ep-team-user-search]')) {
+        expertTeamDrawerSelectedUserId = null;
+        const hid = shell.shadowRoot.querySelector('[data-ep-team-user-id]') as HTMLInputElement | null;
+        if (hid) hid.value = '';
+        const q = inp.value;
+        if (expertTeamUserSearchTimer) window.clearTimeout(expertTeamUserSearchTimer);
+        expertTeamUserSearchTimer = window.setTimeout(() => {
+          void expertTeamSearchUsers(shell.shadowRoot, q);
+        }, 220);
+        return;
+      }
+    });
+
+    shell.shadowRoot.addEventListener('change', (ev) => {
+      const t = ev.target as HTMLInputElement | null;
+      if (!t?.matches) return;
+      if (t.matches('[data-ep-team-courses-select-all]')) {
+        const on = t.checked;
+        shell.shadowRoot.querySelectorAll<HTMLInputElement>('input[type="checkbox"][data-ep-team-course-id]').forEach((cb) => {
+          cb.checked = on;
+        });
       }
     });
   }

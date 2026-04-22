@@ -415,6 +415,44 @@
     </div>
   </aside>
 
+  <!-- Добавление участника команды эксперта (owner) -->
+  <div class="ep-access-drawer-backdrop" data-ep-team-drawer-backdrop style="display:none" aria-hidden="true"></div>
+  <aside class="ep-access-drawer" data-ep-team-drawer style="display:none" aria-label="Добавить участника">
+    <div class="ep-access-drawer-head">
+      <div>
+        <div class="ep-access-drawer-kicker">Команда</div>
+        <div class="ep-access-drawer-title">Добавить участника</div>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm ep-access-drawer-close" data-ep-team-drawer-close aria-label="Закрыть">✕</button>
+    </div>
+    <div class="ep-access-drawer-body">
+      <div class="card" style="padding:16px 18px;border-radius:var(--r2);margin-bottom:12px;position:relative">
+        <div class="form-label">Поиск пользователя</div>
+        <input class="form-input" data-ep-team-user-search placeholder="Имя, username или Telegram ID" autocomplete="off"/>
+        <input type="hidden" data-ep-team-user-id value=""/>
+        <div data-ep-team-user-suggest style="display:none;position:absolute;left:18px;right:18px;top:100%;margin-top:8px;z-index:2"></div>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Роль</div>
+        <select class="form-input" data-ep-team-role style="cursor:pointer">
+          <option value="manager">Менеджер</option>
+          <option value="reviewer">Куратор (проверка ДЗ)</option>
+          <option value="support">Поддержка</option>
+        </select>
+      </div>
+      <div class="card" style="padding:16px 18px;border-radius:var(--r2);margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+          <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1)">Доступ к курсам</div>
+          <label style="font-size:11px;color:var(--t3);display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" data-ep-team-courses-select-all/> все
+          </label>
+        </div>
+        <div data-ep-team-courses-list style="display:flex;flex-direction:column;gap:8px;max-height:220px;overflow:auto;font-size:12px"></div>
+      </div>
+      <button type="button" class="btn btn-primary" style="width:100%;justify-content:center" data-ep-team-submit>Добавить</button>
+    </div>
+  </aside>
+
   <div class="ep-course-drawer-backdrop" data-ep-course-drawer-backdrop style="display:none" aria-hidden="true"></div>
   <aside class="ep-course-drawer" data-ep-course-drawer style="display:none" aria-label="Настройки курса">
     <div class="ep-course-drawer-head">
@@ -673,7 +711,7 @@
 <div class="screen" id="screen-e-team">
   <div class="page-header">
     <div><div class="page-title">Кураторы и менеджеры</div><div class="page-sub">Управление командой</div></div>
-    <button class="btn btn-primary btn-sm">+ Пригласить участника</button>
+    <button type="button" class="btn btn-primary btn-sm" data-ep-team-add-open style="display:none">+ Добавить участника</button>
   </div>
   <div class="grid2">
     <div>
@@ -681,29 +719,7 @@
       <div class="card" style="overflow:hidden">
         <table class="tbl">
           <thead><tr><th>Участник</th><th>Роль</th><th>Курсы</th><th>Последняя активность</th><th></th></tr></thead>
-          <tbody>
-            <tr>
-              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm" style="background:var(--al);color:var(--a)">АК</div><div><div class="td-name">Алина К. (вы)</div><div style="font-size:10px;color:var(--t3)">hello@edify.su</div></div></div></td>
-              <td><span class="tag tag-new">Эксперт (автор)</span></td>
-              <td style="color:var(--t2)">Все курсы</td>
-              <td style="color:var(--t3);font-size:11px">Сейчас онлайн <span class="dot-online"></span></td>
-              <td></td>
-            </tr>
-            <tr>
-              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm" style="background:rgba(124,58,237,.1);color:var(--purple)">МС</div><div><div class="td-name">Мария Соколова</div><div style="font-size:10px;color:var(--t3)">m.sokolova@email.com</div></div></div></td>
-              <td><span class="tag tag-live">Куратор</span></td>
-              <td style="color:var(--t2)">Маркетинг 2025</td>
-              <td style="color:var(--t3);font-size:11px">1 час назад</td>
-              <td><button class="btn btn-ghost btn-sm btn-icon">⚙️</button></td>
-            </tr>
-            <tr>
-              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar av-sm" style="background:rgba(245,158,11,.1);color:var(--warn)">АП</div><div><div class="td-name">Антон Петров</div><div style="font-size:10px;color:var(--t3)">a.petrov@email.com</div></div></div></td>
-              <td><span class="tag tag-draft">Менеджер</span></td>
-              <td style="color:var(--t2)">Все курсы</td>
-              <td style="color:var(--t3);font-size:11px">Вчера</td>
-              <td><button class="btn btn-ghost btn-sm btn-icon">⚙️</button></td>
-            </tr>
-          </tbody>
+          <tbody data-ep-expert-team-tbody></tbody>
         </table>
       </div>
     </div>

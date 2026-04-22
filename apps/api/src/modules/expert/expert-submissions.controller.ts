@@ -18,6 +18,7 @@ import { ExpertRoleGuard } from '../../auth/expert-rbac/expert-role.guard.js';
 import { ExpertSubscriptionGuard } from '../../subscriptions/guards/expert-subscription.guard.js';
 import { RequireExpertRole } from '../../auth/expert-rbac/require-expert-role.decorator.js';
 import { LessonsRepository } from '../../authoring/lessons.repository.js';
+import { ExpertCourseAccessService } from './expert-course-access.service.js';
 import { AssignmentsRepository } from '../../assignments/assignments.repository.js';
 import { SubmissionsRepository } from '../../submissions/submissions.repository.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -33,6 +34,7 @@ import { ProgressRepository } from '../../student/student_progress.repository.js
 export class ExpertSubmissionsController {
   constructor(
     private readonly lessonsRepository: LessonsRepository,
+    private readonly expertCourseAccessService: ExpertCourseAccessService,
     private readonly assignmentsRepository: AssignmentsRepository,
     private readonly submissionsRepository: SubmissionsRepository,
     private readonly storage: S3StorageService,
@@ -48,8 +50,13 @@ export class ExpertSubmissionsController {
   async list(
     @Param('expertId') expertId: string,
     @Param('lessonId') lessonId: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.ListLessonSubmissionsResponseV1> {
-    await this.lessonsRepository.assertLessonBelongsToExpert({ expertId, lessonId });
+    await this.expertCourseAccessService.assertCanAccessLesson({
+      expertId,
+      userId: req.user!.userId,
+      lessonId,
+    });
     const assignment = await this.assignmentsRepository.getByLessonId(lessonId);
     if (!assignment) return { items: [] };
     const items = await this.submissionsRepository.listByAssignmentId({
@@ -74,7 +81,11 @@ export class ExpertSubmissionsController {
     if (!parsed.success) {
       throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Validation failed' });
     }
-    await this.lessonsRepository.assertLessonBelongsToExpert({ expertId, lessonId });
+    await this.expertCourseAccessService.assertCanAccessLesson({
+      expertId,
+      userId: req.user!.userId,
+      lessonId,
+    });
     const scoreProvided = body != null && typeof body === 'object' && 'score' in (body as any);
     const reviewerCommentProvided =
       body != null && typeof body === 'object' && 'reviewerComment' in (body as any);
@@ -122,9 +133,14 @@ export class ExpertSubmissionsController {
     @Param('expertId') expertId: string,
     @Param('lessonId') lessonId: string,
     @Param('submissionId') submissionId: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
     @Res() reply: FastifyReply,
   ): Promise<void> {
-    await this.lessonsRepository.assertLessonBelongsToExpert({ expertId, lessonId });
+    await this.expertCourseAccessService.assertCanAccessLesson({
+      expertId,
+      userId: req.user!.userId,
+      lessonId,
+    });
     const s = await this.submissionsRepository.findForDownload(submissionId);
     if (!s || s.lessonId !== lessonId) {
       throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'Submission not found' });
@@ -157,8 +173,13 @@ export class ExpertSubmissionsController {
     @Param('expertId') expertId: string,
     @Param('lessonId') lessonId: string,
     @Param('submissionId') submissionId: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<{ url: string }> {
-    await this.lessonsRepository.assertLessonBelongsToExpert({ expertId, lessonId });
+    await this.expertCourseAccessService.assertCanAccessLesson({
+      expertId,
+      userId: req.user!.userId,
+      lessonId,
+    });
     const s = await this.submissionsRepository.findForDownload(submissionId);
     if (!s || s.lessonId !== lessonId) {
       throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'Submission not found' });

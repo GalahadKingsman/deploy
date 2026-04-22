@@ -20,6 +20,7 @@ import { ExpertRoleGuard } from '../../auth/expert-rbac/expert-role.guard.js';
 import { ExpertSubscriptionGuard } from '../../subscriptions/guards/expert-subscription.guard.js';
 import { RequireExpertRole } from '../../auth/expert-rbac/require-expert-role.decorator.js';
 import { LessonsRepository } from '../../authoring/lessons.repository.js';
+import { ExpertCourseAccessService } from './expert-course-access.service.js';
 import { AssignmentsRepository } from '../../assignments/assignments.repository.js';
 import { AssignmentFilesRepository } from '../../assignments/assignment-files.repository.js';
 import { S3StorageService } from '../../storage/s3-storage.service.js';
@@ -31,6 +32,7 @@ import { S3StorageService } from '../../storage/s3-storage.service.js';
 export class ExpertAssignmentsController {
   constructor(
     private readonly lessonsRepository: LessonsRepository,
+    private readonly expertCourseAccessService: ExpertCourseAccessService,
     private readonly assignmentsRepository: AssignmentsRepository,
     private readonly assignmentFilesRepository: AssignmentFilesRepository,
     private readonly storage: S3StorageService,
@@ -43,8 +45,13 @@ export class ExpertAssignmentsController {
   async get(
     @Param('expertId') expertId: string,
     @Param('lessonId') lessonId: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.GetLessonAssignmentResponseV1> {
-    await this.lessonsRepository.assertLessonBelongsToExpert({ expertId, lessonId });
+    await this.expertCourseAccessService.assertCanAccessLesson({
+      expertId,
+      userId: req.user!.userId,
+      lessonId,
+    });
     const assignment = await this.assignmentsRepository.getByLessonId(lessonId);
     const files = assignment
       ? await this.assignmentFilesRepository.listByAssignmentId(assignment.id)
@@ -61,13 +68,18 @@ export class ExpertAssignmentsController {
     @Param('expertId') expertId: string,
     @Param('lessonId') lessonId: string,
     @Body() body: ContractsV1.UpsertAssignmentRequestV1,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.AssignmentV1> {
     const parsed = ContractsV1.UpsertAssignmentRequestV1Schema.safeParse(body);
     if (!parsed.success) {
       // Nest filter will map this to standard API error
       throw new Error('Validation failed');
     }
-    await this.lessonsRepository.assertLessonBelongsToExpert({ expertId, lessonId });
+    await this.expertCourseAccessService.assertCanAccessLesson({
+      expertId,
+      userId: req.user!.userId,
+      lessonId,
+    });
     return await this.assignmentsRepository.upsertByLessonId({
       lessonId,
       promptMarkdown: parsed.data.promptMarkdown ?? null,
@@ -81,8 +93,13 @@ export class ExpertAssignmentsController {
   async listFiles(
     @Param('expertId') expertId: string,
     @Param('lessonId') lessonId: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<{ items: ContractsV1.AssignmentFileV1[] }> {
-    await this.lessonsRepository.assertLessonBelongsToExpert({ expertId, lessonId });
+    await this.expertCourseAccessService.assertCanAccessLesson({
+      expertId,
+      userId: req.user!.userId,
+      lessonId,
+    });
     const assignment = await this.assignmentsRepository.getByLessonId(lessonId);
     if (!assignment) return { items: [] };
     const items = await this.assignmentFilesRepository.listByAssignmentId(assignment.id);
@@ -103,7 +120,11 @@ export class ExpertAssignmentsController {
       file?: (opts?: any) => Promise<any>;
     },
   ): Promise<ContractsV1.AssignmentFileV1> {
-    await this.lessonsRepository.assertLessonBelongsToExpert({ expertId, lessonId });
+    await this.expertCourseAccessService.assertCanAccessLesson({
+      expertId,
+      userId: req.user!.userId,
+      lessonId,
+    });
     const assignment = await this.assignmentsRepository.ensureByLessonId(lessonId);
 
     const file = await (req as any).file?.();
@@ -147,8 +168,13 @@ export class ExpertAssignmentsController {
       filename?: string | null;
       contentType?: string | null;
     },
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<{ fileKey: string; url: string }> {
-    await this.lessonsRepository.assertLessonBelongsToExpert({ expertId, lessonId });
+    await this.expertCourseAccessService.assertCanAccessLesson({
+      expertId,
+      userId: req.user!.userId,
+      lessonId,
+    });
     const assignment = await this.assignmentsRepository.ensureByLessonId(lessonId);
 
     const original = typeof body?.filename === 'string' && body.filename ? body.filename : 'file';
@@ -176,8 +202,13 @@ export class ExpertAssignmentsController {
       filename?: string;
       contentType?: string | null;
     },
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.AssignmentFileV1> {
-    await this.lessonsRepository.assertLessonBelongsToExpert({ expertId, lessonId });
+    await this.expertCourseAccessService.assertCanAccessLesson({
+      expertId,
+      userId: req.user!.userId,
+      lessonId,
+    });
     const assignment = await this.assignmentsRepository.ensureByLessonId(lessonId);
 
     const fileKey = typeof body?.fileKey === 'string' ? body.fileKey.trim() : '';
@@ -206,8 +237,13 @@ export class ExpertAssignmentsController {
     @Param('expertId') expertId: string,
     @Param('lessonId') lessonId: string,
     @Param('fileId') fileId: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<{ ok: true }> {
-    await this.lessonsRepository.assertLessonBelongsToExpert({ expertId, lessonId });
+    await this.expertCourseAccessService.assertCanAccessLesson({
+      expertId,
+      userId: req.user!.userId,
+      lessonId,
+    });
     const assignment = await this.assignmentsRepository.getByLessonId(lessonId);
     if (!assignment) {
       throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'Assignment not found' });

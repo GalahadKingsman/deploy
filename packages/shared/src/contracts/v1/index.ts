@@ -32,7 +32,12 @@ export type {
   ListCourseTopicsResponseV1,
   SetCourseTopicsRequestV1,
 } from './topic.js';
-export type { AddExpertTeamMemberRequestV1, UpdateExpertTeamMemberRoleRequestV1 } from './expert-team-mgmt.js';
+export type {
+  AddExpertTeamMemberRequestV1,
+  AddExpertTeamMemberByUserRequestV1,
+  ExpertTeamInviteRoleV1,
+  UpdateExpertTeamMemberRoleRequestV1,
+} from './expert-team-mgmt.js';
 export type {
   ActivateInviteRequestV1,
   ActivateInviteResponseV1,
@@ -239,5 +244,6 @@ export {
   ListCourseTopicsResponseV1Schema,
   SetCourseTopicsRequestV1Schema,
   AddExpertTeamMemberRequestV1Schema,
+  AddExpertTeamMemberByUserRequestV1Schema,
   UpdateExpertTeamMemberRoleRequestV1Schema,
 } from './schemas.js';

@@ -23,6 +23,7 @@ import { CoursesRepository } from '../../authoring/courses.repository.js';
 import { CourseModulesRepository } from '../../authoring/course-modules.repository.js';
 import { AuditService } from '../../audit/audit.service.js';
 import type { FastifyRequest } from 'fastify';
+import { ExpertCourseAccessService } from './expert-course-access.service.js';
 
 function getTraceId(req: FastifyRequest & { traceId?: string }): string | null {
   const h = req.headers?.['x-request-id'];
@@ -38,6 +39,7 @@ export class ExpertModulesController {
     private readonly coursesRepository: CoursesRepository,
     private readonly courseModulesRepository: CourseModulesRepository,
     private readonly auditService: AuditService,
+    private readonly expertCourseAccessService: ExpertCourseAccessService,
   ) {}
 
   @Get()
@@ -47,9 +49,15 @@ export class ExpertModulesController {
   async list(
     @Param('expertId') expertId: string,
     @Param('courseId') courseId: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.ListExpertCourseModulesResponseV1> {
     // ensure course belongs to expert (and not deleted)
     await this.coursesRepository.getById({ expertId, courseId });
+    await this.expertCourseAccessService.assertCanAccessCourse({
+      expertId,
+      userId: req.user!.userId,
+      courseId,
+    });
     const items = await this.courseModulesRepository.listByCourseId(courseId);
     return { items };
   }
@@ -66,6 +74,11 @@ export class ExpertModulesController {
     @Req() req: FastifyRequest & { user?: { userId: string }; traceId?: string },
   ): Promise<ContractsV1.ExpertCourseModuleV1> {
     await this.coursesRepository.getById({ expertId, courseId });
+    await this.expertCourseAccessService.assertCanAccessCourse({
+      expertId,
+      userId: req.user!.userId,
+      courseId,
+    });
     const parsed = ContractsV1.CreateExpertCourseModuleRequestV1Schema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException({
@@ -102,6 +115,11 @@ export class ExpertModulesController {
     @Req() req: FastifyRequest & { user?: { userId: string }; traceId?: string },
   ): Promise<ContractsV1.ExpertCourseModuleV1> {
     await this.coursesRepository.getById({ expertId, courseId });
+    await this.expertCourseAccessService.assertCanAccessCourse({
+      expertId,
+      userId: req.user!.userId,
+      courseId,
+    });
     const parsed = ContractsV1.UpdateExpertCourseModuleRequestV1Schema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException({
@@ -138,6 +156,11 @@ export class ExpertModulesController {
     @Req() req: FastifyRequest & { user?: { userId: string }; traceId?: string },
   ): Promise<{ ok: true }> {
     await this.coursesRepository.getById({ expertId, courseId });
+    await this.expertCourseAccessService.assertCanAccessCourse({
+      expertId,
+      userId: req.user!.userId,
+      courseId,
+    });
     const parsed = ContractsV1.ReorderExpertCourseModulesRequestV1Schema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException({
@@ -170,6 +193,11 @@ export class ExpertModulesController {
     @Req() req: FastifyRequest & { user?: { userId: string }; traceId?: string },
   ): Promise<{ ok: true }> {
     await this.coursesRepository.getById({ expertId, courseId });
+    await this.expertCourseAccessService.assertCanAccessCourse({
+      expertId,
+      userId: req.user!.userId,
+      courseId,
+    });
     await this.courseModulesRepository.softDelete({ courseId, moduleId });
     await this.auditService.write({
       actorUserId: req.user?.userId ?? null,

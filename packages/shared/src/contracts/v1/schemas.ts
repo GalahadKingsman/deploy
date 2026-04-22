@@ -29,6 +29,7 @@ export {
 } from './topic.js';
 export {
   AddExpertTeamMemberRequestV1Schema,
+  AddExpertTeamMemberByUserRequestV1Schema,
   UpdateExpertTeamMemberRoleRequestV1Schema,
 } from './expert-team-mgmt.js';
 export {

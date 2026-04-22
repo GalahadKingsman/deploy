@@ -181,6 +181,10 @@ export function ExpertTeamPage() {
               <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>
                 userId: {m.userId} · {roleLabel(m.role)}
               </div>
+              <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>
+                {m.email ?? '—'} · {m.coursesLabel}
+                {m.lastActivityAt ? ` · активность: ${new Date(m.lastActivityAt).toLocaleString('ru-RU')}` : ''}
+              </div>
               {isOwner && (
                 <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', alignItems: 'center' }}>
                   <select

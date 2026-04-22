@@ -1,5 +1,27 @@
-import { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import type { ContractsV1 } from '@tracked/shared';
+
+function formatCoursesLabelRu(role: string, courseAccessCount: number): string {
+  if (role === 'owner') {
+    return 'Все курсы';
+  }
+  const n = courseAccessCount;
+  if (n === 0) {
+    return 'Нет курсов';
+  }
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 14) {
+    return `${n} курсов`;
+  }
+  if (mod10 === 1) {
+    return `${n} курс`;
+  }
+  if (mod10 >= 2 && mod10 <= 4) {
+    return `${n} курса`;
+  }
+  return `${n} курсов`;
+}
 
 interface ExpertMemberDbRow {
   expert_id: string;
@@ -15,6 +37,9 @@ interface ExpertTeamMemberRow {
   username: string | null;
   first_name: string | null;
   last_name: string | null;
+  email: string | null;
+  updated_at: Date;
+  course_access_count: string;
 }
 
 export class ExpertMembersRepository {
@@ -39,6 +64,28 @@ export class ExpertMembersRepository {
       data.userId,
       data.role,
     ]);
+
+    if (result.rows.length === 0) {
+      throw new Error('Failed to add member');
+    }
+
+    return this.mapRow(result.rows[0]);
+  }
+
+  async addMemberWithClient(
+    client: PoolClient,
+    data: {
+      expertId: string;
+      userId: string;
+      role: ContractsV1.ExpertMemberRoleV1;
+    },
+  ): Promise<ContractsV1.ExpertMemberV1> {
+    const query = `
+      INSERT INTO expert_members (expert_id, user_id, role)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `;
+    const result = await client.query<ExpertMemberDbRow>(query, [data.expertId, data.userId, data.role]);
 
     if (result.rows.length === 0) {
       throw new Error('Failed to add member');
@@ -93,10 +140,21 @@ export class ExpertMembersRepository {
       throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
     }
 
-    await this.pool.query('DELETE FROM expert_members WHERE expert_id = $1 AND user_id = $2', [
-      expertId,
-      userId,
-    ]);
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(`DELETE FROM expert_member_course_access WHERE expert_id = $1 AND user_id = $2`, [
+        expertId,
+        userId,
+      ]);
+      await client.query('DELETE FROM expert_members WHERE expert_id = $1 AND user_id = $2', [expertId, userId]);
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
   }
 
   async listMembers(expertId: string): Promise<ContractsV1.ExpertMemberV1[]> {
@@ -119,23 +177,35 @@ export class ExpertMembersRepository {
 
     const result = await this.pool.query<ExpertTeamMemberRow>(
       `
-      SELECT em.user_id, em.role, em.created_at, u.username, u.first_name, u.last_name
+      SELECT em.user_id, em.role, em.created_at, u.username, u.first_name, u.last_name, u.email, u.updated_at,
+        COALESCE(acc.n, 0)::text AS course_access_count
       FROM expert_members em
       JOIN users u ON u.id = em.user_id
+      LEFT JOIN (
+        SELECT expert_id, user_id, COUNT(*)::int AS n
+        FROM expert_member_course_access
+        GROUP BY expert_id, user_id
+      ) acc ON acc.expert_id = em.expert_id AND acc.user_id = em.user_id
       WHERE em.expert_id = $1
       ORDER BY em.created_at ASC
       `,
       [expertId],
     );
 
-    return result.rows.map((r) => ({
-      userId: r.user_id,
-      role: r.role as ContractsV1.ExpertMemberRoleV1,
-      createdAt: r.created_at.toISOString(),
-      username: r.username,
-      firstName: r.first_name,
-      lastName: r.last_name,
-    }));
+    return result.rows.map((r) => {
+      const courseAccessCount = parseInt(r.course_access_count, 10) || 0;
+      return {
+        userId: r.user_id,
+        role: r.role as ContractsV1.ExpertMemberRoleV1,
+        createdAt: r.created_at.toISOString(),
+        username: r.username,
+        firstName: r.first_name,
+        lastName: r.last_name,
+        email: r.email,
+        coursesLabel: formatCoursesLabelRu(r.role, courseAccessCount),
+        lastActivityAt: r.updated_at ? r.updated_at.toISOString() : null,
+      };
+    });
   }
 
   async countOwners(expertId: string): Promise<number> {

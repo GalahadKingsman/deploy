@@ -23,6 +23,7 @@ import { InvitesRepository } from '../../student/student_invites.repository.js';
 import { EnrollmentsRepository } from '../../student/student_enrollments.repository.js';
 import { UsersRepository } from '../../users/users.repository.js';
 import type { FastifyRequest } from 'fastify';
+import { ExpertCourseAccessService } from './expert-course-access.service.js';
 
 @ApiTags('Expert Access')
 @Controller('experts/:expertId')
@@ -34,7 +35,21 @@ export class ExpertAccessController {
     private readonly invitesRepository: InvitesRepository,
     private readonly enrollmentsRepository: EnrollmentsRepository,
     private readonly usersRepository: UsersRepository,
+    private readonly expertCourseAccessService: ExpertCourseAccessService,
   ) {}
+
+  private async assertCourseGate(
+    expertId: string,
+    courseId: string,
+    req: FastifyRequest & { user?: { userId: string } },
+  ): Promise<void> {
+    await this.coursesRepository.getById({ expertId, courseId });
+    await this.expertCourseAccessService.assertCanAccessCourse({
+      expertId,
+      userId: req.user!.userId,
+      courseId,
+    });
+  }
 
   @Get('courses/:courseId/invites')
   @RequireExpertRole('manager')
@@ -43,8 +58,9 @@ export class ExpertAccessController {
   async listInvites(
     @Param('expertId') expertId: string,
     @Param('courseId') courseId: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<{ items: ContractsV1.InviteV1[] }> {
-    await this.coursesRepository.getById({ expertId, courseId });
+    await this.assertCourseGate(expertId, courseId, req);
     const items = await this.invitesRepository.listActiveByCourseId(courseId);
     return { items };
   }
@@ -60,7 +76,7 @@ export class ExpertAccessController {
     @Body() body: { maxUses?: number | null; expiresAt?: string | null },
     @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.InviteV1> {
-    await this.coursesRepository.getById({ expertId, courseId });
+    await this.assertCourseGate(expertId, courseId, req);
     const maxUses =
       body?.maxUses == null ? null : typeof body.maxUses === 'number' ? body.maxUses : Number(body.maxUses);
     const expiresAt = body?.expiresAt ? new Date(body.expiresAt) : null;
@@ -103,8 +119,9 @@ export class ExpertAccessController {
     @Param('expertId') expertId: string,
     @Param('courseId') courseId: string,
     @Param('telegramUserId') telegramUserId: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.EnrollmentV1> {
-    await this.coursesRepository.getById({ expertId, courseId });
+    await this.assertCourseGate(expertId, courseId, req);
     const user = await this.usersRepository.findByTelegramUserId(telegramUserId);
     if (!user) {
       throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'User not found' });
@@ -121,8 +138,9 @@ export class ExpertAccessController {
     @Param('expertId') expertId: string,
     @Param('courseId') courseId: string,
     @Param('username') username: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.EnrollmentV1> {
-    await this.coursesRepository.getById({ expertId, courseId });
+    await this.assertCourseGate(expertId, courseId, req);
     const raw = typeof username === 'string' ? username.trim() : '';
     const clean = raw.startsWith('@') ? raw.slice(1).trim() : raw;
     if (!clean) {
@@ -145,8 +163,9 @@ export class ExpertAccessController {
     @Param('expertId') expertId: string,
     @Param('courseId') courseId: string,
     @Param('userId') userId: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.EnrollmentV1> {
-    await this.coursesRepository.getById({ expertId, courseId });
+    await this.assertCourseGate(expertId, courseId, req);
     const user = await this.usersRepository.findById(userId);
     if (!user) {
       throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'User not found' });
@@ -182,8 +201,9 @@ export class ExpertAccessController {
   async listEnrollments(
     @Param('expertId') expertId: string,
     @Param('courseId') courseId: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.ListExpertCourseEnrollmentsResponseV1> {
-    await this.coursesRepository.getById({ expertId, courseId });
+    await this.assertCourseGate(expertId, courseId, req);
     const items = await this.enrollmentsRepository.listForCourseWithStudents(courseId);
     return { items };
   }
@@ -198,8 +218,9 @@ export class ExpertAccessController {
     @Param('courseId') courseId: string,
     @Param('enrollmentId') enrollmentId: string,
     @Body() body: unknown,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<{ enrollment: ContractsV1.EnrollmentV1 }> {
-    await this.coursesRepository.getById({ expertId, courseId });
+    await this.assertCourseGate(expertId, courseId, req);
     const parsed = ContractsV1.ExtendEnrollmentRequestV1Schema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Validation failed' });
@@ -224,8 +245,9 @@ export class ExpertAccessController {
     @Param('expertId') expertId: string,
     @Param('courseId') courseId: string,
     @Param('enrollmentId') enrollmentId: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<{ enrollment: ContractsV1.EnrollmentV1 }> {
-    await this.coursesRepository.getById({ expertId, courseId });
+    await this.assertCourseGate(expertId, courseId, req);
     const current = await this.enrollmentsRepository.findById(enrollmentId);
     if (!current || current.courseId !== courseId) {
       throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'Enrollment not found' });

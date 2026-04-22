@@ -25,6 +25,9 @@ import { CoursesRepository } from '../../authoring/courses.repository.js';
 import { AuditService } from '../../audit/audit.service.js';
 import type { FastifyRequest } from 'fastify';
 import { S3StorageService } from '../../storage/s3-storage.service.js';
+import { ExpertMembersRepository } from '../../experts/expert-members.repository.js';
+import { ExpertMemberCourseAccessRepository } from '../../experts/expert-member-course-access.repository.js';
+import { ExpertCourseAccessService } from './expert-course-access.service.js';
 
 function getTraceId(req: FastifyRequest & { traceId?: string }): string | null {
   const h = req.headers?.['x-request-id'];
@@ -40,7 +43,20 @@ export class ExpertCoursesController {
     private readonly coursesRepository: CoursesRepository,
     private readonly auditService: AuditService,
     private readonly storage: S3StorageService,
+    private readonly expertMembersRepository: ExpertMembersRepository,
+    private readonly expertMemberCourseAccessRepository: ExpertMemberCourseAccessRepository,
+    private readonly expertCourseAccessService: ExpertCourseAccessService,
   ) {}
+
+  private async resolveRestrictCourseIds(
+    expertId: string,
+    userId: string | undefined,
+  ): Promise<string[] | undefined> {
+    if (!userId) return undefined;
+    const m = await this.expertMembersRepository.findMember(expertId, userId);
+    if (!m || m.role === 'owner') return undefined;
+    return await this.expertMemberCourseAccessRepository.listCourseIdsForMember(expertId, userId);
+  }
 
   @Get()
   @RequireExpertRole('support')
@@ -52,6 +68,7 @@ export class ExpertCoursesController {
     @Query('q') q?: string,
     @Query('limit') limitStr?: string,
     @Query('offset') offsetStr?: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.ListExpertCoursesResponseV1> {
     const statusParsed = status
       ? ContractsV1.CourseStatusV1Schema.safeParse(status)
@@ -67,12 +84,14 @@ export class ExpertCoursesController {
     const limit = limitStr ? parseInt(limitStr, 10) : undefined;
     const offset = offsetStr ? parseInt(offsetStr, 10) : undefined;
 
+    const restrictToCourseIds = await this.resolveRestrictCourseIds(expertId, req.user?.userId);
     const items = await this.coursesRepository.listByExpertId({
       expertId,
       status: statusParsed.data,
       query: q ?? undefined,
       limit,
       offset,
+      restrictToCourseIds,
     });
     return { items };
   }
@@ -87,6 +106,7 @@ export class ExpertCoursesController {
     @Query('q') q?: string,
     @Query('limit') limitStr?: string,
     @Query('offset') offsetStr?: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.ListExpertCoursesDashboardResponseV1> {
     const statusParsed = status
       ? ContractsV1.CourseStatusV1Schema.safeParse(status)
@@ -102,12 +122,14 @@ export class ExpertCoursesController {
     const limit = limitStr ? parseInt(limitStr, 10) : undefined;
     const offset = offsetStr ? parseInt(offsetStr, 10) : undefined;
 
+    const restrictToCourseIds = await this.resolveRestrictCourseIds(expertId, req.user?.userId);
     const items = await this.coursesRepository.listDashboardByExpertId({
       expertId,
       status: statusParsed.data,
       query: q ?? undefined,
       limit,
       offset,
+      restrictToCourseIds,
     });
     return { items };
   }
@@ -151,6 +173,14 @@ export class ExpertCoursesController {
       traceId: getTraceId(req),
     });
 
+    const actorId = req.user?.userId;
+    if (actorId) {
+      const m = await this.expertMembersRepository.findMember(expertId, actorId);
+      if (m && m.role !== 'owner') {
+        await this.expertMemberCourseAccessRepository.insertPair(expertId, actorId, created.id);
+      }
+    }
+
     return created;
   }
 
@@ -163,8 +193,14 @@ export class ExpertCoursesController {
     @Param('expertId') expertId: string,
     @Param('courseId') courseId: string,
     @Body() body: { filename?: string | null; contentType?: string | null },
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<{ key: string; url: string; publicPath: string }> {
     await this.coursesRepository.getById({ expertId, courseId });
+    await this.expertCourseAccessService.assertCanAccessCourse({
+      expertId,
+      userId: req.user!.userId,
+      courseId,
+    });
 
     const original = typeof body?.filename === 'string' && body.filename ? body.filename : 'cover';
     const safeName = original.replace(/[^\w.\-]+/g, '_').slice(0, 120);
@@ -191,6 +227,11 @@ export class ExpertCoursesController {
     },
   ): Promise<ContractsV1.ExpertCourseV1> {
     await this.coursesRepository.getById({ expertId, courseId });
+    await this.expertCourseAccessService.assertCanAccessCourse({
+      expertId,
+      userId: req.user!.userId,
+      courseId,
+    });
 
     const file = await (req as any).file?.();
     if (!file) {
@@ -226,8 +267,15 @@ export class ExpertCoursesController {
   async get(
     @Param('expertId') expertId: string,
     @Param('courseId') courseId: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.ExpertCourseV1> {
-    return await this.coursesRepository.getById({ expertId, courseId });
+    const course = await this.coursesRepository.getById({ expertId, courseId });
+    await this.expertCourseAccessService.assertCanAccessCourse({
+      expertId,
+      userId: req.user!.userId,
+      courseId,
+    });
+    return course;
   }
 
   @Patch(':courseId')
@@ -248,6 +296,13 @@ export class ExpertCoursesController {
         errors: parsed.error.errors,
       });
     }
+
+    await this.coursesRepository.getById({ expertId, courseId });
+    await this.expertCourseAccessService.assertCanAccessCourse({
+      expertId,
+      userId: req.user!.userId,
+      courseId,
+    });
 
     const updated = await this.coursesRepository.update({ expertId, courseId, patch: parsed.data });
     await this.auditService.write({
@@ -271,6 +326,12 @@ export class ExpertCoursesController {
     @Param('courseId') courseId: string,
     @Req() req: FastifyRequest & { user?: { userId: string }; traceId?: string },
   ): Promise<ContractsV1.ExpertCourseV1> {
+    await this.coursesRepository.getById({ expertId, courseId });
+    await this.expertCourseAccessService.assertCanAccessCourse({
+      expertId,
+      userId: req.user!.userId,
+      courseId,
+    });
     const updated = await this.coursesRepository.publish({ expertId, courseId });
     await this.auditService.write({
       actorUserId: req.user?.userId ?? null,
@@ -293,6 +354,12 @@ export class ExpertCoursesController {
     @Param('courseId') courseId: string,
     @Req() req: FastifyRequest & { user?: { userId: string }; traceId?: string },
   ): Promise<ContractsV1.ExpertCourseV1> {
+    await this.coursesRepository.getById({ expertId, courseId });
+    await this.expertCourseAccessService.assertCanAccessCourse({
+      expertId,
+      userId: req.user!.userId,
+      courseId,
+    });
     const updated = await this.coursesRepository.unpublish({ expertId, courseId });
     await this.auditService.write({
       actorUserId: req.user?.userId ?? null,
@@ -315,6 +382,12 @@ export class ExpertCoursesController {
     @Param('courseId') courseId: string,
     @Req() req: FastifyRequest & { user?: { userId: string }; traceId?: string },
   ): Promise<{ ok: true }> {
+    await this.coursesRepository.getById({ expertId, courseId });
+    await this.expertCourseAccessService.assertCanAccessCourse({
+      expertId,
+      userId: req.user!.userId,
+      courseId,
+    });
     await this.coursesRepository.softDelete({ expertId, courseId });
     await this.auditService.write({
       actorUserId: req.user?.userId ?? null,

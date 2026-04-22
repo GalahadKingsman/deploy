@@ -6,8 +6,10 @@ import {
   Post,
   Put,
   Param,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { FastifyRequest } from 'fastify';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ContractsV1, ErrorCodes } from '@tracked/shared';
 import { JwtAuthGuard } from '../../auth/session/jwt-auth.guard.js';
@@ -16,6 +18,7 @@ import { ExpertSubscriptionGuard } from '../../subscriptions/guards/expert-subsc
 import { RequireExpertRole } from '../../auth/expert-rbac/require-expert-role.decorator.js';
 import { TopicsRepository } from '../../authoring/topics.repository.js';
 import { CoursesRepository } from '../../authoring/courses.repository.js';
+import { ExpertCourseAccessService } from './expert-course-access.service.js';
 
 @ApiTags('Expert Course Topics')
 @Controller('experts/:expertId/courses/:courseId/topics')
@@ -25,6 +28,7 @@ export class ExpertCourseTopicsController {
   constructor(
     private readonly topicsRepository: TopicsRepository,
     private readonly coursesRepository: CoursesRepository,
+    private readonly expertCourseAccessService: ExpertCourseAccessService,
   ) {}
 
   @Get()
@@ -34,8 +38,14 @@ export class ExpertCourseTopicsController {
   async list(
     @Param('expertId') expertId: string,
     @Param('courseId') courseId: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.ListCourseTopicsResponseV1> {
     await this.coursesRepository.getById({ expertId, courseId });
+    await this.expertCourseAccessService.assertCanAccessCourse({
+      expertId,
+      userId: req.user!.userId,
+      courseId,
+    });
     const items = await this.topicsRepository.listForCourse(courseId);
     return { items };
   }
@@ -48,11 +58,18 @@ export class ExpertCourseTopicsController {
     @Param('expertId') expertId: string,
     @Param('courseId') courseId: string,
     @Body() body: unknown,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.ListCourseTopicsResponseV1> {
     const parsed = ContractsV1.SetCourseTopicsRequestV1Schema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Validation failed' });
     }
+    await this.coursesRepository.getById({ expertId, courseId });
+    await this.expertCourseAccessService.assertCanAccessCourse({
+      expertId,
+      userId: req.user!.userId,
+      courseId,
+    });
     await this.topicsRepository.setCourseTopics({
       expertId,
       courseId,
@@ -70,8 +87,14 @@ export class ExpertCourseTopicsController {
     @Param('expertId') expertId: string,
     @Param('courseId') courseId: string,
     @Body() body: unknown,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.TopicV1> {
     await this.coursesRepository.getById({ expertId, courseId });
+    await this.expertCourseAccessService.assertCanAccessCourse({
+      expertId,
+      userId: req.user!.userId,
+      courseId,
+    });
     const title = (body as any)?.title;
     const topic = await this.topicsRepository.createOrGetByTitle(String(title ?? ''));
 

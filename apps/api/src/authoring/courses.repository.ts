@@ -87,13 +87,16 @@ export class CoursesRepository {
     private readonly expertsRepository: ExpertsRepository,
   ) {}
 
-  async assertModuleBelongsToExpert(params: { expertId: string; moduleId: string }): Promise<void> {
+  async assertModuleBelongsToExpert(params: {
+    expertId: string;
+    moduleId: string;
+  }): Promise<{ courseId: string }> {
     if (!this.pool) {
       throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
     }
-    const res = await this.pool.query<{ ok: boolean }>(
+    const res = await this.pool.query<{ course_id: string }>(
       `
-      SELECT 1 as ok
+      SELECT m.course_id
       FROM course_modules m
       JOIN courses c ON c.id = m.course_id
       WHERE m.id = $1
@@ -104,10 +107,38 @@ export class CoursesRepository {
       `,
       [params.moduleId, params.expertId],
     );
-    if (res.rows.length === 0) {
+    const row = res.rows[0];
+    if (!row) {
       throw new NotFoundException({
         code: ErrorCodes.COURSE_MODULE_NOT_FOUND,
         message: 'Course module not found',
+      });
+    }
+    return { courseId: row.course_id };
+  }
+
+  /** When set, only these course ids are returned (e.g. expert team member scope). */
+  async assertAllCoursesBelongToExpert(expertId: string, courseIds: string[]): Promise<void> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    if (courseIds.length === 0) {
+      return;
+    }
+    const res = await this.pool.query<{ id: string }>(
+      `
+      SELECT id
+      FROM courses
+      WHERE expert_id = $1
+        AND deleted_at IS NULL
+        AND id = ANY($2::uuid[])
+      `,
+      [expertId, courseIds],
+    );
+    if (res.rows.length !== courseIds.length) {
+      throw new BadRequestException({
+        code: ErrorCodes.VALIDATION_ERROR,
+        message: 'One or more courses are invalid for this expert',
       });
     }
   }
@@ -119,6 +150,11 @@ export class CoursesRepository {
     query?: string;
     limit?: number;
     offset?: number;
+    /**
+     * When set, restrict listing to these course ids (non-owner expert team scope).
+     * Empty array means no courses (result set empty). Omitted = no restriction (e.g. owner).
+     */
+    restrictToCourseIds?: string[];
   }): Promise<ContractsV1.ExpertCourseV1[]> {
     if (!this.pool) {
       throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
@@ -147,6 +183,16 @@ export class CoursesRepository {
       i += 1;
     }
 
+    if (params.restrictToCourseIds !== undefined) {
+      if (params.restrictToCourseIds.length === 0) {
+        conditions.push('FALSE');
+      } else {
+        conditions.push(`id = ANY($${i}::uuid[])`);
+        values.push(params.restrictToCourseIds);
+        i += 1;
+      }
+    }
+
     values.push(limit, offset);
 
     const result = await this.pool.query<CourseRow>(
@@ -172,6 +218,7 @@ export class CoursesRepository {
     query?: string;
     limit?: number;
     offset?: number;
+    restrictToCourseIds?: string[];
   }): Promise<ContractsV1.ExpertCourseDashboardItemV1[]> {
     if (!this.pool) {
       throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
@@ -194,6 +241,16 @@ export class CoursesRepository {
       conditions.push(`c.title ILIKE $${i}`);
       values.push(`%${params.query.trim()}%`);
       i += 1;
+    }
+
+    if (params.restrictToCourseIds !== undefined) {
+      if (params.restrictToCourseIds.length === 0) {
+        conditions.push('FALSE');
+      } else {
+        conditions.push(`c.id = ANY($${i}::uuid[])`);
+        values.push(params.restrictToCourseIds);
+        i += 1;
+      }
     }
 
     values.push(limit, offset);

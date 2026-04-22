@@ -21,6 +21,7 @@ import { ExpertTeamController } from './expert-team.controller.js';
 import { ExpertCourseTopicsController } from './expert-course-topics.controller.js';
 import { IntegrationsModule } from '../../integrations/integrations.module.js';
 import { StorageModule } from '../../storage/storage.module.js';
+import { ExpertCourseAccessService } from './expert-course-access.service.js';
 
 @Module({
   imports: [
@@ -48,6 +49,6 @@ import { StorageModule } from '../../storage/storage.module.js';
     ExpertTeamController,
     ExpertCourseTopicsController,
   ],
-  providers: [JwtAuthGuard],
+  providers: [JwtAuthGuard, ExpertCourseAccessService],
 })
 export class ExpertModule {}
