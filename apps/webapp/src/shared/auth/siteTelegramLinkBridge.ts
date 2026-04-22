@@ -90,14 +90,16 @@ export async function tryFinishTelegramLink(): Promise<void> {
       tg?.close?.();
     } catch (e) {
       console.warn('telegram connect failed', e);
-      tg?.showAlert?.('Не удалось подключить Telegram. Если он уже привязан к другому аккаунту — отвяжите его там.');
+      const msg = e instanceof Error ? e.message : 'ошибка сети';
+      tg?.showAlert?.(`Не удалось подключить Telegram: ${msg}`);
     } finally {
       // Restore previous token so Mini App stays logged in as Telegram user
       if (prev) setAccessToken(prev);
     }
   } catch (e) {
     console.warn('link flow failed', e);
-    tg?.showAlert?.('Не удалось завершить привязку. Попробуйте ещё раз.');
+    const msg = e instanceof Error ? e.message : 'ошибка сети';
+    tg?.showAlert?.(`Не удалось завершить привязку: ${msg}`);
   }
 }
 

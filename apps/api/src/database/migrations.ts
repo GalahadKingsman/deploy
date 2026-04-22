@@ -29,6 +29,7 @@ const MIGRATION_LIST = [
   '017_topics_and_course_topics',
   '018_assignment_files_and_submission_grading',
   '019_email_password_and_telegram_link',
+  '020_site_bridge_codes',
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

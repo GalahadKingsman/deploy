@@ -9,6 +9,8 @@ import { ContractsV1, ErrorCodes } from '@tracked/shared';
 import { JwtService } from '../session/jwt.service.js';
 import { UsersRepository, type UserWithBan } from '../../users/users.repository.js';
 import { AuditService } from '../../audit/audit.service.js';
+import { Pool } from 'pg';
+import { Inject, Optional } from '@nestjs/common';
 
 const BRIDGE_TTL_MS = 10 * 60 * 1000;
 const CODE_BYTES = 16;
@@ -24,6 +26,7 @@ export class SiteBridgeService {
     private readonly jwtService: JwtService,
     private readonly usersRepository: UsersRepository,
     private readonly auditService: AuditService,
+    @Optional() @Inject(Pool) private readonly pool: Pool | null,
   ) {}
 
   private pruneExpired(): void {
@@ -36,7 +39,18 @@ export class SiteBridgeService {
   issueCode(accessToken: string): string {
     this.pruneExpired();
     const code = randomBytes(CODE_BYTES).toString('hex');
-    this.memory.set(code, { accessToken, exp: Date.now() + BRIDGE_TTL_MS });
+    const exp = Date.now() + BRIDGE_TTL_MS;
+    this.memory.set(code, { accessToken, exp });
+    if (this.pool) {
+      void this.pool
+        .query(
+          `INSERT INTO auth_site_bridge_codes (code, access_token, expires_at)
+           VALUES ($1, $2, to_timestamp($3 / 1000.0))
+           ON CONFLICT (code) DO UPDATE SET access_token = EXCLUDED.access_token, expires_at = EXCLUDED.expires_at, consumed_at = NULL`,
+          [code, accessToken, exp],
+        )
+        .catch((e) => this.logger.warn(`site-bridge db insert failed: ${(e as Error).message}`));
+    }
     this.logger.log(`site-bridge code issued, len=${code.length}`);
     return code;
   }
@@ -56,16 +70,39 @@ export class SiteBridgeService {
     if (!trimmed) {
       throw new UnauthorizedException({ message: 'Invalid code', error: 'Unauthorized' });
     }
-    const entry = this.memory.get(trimmed);
-    if (!entry || entry.exp <= Date.now()) {
-      if (entry) this.memory.delete(trimmed);
-      throw new UnauthorizedException({ message: 'Invalid or expired code', error: 'Unauthorized' });
+    let entry = this.memory.get(trimmed) ?? null;
+
+    // Prefer DB (survives restarts); fallback to in-memory for SKIP_DB=1
+    if (this.pool) {
+      const res = await this.pool.query<{ access_token: string; expires_at: Date; consumed_at: Date | null }>(
+        `SELECT access_token, expires_at, consumed_at
+         FROM auth_site_bridge_codes
+         WHERE code = $1
+         LIMIT 1`,
+        [trimmed],
+      );
+      const row = res.rows[0] ?? null;
+      if (!row || row.consumed_at != null || row.expires_at.getTime() <= Date.now()) {
+        throw new UnauthorizedException({ message: 'Invalid or expired code', error: 'Unauthorized' });
+      }
+      // Consume (best-effort single use)
+      await this.pool.query(
+        `UPDATE auth_site_bridge_codes SET consumed_at = now()
+         WHERE code = $1 AND consumed_at IS NULL`,
+        [trimmed],
+      );
+      entry = { accessToken: row.access_token, exp: row.expires_at.getTime() };
+    } else {
+      if (!entry || entry.exp <= Date.now()) {
+        if (entry) this.memory.delete(trimmed);
+        throw new UnauthorizedException({ message: 'Invalid or expired code', error: 'Unauthorized' });
+      }
+      this.memory.delete(trimmed);
     }
-    this.memory.delete(trimmed);
 
     let payload: { userId: string; telegramUserId: string };
     try {
-      payload = this.jwtService.verifyAccessToken(entry.accessToken);
+      payload = this.jwtService.verifyAccessToken(entry!.accessToken);
     } catch (e) {
       if (e instanceof UnauthorizedException) throw e;
       throw new UnauthorizedException({ message: 'Invalid token', error: 'Unauthorized' });
@@ -97,7 +134,7 @@ export class SiteBridgeService {
 
     return {
       user: this.toPublicUser(user),
-      accessToken: entry.accessToken,
+      accessToken: entry!.accessToken,
     };
   }
 
