@@ -64,6 +64,23 @@ function extractFileKey(raw: string): string {
   return '';
 }
 
+async function resolveAvatarImgSrc(avatarUrl: string, token: string): Promise<string> {
+  const key = extractFileKey(avatarUrl);
+  if (!key) return resolvePublicUrl(avatarUrl);
+  const api = getApiBaseUrl();
+  if (!api) return resolvePublicUrl(avatarUrl);
+  try {
+    const res = await fetch(`${api}/files/signed?key=${encodeURIComponent(key)}`, {
+      headers: { Authorization: `Bearer ${token}`, accept: 'application/json' },
+    });
+    if (!res.ok) return resolvePublicUrl(avatarUrl);
+    const data = (await res.json()) as { url?: string };
+    return typeof data.url === 'string' && data.url ? resolvePublicUrl(data.url) : resolvePublicUrl(avatarUrl);
+  } catch {
+    return resolvePublicUrl(avatarUrl);
+  }
+}
+
 /** Возврат из внешнего браузера (openLink) с ?login= — bfcache и переключение вкладок. */
 window.addEventListener('pageshow', (ev) => {
   if (ev.persisted) void runAuthFlow();
@@ -638,42 +655,27 @@ if (platformMount) {
         const av = screen.querySelector('[data-ep-profile-avatar]') as HTMLElement | null;
         if (av) {
           const raw = typeof u.avatarUrl === 'string' ? u.avatarUrl.trim() : '';
-          if (raw.startsWith('/public/avatar?') || raw.startsWith('http')) {
-            const url = resolvePublicUrl(raw);
-            av.replaceChildren();
-            const img = document.createElement('img');
-            img.alt = '';
-            img.src = url;
-            img.referrerPolicy = 'no-referrer';
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.borderRadius = '50%';
-            img.style.objectFit = 'cover';
-            av.appendChild(img);
+          av.replaceChildren();
+          const initials = initialsFromNameLocal(disp);
+          if (!raw) {
+            av.textContent = initials;
           } else {
-            const key = raw ? extractFileKey(raw) : '';
-            if (!key) {
-              av.replaceChildren();
-              av.textContent = initialsFromNameLocal(disp);
-              return;
-            }
-            av.replaceChildren();
             const img = document.createElement('img');
             img.alt = '';
-            try {
-              const signed = await fetchJson<{ url: string }>(`/files/signed?key=${encodeURIComponent(key)}`, token);
-              img.src = resolvePublicUrl(signed.url);
-            } catch {
-              // fallback: show initials instead of broken image
-              av.replaceChildren();
-              av.textContent = initialsFromNameLocal(disp);
-              return;
-            }
             img.referrerPolicy = 'no-referrer';
             img.style.width = '100%';
             img.style.height = '100%';
             img.style.borderRadius = '50%';
             img.style.objectFit = 'cover';
+            img.addEventListener(
+              'error',
+              () => {
+                av.replaceChildren();
+                av.textContent = initials;
+              },
+              { once: true },
+            );
+            img.src = await resolveAvatarImgSrc(raw, token);
             av.appendChild(img);
           }
         }
@@ -1772,23 +1774,29 @@ if (platformMount) {
         nameEl.textContent = name;
         roleEl.textContent = inExpertTeam ? 'Эксперт' : 'Ученик';
         const raw = typeof u.avatarUrl === 'string' ? u.avatarUrl.trim() : '';
-        if (raw) {
-          // Same approach as course covers: user.avatarUrl is public API path (/public/avatar?key=...)
-          const imgUrl = resolvePublicUrl(raw);
-          avatarEl.replaceChildren();
-          const img = document.createElement('img');
-          img.alt = '';
-          img.src = imgUrl;
-          img.referrerPolicy = 'no-referrer';
-          img.style.width = '100%';
-          img.style.height = '100%';
-          img.style.borderRadius = '50%';
-          img.style.objectFit = 'cover';
-          avatarEl.appendChild(img);
-        } else {
-          avatarEl.replaceChildren();
-          avatarEl.textContent = initialsFromName(name);
+        avatarEl.replaceChildren();
+        const initials = initialsFromName(name);
+        if (!raw) {
+          avatarEl.textContent = initials;
+          return;
         }
+        const img = document.createElement('img');
+        img.alt = '';
+        img.referrerPolicy = 'no-referrer';
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.borderRadius = '50%';
+        img.style.objectFit = 'cover';
+        img.addEventListener(
+          'error',
+          () => {
+            avatarEl.replaceChildren();
+            avatarEl.textContent = initials;
+          },
+          { once: true },
+        );
+        img.src = await resolveAvatarImgSrc(raw, token);
+        avatarEl.appendChild(img);
       } catch {
         expertShellAccess.allowed = false;
         activeExpertId = null;
