@@ -728,8 +728,20 @@ if (platformMount) {
         const code = (issued?.code ?? '').trim();
         if (!code) throw new Error('no code');
         const url = `https://t.me/${bot}?start=link_${encodeURIComponent(code)}`;
-        window.open(url, '_blank', 'noopener,noreferrer');
-        window.alert('Откройте Telegram и подтвердите привязку в мини‑приложении.');
+        // Browsers may block popups. Prefer opening a new tab, fallback to redirect.
+        const opened = window.open(url, '_blank', 'noopener,noreferrer');
+        if (!opened) {
+          // If blocked — redirect in the same tab.
+          window.location.href = url;
+          return;
+        }
+        // Extra: provide a copyable link for strict popup blockers.
+        try {
+          await navigator.clipboard.writeText(url);
+        } catch {
+          /* ignore */
+        }
+        window.alert('Откройте Telegram и подтвердите привязку в мини‑приложении. Ссылка скопирована в буфер обмена.');
       } catch {
         window.alert('Не удалось начать привязку Telegram');
       }
