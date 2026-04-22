@@ -64,11 +64,11 @@ export class ExpertCoursesController {
   @ApiResponse({ status: 200, description: 'List of courses' })
   async list(
     @Param('expertId') expertId: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
     @Query('status') status?: string,
     @Query('q') q?: string,
     @Query('limit') limitStr?: string,
     @Query('offset') offsetStr?: string,
-    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.ListExpertCoursesResponseV1> {
     const statusParsed = status
       ? ContractsV1.CourseStatusV1Schema.safeParse(status)
@@ -102,11 +102,11 @@ export class ExpertCoursesController {
   @ApiResponse({ status: 200, description: 'Courses with module/student/completion aggregates' })
   async listDashboard(
     @Param('expertId') expertId: string,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
     @Query('status') status?: string,
     @Query('q') q?: string,
     @Query('limit') limitStr?: string,
     @Query('offset') offsetStr?: string,
-    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.ListExpertCoursesDashboardResponseV1> {
     const statusParsed = status
       ? ContractsV1.CourseStatusV1Schema.safeParse(status)
