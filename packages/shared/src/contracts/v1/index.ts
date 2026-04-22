@@ -40,6 +40,7 @@ export type {
   CompleteLessonResponseV1,
 } from './access.js';
 export type { AuthRegisterRequestV1, AuthLoginRequestV1, AuthPasswordResponseV1 } from './auth.js';
+export { AuthRegisterRequestV1Schema, AuthLoginRequestV1Schema, AuthPasswordResponseV1Schema } from './auth.js';
 export type {
   ExpertCourseV1,
   CourseStatusV1,
@@ -103,6 +104,7 @@ export type {
   UpdateMyContactResponseV1,
 } from './contact.js';
 export type { UpdateMyProfileRequestV1, UpdateMyProfileResponseV1 } from './profile.js';
+export { UpdateMyProfileRequestV1Schema, UpdateMyProfileResponseV1Schema } from './profile.js';
 export {
   MeContactV1Schema,
   GetMyContactResponseV1Schema,
