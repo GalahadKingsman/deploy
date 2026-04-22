@@ -18,6 +18,14 @@ export type PlatformShellHandlers = {
   onAction?: (action: PlatformShellAction, ev: Event) => void | Promise<void>;
 };
 
+export type SetRoleOptions = {
+  /**
+   * Сразу открыть этот экран (например s-lesson после setRole('student')).
+   * Иначе — первый экран кабинета (e-dashboard / s-catalog).
+   */
+  screenId?: string;
+};
+
 export type PlatformShellOptions = PlatformShellHandlers & {
   /** Стартовая роль при маунте. По умолчанию 'expert' (как в макете). */
   initialRole?: 'expert' | 'student';
@@ -29,7 +37,7 @@ export type PlatformShellOptions = PlatformShellHandlers & {
 
 export type PlatformShellController = {
   shadowRoot: ShadowRoot;
-  setRole: (role: 'expert' | 'student') => void;
+  setRole: (role: 'expert' | 'student', options?: SetRoleOptions) => void;
   showScreen: (screenId: string) => void;
   destroy: () => void;
 };
@@ -69,6 +77,7 @@ function setRole(
   role: 'expert' | 'student',
   options: PlatformShellOptions,
   ev: Event,
+  setOptions?: SetRoleOptions,
 ): void {
   if (options.beforeSetRole && options.beforeSetRole(role) === false) {
     return;
@@ -81,8 +90,9 @@ function setRole(
   if (student) student.style.display = role === 'student' ? 'flex' : 'none';
 
   emit(options, { type: 'role', role }, ev);
-  const first = role === 'expert' ? 'e-dashboard' : 's-catalog';
-  showScreen(root, first, options, ev);
+  const def = role === 'expert' ? 'e-dashboard' : 's-catalog';
+  const screenId = (setOptions?.screenId && setOptions.screenId.trim()) || def;
+  showScreen(root, screenId, options, ev);
 }
 
 function onShadowClick(ev: MouseEvent, root: ShadowRoot, handlers: PlatformShellOptions): void {
@@ -143,7 +153,7 @@ function onShadowClick(ev: MouseEvent, root: ShadowRoot, handlers: PlatformShell
   const roleEl = target.closest('[data-ep-role]') as HTMLElement | null;
   if (roleEl?.dataset.epRole === 'expert' || roleEl?.dataset.epRole === 'student') {
     ev.preventDefault();
-    setRole(root, roleEl.dataset.epRole as 'expert' | 'student', handlers, ev);
+    setRole(root, roleEl.dataset.epRole as 'expert' | 'student', handlers, ev, undefined);
     return;
   }
 
@@ -171,7 +181,7 @@ export function mountPlatformShell(
       setRole: () => {},
       showScreen: () => {},
       destroy: () => {},
-    };
+    } as PlatformShellController;
   }
 
   const shadow = host.attachShadow({ mode: 'open' });
@@ -188,7 +198,7 @@ export function mountPlatformShell(
 
   const controller: PlatformShellController = {
     shadowRoot: shadow,
-    setRole: (role) => setRole(shadow, role, options, new Event('init')),
+    setRole: (role, setRoleOpts) => setRole(shadow, role, options, new Event('init'), setRoleOpts),
     showScreen: (screenId) => showScreen(shadow, screenId, options, new Event('init')),
     destroy: () => shadow.removeEventListener('click', listener),
   };
@@ -196,8 +206,7 @@ export function mountPlatformShell(
   const role = options.initialRole ?? 'expert';
   const screen = options.initialScreenId ?? (role === 'expert' ? 'e-dashboard' : 's-catalog');
   // выставляем роль и экран без необходимости клика
-  setRole(shadow, role, options, new Event('init'));
-  showScreen(shadow, screen, options, new Event('init'));
+  setRole(shadow, role, options, new Event('init'), { screenId: screen });
 
   return controller;
 }

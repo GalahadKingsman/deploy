@@ -1060,7 +1060,25 @@
 
 <!-- S-LESSON -->
 <div class="screen" id="screen-s-lesson">
-  <div style="display:flex;gap:20px;height:calc(100vh - 56px - 56px);overflow:hidden">
+  <div
+    class="ep-s-lesson-not-enrolled card"
+    data-ep-s-lesson-not-enrolled
+    style="display:none;max-width:520px;padding:32px 28px;margin:0 auto"
+  >
+    <div style="font-size:40px;opacity:.55;margin-bottom:12px" aria-hidden="true">📚</div>
+    <div style="font-family:var(--fd);font-size:16px;font-weight:700;color:var(--t1);letter-spacing:-.01em">Нет курса</div>
+    <p style="font-size:14px;color:var(--t2);line-height:1.65;margin-top:10px">
+      Вы не зачислены ни на один курс. Когда вас добавят в курс, уроки появятся здесь и в разделе «Мои курсы».
+    </p>
+    <div style="margin-top:20px">
+      <button type="button" class="btn btn-primary btn-sm" data-ep-screen="s-catalog">Каталог курсов</button>
+    </div>
+  </div>
+  <div
+    class="ep-s-lesson-app"
+    data-ep-s-lesson-app
+    style="display:flex;gap:20px;height:calc(100vh - 56px - 56px);overflow:hidden"
+  >
     <!-- Module tree -->
     <div style="width:240px;flex-shrink:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);padding:14px;overflow-y:auto;height:fit-content">
       <div data-ep-course-title style="font-family:var(--fd);font-size:11px;font-weight:700;color:var(--t1);margin-bottom:2px">Маркетинг 2025</div>

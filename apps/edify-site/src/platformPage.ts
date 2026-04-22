@@ -534,6 +534,55 @@ if (platformMount) {
     const shouldOpenAdminOnLoad = initialScreen === 'admin';
     const initialScreenId = shouldOpenAdminOnLoad ? 's-catalog' : initialScreen ? initialScreen : 's-catalog';
 
+    type EpPlatformHistoryState = { __ep: 1; role: 'expert' | 'student'; screen: string };
+    let epHistorySeeded = false;
+    let epHistorySuppress = false;
+    let epLastHistory: { role: 'expert' | 'student'; screen: string } | null = null;
+
+    function epRoleFromRoot(root: ShadowRoot): 'expert' | 'student' {
+      return root.getElementById('tab-expert')?.classList.contains('active') ? 'expert' : 'student';
+    }
+    function epBuildPlatformUrl(role: 'expert' | 'student', screen: string): string {
+      const u = new URL(window.location.href);
+      u.searchParams.set('role', role);
+      u.searchParams.set('screen', screen);
+      return u.pathname + u.search + u.hash;
+    }
+    function epStateFromUrl(href: string): EpPlatformHistoryState | null {
+      try {
+        const u = new URL(href, window.location.origin);
+        const sc = (u.searchParams.get('screen') || '').trim();
+        if (!sc) return null;
+        const r = (u.searchParams.get('role') || '').trim();
+        return { __ep: 1, role: r === 'expert' ? 'expert' : 'student', screen: sc };
+      } catch {
+        return null;
+      }
+    }
+    function epSyncHistoryOnNavigate(root: ShadowRoot, screenId: string): void {
+      if (epHistorySuppress) return;
+      if (!epHistorySeeded) return;
+      const role = epRoleFromRoot(root);
+      if (epLastHistory && epLastHistory.role === role && epLastHistory.screen === screenId) return;
+      const st: EpPlatformHistoryState = { __ep: 1, role, screen: screenId };
+      window.history.pushState(st, '', epBuildPlatformUrl(role, screenId));
+      epLastHistory = { role, screen: screenId };
+    }
+    function epReplaceHistoryWithCurrentShell(root: ShadowRoot): void {
+      const role = epRoleFromRoot(root);
+      const active = root.querySelector('.screen.active') as HTMLElement | null;
+      const id =
+        active?.id && active.id.startsWith('screen-')
+          ? active.id.slice(7)
+          : role === 'expert'
+            ? 'e-dashboard'
+            : 's-catalog';
+      const st: EpPlatformHistoryState = { __ep: 1, role, screen: id };
+      window.history.replaceState(st, '', epBuildPlatformUrl(role, id));
+      epLastHistory = { role, screen: id };
+      epHistorySeeded = true;
+    }
+
     const shell = mountPlatformShell(platformMount, {
       initialRole: initialRole === 'expert' ? 'expert' : 'student',
       initialScreenId,
@@ -547,6 +596,9 @@ if (platformMount) {
       },
       onAction(action) {
         if (import.meta.env.DEV) console.debug('[edify-platform-page]', action);
+        if (action.type === 'navigate') {
+          epSyncHistoryOnNavigate(action.shadowRoot, action.screenId);
+        }
         if (action.type === 'navigate' && action.screenId === 's-homework') {
           void hydrateRecentSubmissionsTable(action.shadowRoot);
           void hydratePendingHomeworkHub(action.shadowRoot);
@@ -569,11 +621,39 @@ if (platformMount) {
             window.alert('Создайте курс кнопкой «+ Создать курс» в «Мои курсы» или откройте курс для редактирования.');
           }
         }
+        if (
+          action.type === 'navigate' &&
+          action.screenId === 's-lesson' &&
+          isShellStudentMode(action.shadowRoot) &&
+          navigationToLessonIsFromDataEpScreen(action.sourceElement)
+        ) {
+          void enterStudentCurrentLessonOrEmpty(action.shadowRoot);
+        }
         if (action.type === 'builder_tab') {
           void switchExpertBuilderTab(action.shadowRoot, action.tabLabel);
         }
       },
     });
+
+    epReplaceHistoryWithCurrentShell(shell.shadowRoot);
+    window.addEventListener('popstate', (ev: PopStateEvent) => {
+      const st: EpPlatformHistoryState | null =
+        ev.state && (ev.state as EpPlatformHistoryState).__ep === 1
+          ? (ev.state as EpPlatformHistoryState)
+          : epStateFromUrl(window.location.href);
+      if (!st) return;
+      epHistorySuppress = true;
+      try {
+        shell.setRole(st.role, { screenId: st.screen });
+        epLastHistory = { role: st.role, screen: st.screen };
+      } finally {
+        epHistorySuppress = false;
+      }
+    });
+
+    if (initialScreenId === 's-lesson' && isShellStudentMode(shell.shadowRoot)) {
+      void enterStudentCurrentLessonOrEmpty(shell.shadowRoot);
+    }
 
     type ModuleV1 = { id: string; title: string; position?: number };
     type LessonV1 = { id: string; title: string; order?: number; contentMarkdown?: string | null };
@@ -1532,11 +1612,63 @@ if (platformMount) {
       updatePrevLessonUi(root, lessonId);
     }
 
+    function isShellStudentMode(root: ShadowRoot): boolean {
+      return root.getElementById('tab-student')?.classList.contains('active') ?? false;
+    }
+
+    function setStudentLessonEnrolledUI(root: ShadowRoot, enrolled: boolean): void {
+      const notEnrolled = root.querySelector('[data-ep-s-lesson-not-enrolled]') as HTMLElement | null;
+      const app = root.querySelector('[data-ep-s-lesson-app]') as HTMLElement | null;
+      if (notEnrolled) notEnrolled.style.display = enrolled ? 'none' : 'block';
+      if (app) app.style.display = enrolled ? 'flex' : 'none';
+    }
+
+    function resetStudentLessonEmptySession(root: ShadowRoot): void {
+      currentCourseId = null;
+      lessonMetaById.clear();
+      unlockedLessonIds.clear();
+      modulesOrderedLessonIds = [];
+      delete (root as any).__epHomework;
+    }
+
+    function navigationToLessonIsFromDataEpScreen(
+      source: HTMLElement | null | undefined,
+    ): boolean {
+      const el = source?.closest?.('[data-ep-screen]') as HTMLElement | null;
+      return el?.dataset?.epScreen === 's-lesson';
+    }
+
+    /**
+     * Текущий урок: без зачислений показываем сообщение, иначе открываем курс (как «Мои курсы»).
+     * Только по явной навигации (есть [data-ep-screen] → s-lesson) или deep-link ?screen=s-lesson.
+     * Не вызывать при shell.showScreen('s-lesson') из кода (openCourse / ДЗ) — там source пустой.
+     */
+    async function enterStudentCurrentLessonOrEmpty(root: ShadowRoot): Promise<void> {
+      const token = getAccessToken() ?? undefined;
+      let data: MyCoursesResponseV1;
+      try {
+        data = await fetchJson<MyCoursesResponseV1>('/me/courses', token);
+      } catch {
+        setStudentLessonEnrolledUI(root, true);
+        return;
+      }
+      const items = data.items ?? [];
+      if (items.length === 0) {
+        resetStudentLessonEmptySession(root);
+        setStudentLessonEnrolledUI(root, false);
+        return;
+      }
+      setStudentLessonEnrolledUI(root, true);
+      const ids = new Set(items.map((x) => x.course.id));
+      const pick = currentCourseId && ids.has(currentCourseId) ? currentCourseId : items[0]!.course.id;
+      await openCourse(pick);
+    }
+
     async function openCourse(courseId: string): Promise<void> {
-      shell.setRole('student');
-      shell.showScreen('s-lesson');
+      shell.setRole('student', { screenId: 's-lesson' });
 
       const root = shell.shadowRoot;
+      setStudentLessonEnrolledUI(root, true);
       currentCourseId = courseId;
       lessonMetaById.clear();
       unlockedLessonIds.clear();
@@ -3576,8 +3708,7 @@ if (platformMount) {
     }
 
     async function openCoursePreview(courseId: string): Promise<void> {
-      shell.setRole('student');
-      shell.showScreen('s-course');
+      shell.setRole('student', { screenId: 's-course' });
       const token = getAccessToken() ?? undefined;
       const res = await fetchJson<CourseDetailResponseV1>(`/courses/${encodeURIComponent(courseId)}`, token);
       fillCoursePreview(res.course, (res.lessons ?? []).length);
