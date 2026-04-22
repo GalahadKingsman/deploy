@@ -389,6 +389,48 @@ body.platform-gate{background:var(--bg);color:var(--t1)}
 }
 .edify-footer-login:hover{color:#fff}
 
+/* ── NAV (desktop): user like platform + red logout ── */
+.nav-right [data-edify-nav-auth][data-variant="header"] .edify-nav-user{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.nav-right [data-edify-nav-auth][data-variant="header"] .edify-user-chip--header{
+  background:transparent !important;
+  border-color:transparent !important;
+  box-shadow:none !important;
+  padding:0 !important;
+  border-radius:0 !important;
+  max-width:min(360px,62vw);
+}
+.nav-right [data-edify-nav-auth][data-variant="header"] .edify-user-chip__avatar,
+.nav-right [data-edify-nav-auth][data-variant="header"] .edify-user-chip__avatar--ph{
+  width:40px;
+  height:40px;
+  border-color:rgba(10,168,200,.22);
+  background:rgba(10,168,200,.10);
+}
+.nav-right [data-edify-nav-auth][data-variant="header"] .edify-user-chip__body{gap:3px}
+.nav-right [data-edify-nav-auth][data-variant="header"] .edify-user-chip__handle{display:none}
+.nav-right [data-edify-nav-auth][data-variant="header"] .edify-nav-logout{
+  font-family:var(--fb);
+  font-size:13px;
+  font-weight:700;
+  padding:9px 14px;
+  border-radius:12px;
+  border:1px solid rgba(235,74,74,.30);
+  background:rgba(235,74,74,.08);
+  color:#B42318;
+  cursor:pointer;
+  transition:all .15s;
+  white-space:nowrap;
+}
+.nav-right [data-edify-nav-auth][data-variant="header"] .edify-nav-logout:hover{
+  border-color:rgba(235,74,74,.48);
+  background:rgba(235,74,74,.12);
+  transform:translateY(-1px);
+}
+
 /* ── BUTTONS ── */
 .btn-primary{
   display:inline-flex;align-items:center;gap:8px;
