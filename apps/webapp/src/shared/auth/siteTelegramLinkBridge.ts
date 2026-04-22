@@ -16,6 +16,16 @@ function urlSuggestsLink(): boolean {
   }
 }
 
+function getLinkCodeFromUrl(): string | null {
+  try {
+    const u = new URL(window.location.href);
+    const v = (u.searchParams.get('link') || '').trim();
+    return v ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 function getStartParam(): string | null {
   try {
     const tg = window.Telegram?.WebApp;
@@ -53,9 +63,14 @@ async function awaitLinkStartParam(): Promise<string | null> {
  * 3) Call POST /me/telegram/connect with initData under web token
  */
 export async function tryFinishTelegramLink(): Promise<void> {
-  const startParam = await awaitLinkStartParam();
-  if (!startParam || !startParam.startsWith('link_')) return;
-  const code = startParam.slice('link_'.length).trim();
+  // Prefer explicit query param (reliable), fallback to Telegram start_param.
+  const codeFromUrl = getLinkCodeFromUrl();
+  let code = codeFromUrl ?? '';
+  if (!code) {
+    const startParam = await awaitLinkStartParam();
+    if (!startParam || !startParam.startsWith('link_')) return;
+    code = startParam.slice('link_'.length).trim();
+  }
   if (!code) return;
 
   const tg = window.Telegram?.WebApp;

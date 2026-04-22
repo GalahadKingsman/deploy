@@ -74,7 +74,13 @@ bot.command('start', async (ctx) => {
   if (payloadRaw.startsWith('link_')) {
     const code = payloadRaw.slice('link_'.length).trim();
     if (code && isInviteCode(code)) {
-      const url = webAppUrlWithStartApp(`link_${code}`);
+      // Telegram clients may not reliably propagate start_param for WebApp buttons.
+      // Keep startapp for those that do, but also include plain query param as a fallback.
+      const url = (() => {
+        const u = new URL(webAppUrlWithStartApp(`link_${code}`));
+        u.searchParams.set('link', code);
+        return u.toString();
+      })();
       const kb = new InlineKeyboard().webApp('Open WebApp', url);
       await ctx.reply('Нажмите кнопку, чтобы завершить привязку Telegram к аккаунту на сайте:', {
         reply_markup: kb,
