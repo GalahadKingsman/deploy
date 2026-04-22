@@ -482,6 +482,9 @@ export class UsersRepository {
           OR COALESCE(username, '') ILIKE $${p}
           OR COALESCE(first_name, '') ILIKE $${p}
           OR COALESCE(last_name, '') ILIKE $${p}
+          OR TRIM(
+              COALESCE(NULLIF(first_name, ''), '') || ' ' || COALESCE(NULLIF(last_name, ''), '')
+            ) ILIKE $${p}
       `;
     }
 
