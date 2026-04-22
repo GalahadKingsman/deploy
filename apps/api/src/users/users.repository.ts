@@ -346,7 +346,7 @@ export class UsersRepository {
     await this.pool.query(`UPDATE users SET telegram_user_id = NULL, updated_at = NOW() WHERE id = $1`, [userId]);
   }
 
-  async mergeStudentProgress(params: { fromUserId: string; toUserId: string }): Promise<void> {
+  async mergeUserData(params: { fromUserId: string; toUserId: string }): Promise<void> {
     if (!this.pool) {
       throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
     }
@@ -354,6 +354,18 @@ export class UsersRepository {
 
     await this.pool.query('BEGIN');
     try {
+      // Expert memberships: copy roles into target
+      await this.pool.query(
+        `
+        INSERT INTO expert_members (expert_id, user_id, role, created_at)
+        SELECT em.expert_id, $2, em.role, em.created_at
+        FROM expert_members em
+        WHERE em.user_id = $1
+        ON CONFLICT (expert_id, user_id) DO NOTHING
+        `,
+        [params.fromUserId, params.toUserId],
+      );
+
       // Enrollments: move access (keep best access_end, and never re-add revoked if target is active)
       await this.pool.query(
         `
@@ -396,6 +408,7 @@ export class UsersRepository {
       ]);
 
       // Cleanup: remove moved rows that are now redundant
+      await this.pool.query(`DELETE FROM expert_members WHERE user_id = $1`, [params.fromUserId]);
       await this.pool.query(`DELETE FROM lesson_progress WHERE user_id = $1`, [params.fromUserId]);
       await this.pool.query(`DELETE FROM enrollments WHERE user_id = $1`, [params.fromUserId]);
 

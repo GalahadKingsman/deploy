@@ -205,7 +205,7 @@ export class MeController {
             message: 'Telegram already linked to another account',
           });
         }
-        await this.usersRepository.mergeStudentProgress({ fromUserId: existing.id, toUserId: userId });
+        await this.usersRepository.mergeUserData({ fromUserId: existing.id, toUserId: userId });
         await this.usersRepository.unlinkTelegram(existing.id);
       }
 
