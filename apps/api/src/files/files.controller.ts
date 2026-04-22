@@ -98,9 +98,6 @@ export class FilesController {
     if (!userId) {
       throw new ForbiddenException({ code: ErrorCodes.UNAUTHORIZED, message: 'Unauthorized' });
     }
-    if (!this.pool) {
-      throw new NotFoundException({ code: ErrorCodes.INTERNAL_ERROR, message: 'Database is disabled' });
-    }
     const cleanKey = String(key ?? '').trim();
     if (!cleanKey) {
       throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'key is required' });
@@ -111,6 +108,9 @@ export class FilesController {
       throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'File not found' });
     }
     if (isSubmission) {
+      if (!this.pool) {
+        throw new NotFoundException({ code: ErrorCodes.INTERNAL_ERROR, message: 'Database is disabled' });
+      }
       const res = await this.pool.query<{ student_user_id: string }>(
         `SELECT student_user_id FROM submissions WHERE file_key = $1 LIMIT 1`,
         [cleanKey],

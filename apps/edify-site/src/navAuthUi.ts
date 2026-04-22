@@ -1,4 +1,5 @@
 import { getApiBaseUrl, getTelegramBotUsername } from './env.js';
+import { getAvatarImageSrc } from './avatarImageUrl.js';
 import { clearAccessToken, getAccessToken, setAccessToken } from './authSession.js';
 
 declare global {
@@ -35,42 +36,12 @@ function resolvePublicUrl(url: string): string {
   return api ? `${api}${raw}` : raw;
 }
 
-function extractFileKey(raw: string): string {
-  const v = (raw || '').trim();
-  if (!v) return '';
-  if (v.startsWith('submissions/') || v.startsWith('avatars/')) return v;
-  if (v.startsWith('/public/avatar?')) {
-    try {
-      const u = new URL(v, 'https://x.local');
-      return (u.searchParams.get('key') || '').trim();
-    } catch {
-      return '';
-    }
-  }
-  if (v.startsWith('/files?')) {
-    try {
-      const u = new URL(v, 'https://x.local');
-      return (u.searchParams.get('key') || '').trim();
-    } catch {
-      return '';
-    }
-  }
-  return '';
-}
-
-async function resolveAvatarImgSrc(avatarUrl: string, token: string): Promise<string> {
-  const key = extractFileKey(avatarUrl);
-  if (!key) return resolvePublicUrl(avatarUrl);
-  // If it's already public avatar endpoint, no need for signed flow.
-  if (avatarUrl.trim().startsWith('/public/avatar?')) return resolvePublicUrl(avatarUrl);
-  const api = getApiBaseUrl();
-  if (!api) return resolvePublicUrl(avatarUrl);
-  const res = await fetch(`${api}/files/signed?key=${encodeURIComponent(key)}`, {
-    headers: { Authorization: `Bearer ${token}`, accept: 'application/json' },
-  });
-  if (!res.ok) return resolvePublicUrl(avatarUrl);
-  const data = (await res.json()) as { url?: string };
-  return typeof data.url === 'string' && data.url ? resolvePublicUrl(data.url) : resolvePublicUrl(avatarUrl);
+function avatarInitialsForChip(u: MeUserV1): string {
+  const d = displayName(u);
+  const parts = d.split(/\s+/).filter(Boolean);
+  const a = (parts[0]?.[0] ?? '?').toUpperCase();
+  const b = (parts[1]?.[0] ?? parts[0]?.[1] ?? '').toUpperCase();
+  return (a + b).slice(0, 2) || '?';
 }
 function roleLabel(u: MeUserV1): string {
   // On landing we only need a short label like inside platform UI.
@@ -281,41 +252,25 @@ function buildUserChip(user: MeUserV1, variant: string, token?: string | null): 
   const root = document.createElement('div');
   root.className = `edify-user-chip edify-user-chip--${variant}`;
 
+  const ph = document.createElement('div');
+  ph.className = 'edify-user-chip__avatar edify-user-chip__avatar--ph';
+  ph.textContent = avatarInitialsForChip(user);
+  root.appendChild(ph);
   if (user.avatarUrl) {
-    const key = extractFileKey(user.avatarUrl);
-    if (key && token) {
-      // Start with placeholder initials (avoid broken image icon), then swap to real avatar.
-      const ph = document.createElement('div');
-      ph.className = 'edify-user-chip__avatar edify-user-chip__avatar--ph';
-      ph.textContent = (displayName(user).charAt(0) || '?').toUpperCase();
-      root.appendChild(ph);
-      void (async () => {
-        try {
-          const avatar = document.createElement('img');
-          avatar.className = 'edify-user-chip__avatar';
-          avatar.alt = '';
-          avatar.referrerPolicy = 'no-referrer';
-          avatar.src = await resolveAvatarImgSrc(user.avatarUrl!, token);
-          avatar.addEventListener('load', () => {
-            root.replaceChild(avatar, ph);
-          });
-        } catch {
-          // ignore (keep placeholder)
-        }
-      })();
-    } else {
+    const src = getAvatarImageSrc(user.avatarUrl);
+    if (src) {
       const avatar = document.createElement('img');
       avatar.className = 'edify-user-chip__avatar';
       avatar.alt = '';
-      avatar.src = resolvePublicUrl(user.avatarUrl);
       avatar.referrerPolicy = 'no-referrer';
-      root.appendChild(avatar);
+      avatar.src = src;
+      avatar.addEventListener('load', () => {
+        if (ph.parentNode === root) root.replaceChild(avatar, ph);
+      });
+      avatar.addEventListener('error', () => {
+        /* keep initials placeholder */
+      });
     }
-  } else {
-    const ph = document.createElement('div');
-    ph.className = 'edify-user-chip__avatar edify-user-chip__avatar--ph';
-    ph.textContent = (displayName(user).charAt(0) || '?').toUpperCase();
-    root.appendChild(ph);
   }
 
   const body = document.createElement('div');

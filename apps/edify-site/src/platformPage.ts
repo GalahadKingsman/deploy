@@ -7,6 +7,7 @@ import { mountPlatformShell } from './platform/mountPlatformShell.js';
 import { normalizeRutubeEmbedUrl } from './util/rutubeEmbed.js';
 import { downloadAuthenticatedFile, previewAuthenticatedFile } from './downloadAuthenticatedFile.js';
 import { setRichTextWithLinks } from './renderTextWithLinksDom.js';
+import { getAvatarImageSrc } from './avatarImageUrl.js';
 
 function renderAuthGate(): void {
   document.body.classList.add('platform-gate');
@@ -62,23 +63,6 @@ function extractFileKey(raw: string): string {
     }
   }
   return '';
-}
-
-async function resolveAvatarImgSrc(avatarUrl: string, token: string): Promise<string> {
-  const key = extractFileKey(avatarUrl);
-  if (!key) return resolvePublicUrl(avatarUrl);
-  const api = getApiBaseUrl();
-  if (!api) return resolvePublicUrl(avatarUrl);
-  try {
-    const res = await fetch(`${api}/files/signed?key=${encodeURIComponent(key)}`, {
-      headers: { Authorization: `Bearer ${token}`, accept: 'application/json' },
-    });
-    if (!res.ok) return resolvePublicUrl(avatarUrl);
-    const data = (await res.json()) as { url?: string };
-    return typeof data.url === 'string' && data.url ? resolvePublicUrl(data.url) : resolvePublicUrl(avatarUrl);
-  } catch {
-    return resolvePublicUrl(avatarUrl);
-  }
 }
 
 /** Возврат из внешнего браузера (openLink) с ?login= — bfcache и переключение вкладок. */
@@ -675,8 +659,14 @@ if (platformMount) {
               },
               { once: true },
             );
-            img.src = await resolveAvatarImgSrc(raw, token);
-            av.appendChild(img);
+            const src = getAvatarImageSrc(raw);
+            if (!src) {
+              av.replaceChildren();
+              av.textContent = initials;
+            } else {
+              img.src = src;
+              av.appendChild(img);
+            }
           }
         }
 
@@ -1795,7 +1785,13 @@ if (platformMount) {
           },
           { once: true },
         );
-        img.src = await resolveAvatarImgSrc(raw, token);
+        const src = getAvatarImageSrc(raw);
+        if (!src) {
+          avatarEl.replaceChildren();
+          avatarEl.textContent = initials;
+          return;
+        }
+        img.src = src;
         avatarEl.appendChild(img);
       } catch {
         expertShellAccess.allowed = false;
