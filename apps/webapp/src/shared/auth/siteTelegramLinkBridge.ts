@@ -74,7 +74,106 @@ export async function tryFinishTelegramLink(): Promise<void> {
   if (!code) return;
 
   const tg = window.Telegram?.WebApp;
-  tg?.showAlert?.('Запускаю привязку Telegram к аккаунту на сайте…');
+  const mb = tg?.MainButton as
+    | {
+        setText?: (text: string) => void;
+        show?: () => void;
+        hide?: () => void;
+        onClick?: (cb: () => void) => void;
+        offClick?: (cb: () => void) => void;
+        color?: string;
+        textColor?: string;
+        isVisible?: boolean;
+      }
+    | undefined;
+
+  const canUseMainButton =
+    typeof mb?.onClick === 'function' &&
+    typeof mb?.show === 'function' &&
+    typeof mb?.setText === 'function' &&
+    typeof mb?.hide === 'function';
+
+  const runLink = async () => {
+    try {
+      const initData = await waitForTelegramInitData();
+      if (!initData) {
+        tg?.showAlert?.('Не удалось получить данные Telegram. Закройте и откройте мини‑приложение снова.');
+        return;
+      }
+
+      const raw = await fetchJson<unknown>({
+        path: '/auth/site-bridge/claim',
+        method: 'POST',
+        body: { code },
+        headers: {},
+      });
+      const parsed = ContractsV1.AuthTelegramResponseV1Schema.safeParse(raw);
+      if (!parsed.success) {
+        tg?.showAlert?.('Не удалось подтвердить привязку. Попробуйте ещё раз из профиля на сайте.');
+        return;
+      }
+
+      // Temporarily switch token to the claimed web session
+      const prev = getAccessToken();
+      setAccessToken(parsed.data.accessToken);
+      try {
+        await fetchJson({
+          path: '/me/telegram/connect',
+          method: 'POST',
+          body: { initData },
+        });
+        tg?.showAlert?.('Telegram успешно подключён к вашему аккаунту на сайте.');
+        tg?.close?.();
+      } catch (e) {
+        console.warn('telegram connect failed', e);
+        if (isApiClientError(e)) {
+          tg?.showAlert?.(`Не удалось подключить Telegram: HTTP ${e.status} ${e.code} (${e.requestId})`);
+        } else {
+          const msg = e instanceof Error ? e.message : 'ошибка сети';
+          tg?.showAlert?.(`Не удалось подключить Telegram: ${msg}`);
+        }
+      } finally {
+        if (prev) setAccessToken(prev);
+      }
+    } catch (e) {
+      console.warn('link flow failed', e);
+      if (isApiClientError(e)) {
+        tg?.showAlert?.(`Не удалось завершить привязку: HTTP ${e.status} ${e.code} (${e.requestId})`);
+      } else {
+        const msg = e instanceof Error ? e.message : 'ошибка сети';
+        tg?.showAlert?.(`Не удалось завершить привязку: ${msg}`);
+      }
+    } finally {
+      try {
+        mb?.hide?.();
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
+  if (canUseMainButton) {
+    // Telegram-like blue button at the bottom of WebApp
+    try {
+      mb.textColor = '#FFFFFF';
+      mb.color = '#2AABEE';
+    } catch {
+      /* ignore */
+    }
+    mb.setText!('Завершить привязку');
+    mb.show!();
+    let finished = false;
+    const handler = () => {
+      if (finished) return;
+      finished = true;
+      mb.offClick?.(handler);
+      void runLink();
+    };
+    mb.onClick!(handler);
+    return;
+  }
+
+  // Fallback: auto-run if MainButton not supported
   try {
     const initData = await waitForTelegramInitData();
     if (!initData) {
