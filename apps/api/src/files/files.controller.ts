@@ -103,17 +103,21 @@ export class FilesController {
     if (!cleanKey) {
       throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'key is required' });
     }
-    if (!cleanKey.startsWith('submissions/')) {
+    const isSubmission = cleanKey.startsWith('submissions/');
+    const isAvatar = cleanKey.startsWith(`avatars/${userId}/`);
+    if (!isSubmission && !isAvatar) {
       throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'File not found' });
     }
-    const res = await this.pool.query<{ student_user_id: string }>(
-      `SELECT student_user_id FROM submissions WHERE file_key = $1 LIMIT 1`,
-      [cleanKey],
-    );
-    const row = res.rows[0];
-    if (!row) throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'File not found' });
-    if (row.student_user_id !== userId) {
-      throw new ForbiddenException({ code: ErrorCodes.FORBIDDEN, message: 'Forbidden' });
+    if (isSubmission) {
+      const res = await this.pool.query<{ student_user_id: string }>(
+        `SELECT student_user_id FROM submissions WHERE file_key = $1 LIMIT 1`,
+        [cleanKey],
+      );
+      const row = res.rows[0];
+      if (!row) throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'File not found' });
+      if (row.student_user_id !== userId) {
+        throw new ForbiddenException({ code: ErrorCodes.FORBIDDEN, message: 'Forbidden' });
+      }
     }
     return await this.storage.getSignedGetUrl({ key: cleanKey, expiresSeconds: 120 });
   }

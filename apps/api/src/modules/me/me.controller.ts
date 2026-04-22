@@ -161,9 +161,8 @@ export class MeController {
       body: new Uint8Array(buf),
       contentType: file.mimetype ?? null,
     });
-    // API uses relative URLs in many places; keep consistent
-    const url = `/files?key=${encodeURIComponent(key)}`;
-    const updated = await this.usersRepository.updateAvatarUrl(userId, url);
+    // Store S3 object key; UI resolves it via /files/signed.
+    const updated = await this.usersRepository.updateAvatarUrl(userId, key);
     return { user: updated as any };
   }
 

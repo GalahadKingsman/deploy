@@ -35,6 +35,33 @@ function resolvePublicUrl(url: string): string {
   return api ? `${api}${raw}` : raw;
 }
 
+function extractFileKey(raw: string): string {
+  const v = (raw || '').trim();
+  if (!v) return '';
+  if (v.startsWith('submissions/') || v.startsWith('avatars/')) return v;
+  if (v.startsWith('/files?')) {
+    try {
+      const u = new URL(v, 'https://x.local');
+      return (u.searchParams.get('key') || '').trim();
+    } catch {
+      return '';
+    }
+  }
+  return '';
+}
+
+async function resolveAvatarImgSrc(avatarUrl: string, token: string): Promise<string> {
+  const key = extractFileKey(avatarUrl);
+  if (!key) return resolvePublicUrl(avatarUrl);
+  const api = getApiBaseUrl();
+  if (!api) return resolvePublicUrl(avatarUrl);
+  const res = await fetch(`${api}/files/signed?key=${encodeURIComponent(key)}`, {
+    headers: { Authorization: `Bearer ${token}`, accept: 'application/json' },
+  });
+  if (!res.ok) return resolvePublicUrl(avatarUrl);
+  const data = (await res.json()) as { url?: string };
+  return typeof data.url === 'string' && data.url ? data.url : resolvePublicUrl(avatarUrl);
+}
 function roleLabel(u: MeUserV1): string {
   // On landing we only need a short label like inside platform UI.
   if (u.platformRole === 'owner' || u.platformRole === 'admin') return 'Эксперт';
@@ -240,7 +267,7 @@ async function fetchMe(api: string, token: string): Promise<MeUserV1 | null | un
   }
 }
 
-function buildUserChip(user: MeUserV1, variant: string): HTMLElement {
+function buildUserChip(user: MeUserV1, variant: string, token?: string | null): HTMLElement {
   const root = document.createElement('div');
   root.className = `edify-user-chip edify-user-chip--${variant}`;
 
@@ -251,6 +278,15 @@ function buildUserChip(user: MeUserV1, variant: string): HTMLElement {
     avatar.src = resolvePublicUrl(user.avatarUrl);
     avatar.referrerPolicy = 'no-referrer';
     root.appendChild(avatar);
+    if (token) {
+      void (async () => {
+        try {
+          avatar.src = await resolveAvatarImgSrc(user.avatarUrl!, token);
+        } catch {
+          // ignore
+        }
+      })();
+    }
   } else {
     const ph = document.createElement('div');
     ph.className = 'edify-user-chip__avatar edify-user-chip__avatar--ph';
@@ -302,13 +338,14 @@ function buildUserChip(user: MeUserV1, variant: string): HTMLElement {
 
 export function renderUserSlots(user: MeUserV1): void {
   setRegisterCtasVisible(false);
+  const token = getAccessToken();
   document.querySelectorAll<HTMLElement>('[data-edify-nav-auth]').forEach((slot) => {
     const variant = slot.dataset.variant ?? 'header';
     slot.replaceChildren();
     if (variant === 'header') {
       const wrap = document.createElement('div');
       wrap.className = 'edify-nav-user';
-      wrap.appendChild(buildUserChip(user, variant));
+      wrap.appendChild(buildUserChip(user, variant, token));
       const out = document.createElement('button');
       out.type = 'button';
       out.className = 'edify-nav-logout';
@@ -321,7 +358,7 @@ export function renderUserSlots(user: MeUserV1): void {
       slot.appendChild(wrap);
       return;
     }
-    slot.appendChild(buildUserChip(user, variant));
+    slot.appendChild(buildUserChip(user, variant, token));
   });
 }
 

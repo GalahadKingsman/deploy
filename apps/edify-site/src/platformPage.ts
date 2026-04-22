@@ -40,6 +40,22 @@ function resolvePublicUrl(url: string): string {
   return api ? `${api}${raw}` : raw;
 }
 
+function extractFileKey(raw: string): string {
+  const v = (raw || '').trim();
+  if (!v) return '';
+  if (v.startsWith('submissions/') || v.startsWith('avatars/')) return v;
+  // legacy: "/files?key=..."
+  if (v.startsWith('/files?')) {
+    try {
+      const u = new URL(v, 'https://x.local');
+      return (u.searchParams.get('key') || '').trim();
+    } catch {
+      return '';
+    }
+  }
+  return '';
+}
+
 /** Возврат из внешнего браузера (openLink) с ?login= — bfcache и переключение вкладок. */
 window.addEventListener('pageshow', (ev) => {
   if (ev.persisted) void runAuthFlow();
@@ -606,12 +622,18 @@ if (platformMount) {
 
         const av = screen.querySelector('[data-ep-profile-avatar]') as HTMLElement | null;
         if (av) {
-          const url = typeof u.avatarUrl === 'string' && u.avatarUrl.trim() ? resolvePublicUrl(u.avatarUrl) : '';
-          if (url) {
+          const key = typeof u.avatarUrl === 'string' ? extractFileKey(u.avatarUrl) : '';
+          if (key) {
             av.replaceChildren();
             const img = document.createElement('img');
             img.alt = '';
-            img.src = url;
+            try {
+              const signed = await fetchJson<{ url: string }>(`/files/signed?key=${encodeURIComponent(key)}`, token);
+              img.src = signed.url;
+            } catch {
+              // fallback: try legacy direct url (might still work in some envs)
+              img.src = resolvePublicUrl(u.avatarUrl);
+            }
             img.referrerPolicy = 'no-referrer';
             img.style.width = '100%';
             img.style.height = '100%';
