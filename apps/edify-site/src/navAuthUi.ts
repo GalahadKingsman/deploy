@@ -15,6 +15,7 @@ export type MeUserV1 = {
   firstName?: string;
   lastName?: string;
   avatarUrl?: string | null;
+  email?: string | null;
   platformRole: string;
 };
 
@@ -23,6 +24,18 @@ function displayName(u: MeUserV1): string {
   if (n) return n;
   if (u.username) return u.username;
   return 'Пользователь';
+}
+
+function roleLabel(u: MeUserV1): string {
+  // On landing we only need a short label like inside platform UI.
+  if (u.platformRole === 'owner' || u.platformRole === 'admin') return 'Эксперт';
+  return 'Ученик';
+}
+
+function setRegisterCtasVisible(visible: boolean): void {
+  document.querySelectorAll<HTMLElement>('[data-edify-auth-open="register"]').forEach((el) => {
+    el.style.display = visible ? '' : 'none';
+  });
 }
 
 function guestLoginAlert(): void {
@@ -183,6 +196,7 @@ function openAuthModal(mode: AuthMode): void {
 window.edifyOpenAuthModal = (mode: AuthMode) => openAuthModal(mode);
 
 export function renderGuestSlots(): void {
+  setRegisterCtasVisible(true);
   document.querySelectorAll<HTMLElement>('[data-edify-nav-auth]').forEach((slot) => {
     slot.replaceChildren();
     const variant = slot.dataset.variant ?? 'header';
@@ -243,12 +257,11 @@ function buildUserChip(user: MeUserV1, variant: string): HTMLElement {
   name.textContent = displayName(user);
   body.appendChild(name);
 
-  if (user.username) {
-    const handle = document.createElement('span');
-    handle.className = 'edify-user-chip__handle';
-    handle.textContent = `@${user.username}`;
-    body.appendChild(handle);
-  }
+  const sub = document.createElement('span');
+  sub.className = 'edify-user-chip__sub';
+  // Header should look like platform: show role; other variants can still show @username.
+  sub.textContent = variant === 'header' ? roleLabel(user) : user.username ? `@${user.username}` : roleLabel(user);
+  body.appendChild(sub);
   root.appendChild(body);
 
   // Click → profile inside platform
@@ -279,9 +292,26 @@ function buildUserChip(user: MeUserV1, variant: string): HTMLElement {
 }
 
 export function renderUserSlots(user: MeUserV1): void {
+  setRegisterCtasVisible(false);
   document.querySelectorAll<HTMLElement>('[data-edify-nav-auth]').forEach((slot) => {
     const variant = slot.dataset.variant ?? 'header';
     slot.replaceChildren();
+    if (variant === 'header') {
+      const wrap = document.createElement('div');
+      wrap.className = 'edify-nav-user';
+      wrap.appendChild(buildUserChip(user, variant));
+      const out = document.createElement('button');
+      out.type = 'button';
+      out.className = 'edify-nav-logout';
+      out.textContent = 'Выйти';
+      out.addEventListener('click', () => {
+        clearAccessToken();
+        renderGuestSlots();
+      });
+      wrap.appendChild(out);
+      slot.appendChild(wrap);
+      return;
+    }
     slot.appendChild(buildUserChip(user, variant));
   });
 }

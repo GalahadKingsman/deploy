@@ -321,6 +321,14 @@ body.platform-gate{background:var(--bg);color:var(--t1)}
   overflow:hidden;
   text-overflow:ellipsis;
 }
+.edify-user-chip__sub{
+  font-size:13px;
+  font-weight:600;
+  color:var(--t3);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
 .edify-user-chip__logout{
   margin-top:5px;
   align-self:flex-start;
@@ -1151,6 +1159,37 @@ footer{background:var(--t1);padding:56px 0 40px}
     width:32px;height:32px;font-size:12px;
   }
   .nav-right [data-edify-nav-auth][data-variant="header"] .edify-user-chip__logout{display:none}
+
+  /* Header: user + separate logout button */
+  .nav-right [data-edify-nav-auth][data-variant="header"] .edify-nav-user{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .nav-right [data-edify-nav-auth][data-variant="header"] .edify-user-chip--header{
+    padding:8px 14px 8px 8px;
+    max-width:min(320px,62vw);
+  }
+  .nav-right [data-edify-nav-auth][data-variant="header"] .edify-user-chip__body{gap:3px}
+  .nav-right [data-edify-nav-auth][data-variant="header"] .edify-user-chip__handle{display:none}
+  .nav-right [data-edify-nav-auth][data-variant="header"] .edify-nav-logout{
+    font-family:var(--fb);
+    font-size:13px;
+    font-weight:700;
+    padding:10px 16px;
+    border-radius:10px;
+    border:1px solid rgba(235,74,74,.28);
+    background:rgba(235,74,74,.10);
+    color:#C62828;
+    cursor:pointer;
+    transition:all .15s;
+    white-space:nowrap;
+  }
+  .nav-right [data-edify-nav-auth][data-variant="header"] .edify-nav-logout:hover{
+    border-color:rgba(235,74,74,.45);
+    background:rgba(235,74,74,.14);
+    transform:translateY(-1px);
+  }
   .btn-sm{font-size:11px;padding:8px 14px}
 
   /* CONTAINER */
