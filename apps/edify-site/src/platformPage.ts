@@ -641,6 +641,9 @@ if (platformMount) {
         if (action.type === 'navigate' && action.screenId === 'e-team') {
           void hydrateExpertTeam(action.shadowRoot);
         }
+        if (action.type === 'navigate' && action.screenId === 'e-homework') {
+          void hydrateExpertHomework(action.shadowRoot);
+        }
         if (action.type === 'navigate' && action.screenId === 'e-builder') {
           if (suppressBuilderNavigateHydrate) return;
           const src = action.sourceElement ?? null;
@@ -2607,6 +2610,378 @@ if (platformMount) {
         expertTeamCreatedByUserId = null;
         expertTeamSoleMemberIsMe = false;
         syncExpertTeamOwnerButton(root);
+      }
+    }
+
+    type ExpertHomeworkInboxItem = {
+      submissionId: string;
+      lessonId: string;
+      assignmentId: string;
+      studentId: string;
+      createdAt: string;
+      studentFirstName: string | null;
+      studentLastName: string | null;
+      studentUsername: string | null;
+      studentEmail: string | null;
+      studentAvatarUrl: string | null;
+      courseTitle: string;
+      moduleTitle: string;
+      lessonTitle: string;
+      answerPreview: string;
+      submissionStatus: 'submitted' | 'rework' | 'accepted';
+      isOpened: boolean;
+      uiStatus: 'new' | 'unchecked' | 'checked';
+    };
+
+    type ExpertHomeworkDetail = {
+      submission: {
+        id: string;
+        lessonId: string;
+        studentId: string;
+        createdAt: string;
+        text?: string | null;
+        fileKey?: string | null;
+        status: 'submitted' | 'rework' | 'accepted';
+        score?: number | null;
+        reviewerComment?: string | null;
+      };
+      assignmentPromptMarkdown: string | null;
+      courseTitle: string;
+      moduleTitle: string;
+      lessonTitle: string;
+      student: {
+        id: string;
+        firstName: string | null;
+        lastName: string | null;
+        username: string | null;
+        email: string | null;
+        avatarUrl: string | null;
+      };
+    };
+
+    let expertHomeworkFilter: 'all' | 'new' | 'unchecked' | 'checked' = 'all';
+    let expertHomeworkInboxCache: ExpertHomeworkInboxItem[] = [];
+    let expertHomeworkSelectedSubmissionId: string | null = null;
+    let expertHomeworkSelectedLessonId: string | null = null;
+    let expertHomeworkStars: number = 5;
+
+    function canReviewHomework(): boolean {
+      return expertWorkspaceMyRole === 'reviewer';
+    }
+
+    function formatRelativeTime(iso: string): string {
+      const ts = Date.parse(iso);
+      if (!Number.isFinite(ts)) return '—';
+      const diff = Math.max(0, Date.now() - ts);
+      const m = Math.floor(diff / 60000);
+      if (m < 1) return 'только что';
+      if (m < 60) return `${m} мин`;
+      const h = Math.floor(m / 60);
+      if (h < 24) return `${h} ч`;
+      const d = Math.floor(h / 24);
+      return `${d} дн`;
+    }
+
+    function homeworkUiTag(ui: 'new' | 'unchecked' | 'checked'): { label: string; cls: string } {
+      if (ui === 'checked') return { label: 'Проверено', cls: 'tag tag-live' };
+      if (ui === 'unchecked') return { label: 'Не проверено', cls: 'tag tag-draft' };
+      return { label: 'Новое', cls: 'tag tag-new' };
+    }
+
+    function homeworkDisplayName(u: { firstName: string | null; lastName: string | null; username: string | null }): string {
+      const n = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
+      if (n) return n;
+      if (u.username) return `@${u.username}`;
+      return 'Студент';
+    }
+
+    function setHomeworkDetailEmpty(root: ShadowRoot, text: string): void {
+      const host = root.querySelector('[data-ep-e-homework-detail]') as HTMLElement | null;
+      const nameEl = root.querySelector('[data-ep-e-homework-detail-name]') as HTMLElement | null;
+      const metaEl = root.querySelector('[data-ep-e-homework-detail-meta]') as HTMLElement | null;
+      const promptEl = root.querySelector('[data-ep-e-homework-detail-prompt]') as HTMLElement | null;
+      const ansEl = root.querySelector('[data-ep-e-homework-detail-answer]') as HTMLElement | null;
+      const st = root.querySelector('[data-ep-e-homework-detail-status]') as HTMLElement | null;
+      const fileRow = root.querySelector('[data-ep-e-homework-detail-file]') as HTMLElement | null;
+      const ta = root.querySelector('[data-ep-e-homework-comment]') as HTMLTextAreaElement | null;
+      if (nameEl) nameEl.textContent = '—';
+      if (metaEl) metaEl.textContent = '—';
+      if (promptEl) promptEl.textContent = text;
+      if (ansEl) ansEl.textContent = '';
+      if (st) {
+        st.className = 'tag';
+        st.textContent = '—';
+      }
+      if (fileRow) fileRow.style.display = 'none';
+      if (ta) ta.value = '';
+      if (host) host.scrollTop = 0;
+    }
+
+    function syncHomeworkFilterButtons(root: ShadowRoot): void {
+      root.querySelectorAll<HTMLButtonElement>('[data-ep-e-homework-filter]').forEach((b) => {
+        const v = (b.dataset.epEHomeworkFilter ?? '').trim() as any;
+        const on = v === expertHomeworkFilter;
+        b.classList.toggle('btn-primary', on);
+        b.classList.toggle('btn-outline', !on);
+      });
+    }
+
+    function renderHomeworkInbox(root: ShadowRoot): void {
+      const host = root.querySelector('[data-ep-e-homework-list]') as HTMLElement | null;
+      if (!host) return;
+      host.replaceChildren();
+      const items = expertHomeworkInboxCache ?? [];
+      if (items.length === 0) {
+        const p = document.createElement('div');
+        p.style.color = 'var(--t3)';
+        p.style.fontSize = '12px';
+        p.style.padding = '12px';
+        p.textContent = 'Нет домашних заданий.';
+        host.appendChild(p);
+        return;
+      }
+
+      for (const it of items) {
+        const card = document.createElement('div');
+        card.className = 'hw-card';
+        if (it.submissionId === expertHomeworkSelectedSubmissionId) card.classList.add('active');
+        card.dataset.epEHomeworkSubmissionId = it.submissionId;
+        card.dataset.epEHomeworkLessonId = it.lessonId;
+
+        const av = document.createElement('div');
+        av.className = 'avatar av-sm';
+        av.style.overflow = 'hidden';
+        const disp = homeworkDisplayName({
+          firstName: it.studentFirstName,
+          lastName: it.studentLastName,
+          username: it.studentUsername,
+        });
+        const initials = initialsFromName(disp);
+        const stored = typeof it.studentAvatarUrl === 'string' ? it.studentAvatarUrl.trim() : '';
+        const avatarSrc = stored ? getAvatarImageSrc(normalizeAssetUrl(stored) ?? stored) : '';
+        if (!avatarSrc) {
+          av.style.background = 'var(--al)';
+          av.style.color = 'var(--a)';
+          av.textContent = initials;
+        } else {
+          const img = document.createElement('img');
+          img.alt = '';
+          img.referrerPolicy = 'no-referrer';
+          img.style.width = '100%';
+          img.style.height = '100%';
+          img.style.borderRadius = '50%';
+          img.style.objectFit = 'cover';
+          img.addEventListener(
+            'error',
+            () => {
+              av.replaceChildren();
+              av.style.background = 'var(--al)';
+              av.style.color = 'var(--a)';
+              av.textContent = initials;
+            },
+            { once: true },
+          );
+          img.src = avatarSrc;
+          av.appendChild(img);
+        }
+
+        const body = document.createElement('div');
+        body.className = 'hw-card-body';
+
+        const top = document.createElement('div');
+        top.className = 'hw-card-top';
+        const nm = document.createElement('span');
+        nm.className = 'hw-card-name';
+        nm.textContent = disp;
+        const tag = document.createElement('span');
+        const t = homeworkUiTag(it.uiStatus);
+        tag.className = t.cls;
+        tag.textContent = t.label;
+        const time = document.createElement('span');
+        time.className = 'hw-card-time';
+        time.textContent = formatRelativeTime(it.createdAt);
+        top.append(nm, tag, time);
+
+        const lesson = document.createElement('div');
+        lesson.className = 'hw-card-lesson';
+        lesson.textContent = `${(it.courseTitle || '—').trim() || '—'} · ${(it.moduleTitle || '—').trim() || '—'} · ${(it.lessonTitle || '—').trim() || '—'}`;
+
+        const prev = document.createElement('div');
+        prev.className = 'hw-card-preview';
+        prev.textContent = (it.answerPreview ?? '').trim() || '—';
+
+        body.append(top, lesson, prev);
+        card.append(av, body);
+        host.appendChild(card);
+      }
+    }
+
+    function syncHomeworkStars(root: ShadowRoot): void {
+      root.querySelectorAll<HTMLElement>('[data-ep-e-homework-star]').forEach((b) => {
+        const n = Number((b as HTMLElement).dataset.epEHomeworkStar ?? '0') || 0;
+        b.classList.toggle('sel', n === expertHomeworkStars);
+      });
+    }
+
+    async function hydrateExpertHomework(root: ShadowRoot | null): Promise<void> {
+      if (!root) return;
+      if (!canReviewHomework()) {
+        const list = root.querySelector('[data-ep-e-homework-list]') as HTMLElement | null;
+        if (list) {
+          list.replaceChildren();
+          const p = document.createElement('div');
+          p.style.color = 'var(--t3)';
+          p.style.fontSize = '12px';
+          p.style.padding = '12px';
+          p.textContent = 'Доступно только роли «Куратор».';
+          list.appendChild(p);
+        }
+        setHomeworkDetailEmpty(root, 'Выберите домашнее задание слева.');
+        return;
+      }
+      const token = getAccessToken();
+      const eid = await resolveActiveExpertId();
+      if (!token || !eid) return;
+      syncHomeworkFilterButtons(root);
+      const host = root.querySelector('[data-ep-e-homework-list]') as HTMLElement | null;
+      if (host) {
+        host.replaceChildren();
+        const p = document.createElement('div');
+        p.style.color = 'var(--t3)';
+        p.style.fontSize = '12px';
+        p.style.padding = '12px';
+        p.textContent = 'Загрузка…';
+        host.appendChild(p);
+      }
+      try {
+        const res = await fetchJson<{ items: ExpertHomeworkInboxItem[] }>(
+          `/experts/${encodeURIComponent(eid)}/homework/inbox?filter=${encodeURIComponent(expertHomeworkFilter)}`,
+          token,
+        );
+        expertHomeworkInboxCache = res.items ?? [];
+        // If selected submission no longer in filtered list — reset selection
+        if (
+          expertHomeworkSelectedSubmissionId &&
+          !expertHomeworkInboxCache.some((x) => x.submissionId === expertHomeworkSelectedSubmissionId)
+        ) {
+          expertHomeworkSelectedSubmissionId = null;
+          expertHomeworkSelectedLessonId = null;
+        }
+        renderHomeworkInbox(root);
+        if (!expertHomeworkSelectedSubmissionId && expertHomeworkInboxCache.length > 0) {
+          void openExpertHomeworkDetail(root, expertHomeworkInboxCache[0]!.submissionId);
+        } else if (!expertHomeworkSelectedSubmissionId) {
+          setHomeworkDetailEmpty(root, 'Выберите домашнее задание слева.');
+        }
+      } catch {
+        expertHomeworkInboxCache = [];
+        renderHomeworkInbox(root);
+        setHomeworkDetailEmpty(root, 'Не удалось загрузить домашние задания.');
+      }
+      syncHomeworkStars(root);
+    }
+
+    async function openExpertHomeworkDetail(root: ShadowRoot, submissionId: string): Promise<void> {
+      const token = getAccessToken();
+      const eid = await resolveActiveExpertId();
+      if (!token || !eid) return;
+      expertHomeworkSelectedSubmissionId = submissionId;
+      renderHomeworkInbox(root);
+      setHomeworkDetailEmpty(root, 'Загрузка…');
+      try {
+        const d = await fetchJson<ExpertHomeworkDetail>(
+          `/experts/${encodeURIComponent(eid)}/homework/submissions/${encodeURIComponent(submissionId)}`,
+          token,
+        );
+        expertHomeworkSelectedLessonId = d.submission.lessonId;
+
+        const av = root.querySelector('[data-ep-e-homework-detail-avatar]') as HTMLElement | null;
+        const nameEl = root.querySelector('[data-ep-e-homework-detail-name]') as HTMLElement | null;
+        const metaEl = root.querySelector('[data-ep-e-homework-detail-meta]') as HTMLElement | null;
+        const statusEl = root.querySelector('[data-ep-e-homework-detail-status]') as HTMLElement | null;
+        const promptEl = root.querySelector('[data-ep-e-homework-detail-prompt]') as HTMLElement | null;
+        const ansEl = root.querySelector('[data-ep-e-homework-detail-answer]') as HTMLElement | null;
+        const fileRow = root.querySelector('[data-ep-e-homework-detail-file]') as HTMLElement | null;
+        const fileName = root.querySelector('[data-ep-e-homework-detail-file-name]') as HTMLElement | null;
+        const commentTa = root.querySelector('[data-ep-e-homework-comment]') as HTMLTextAreaElement | null;
+
+        const disp = homeworkDisplayName(d.student);
+        if (nameEl) nameEl.textContent = disp;
+        if (metaEl) metaEl.textContent = `${d.courseTitle} · ${d.moduleTitle} · ${d.lessonTitle}`;
+        if (statusEl) {
+          const ui = d.submission.status === 'accepted' ? 'checked' : 'unchecked';
+          const t = homeworkUiTag(ui);
+          statusEl.className = t.cls;
+          statusEl.textContent = ui === 'checked' ? 'Проверено' : 'Ожидает проверки';
+        }
+        if (promptEl) {
+          const p = (d.assignmentPromptMarkdown ?? '').trim();
+          promptEl.textContent = p || 'Формулировка задания не указана.';
+        }
+        if (ansEl) {
+          ansEl.innerHTML = '';
+          const txt = (d.submission.text ?? '').trim();
+          ansEl.textContent = txt || '—';
+        }
+
+        if (av) {
+          av.replaceChildren();
+          const initials = initialsFromName(disp);
+          const stored = typeof d.student.avatarUrl === 'string' ? d.student.avatarUrl.trim() : '';
+          const avatarSrc = stored ? getAvatarImageSrc(normalizeAssetUrl(stored) ?? stored) : '';
+          if (!avatarSrc) {
+            av.style.background = 'var(--al)';
+            av.style.color = 'var(--a)';
+            av.textContent = initials;
+          } else {
+            const img = document.createElement('img');
+            img.alt = '';
+            img.referrerPolicy = 'no-referrer';
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.borderRadius = '50%';
+            img.style.objectFit = 'cover';
+            img.addEventListener(
+              'error',
+              () => {
+                av.replaceChildren();
+                av.style.background = 'var(--al)';
+                av.style.color = 'var(--a)';
+                av.textContent = initials;
+              },
+              { once: true },
+            );
+            img.src = avatarSrc;
+            av.appendChild(img);
+          }
+        }
+
+        if (fileRow) {
+          const k = (d.submission.fileKey ?? '').trim();
+          if (!k) {
+            fileRow.style.display = 'none';
+          } else {
+            fileRow.style.display = 'flex';
+            if (fileName) fileName.textContent = labelFromSubmissionFileKey(k);
+            (fileRow as any).dataset.epEHomeworkFileKey = k;
+            (fileRow as any).dataset.epEHomeworkSubmissionId = d.submission.id;
+            (fileRow as any).dataset.epEHomeworkLessonId = d.submission.lessonId;
+          }
+        }
+
+        // Pre-fill comment/stars if already decided with a score
+        if (typeof d.submission.score === 'number' && d.submission.score >= 1 && d.submission.score <= 5) {
+          expertHomeworkStars = d.submission.score;
+        } else {
+          expertHomeworkStars = 5;
+        }
+        if (commentTa) commentTa.value = (d.submission.reviewerComment ?? '').trim();
+        syncHomeworkStars(root);
+
+        // Refresh inbox status if it was "new" and now opened
+        void hydrateExpertHomework(root);
+      } catch {
+        setHomeworkDetailEmpty(root, 'Не удалось загрузить домашнее задание.');
       }
     }
 
@@ -4654,6 +5029,82 @@ if (platformMount) {
             window.alert('Участник добавлен.');
           } catch {
             window.alert('Не удалось добавить участника. Нужны права владельца и корректные данные.');
+          }
+        })();
+        return;
+      }
+      if (t?.closest('[data-ep-e-homework-filter]')) {
+        ev.preventDefault();
+        const b = t.closest('[data-ep-e-homework-filter]') as HTMLElement | null;
+        const v = (b?.dataset.epEHomeworkFilter ?? '').trim();
+        if (v === 'all' || v === 'new' || v === 'unchecked' || v === 'checked') {
+          expertHomeworkFilter = v;
+          void hydrateExpertHomework(shell.shadowRoot);
+        }
+        return;
+      }
+      const hwCard = t?.closest('[data-ep-e-homework-submission-id]') as HTMLElement | null;
+      if (hwCard) {
+        ev.preventDefault();
+        const sid = (hwCard.dataset.epEHomeworkSubmissionId ?? '').trim();
+        if (sid) void openExpertHomeworkDetail(shell.shadowRoot, sid);
+        return;
+      }
+      const starBtn = t?.closest('[data-ep-e-homework-star]') as HTMLElement | null;
+      if (starBtn) {
+        ev.preventDefault();
+        const n = Number(starBtn.dataset.epEHomeworkStar ?? '0') || 0;
+        if (n >= 1 && n <= 5) {
+          expertHomeworkStars = n;
+          syncHomeworkStars(shell.shadowRoot);
+        }
+        return;
+      }
+      if (t?.closest('[data-ep-e-homework-detail-file-download]')) {
+        ev.preventDefault();
+        void (async () => {
+          const row = shell.shadowRoot.querySelector('[data-ep-e-homework-detail-file]') as HTMLElement | null;
+          const submissionId = ((row as any)?.dataset?.epEHomeworkSubmissionId ?? '').trim();
+          const lessonId = ((row as any)?.dataset?.epEHomeworkLessonId ?? '').trim();
+          if (!submissionId || !lessonId) return;
+          const token = getAccessToken();
+          const eid = await resolveActiveExpertId();
+          if (!token || !eid) return;
+          try {
+            const r = await fetchJson<{ url: string }>(
+              `/experts/${encodeURIComponent(eid)}/lessons/${encodeURIComponent(lessonId)}/submissions/${encodeURIComponent(submissionId)}/file/signed`,
+              token,
+            );
+            if (r?.url) window.open(r.url, '_blank', 'noopener');
+          } catch {
+            window.alert('Не удалось скачать файл.');
+          }
+        })();
+        return;
+      }
+      if (t?.closest('[data-ep-e-homework-send]')) {
+        ev.preventDefault();
+        void (async () => {
+          if (!canReviewHomework()) return;
+          const token = getAccessToken();
+          const eid = await resolveActiveExpertId();
+          if (!token || !eid) return;
+          const submissionId = expertHomeworkSelectedSubmissionId;
+          const lessonId = expertHomeworkSelectedLessonId;
+          if (!submissionId || !lessonId) return;
+          const ta = shell.shadowRoot.querySelector('[data-ep-e-homework-comment]') as HTMLTextAreaElement | null;
+          const reviewerComment = (ta?.value ?? '').trim();
+          const score = expertHomeworkStars;
+          try {
+            await patchJson(
+              `/experts/${encodeURIComponent(eid)}/lessons/${encodeURIComponent(lessonId)}/submissions/${encodeURIComponent(submissionId)}`,
+              { status: 'accepted', score, reviewerComment },
+              token,
+            );
+            window.alert('Оценка отправлена.');
+            void openExpertHomeworkDetail(shell.shadowRoot, submissionId);
+          } catch {
+            window.alert('Не удалось отправить оценку.');
           }
         })();
         return;

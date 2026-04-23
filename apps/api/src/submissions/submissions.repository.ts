@@ -42,6 +42,264 @@ function mapRow(
 export class SubmissionsRepository {
   constructor(private readonly pool: Pool | null) {}
 
+  async listExpertHomeworkInbox(params: {
+    expertId: string;
+    reviewerUserId: string;
+    filter: 'all' | 'new' | 'checked' | 'unchecked';
+    limit: number;
+  }): Promise<
+    Array<{
+      submissionId: string;
+      lessonId: string;
+      assignmentId: string;
+      studentId: string;
+      createdAt: string;
+      studentFirstName: string | null;
+      studentLastName: string | null;
+      studentUsername: string | null;
+      studentEmail: string | null;
+      studentAvatarUrl: string | null;
+      courseTitle: string;
+      moduleTitle: string;
+      lessonTitle: string;
+      answerPreview: string;
+      submissionStatus: ContractsV1.SubmissionStatusV1;
+      isOpened: boolean;
+      uiStatus: 'new' | 'unchecked' | 'checked';
+    }>
+  > {
+    if (!this.pool) return [];
+    const lim = Math.min(500, Math.max(1, Number.isFinite(params.limit) ? Math.floor(params.limit) : 200));
+    const filter = params.filter;
+
+    const res = await this.pool.query<{
+      submission_id: string;
+      assignment_id: string;
+      lesson_id: string;
+      student_user_id: string;
+      created_at: Date;
+      text: string | null;
+      status: string;
+      opened_at: Date | null;
+      student_first_name: string | null;
+      student_last_name: string | null;
+      student_username: string | null;
+      student_email: string | null;
+      student_avatar_url: string | null;
+      course_title: string;
+      module_title: string;
+      lesson_title: string;
+    }>(
+      `
+      WITH latest AS (
+        SELECT DISTINCT ON (s.student_user_id, a.lesson_id)
+          s.id AS submission_id,
+          s.assignment_id,
+          a.lesson_id,
+          s.student_user_id,
+          s.created_at,
+          s.text,
+          s.status
+        FROM submissions s
+        JOIN assignments a ON a.id = s.assignment_id
+        JOIN lessons l ON l.id = a.lesson_id AND l.deleted_at IS NULL
+        JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+        JOIN courses c ON c.id = m.course_id AND c.deleted_at IS NULL
+        WHERE c.expert_id = $1
+        ORDER BY s.student_user_id, a.lesson_id, s.created_at DESC
+      )
+      SELECT
+        latest.submission_id,
+        latest.assignment_id,
+        latest.lesson_id,
+        latest.student_user_id,
+        latest.created_at,
+        latest.text,
+        latest.status,
+        v.last_opened_at AS opened_at,
+        u.first_name AS student_first_name,
+        u.last_name AS student_last_name,
+        u.username AS student_username,
+        u.email AS student_email,
+        u.avatar_url AS student_avatar_url,
+        c.title AS course_title,
+        m.title AS module_title,
+        l.title AS lesson_title
+      FROM latest
+      JOIN lessons l ON l.id = latest.lesson_id
+      JOIN course_modules m ON m.id = l.module_id
+      JOIN courses c ON c.id = m.course_id
+      JOIN users u ON u.id = latest.student_user_id
+      LEFT JOIN expert_submission_views v ON v.submission_id = latest.submission_id
+      ORDER BY latest.created_at DESC
+      LIMIT $2
+      `,
+      [params.expertId, lim],
+    );
+
+    const mapped = res.rows.map((r) => {
+      const answer = (r.text ?? '').trim();
+      const preview = answer.length > 180 ? `${answer.slice(0, 180).trim()}…` : answer;
+      const isOpened = r.opened_at != null;
+      const isChecked = r.status === 'accepted';
+      const uiStatus: 'new' | 'unchecked' | 'checked' = isChecked ? 'checked' : isOpened ? 'unchecked' : 'new';
+      return {
+        submissionId: r.submission_id,
+        assignmentId: r.assignment_id,
+        lessonId: r.lesson_id,
+        studentId: r.student_user_id,
+        createdAt: r.created_at.toISOString(),
+        studentFirstName: r.student_first_name,
+        studentLastName: r.student_last_name,
+        studentUsername: r.student_username,
+        studentEmail: r.student_email,
+        studentAvatarUrl: r.student_avatar_url,
+        courseTitle: r.course_title,
+        moduleTitle: r.module_title,
+        lessonTitle: r.lesson_title,
+        answerPreview: preview,
+        submissionStatus: r.status as ContractsV1.SubmissionStatusV1,
+        isOpened,
+        uiStatus,
+      };
+    });
+
+    if (filter === 'all') return mapped;
+    if (filter === 'new') return mapped.filter((x) => x.uiStatus === 'new');
+    if (filter === 'checked') return mapped.filter((x) => x.uiStatus === 'checked');
+    return mapped.filter((x) => x.uiStatus === 'unchecked');
+  }
+
+  async getExpertHomeworkDetailAndMarkOpened(params: {
+    expertId: string;
+    reviewerUserId: string;
+    submissionId: string;
+  }): Promise<{
+    submission: ContractsV1.SubmissionV1;
+    courseTitle: string;
+    moduleTitle: string;
+    lessonTitle: string;
+    student: {
+      id: string;
+      firstName: string | null;
+      lastName: string | null;
+      username: string | null;
+      email: string | null;
+      avatarUrl: string | null;
+    };
+  } | null> {
+    if (!this.pool) return null;
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const res = await client.query<{
+        id: string;
+        assignment_id: string;
+        student_user_id: string;
+        created_at: Date;
+        text: string | null;
+        link: string | null;
+        file_key: string | null;
+        status: string;
+        score: number | null;
+        reviewer_comment: string | null;
+        lesson_id: string;
+        course_title: string;
+        module_title: string;
+        lesson_title: string;
+        student_first_name: string | null;
+        student_last_name: string | null;
+        student_username: string | null;
+        student_email: string | null;
+        student_avatar_url: string | null;
+      }>(
+        `
+        SELECT
+          s.id,
+          s.assignment_id,
+          s.student_user_id,
+          s.created_at,
+          s.text,
+          s.link,
+          s.file_key,
+          s.status,
+          s.score,
+          s.reviewer_comment,
+          a.lesson_id,
+          c.title AS course_title,
+          m.title AS module_title,
+          l.title AS lesson_title,
+          u.first_name AS student_first_name,
+          u.last_name AS student_last_name,
+          u.username AS student_username,
+          u.email AS student_email,
+          u.avatar_url AS student_avatar_url
+        FROM submissions s
+        JOIN assignments a ON a.id = s.assignment_id
+        JOIN lessons l ON l.id = a.lesson_id AND l.deleted_at IS NULL
+        JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+        JOIN courses c ON c.id = m.course_id AND c.deleted_at IS NULL
+        JOIN users u ON u.id = s.student_user_id
+        WHERE s.id = $1 AND c.expert_id = $2
+        LIMIT 1
+        `,
+        [params.submissionId, params.expertId],
+      );
+      const row = res.rows[0] ?? null;
+      if (!row) {
+        await client.query('ROLLBACK');
+        return null;
+      }
+
+      await client.query(
+        `
+        INSERT INTO expert_submission_views (submission_id, opened_by_user_id)
+        VALUES ($1, $2)
+        ON CONFLICT (submission_id) DO UPDATE
+          SET last_opened_at = now(), opened_by_user_id = EXCLUDED.opened_by_user_id
+        `,
+        [row.id, params.reviewerUserId],
+      );
+
+      await client.query('COMMIT');
+
+      return {
+        submission: mapRow(
+          {
+            id: row.id,
+            assignment_id: row.assignment_id,
+            student_user_id: row.student_user_id,
+            created_at: row.created_at,
+            text: row.text,
+            link: row.link,
+            file_key: row.file_key,
+            status: row.status,
+            score: row.score,
+            reviewer_comment: row.reviewer_comment,
+          },
+          row.lesson_id,
+          row.student_username,
+        ),
+        courseTitle: row.course_title,
+        moduleTitle: row.module_title,
+        lessonTitle: row.lesson_title,
+        student: {
+          id: row.student_user_id,
+          firstName: row.student_first_name,
+          lastName: row.student_last_name,
+          username: row.student_username,
+          email: row.student_email,
+          avatarUrl: row.student_avatar_url,
+        },
+      };
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
+
   async listMyByLesson(params: { userId: string; lessonId: string }): Promise<ContractsV1.SubmissionV1[]> {
     if (!this.pool) return [];
     const res = await this.pool.query<{
