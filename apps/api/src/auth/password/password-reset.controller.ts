@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ContractsV1, ErrorCodes } from '@tracked/shared';
 import { PasswordResetService } from './password-reset.service.js';
@@ -7,6 +7,13 @@ import { PasswordResetService } from './password-reset.service.js';
 @Controller('auth/password/reset')
 export class PasswordResetController {
   constructor(private readonly passwordResetService: PasswordResetService) {}
+
+  @Get('preview')
+  @ApiOperation({ summary: 'Preview password reset token (email + expiry)' })
+  @ApiResponse({ status: 200, description: 'OK' })
+  async preview(@Query('token') token: string | undefined): Promise<ContractsV1.AuthPasswordResetPreviewResponseV1> {
+    return await this.passwordResetService.previewReset(token ?? '');
+  }
 
   @Post('confirm')
   @HttpCode(HttpStatus.OK)

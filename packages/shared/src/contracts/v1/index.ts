@@ -50,6 +50,7 @@ export type {
   AuthPasswordResponseV1,
   AuthPasswordResetConfirmRequestV1,
   AuthPasswordResetConfirmResponseV1,
+  AuthPasswordResetPreviewResponseV1,
   AdminCreatePasswordResetRequestV1,
   AdminCreatePasswordResetResponseV1,
 } from './auth.js';
@@ -59,6 +60,7 @@ export {
   AuthPasswordResponseV1Schema,
   AuthPasswordResetConfirmRequestV1Schema,
   AuthPasswordResetConfirmResponseV1Schema,
+  AuthPasswordResetPreviewResponseV1Schema,
   AdminCreatePasswordResetRequestV1Schema,
   AdminCreatePasswordResetResponseV1Schema,
 } from './auth.js';

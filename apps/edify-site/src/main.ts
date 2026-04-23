@@ -3,6 +3,7 @@ import { ACCESS_TOKEN_KEY, getAccessToken } from './authSession.js';
 import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
 import { refreshNavAuth } from './navAuthUi.js';
 import { mountPlatformShell } from './platform/mountPlatformShell.js';
+import { maybeOpenResetPasswordUi } from './resetPasswordUi.js';
 
 function toggleMobileNav(): void {
   const nav = document.getElementById('mobile-nav');
@@ -67,6 +68,9 @@ async function runAuthFlow(): Promise<void> {
 }
 
 void runAuthFlow();
+
+// Dedicated public page: /reset-password?token=...
+void maybeOpenResetPasswordUi();
 
 /** Возврат из внешнего браузера (openLink) с ?login= — bfcache и переключение вкладок. */
 window.addEventListener('pageshow', (ev) => {

@@ -128,3 +128,14 @@ export const AdminCreatePasswordResetResponseV1Schema = z.object({
   expiresAt: z.string(),
   resetPath: z.string().min(1),
 });
+
+/** GET /auth/password/reset/preview?token=... */
+export interface AuthPasswordResetPreviewResponseV1 {
+  email: string;
+  expiresAt: string;
+}
+
+export const AuthPasswordResetPreviewResponseV1Schema = z.object({
+  email: z.string().email().max(320),
+  expiresAt: z.string(),
+});

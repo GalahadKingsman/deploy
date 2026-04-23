@@ -95,5 +95,28 @@ export class PasswordResetService {
 
     return { ok: true };
   }
+
+  async previewReset(tokenRaw: string): Promise<ContractsV1.AuthPasswordResetPreviewResponseV1> {
+    const token = (tokenRaw ?? '').trim();
+    if (!token) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Token required' });
+    }
+    const hash = this.tokenHash(token);
+    const res = await this.pool.query<{ email: string | null; expires_at: Date; used_at: Date | null }>(
+      `
+      SELECT u.email, prt.expires_at, prt.used_at
+      FROM password_reset_tokens prt
+      JOIN users u ON u.id = prt.user_id
+      WHERE prt.token_hash = $1
+      LIMIT 1
+      `,
+      [hash],
+    );
+    const row = res.rows[0] ?? null;
+    if (!row || row.used_at != null || row.expires_at.getTime() <= Date.now() || !row.email) {
+      throw new UnauthorizedException({ code: ErrorCodes.UNAUTHORIZED, message: 'Invalid or expired token' } as any);
+    }
+    return { email: row.email, expiresAt: row.expires_at.toISOString() };
+  }
 }
 
