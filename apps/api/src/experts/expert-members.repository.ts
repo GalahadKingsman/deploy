@@ -221,6 +221,15 @@ export class ExpertMembersRepository {
     return parseInt(result.rows[0]?.cnt ?? '0', 10) || 0;
   }
 
+  async countMembersForExpert(expertId: string): Promise<number> {
+    if (!this.pool) return 0;
+    const result = await this.pool.query<{ c: string }>(
+      'SELECT COUNT(*)::text AS c FROM expert_members WHERE expert_id = $1',
+      [expertId],
+    );
+    return parseInt(result.rows[0]?.c ?? '0', 10) || 0;
+  }
+
   async listMembershipsByUserId(userId: string): Promise<ContractsV1.ExpertMemberV1[]> {
     if (!this.pool) {
       throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');

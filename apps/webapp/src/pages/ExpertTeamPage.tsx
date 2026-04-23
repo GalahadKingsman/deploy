@@ -28,8 +28,14 @@ function roleLabel(role: string): string {
 function teamRowLabel(
   m: { userId: string; role: string; isWorkspaceCreator?: boolean },
   createdByUserId: string,
+  soleMemberIsYou: boolean,
 ): string {
-  if (m.role === 'owner' || m.isWorkspaceCreator === true || m.userId === createdByUserId) {
+  if (
+    m.role === 'owner' ||
+    m.isWorkspaceCreator === true ||
+    m.userId === createdByUserId ||
+    soleMemberIsYou
+  ) {
     return 'Владелец';
   }
   return roleLabel(m.role);
@@ -60,7 +66,8 @@ export function ExpertTeamPage() {
     meRow &&
       (meRow.role === 'owner' ||
         meRow.isWorkspaceCreator === true ||
-        (data && meRow.userId === data.createdByUserId)),
+        (data && meRow.userId === data.createdByUserId) ||
+        (data && data.items.length === 1 && data.items[0]!.userId === meRow.userId)),
   );
 
   const [tgId, setTgId] = React.useState('');
@@ -194,7 +201,12 @@ export function ExpertTeamPage() {
             >
               <div style={{ fontWeight: 'var(--font-weight-semibold)' }}>{displayName(m)}</div>
               <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>
-                userId: {m.userId} · {teamRowLabel(m, data.createdByUserId)}
+                userId: {m.userId} ·{' '}
+                {teamRowLabel(
+                  m,
+                  data.createdByUserId,
+                  data.items.length === 1 && m.userId === meRow?.userId,
+                )}
               </div>
               <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>
                 {m.email ?? '—'} · {m.coursesLabel}

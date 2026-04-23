@@ -491,6 +491,8 @@ if (platformMount) {
     let expertTeamCreatedByUserId: string | null = null;
     /** true если текущий пользователь = experts.created_by_user_id (из /me/expert-memberships). */
     let expertWorkspaceIsCreator: boolean = false;
+    /** В команде один участник — вы (создатель/админ в БД могли быть с неверным created_by). */
+    let expertTeamSoleMemberIsMe: boolean = false;
     let expertTeamUserSearchTimer: ReturnType<typeof setTimeout> | null = null;
     let expertTeamDrawerSelectedUserId: string | null = null;
     /** expertId владельца курса в конструкторе — при нескольких командах эксперта не путать с «активным» из подписки. */
@@ -1864,6 +1866,7 @@ if (platformMount) {
       expertWorkspaceMyRole = null;
       expertTeamCreatedByUserId = null;
       expertWorkspaceIsCreator = false;
+      expertTeamSoleMemberIsMe = false;
       let memberships: { expertId: string; userId: string; role: string; isWorkspaceCreator?: boolean }[] = [];
       try {
         const mem = await fetchJson<{
@@ -1894,6 +1897,7 @@ if (platformMount) {
     function canManageExpertTeam(): boolean {
       if (expertWorkspaceMyRole === 'owner') return true;
       if (expertWorkspaceIsCreator) return true;
+      if (expertTeamSoleMemberIsMe) return true;
       if (currentMe?.id && expertTeamCreatedByUserId && currentMe.id === expertTeamCreatedByUserId) {
         return true;
       }
@@ -1915,6 +1919,7 @@ if (platformMount) {
         expertWorkspaceMyRole = null;
         expertTeamCreatedByUserId = null;
         expertWorkspaceIsCreator = false;
+        expertTeamSoleMemberIsMe = false;
         currentMe = null;
         currentPlatformRole = null;
         syncExpertTeamOwnerButton(root);
@@ -1938,6 +1943,7 @@ if (platformMount) {
           expertWorkspaceMyRole = null;
           expertTeamCreatedByUserId = null;
           expertWorkspaceIsCreator = false;
+          expertTeamSoleMemberIsMe = false;
           currentMe = null;
           currentPlatformRole = null;
           syncExpertTeamOwnerButton(root);
@@ -1957,6 +1963,7 @@ if (platformMount) {
           expertWorkspaceMyRole = null;
           expertTeamCreatedByUserId = null;
           expertWorkspaceIsCreator = false;
+          expertTeamSoleMemberIsMe = false;
         }
         expertShellAccess.allowed = inExpertTeam;
         syncExpertTeamOwnerButton(root);
@@ -1999,6 +2006,7 @@ if (platformMount) {
         expertWorkspaceMyRole = null;
         expertTeamCreatedByUserId = null;
         expertWorkspaceIsCreator = false;
+        expertTeamSoleMemberIsMe = false;
         currentMe = null;
         currentPlatformRole = null;
         syncExpertTeamOwnerButton(root);
@@ -2325,15 +2333,17 @@ if (platformMount) {
       return { label: 'Поддержка', cls: 'tag' };
     }
 
-    /** «Владелец» — роль owner, флаг isWorkspaceCreator из API или created_by (фоллбек). */
+    /** «Владелец» — owner, isWorkspaceCreator, created_by, или вы единственный в команде. */
     function expertMemberRoleForRow(
       m: ExpertTeamMemberRowV1,
       createdByUserId: string,
+      soleMemberIsThisRow: boolean,
     ): { label: string; cls: string } {
       const isOwnerRow =
         m.role === 'owner' ||
         m.isWorkspaceCreator === true ||
-        (Boolean(createdByUserId) && m.userId === createdByUserId);
+        (Boolean(createdByUserId) && m.userId === createdByUserId) ||
+        soleMemberIsThisRow;
       if (isOwnerRow) {
         return { label: 'Владелец', cls: 'tag tag-new' };
       }
@@ -2362,6 +2372,7 @@ if (platformMount) {
       const token = getAccessToken();
       if (!token) {
         expertTeamCreatedByUserId = null;
+        expertTeamSoleMemberIsMe = false;
         syncExpertTeamOwnerButton(root);
         tbody.replaceChildren();
         const tr = document.createElement('tr');
@@ -2378,6 +2389,7 @@ if (platformMount) {
       const eid = await resolveActiveExpertId();
       if (!eid) {
         expertTeamCreatedByUserId = null;
+        expertTeamSoleMemberIsMe = false;
         syncExpertTeamOwnerButton(root);
         tbody.replaceChildren();
         const tr = document.createElement('tr');
@@ -2408,11 +2420,24 @@ if (platformMount) {
         );
         expertTeamCreatedByUserId = data.createdByUserId ?? null;
         const items = data.items ?? [];
-        const selfId = currentMe?.id ?? '';
-        const meFromTeam = selfId ? items.find((m) => m.userId === selfId) : undefined;
+        let selfId = currentMe?.id ?? '';
+        if (!selfId) {
+          try {
+            const meRes = await fetchJson<{ user?: MeUserV1 }>('/me', token);
+            if (meRes.user) {
+              currentMe = meRes.user;
+              selfId = meRes.user.id;
+            }
+          } catch {
+            // остаёмся без selfId — без метки (вы) и единственного участника
+          }
+        }
+        const meFromTeam = selfId ? items.find((x) => x.userId === selfId) : undefined;
         if (meFromTeam?.isWorkspaceCreator === true) {
           expertWorkspaceIsCreator = true;
         }
+        expertTeamSoleMemberIsMe =
+          items.length === 1 && Boolean(selfId) && items[0]!.userId === selfId;
         syncExpertTeamOwnerButton(root);
         tbody.replaceChildren();
         const createdBy = data.createdByUserId ?? '';
@@ -2432,7 +2457,9 @@ if (platformMount) {
           const tr = document.createElement('tr');
           const name = expertMemberDisplayName(m);
           const initials = initialsFromName(name);
-          const roleUi = expertMemberRoleForRow(m, createdBy);
+          const soleThis =
+            items.length === 1 && Boolean(selfId) && m.userId === selfId;
+          const roleUi = expertMemberRoleForRow(m, createdBy, soleThis);
           const isSelf = Boolean(selfId && m.userId === selfId);
           const email = (m.email ?? '').trim();
 
@@ -2489,6 +2516,7 @@ if (platformMount) {
         tr.appendChild(td);
         tbody.appendChild(tr);
         expertTeamCreatedByUserId = null;
+        expertTeamSoleMemberIsMe = false;
         syncExpertTeamOwnerButton(root);
       }
     }

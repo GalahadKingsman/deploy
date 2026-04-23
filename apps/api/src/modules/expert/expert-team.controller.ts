@@ -73,6 +73,10 @@ export class ExpertTeamController {
     if (expert && expert.createdByUserId === userId) {
       return;
     }
+    const n = await this.expertMembersRepository.countMembersForExpert(expertId);
+    if (n === 1 && member) {
+      return;
+    }
     throw new ForbiddenException({
       code: ErrorCodes.FORBIDDEN_EXPERT_ROLE,
       message: 'Only the expert owner or the workspace creator can manage the team',
