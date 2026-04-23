@@ -115,6 +115,10 @@ export {
   AuthRegisterRequestV1Schema,
   AuthLoginRequestV1Schema,
   AuthPasswordResponseV1Schema,
+  AuthPasswordResetConfirmRequestV1Schema,
+  AuthPasswordResetConfirmResponseV1Schema,
+  AdminCreatePasswordResetRequestV1Schema,
+  AdminCreatePasswordResetResponseV1Schema,
 } from './auth.js';
 export { AuditLogEntryV1Schema, AuditLogListResponseV1Schema } from './audit-log.js';
 export {

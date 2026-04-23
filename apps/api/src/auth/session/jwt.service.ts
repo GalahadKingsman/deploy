@@ -65,7 +65,7 @@ export class JwtService {
    * @returns Decoded payload with userId and telegramUserId
    * @throws {UnauthorizedException} If token is invalid or expired
    */
-  verifyAccessToken(token: string): { userId: string; telegramUserId: string } {
+  verifyAccessToken(token: string): { userId: string; telegramUserId: string; iat: number; exp: number } {
     try {
       const decoded = jwt.verify(token, this.secret, {
         algorithms: ['HS256'],
@@ -74,6 +74,8 @@ export class JwtService {
       return {
         userId: decoded.sub,
         telegramUserId: decoded.tg,
+        iat: decoded.iat,
+        exp: decoded.exp,
       };
     } catch (error) {
       // Always throw UnauthorizedException for any verification error

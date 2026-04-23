@@ -4834,6 +4834,37 @@ if (platformMount) {
         })();
         return;
       }
+      if (t?.closest('[data-ep-admin-password-reset-create]')) {
+        ev.preventDefault();
+        void (async () => {
+          const token = getAccessToken();
+          if (!token) return;
+          const userId = (adminSelectedUserIdByField.platformUser ?? '').trim();
+          if (!userId) return window.alert('Выберите пользователя в блоке Platform role.');
+          const ttlInp = shell.shadowRoot.querySelector('[data-ep-admin-password-reset-ttl]') as HTMLInputElement | null;
+          const linkInp = shell.shadowRoot.querySelector('[data-ep-admin-password-reset-link]') as HTMLInputElement | null;
+          const ttlMinRaw = (ttlInp?.value ?? '15').trim();
+          const ttlMin = Math.max(1, Math.min(24 * 60, Number(ttlMinRaw) || 15));
+          try {
+            const res = await postJson<{ token: string; expiresAt: string; resetPath: string }>(
+              `/admin/users/${encodeURIComponent(userId)}/password-reset`,
+              { ttlSeconds: ttlMin * 60 },
+              token,
+            );
+            const full = `${window.location.origin}${res.resetPath}`;
+            if (linkInp) linkInp.value = full;
+            try {
+              await navigator.clipboard.writeText(full);
+              window.alert('Ссылка создана и скопирована в буфер обмена.');
+            } catch {
+              window.alert('Ссылка создана. Скопируйте её из поля.');
+            }
+          } catch {
+            window.alert('Не удалось сгенерировать ссылку. Нужна роль admin или выше.');
+          }
+        })();
+        return;
+      }
       if (t?.closest('[data-ep-course-save]')) {
         ev.preventDefault();
         void saveBuilderCourseSettingsDrawer(shell.shadowRoot);

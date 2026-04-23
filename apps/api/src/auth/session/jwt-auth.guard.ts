@@ -85,6 +85,19 @@ export class JwtAuthGuard implements CanActivate {
         });
       }
 
+      // Invalidate sessions issued before password reset/change
+      const invalidBeforeIso = (user as { authInvalidBefore?: string | null }).authInvalidBefore ?? null;
+      if (invalidBeforeIso) {
+        const invalidBefore = new Date(invalidBeforeIso).getTime();
+        const issuedAtMs = (payload.iat ?? 0) * 1000;
+        if (Number.isFinite(invalidBefore) && Number.isFinite(issuedAtMs) && issuedAtMs < invalidBefore) {
+          throw new UnauthorizedException({
+            message: 'Token expired',
+            error: 'Unauthorized',
+          });
+        }
+      }
+
       // Set user on request (include platformRole for RBAC)
       request.user = {
         userId: payload.userId,

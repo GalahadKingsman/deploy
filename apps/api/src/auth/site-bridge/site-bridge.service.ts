@@ -100,7 +100,7 @@ export class SiteBridgeService {
       this.memory.delete(trimmed);
     }
 
-    let payload: { userId: string; telegramUserId: string };
+    let payload: { userId: string; telegramUserId: string; iat: number; exp: number };
     try {
       payload = this.jwtService.verifyAccessToken(entry!.accessToken);
     } catch (e) {

@@ -16,6 +16,7 @@ interface UserDbModel {
   email?: string | null;
   phone?: string | null;
   password_hash?: string | null;
+  auth_invalid_before?: Date | null;
   created_at: Date;
   updated_at: Date;
   banned_at: Date | null;
@@ -23,8 +24,8 @@ interface UserDbModel {
   platform_role: string;
 }
 
-/** User with optional bannedAt (server-side only, not in public contract) */
-export type UserWithBan = ContractsV1.UserV1 & { bannedAt?: string | null };
+/** User with optional bannedAt/authInvalidBefore (server-side only, not in public contract) */
+export type UserWithBan = ContractsV1.UserV1 & { bannedAt?: string | null; authInvalidBefore?: string | null };
 
 /**
  * Users repository for database operations
@@ -243,6 +244,18 @@ export class UsersRepository {
       [email, passwordHash, firstName, lastName],
     );
     return this.mapRowToUserWithBan(res.rows[0]);
+  }
+
+  async setPasswordHashAndInvalidateSessions(userId: string, passwordHash: string): Promise<void> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    await this.pool.query(
+      `UPDATE users
+       SET password_hash = $2, auth_invalid_before = NOW(), updated_at = NOW()
+       WHERE id = $1`,
+      [userId, passwordHash],
+    );
   }
 
   async updateProfile(params: {
@@ -562,6 +575,7 @@ export class UsersRepository {
       createdAt: row.created_at.toISOString(),
       updatedAt: row.updated_at.toISOString(),
       bannedAt: row.banned_at ? row.banned_at.toISOString() : null,
+      authInvalidBefore: row.auth_invalid_before ? row.auth_invalid_before.toISOString() : null,
     };
   }
 }

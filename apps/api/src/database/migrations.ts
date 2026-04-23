@@ -31,6 +31,7 @@ const MIGRATION_LIST = [
   '019_email_password_and_telegram_link',
   '020_site_bridge_codes',
   '021_expert_member_course_access',
+  '022_password_reset_tokens',
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

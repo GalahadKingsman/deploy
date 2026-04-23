@@ -86,3 +86,45 @@ export const AuthPasswordResponseV1Schema = z.object({
   user: UserV1Schema,
   accessToken: z.string().min(1),
 });
+
+/** POST /auth/password/reset/confirm */
+export interface AuthPasswordResetConfirmRequestV1 {
+  token: string;
+  newPassword: string;
+}
+
+export const AuthPasswordResetConfirmRequestV1Schema = z.object({
+  token: z.string().min(16).max(512),
+  newPassword: z.string().min(8).max(200),
+});
+
+export interface AuthPasswordResetConfirmResponseV1 {
+  ok: true;
+}
+
+export const AuthPasswordResetConfirmResponseV1Schema = z.object({
+  ok: z.literal(true),
+});
+
+/** POST /admin/users/:userId/password-reset */
+export interface AdminCreatePasswordResetRequestV1 {
+  /** TTL for reset token; default 900 seconds. */
+  ttlSeconds?: number;
+}
+
+export const AdminCreatePasswordResetRequestV1Schema = z.object({
+  ttlSeconds: z.number().int().min(60).max(60 * 60 * 24).optional(),
+});
+
+export interface AdminCreatePasswordResetResponseV1 {
+  token: string;
+  expiresAt: string;
+  /** URL path (admin UI can prepend origin). */
+  resetPath: string;
+}
+
+export const AdminCreatePasswordResetResponseV1Schema = z.object({
+  token: z.string().min(16).max(512),
+  expiresAt: z.string(),
+  resetPath: z.string().min(1),
+});

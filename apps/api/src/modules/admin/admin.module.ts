@@ -14,6 +14,7 @@ import { JwtAuthGuard } from '../../auth/session/jwt-auth.guard.js';
 import { PlatformRoleGuard } from '../../auth/rbac/platform-role.guard.js';
 import { PaymentsModule } from '../../payments/payments.module.js';
 import { AccessDataModule } from '../../access/access-data.module.js';
+import { PasswordResetService } from '../../auth/password/password-reset.service.js';
 
 @Module({
   imports: [
@@ -33,6 +34,6 @@ import { AccessDataModule } from '../../access/access-data.module.js';
     AdminPaymentsController,
     AdminUsersController,
   ],
-  providers: [JwtAuthGuard, PlatformRoleGuard],
+  providers: [JwtAuthGuard, PlatformRoleGuard, PasswordResetService],
 })
 export class AdminModule {}

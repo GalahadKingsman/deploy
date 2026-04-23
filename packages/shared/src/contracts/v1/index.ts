@@ -44,8 +44,24 @@ export type {
   CompleteLessonRequestV1,
   CompleteLessonResponseV1,
 } from './access.js';
-export type { AuthRegisterRequestV1, AuthLoginRequestV1, AuthPasswordResponseV1 } from './auth.js';
-export { AuthRegisterRequestV1Schema, AuthLoginRequestV1Schema, AuthPasswordResponseV1Schema } from './auth.js';
+export type {
+  AuthRegisterRequestV1,
+  AuthLoginRequestV1,
+  AuthPasswordResponseV1,
+  AuthPasswordResetConfirmRequestV1,
+  AuthPasswordResetConfirmResponseV1,
+  AdminCreatePasswordResetRequestV1,
+  AdminCreatePasswordResetResponseV1,
+} from './auth.js';
+export {
+  AuthRegisterRequestV1Schema,
+  AuthLoginRequestV1Schema,
+  AuthPasswordResponseV1Schema,
+  AuthPasswordResetConfirmRequestV1Schema,
+  AuthPasswordResetConfirmResponseV1Schema,
+  AdminCreatePasswordResetRequestV1Schema,
+  AdminCreatePasswordResetResponseV1Schema,
+} from './auth.js';
 export type {
   ExpertCourseV1,
   CourseStatusV1,
