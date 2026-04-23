@@ -2666,7 +2666,11 @@ if (platformMount) {
     let expertHomeworkStars: number = 5;
 
     function canReviewHomework(): boolean {
-      return expertWorkspaceMyRole === 'reviewer';
+      return (
+        expertWorkspaceMyRole === 'reviewer' ||
+        expertWorkspaceMyRole === 'manager' ||
+        expertWorkspaceMyRole === 'owner'
+      );
     }
 
     function formatRelativeTime(iso: string): string {
@@ -2833,7 +2837,7 @@ if (platformMount) {
           p.style.color = 'var(--t3)';
           p.style.fontSize = '12px';
           p.style.padding = '12px';
-          p.textContent = 'Доступно только роли «Куратор».';
+          p.textContent = 'Доступно только ролям «Куратор» или «Менеджер».';
           list.appendChild(p);
         }
         setHomeworkDetailEmpty(root, 'Выберите домашнее задание слева.');
