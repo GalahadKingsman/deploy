@@ -1,8 +1,10 @@
 import { getAvatarImageSrc } from './avatarImageUrl.js';
 
+const INITIALS_CLASS = 'avatar--initials';
+
 /**
- * Круг с фото из `users.avatar_url` (как правый верх в шелле и `data-ep-profile-avatar`):
- * только `getAvatarImageSrc(raw)` — без `normalizeAssetUrl` (логика не для обложек курсов).
+ * Круг: фото из `users.avatar_url` или **инициалы по центру** (как topbar / профиль),
+ * без нормализации путей обложек.
  */
 export function applyUserAvatarToElement(
   el: HTMLElement,
@@ -15,14 +17,15 @@ export function applyUserAvatarToElement(
   el.style.color = 'var(--a)';
   el.style.overflow = 'hidden';
   if (!raw) {
-    el.textContent = initialsText;
+    setAvatarInitials(el, initialsText);
     return;
   }
   const src = getAvatarImageSrc(raw);
   if (!src) {
-    el.textContent = initialsText;
+    setAvatarInitials(el, initialsText);
     return;
   }
+  el.classList.remove(INITIALS_CLASS);
   const img = document.createElement('img');
   img.alt = '';
   img.referrerPolicy = 'no-referrer';
@@ -34,11 +37,16 @@ export function applyUserAvatarToElement(
   img.addEventListener(
     'error',
     () => {
-      el.replaceChildren();
-      el.textContent = initialsText;
+      setAvatarInitials(el, initialsText);
     },
     { once: true },
   );
   img.src = src;
   el.appendChild(img);
+}
+
+function setAvatarInitials(el: HTMLElement, initials: string): void {
+  el.replaceChildren();
+  el.classList.add(INITIALS_CLASS);
+  el.textContent = (initials || 'ED').trim() || 'ED';
 }
