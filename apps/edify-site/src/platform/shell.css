@@ -248,6 +248,10 @@ table.tbl tr:hover td{background:var(--bg)}
 
 /* Section title inside screen */
 .sec-title{font-family:var(--fd);font-size:13px;font-weight:700;letter-spacing:-.01em;color:var(--t1);margin-bottom:12px}
+/* Team table: title + «Добавить» в одной строке над таблицей */
+.ep-team-members-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.ep-team-members-heading .sec-title{margin-bottom:0}
+.ep-team-members-heading [data-ep-team-add-open]{flex-shrink:0}
 
 /* Divider */
 .div{height:1px;background:var(--line);margin:20px 0}
@@ -616,6 +620,27 @@ textarea.form-input{resize:vertical;min-height:80px}
 }
 #screen-e-builder .ep-access-drawer{
   position:absolute;top:0;right:0;bottom:0;z-index:45;
+  width:min(520px,100%);
+  max-width:100%;
+  background:var(--surface);
+  border-left:1px solid var(--line);
+  box-shadow:-8px 0 32px rgba(0,0,0,0.12);
+  display:flex;flex-direction:column;
+  font-family:var(--fb);
+}
+/* Панель «Добавить участника» — вне #screen-e-builder, фиксировано под topbar */
+[data-ep-team-drawer-backdrop]{
+  position:fixed;
+  left:0;right:0;bottom:0;
+  top:56px;
+  z-index:110;
+  background:rgba(12,18,32,0.35);
+  backdrop-filter:blur(2px);
+}
+[data-ep-team-drawer]{
+  position:fixed;
+  top:56px;right:0;bottom:0;
+  z-index:111;
   width:min(520px,100%);
   max-width:100%;
   background:var(--surface);
