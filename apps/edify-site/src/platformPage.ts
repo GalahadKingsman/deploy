@@ -1868,9 +1868,11 @@ if (platformMount) {
 
     async function fetchExpertWorkspaceId(token: string, userId: string): Promise<string | null> {
       expertWorkspaceMyRole = null;
-      expertTeamCreatedByUserId = null;
+      // Не сбрасывать expertTeamCreatedByUserId / expertTeamSoleMemberIsMe здесь: эти поля
+      // приходят из GET /team/members, а fetch вызывается при каждом hydrateTopbarUser.
+      // Ранний сброс оставлял canManage ложным до следующей подгрузки команды (пропадали
+      // кнопка «Добавить» и шестерёнки).
       expertWorkspaceIsCreator = false;
-      expertTeamSoleMemberIsMe = false;
       let memberships: { expertId: string; userId: string; role: string; isWorkspaceCreator?: boolean }[] = [];
       try {
         const mem = await fetchJson<{
@@ -1878,9 +1880,15 @@ if (platformMount) {
         }>('/me/expert-memberships', token);
         memberships = mem.items ?? [];
       } catch {
+        expertTeamCreatedByUserId = null;
+        expertTeamSoleMemberIsMe = false;
         return null;
       }
-      if (memberships.length === 0) return null;
+      if (memberships.length === 0) {
+        expertTeamCreatedByUserId = null;
+        expertTeamSoleMemberIsMe = false;
+        return null;
+      }
 
       let subscription: ExpertSubscriptionPickV1 | null = null;
       try {
