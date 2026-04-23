@@ -55,8 +55,8 @@ export class ExpertTeamController {
   ) {}
 
   /**
-   * Membership role `owner` or expert workspace creator (`experts.created_by_user_id`).
-   * Guard is `manager+`; this narrows to actual owners/creators.
+   * Team mutations: expert `owner`, `manager` (см. expert role rank), создатель кабинета,
+   * либо единственный участник. Маршруты уже требуют `RequireExpertRole('manager')`.
    */
   private async assertOwnerOrExpertCreator(expertId: string, userId: string | undefined): Promise<void> {
     if (!userId) {
@@ -66,7 +66,7 @@ export class ExpertTeamController {
       });
     }
     const member = await this.expertMembersRepository.findMember(expertId, userId);
-    if (member?.role === 'owner') {
+    if (member?.role === 'owner' || member?.role === 'manager') {
       return;
     }
     const expert = await this.expertsRepository.findExpertById(expertId);
@@ -79,7 +79,7 @@ export class ExpertTeamController {
     }
     throw new ForbiddenException({
       code: ErrorCodes.FORBIDDEN_EXPERT_ROLE,
-      message: 'Only the expert owner or the workspace creator can manage the team',
+      message: 'Only managers, the expert owner, or the workspace creator can manage the team',
     });
   }
 

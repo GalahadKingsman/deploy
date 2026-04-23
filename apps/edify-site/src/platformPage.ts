@@ -1907,7 +1907,7 @@ if (platformMount) {
     }
 
     function canManageExpertTeam(): boolean {
-      if (expertWorkspaceMyRole === 'owner') return true;
+      if (expertWorkspaceMyRole === 'owner' || expertWorkspaceMyRole === 'manager') return true;
       if (expertWorkspaceIsCreator) return true;
       if (expertTeamSoleMemberIsMe) return true;
       const meId = (currentMe?.id ?? '').trim();
