@@ -26,10 +26,12 @@ function roleLabel(role: string): string {
 }
 
 function teamRowLabel(
-  m: { userId: string; role: string },
+  m: { userId: string; role: string; isWorkspaceCreator?: boolean },
   createdByUserId: string,
 ): string {
-  if (m.role === 'owner' || m.userId === createdByUserId) return 'Владелец';
+  if (m.role === 'owner' || m.isWorkspaceCreator === true || m.userId === createdByUserId) {
+    return 'Владелец';
+  }
   return roleLabel(m.role);
 }
 
@@ -55,7 +57,10 @@ export function ExpertTeamPage() {
   const { data: memberships } = useMyExpertMemberships();
   const meRow = (memberships?.items ?? []).find((m) => m.expertId === expertId);
   const canManageTeam = Boolean(
-    meRow && (meRow.role === 'owner' || (data && meRow.userId === data.createdByUserId)),
+    meRow &&
+      (meRow.role === 'owner' ||
+        meRow.isWorkspaceCreator === true ||
+        (data && meRow.userId === data.createdByUserId)),
   );
 
   const [tgId, setTgId] = React.useState('');

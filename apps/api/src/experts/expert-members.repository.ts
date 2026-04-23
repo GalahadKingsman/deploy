@@ -40,6 +40,7 @@ interface ExpertTeamMemberRow {
   email: string | null;
   updated_at: Date;
   course_access_count: string;
+  is_workspace_creator: boolean;
 }
 
 export class ExpertMembersRepository {
@@ -178,9 +179,11 @@ export class ExpertMembersRepository {
     const result = await this.pool.query<ExpertTeamMemberRow>(
       `
       SELECT em.user_id, em.role, em.created_at, u.username, u.first_name, u.last_name, u.email, u.updated_at,
-        COALESCE(acc.n, 0)::text AS course_access_count
+        COALESCE(acc.n, 0)::text AS course_access_count,
+        (e.created_by_user_id IS NOT NULL AND e.created_by_user_id = em.user_id) AS is_workspace_creator
       FROM expert_members em
       JOIN users u ON u.id = em.user_id
+      JOIN experts e ON e.id = em.expert_id
       LEFT JOIN (
         SELECT expert_id, user_id, COUNT(*)::int AS n
         FROM expert_member_course_access
@@ -204,6 +207,7 @@ export class ExpertMembersRepository {
         email: r.email,
         coursesLabel: formatCoursesLabelRu(r.role, courseAccessCount),
         lastActivityAt: r.updated_at ? r.updated_at.toISOString() : null,
+        isWorkspaceCreator: r.is_workspace_creator,
       };
     });
   }
@@ -221,11 +225,23 @@ export class ExpertMembersRepository {
     if (!this.pool) {
       throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
     }
-    const result = await this.pool.query<ExpertMemberDbRow>(
-      'SELECT * FROM expert_members WHERE user_id = $1 ORDER BY created_at ASC',
+    const result = await this.pool.query<
+      ExpertMemberDbRow & { is_workspace_creator: boolean }
+    >(
+      `
+      SELECT em.expert_id, em.user_id, em.role, em.created_at,
+        (e.created_by_user_id IS NOT NULL AND e.created_by_user_id = em.user_id) AS is_workspace_creator
+      FROM expert_members em
+      JOIN experts e ON e.id = em.expert_id
+      WHERE em.user_id = $1
+      ORDER BY em.created_at ASC
+      `,
       [userId],
     );
-    return result.rows.map((r) => this.mapRow(r));
+    return result.rows.map((r) => ({
+      ...this.mapRow(r),
+      isWorkspaceCreator: r.is_workspace_creator,
+    }));
   }
 
   private mapRow(row: ExpertMemberDbRow): ContractsV1.ExpertMemberV1 {

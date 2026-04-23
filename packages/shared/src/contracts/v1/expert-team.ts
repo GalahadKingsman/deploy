@@ -15,6 +15,8 @@ export interface ExpertTeamMemberV1 {
   coursesLabel: string;
   /** ISO timestamp proxy for last activity (users.updated_at). */
   lastActivityAt: string | null;
+  /** Создатель кабинета (experts.created_by_user_id); для подписи «Владелец» при role !== owner. */
+  isWorkspaceCreator: boolean;
 }
 
 export interface ListExpertTeamResponseV1 {
@@ -33,6 +35,7 @@ export const ExpertTeamMemberV1Schema = z.object({
   email: z.string().nullable(),
   coursesLabel: z.string(),
   lastActivityAt: z.string().nullable(),
+  isWorkspaceCreator: z.boolean(),
 });
 
 export const ListExpertTeamResponseV1Schema = z.object({

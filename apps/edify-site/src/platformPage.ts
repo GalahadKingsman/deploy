@@ -137,6 +137,7 @@ if (platformMount) {
       email: string | null;
       coursesLabel: string;
       lastActivityAt: string | null;
+      isWorkspaceCreator?: boolean;
     };
     type ListExpertTeamResponseV1 = { items: ExpertTeamMemberRowV1[]; createdByUserId: string };
 
@@ -488,6 +489,8 @@ if (platformMount) {
     let expertWorkspaceMyRole: string | null = null;
     /** `experts.created_by_user_id` для текущего workspace; для кнопки «Добавить» и «Владелец» в таблице. */
     let expertTeamCreatedByUserId: string | null = null;
+    /** true если текущий пользователь = experts.created_by_user_id (из /me/expert-memberships). */
+    let expertWorkspaceIsCreator: boolean = false;
     let expertTeamUserSearchTimer: ReturnType<typeof setTimeout> | null = null;
     let expertTeamDrawerSelectedUserId: string | null = null;
     /** expertId владельца курса в конструкторе — при нескольких командах эксперта не путать с «активным» из подписки. */
@@ -1860,12 +1863,12 @@ if (platformMount) {
     async function fetchExpertWorkspaceId(token: string, userId: string): Promise<string | null> {
       expertWorkspaceMyRole = null;
       expertTeamCreatedByUserId = null;
-      let memberships: { expertId: string; userId: string; role: string }[] = [];
+      expertWorkspaceIsCreator = false;
+      let memberships: { expertId: string; userId: string; role: string; isWorkspaceCreator?: boolean }[] = [];
       try {
-        const mem = await fetchJson<{ items?: { expertId: string; userId: string; role: string }[] }>(
-          '/me/expert-memberships',
-          token,
-        );
+        const mem = await fetchJson<{
+          items?: { expertId: string; userId: string; role: string; isWorkspaceCreator?: boolean }[];
+        }>('/me/expert-memberships', token);
         memberships = mem.items ?? [];
       } catch {
         return null;
@@ -1883,12 +1886,14 @@ if (platformMount) {
       if (eid && userId) {
         const row = memberships.find((m) => m.expertId === eid && m.userId === userId);
         expertWorkspaceMyRole = row?.role ?? null;
+        expertWorkspaceIsCreator = row?.isWorkspaceCreator === true;
       }
       return eid;
     }
 
     function canManageExpertTeam(): boolean {
       if (expertWorkspaceMyRole === 'owner') return true;
+      if (expertWorkspaceIsCreator) return true;
       if (currentMe?.id && expertTeamCreatedByUserId && currentMe.id === expertTeamCreatedByUserId) {
         return true;
       }
@@ -1909,6 +1914,7 @@ if (platformMount) {
         activeExpertId = null;
         expertWorkspaceMyRole = null;
         expertTeamCreatedByUserId = null;
+        expertWorkspaceIsCreator = false;
         currentMe = null;
         currentPlatformRole = null;
         syncExpertTeamOwnerButton(root);
@@ -1931,6 +1937,7 @@ if (platformMount) {
           activeExpertId = null;
           expertWorkspaceMyRole = null;
           expertTeamCreatedByUserId = null;
+          expertWorkspaceIsCreator = false;
           currentMe = null;
           currentPlatformRole = null;
           syncExpertTeamOwnerButton(root);
@@ -1949,6 +1956,7 @@ if (platformMount) {
           activeExpertId = null;
           expertWorkspaceMyRole = null;
           expertTeamCreatedByUserId = null;
+          expertWorkspaceIsCreator = false;
         }
         expertShellAccess.allowed = inExpertTeam;
         syncExpertTeamOwnerButton(root);
@@ -1990,6 +1998,7 @@ if (platformMount) {
         activeExpertId = null;
         expertWorkspaceMyRole = null;
         expertTeamCreatedByUserId = null;
+        expertWorkspaceIsCreator = false;
         currentMe = null;
         currentPlatformRole = null;
         syncExpertTeamOwnerButton(root);
@@ -2316,12 +2325,16 @@ if (platformMount) {
       return { label: 'Поддержка', cls: 'tag' };
     }
 
-    /** «Владелец» — запись владельца (роль owner) или создатель кабинета; иначе фактическая роль в команде. */
+    /** «Владелец» — роль owner, флаг isWorkspaceCreator из API или created_by (фоллбек). */
     function expertMemberRoleForRow(
       m: ExpertTeamMemberRowV1,
       createdByUserId: string,
     ): { label: string; cls: string } {
-      if (m.role === 'owner' || m.userId === createdByUserId) {
+      const isOwnerRow =
+        m.role === 'owner' ||
+        m.isWorkspaceCreator === true ||
+        (Boolean(createdByUserId) && m.userId === createdByUserId);
+      if (isOwnerRow) {
         return { label: 'Владелец', cls: 'tag tag-new' };
       }
       return expertMemberRoleUi(m.role);
@@ -2394,9 +2407,14 @@ if (platformMount) {
           token,
         );
         expertTeamCreatedByUserId = data.createdByUserId ?? null;
+        const items = data.items ?? [];
+        const selfId = currentMe?.id ?? '';
+        const meFromTeam = selfId ? items.find((m) => m.userId === selfId) : undefined;
+        if (meFromTeam?.isWorkspaceCreator === true) {
+          expertWorkspaceIsCreator = true;
+        }
         syncExpertTeamOwnerButton(root);
         tbody.replaceChildren();
-        const items = data.items ?? [];
         const createdBy = data.createdByUserId ?? '';
         if (items.length === 0) {
           const tr = document.createElement('tr');
@@ -2410,7 +2428,6 @@ if (platformMount) {
           tbody.appendChild(tr);
           return;
         }
-        const selfId = currentMe?.id ?? '';
         for (const m of items) {
           const tr = document.createElement('tr');
           const name = expertMemberDisplayName(m);

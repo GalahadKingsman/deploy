@@ -35,6 +35,7 @@ describe('AddExpertTeamMemberByUserRequestV1Schema', () => {
       email: 'a@b.co',
       coursesLabel: '2 курса',
       lastActivityAt: '2026-01-02T00:00:00.000Z',
+      isWorkspaceCreator: true,
     });
     assert.strictEqual(r.success, true);
   });

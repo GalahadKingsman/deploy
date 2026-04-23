@@ -19,6 +19,8 @@ export interface ExpertMemberV1 {
   userId: Id;
   role: ExpertMemberRoleV1;
   createdAt: IsoDateTime;
+  /** `experts.created_by_user_id === userId` — владелец кабинета/пространства. Заполняется в /me/expert-memberships. */
+  isWorkspaceCreator?: boolean;
 }
 
 /**
@@ -29,4 +31,5 @@ export const ExpertMemberV1Schema = z.object({
   userId: z.string().uuid(),
   role: ExpertMemberRoleV1Schema,
   createdAt: z.string(),
+  isWorkspaceCreator: z.boolean().optional(),
 });
