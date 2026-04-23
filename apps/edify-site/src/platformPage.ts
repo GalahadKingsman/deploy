@@ -1910,8 +1910,17 @@ if (platformMount) {
       if (expertWorkspaceMyRole === 'owner') return true;
       if (expertWorkspaceIsCreator) return true;
       if (expertTeamSoleMemberIsMe) return true;
-      if (currentMe?.id && expertTeamCreatedByUserId && currentMe.id === expertTeamCreatedByUserId) {
-        return true;
+      const meId = (currentMe?.id ?? '').trim();
+      const byId = (expertTeamCreatedByUserId ?? '').trim();
+      if (meId && byId && meId === byId) return true;
+      if (meId && expertTeamLastRows.length > 0) {
+        const my = expertTeamLastRows.find((m) => m.userId === meId);
+        if (my) {
+          const createdBy = expertTeamCreatedByUserId ?? '';
+          const soleThis =
+            expertTeamLastRows.length === 1 && expertTeamLastRows[0]!.userId === meId;
+          if (expertTeamMemberIsOwnerLikeRow(my, createdBy, soleThis)) return true;
+        }
       }
       return false;
     }
@@ -1920,7 +1929,8 @@ if (platformMount) {
       if (!root) return;
       const btn = root.querySelector('[data-ep-team-add-open]') as HTMLButtonElement | null;
       if (!btn) return;
-      btn.style.display = canManageExpertTeam() ? '' : 'none';
+      const show = canManageExpertTeam();
+      btn.style.display = show ? 'inline-flex' : 'none';
     }
 
     async function hydrateTopbarUser(): Promise<void> {
@@ -2389,7 +2399,6 @@ if (platformMount) {
       if (!root) return;
       const tbody = root.querySelector('[data-ep-expert-team-tbody]') as HTMLElement | null;
       if (!tbody) return;
-      syncExpertTeamOwnerButton(root);
       const token = getAccessToken();
       if (!token) {
         expertTeamLastRows = [];
@@ -2456,9 +2465,7 @@ if (platformMount) {
           }
         }
         const meFromTeam = selfId ? items.find((x) => x.userId === selfId) : undefined;
-        if (meFromTeam?.isWorkspaceCreator === true) {
-          expertWorkspaceIsCreator = true;
-        }
+        expertWorkspaceIsCreator = meFromTeam?.isWorkspaceCreator === true;
         expertTeamSoleMemberIsMe =
           items.length === 1 && Boolean(selfId) && items[0]!.userId === selfId;
         expertTeamLastRows = items;
@@ -2475,6 +2482,7 @@ if (platformMount) {
           td.textContent = 'В команде пока нет участников.';
           tr.appendChild(td);
           tbody.appendChild(tr);
+          syncExpertTeamOwnerButton(root);
           return;
         }
         for (const m of items) {
