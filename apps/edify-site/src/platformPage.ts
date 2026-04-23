@@ -1844,6 +1844,42 @@ if (platformMount) {
       return (a + b).slice(0, 2) || 'ED';
     }
 
+    /** Круг: фото с `/public/avatar` / URL или инициалы (та же схема, что в «Кураторы и менеджеры»). */
+    function setAvatarNode(
+      el: HTMLElement,
+      rawUrl: string | null | undefined,
+      nameForInitials: string,
+    ): void {
+      el.replaceChildren();
+      const initials = initialsFromName(nameForInitials);
+      const stored = typeof rawUrl === 'string' ? rawUrl.trim() : '';
+      const avatarSrc = stored ? getAvatarImageSrc(normalizeAssetUrl(stored) ?? stored) : '';
+      el.style.background = 'var(--al)';
+      el.style.color = 'var(--a)';
+      if (!avatarSrc) {
+        el.textContent = initials;
+        return;
+      }
+      const img = document.createElement('img');
+      img.alt = '';
+      img.referrerPolicy = 'no-referrer';
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.borderRadius = '50%';
+      img.style.objectFit = 'cover';
+      img.style.display = 'block';
+      img.addEventListener(
+        'error',
+        () => {
+          el.replaceChildren();
+          el.textContent = initials;
+        },
+        { once: true },
+      );
+      img.src = avatarSrc;
+      el.appendChild(img);
+    }
+
     /** Как в веб-приложении (ExpertHomePage): при активной подписке — expertId из /me/expert-subscription, иначе первое членство. */
     type ExpertSubscriptionPickV1 = {
       expertId: string;
@@ -2491,7 +2527,6 @@ if (platformMount) {
         for (const m of items) {
           const tr = document.createElement('tr');
           const name = expertMemberDisplayName(m);
-          const initials = initialsFromName(name);
           const isSelf = Boolean(selfId && m.userId === selfId);
           const soleThis =
             items.length === 1 && Boolean(selfId) && m.userId === selfId;
@@ -2505,33 +2540,10 @@ if (platformMount) {
           wrap.style.gap = '8px';
           const av = document.createElement('div');
           av.className = 'avatar av-sm';
-          av.style.background = 'var(--al)';
-          av.style.color = 'var(--a)';
           av.style.overflow = 'hidden';
-          const stored =
-            typeof m.avatarUrl === 'string' && m.avatarUrl.trim() ? m.avatarUrl.trim() : '';
-          const avatarSrc = stored ? getAvatarImageSrc(normalizeAssetUrl(stored) ?? stored) : '';
-          if (!avatarSrc) {
-            av.textContent = initials;
-          } else {
-            const img = document.createElement('img');
-            img.alt = '';
-            img.referrerPolicy = 'no-referrer';
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.borderRadius = '50%';
-            img.style.objectFit = 'cover';
-            img.addEventListener(
-              'error',
-              () => {
-                av.replaceChildren();
-                av.textContent = initials;
-              },
-              { once: true },
-            );
-            img.src = avatarSrc;
-            av.appendChild(img);
-          }
+          const rawAv = (m as { avatarUrl?: string | null; avatar_url?: string | null }).avatarUrl;
+          const rawSnake = (m as { avatar_url?: string | null }).avatar_url;
+          setAvatarNode(av, rawAv ?? rawSnake ?? null, name);
           const nameCol = document.createElement('div');
           nameCol.style.minWidth = '0';
           nameCol.style.flex = '1';
@@ -2760,33 +2772,14 @@ if (platformMount) {
           lastName: it.studentLastName,
           username: it.studentUsername,
         });
-        const initials = initialsFromName(disp);
-        const stored = typeof it.studentAvatarUrl === 'string' ? it.studentAvatarUrl.trim() : '';
-        const avatarSrc = stored ? getAvatarImageSrc(normalizeAssetUrl(stored) ?? stored) : '';
-        av.style.background = 'var(--al)';
-        av.style.color = 'var(--a)';
-        av.replaceChildren();
-        if (!avatarSrc) {
-          av.textContent = initials;
-        } else {
-          const img = document.createElement('img');
-          img.alt = '';
-          img.referrerPolicy = 'no-referrer';
-          img.style.width = '100%';
-          img.style.height = '100%';
-          img.style.borderRadius = '50%';
-          img.style.objectFit = 'cover';
-          img.addEventListener(
-            'error',
-            () => {
-              av.replaceChildren();
-              av.textContent = initials;
-            },
-            { once: true },
-          );
-          img.src = avatarSrc;
-          av.appendChild(img);
-        }
+        const uRow = it as { studentAvatarUrl?: string | null; student_avatar_url?: string | null };
+        const rawStuAv =
+          typeof uRow.studentAvatarUrl === 'string' && uRow.studentAvatarUrl.trim()
+            ? uRow.studentAvatarUrl
+            : typeof uRow.student_avatar_url === 'string' && uRow.student_avatar_url.trim()
+              ? uRow.student_avatar_url
+              : null;
+        setAvatarNode(av, rawStuAv, disp);
 
         const body = document.createElement('div');
         body.className = 'hw-card-body';
@@ -2861,7 +2854,11 @@ if (platformMount) {
           `/experts/${encodeURIComponent(eid)}/homework/inbox?filter=${encodeURIComponent(expertHomeworkFilter)}`,
           token,
         );
-        expertHomeworkInboxCache = res.items ?? [];
+        const rawItems = (res.items ?? []) as Array<ExpertHomeworkInboxItem & { student_avatar_url?: string | null }>;
+        expertHomeworkInboxCache = rawItems.map((row) => ({
+          ...row,
+          studentAvatarUrl: row.studentAvatarUrl ?? row.student_avatar_url ?? null,
+        }));
         // If selected submission no longer in filtered list — reset selection
         if (
           expertHomeworkSelectedSubmissionId &&
@@ -2928,33 +2925,8 @@ if (platformMount) {
         }
 
         if (av) {
-          av.replaceChildren();
-          const initials = initialsFromName(disp);
-          const stored = typeof d.student.avatarUrl === 'string' ? d.student.avatarUrl.trim() : '';
-          const avatarSrc = stored ? getAvatarImageSrc(normalizeAssetUrl(stored) ?? stored) : '';
-          av.style.background = 'var(--al)';
-          av.style.color = 'var(--a)';
-          if (!avatarSrc) {
-            av.textContent = initials;
-          } else {
-            const img = document.createElement('img');
-            img.alt = '';
-            img.referrerPolicy = 'no-referrer';
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.borderRadius = '50%';
-            img.style.objectFit = 'cover';
-            img.addEventListener(
-              'error',
-              () => {
-                av.replaceChildren();
-                av.textContent = initials;
-              },
-              { once: true },
-            );
-            img.src = avatarSrc;
-            av.appendChild(img);
-          }
+          const stu = d.student as { avatarUrl?: string | null; avatar_url?: string | null };
+          setAvatarNode(av, stu.avatarUrl ?? stu.avatar_url ?? null, disp);
         }
 
         if (fileRow) {
@@ -2979,8 +2951,15 @@ if (platformMount) {
         if (commentTa) commentTa.value = (d.submission.reviewerComment ?? '').trim();
         syncHomeworkStars(root);
 
-        // Refresh inbox status if it was "new" and now opened
-        void hydrateExpertHomework(root);
+        // Список: после открытия на сервере — «Новое» → «Не проверено» без лишнего refetch
+        expertHomeworkInboxCache = expertHomeworkInboxCache.map((x) => {
+          if (x.submissionId !== submissionId) return x;
+          if (x.submissionStatus === 'accepted') {
+            return { ...x, isOpened: true, uiStatus: 'checked' as const };
+          }
+          return { ...x, isOpened: true, uiStatus: 'unchecked' as const };
+        });
+        renderHomeworkInbox(root);
       } catch {
         setHomeworkDetailEmpty(root, 'Не удалось загрузить домашнее задание.');
       }
