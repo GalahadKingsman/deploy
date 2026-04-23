@@ -27,6 +27,7 @@ import { ExpertSubscriptionGuard } from '../../subscriptions/guards/expert-subsc
 import { RequireExpertRole } from '../../auth/expert-rbac/require-expert-role.decorator.js';
 import { ExpertMembersRepository } from '../../experts/expert-members.repository.js';
 import { ExpertMemberCourseAccessRepository } from '../../experts/expert-member-course-access.repository.js';
+import { ExpertsRepository } from '../../experts/experts.repository.js';
 import { UsersRepository } from '../../users/users.repository.js';
 import { AuditService } from '../../audit/audit.service.js';
 import { CoursesRepository } from '../../authoring/courses.repository.js';
@@ -47,18 +48,47 @@ export class ExpertTeamController {
     @Inject(Pool) private readonly pool: Pool,
     private readonly expertMembersRepository: ExpertMembersRepository,
     private readonly expertMemberCourseAccessRepository: ExpertMemberCourseAccessRepository,
+    private readonly expertsRepository: ExpertsRepository,
     private readonly usersRepository: UsersRepository,
     private readonly auditService: AuditService,
     private readonly coursesRepository: CoursesRepository,
   ) {}
 
+  /**
+   * Membership role `owner` or expert workspace creator (`experts.created_by_user_id`).
+   * Guard is `manager+`; this narrows to actual owners/creators.
+   */
+  private async assertOwnerOrExpertCreator(expertId: string, userId: string | undefined): Promise<void> {
+    if (!userId) {
+      throw new ForbiddenException({
+        code: ErrorCodes.EXPERT_MEMBERSHIP_REQUIRED,
+        message: 'Authentication required',
+      });
+    }
+    const member = await this.expertMembersRepository.findMember(expertId, userId);
+    if (member?.role === 'owner') {
+      return;
+    }
+    const expert = await this.expertsRepository.findExpertById(expertId);
+    if (expert && expert.createdByUserId === userId) {
+      return;
+    }
+    throw new ForbiddenException({
+      code: ErrorCodes.FORBIDDEN_EXPERT_ROLE,
+      message: 'Only the expert owner or the workspace creator can manage the team',
+    });
+  }
+
   @Get('users/search')
-  @RequireExpertRole('owner')
-  @ApiOperation({ summary: 'Search users to add to team (owner only)' })
+  @RequireExpertRole('manager')
+  @ApiOperation({ summary: 'Search users to add to team (owner or expert creator)' })
   @ApiResponse({ status: 200, description: 'Users' })
   async searchUsersForTeam(
+    @Param('expertId') expertId: string,
     @Query('q') q: string | undefined,
+    @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<{ items: Array<Pick<ContractsV1.UserV1, 'id' | 'telegramUserId' | 'username' | 'firstName' | 'lastName'>> }> {
+    await this.assertOwnerOrExpertCreator(expertId, req.user?.userId);
     const qq = typeof q === 'string' ? q.trim() : '';
     if (!qq) return { items: [] };
     const res = await this.usersRepository.adminList({ q: qq, limit: 20, offset: 0 });
@@ -74,15 +104,16 @@ export class ExpertTeamController {
   }
 
   @Post('members')
-  @RequireExpertRole('owner')
+  @RequireExpertRole('manager')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Add team member by user id with course scope (owner only)' })
+  @ApiOperation({ summary: 'Add team member by user id with course scope (owner or expert creator)' })
   @ApiResponse({ status: 201, description: 'Member added' })
   async addByUserId(
     @Param('expertId') expertId: string,
     @Body() body: unknown,
     @Req() req: FastifyRequest & { user?: { userId: string }; traceId?: string },
   ): Promise<{ member: ContractsV1.ExpertMemberV1 }> {
+    await this.assertOwnerOrExpertCreator(expertId, req.user?.userId);
     const parsed = ContractsV1.AddExpertTeamMemberByUserRequestV1Schema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Validation failed' });
@@ -137,9 +168,9 @@ export class ExpertTeamController {
   }
 
   @Post('members/by-telegram/:telegramUserId')
-  @RequireExpertRole('owner')
+  @RequireExpertRole('manager')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Add team member by Telegram user id (owner only)' })
+  @ApiOperation({ summary: 'Add team member by Telegram user id (owner or expert creator)' })
   @ApiResponse({ status: 201, description: 'Member added' })
   async addByTelegram(
     @Param('expertId') expertId: string,
@@ -147,6 +178,7 @@ export class ExpertTeamController {
     @Body() body: unknown,
     @Req() req: FastifyRequest & { user?: { userId: string }; traceId?: string },
   ): Promise<{ member: ContractsV1.ExpertMemberV1 }> {
+    await this.assertOwnerOrExpertCreator(expertId, req.user?.userId);
     const parsed = ContractsV1.AddExpertTeamMemberRequestV1Schema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Validation failed' });
@@ -188,8 +220,8 @@ export class ExpertTeamController {
   }
 
   @Patch('members/:userId')
-  @RequireExpertRole('owner')
-  @ApiOperation({ summary: 'Change team member role (owner only)' })
+  @RequireExpertRole('manager')
+  @ApiOperation({ summary: 'Change team member role (owner or expert creator)' })
   @ApiResponse({ status: 200, description: 'Updated' })
   async updateRole(
     @Param('expertId') expertId: string,
@@ -197,6 +229,7 @@ export class ExpertTeamController {
     @Body() body: unknown,
     @Req() req: FastifyRequest & { user?: { userId: string }; traceId?: string },
   ): Promise<{ member: ContractsV1.ExpertMemberV1 }> {
+    await this.assertOwnerOrExpertCreator(expertId, req.user?.userId);
     const parsed = ContractsV1.UpdateExpertTeamMemberRoleRequestV1Schema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Validation failed' });
@@ -248,15 +281,16 @@ export class ExpertTeamController {
   }
 
   @Delete('members/:userId')
-  @RequireExpertRole('owner')
+  @RequireExpertRole('manager')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Remove team member (owner only)' })
+  @ApiOperation({ summary: 'Remove team member (owner or expert creator)' })
   @ApiResponse({ status: 200, description: 'Removed' })
   async remove(
     @Param('expertId') expertId: string,
     @Param('userId') targetUserId: string,
     @Req() req: FastifyRequest & { user?: { userId: string }; traceId?: string },
   ): Promise<{ ok: true }> {
+    await this.assertOwnerOrExpertCreator(expertId, req.user?.userId);
     const current = await this.expertMembersRepository.findMember(expertId, targetUserId);
     if (!current) {
       throw new NotFoundException({ code: ErrorCodes.EXPERT_MEMBER_NOT_FOUND, message: 'Member not found' });

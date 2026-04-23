@@ -138,7 +138,7 @@ if (platformMount) {
       coursesLabel: string;
       lastActivityAt: string | null;
     };
-    type ListExpertTeamResponseV1 = { items: ExpertTeamMemberRowV1[] };
+    type ListExpertTeamResponseV1 = { items: ExpertTeamMemberRowV1[]; createdByUserId: string };
 
     const myCourseIds = new Set<string>();
 
@@ -486,6 +486,8 @@ if (platformMount) {
     let activeExpertId: string | null = null;
     /** Роль текущего пользователя в выбранном workspace эксперта (из /me/expert-memberships). */
     let expertWorkspaceMyRole: string | null = null;
+    /** `experts.created_by_user_id` для текущего workspace; для кнопки «Добавить» и «Владелец» в таблице. */
+    let expertTeamCreatedByUserId: string | null = null;
     let expertTeamUserSearchTimer: ReturnType<typeof setTimeout> | null = null;
     let expertTeamDrawerSelectedUserId: string | null = null;
     /** expertId владельца курса в конструкторе — при нескольких командах эксперта не путать с «активным» из подписки. */
@@ -1857,6 +1859,7 @@ if (platformMount) {
 
     async function fetchExpertWorkspaceId(token: string, userId: string): Promise<string | null> {
       expertWorkspaceMyRole = null;
+      expertTeamCreatedByUserId = null;
       let memberships: { expertId: string; userId: string; role: string }[] = [];
       try {
         const mem = await fetchJson<{ items?: { expertId: string; userId: string; role: string }[] }>(
@@ -1884,12 +1887,19 @@ if (platformMount) {
       return eid;
     }
 
+    function canManageExpertTeam(): boolean {
+      if (expertWorkspaceMyRole === 'owner') return true;
+      if (currentMe?.id && expertTeamCreatedByUserId && currentMe.id === expertTeamCreatedByUserId) {
+        return true;
+      }
+      return false;
+    }
+
     function syncExpertTeamOwnerButton(root: ShadowRoot | null): void {
       if (!root) return;
       const btn = root.querySelector('[data-ep-team-add-open]') as HTMLButtonElement | null;
       if (!btn) return;
-      const show = expertWorkspaceMyRole === 'owner';
-      btn.style.display = show ? '' : 'none';
+      btn.style.display = canManageExpertTeam() ? '' : 'none';
     }
 
     async function hydrateTopbarUser(): Promise<void> {
@@ -1898,6 +1908,7 @@ if (platformMount) {
         expertShellAccess.allowed = false;
         activeExpertId = null;
         expertWorkspaceMyRole = null;
+        expertTeamCreatedByUserId = null;
         currentMe = null;
         currentPlatformRole = null;
         syncExpertTeamOwnerButton(root);
@@ -1919,6 +1930,7 @@ if (platformMount) {
           expertShellAccess.allowed = false;
           activeExpertId = null;
           expertWorkspaceMyRole = null;
+          expertTeamCreatedByUserId = null;
           currentMe = null;
           currentPlatformRole = null;
           syncExpertTeamOwnerButton(root);
@@ -1936,6 +1948,7 @@ if (platformMount) {
           inExpertTeam = false;
           activeExpertId = null;
           expertWorkspaceMyRole = null;
+          expertTeamCreatedByUserId = null;
         }
         expertShellAccess.allowed = inExpertTeam;
         syncExpertTeamOwnerButton(root);
@@ -1976,6 +1989,7 @@ if (platformMount) {
         expertShellAccess.allowed = false;
         activeExpertId = null;
         expertWorkspaceMyRole = null;
+        expertTeamCreatedByUserId = null;
         currentMe = null;
         currentPlatformRole = null;
         syncExpertTeamOwnerButton(root);
@@ -2296,10 +2310,21 @@ if (platformMount) {
     }
 
     function expertMemberRoleUi(role: string): { label: string; cls: string } {
-      if (role === 'owner') return { label: 'Эксперт (автор)', cls: 'tag tag-new' };
+      if (role === 'owner') return { label: 'Владелец', cls: 'tag tag-new' };
       if (role === 'manager') return { label: 'Менеджер', cls: 'tag tag-draft' };
       if (role === 'reviewer') return { label: 'Куратор', cls: 'tag tag-live' };
       return { label: 'Поддержка', cls: 'tag' };
+    }
+
+    /** «Владелец» — запись владельца (роль owner) или создатель кабинета; иначе фактическая роль в команде. */
+    function expertMemberRoleForRow(
+      m: ExpertTeamMemberRowV1,
+      createdByUserId: string,
+    ): { label: string; cls: string } {
+      if (m.role === 'owner' || m.userId === createdByUserId) {
+        return { label: 'Владелец', cls: 'tag tag-new' };
+      }
+      return expertMemberRoleUi(m.role);
     }
 
     function formatExpertLastActivity(iso: string | null | undefined): string {
@@ -2323,6 +2348,8 @@ if (platformMount) {
       syncExpertTeamOwnerButton(root);
       const token = getAccessToken();
       if (!token) {
+        expertTeamCreatedByUserId = null;
+        syncExpertTeamOwnerButton(root);
         tbody.replaceChildren();
         const tr = document.createElement('tr');
         const td = document.createElement('td');
@@ -2337,6 +2364,8 @@ if (platformMount) {
       }
       const eid = await resolveActiveExpertId();
       if (!eid) {
+        expertTeamCreatedByUserId = null;
+        syncExpertTeamOwnerButton(root);
         tbody.replaceChildren();
         const tr = document.createElement('tr');
         const td = document.createElement('td');
@@ -2364,8 +2393,11 @@ if (platformMount) {
           `/experts/${encodeURIComponent(eid)}/team/members`,
           token,
         );
+        expertTeamCreatedByUserId = data.createdByUserId ?? null;
+        syncExpertTeamOwnerButton(root);
         tbody.replaceChildren();
         const items = data.items ?? [];
+        const createdBy = data.createdByUserId ?? '';
         if (items.length === 0) {
           const tr = document.createElement('tr');
           const td = document.createElement('td');
@@ -2383,7 +2415,7 @@ if (platformMount) {
           const tr = document.createElement('tr');
           const name = expertMemberDisplayName(m);
           const initials = initialsFromName(name);
-          const roleUi = expertMemberRoleUi(m.role);
+          const roleUi = expertMemberRoleForRow(m, createdBy);
           const isSelf = Boolean(selfId && m.userId === selfId);
           const email = (m.email ?? '').trim();
 
@@ -2439,6 +2471,8 @@ if (platformMount) {
         td.textContent = 'Не удалось загрузить команду.';
         tr.appendChild(td);
         tbody.appendChild(tr);
+        expertTeamCreatedByUserId = null;
+        syncExpertTeamOwnerButton(root);
       }
     }
 
@@ -2496,6 +2530,10 @@ if (platformMount) {
     }
 
     async function expertTeamSearchUsers(root: ShadowRoot, q: string): Promise<void> {
+      if (!canManageExpertTeam()) {
+        renderExpertTeamUserSuggest(root, []);
+        return;
+      }
       const token = getAccessToken();
       if (!token) return;
       const eid = await resolveActiveExpertId();
@@ -2564,7 +2602,7 @@ if (platformMount) {
     }
 
     async function openExpertTeamDrawer(root: ShadowRoot): Promise<void> {
-      if (expertWorkspaceMyRole !== 'owner') return;
+      if (!canManageExpertTeam()) return;
       const bd = root.querySelector('[data-ep-team-drawer-backdrop]') as HTMLElement | null;
       const dr = root.querySelector('[data-ep-team-drawer]') as HTMLElement | null;
       if (!bd || !dr) return;
@@ -4292,6 +4330,7 @@ if (platformMount) {
       if (t?.closest('[data-ep-team-submit]')) {
         ev.preventDefault();
         void (async () => {
+          if (!canManageExpertTeam()) return;
           const token = getAccessToken();
           const eid = await resolveActiveExpertId();
           if (!token || !eid) return;

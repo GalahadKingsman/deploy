@@ -25,6 +25,14 @@ function roleLabel(role: string): string {
   return role;
 }
 
+function teamRowLabel(
+  m: { userId: string; role: string },
+  createdByUserId: string,
+): string {
+  if (m.role === 'owner' || m.userId === createdByUserId) return 'Владелец';
+  return roleLabel(m.role);
+}
+
 function displayName(m: {
   username: string | null;
   firstName: string | null;
@@ -45,8 +53,10 @@ export function ExpertTeamPage() {
   const { expertId = '' } = useParams<{ expertId: string }>();
   const { data, isLoading, error, refetch } = useExpertTeam(expertId);
   const { data: memberships } = useMyExpertMemberships();
-  const myRole = (memberships?.items ?? []).find((m) => m.expertId === expertId)?.role ?? null;
-  const isOwner = myRole === 'owner';
+  const meRow = (memberships?.items ?? []).find((m) => m.expertId === expertId);
+  const canManageTeam = Boolean(
+    meRow && (meRow.role === 'owner' || (data && meRow.userId === data.createdByUserId)),
+  );
 
   const [tgId, setTgId] = React.useState('');
   const [addRole, setAddRole] = React.useState<ExpertMemberRoleV1>('support');
@@ -159,7 +169,7 @@ export function ExpertTeamPage() {
       <Card style={{ marginBottom: 'var(--sp-4)' }}>
         <CardHeader>
           <CardTitle>Команда</CardTitle>
-          <CardDescription>Участники кабинета. Управление — только для роли «Владелец».</CardDescription>
+          <CardDescription>Участники кабинета. Управление — у владельца кабинета (роль owner) или у создателя пространства.</CardDescription>
         </CardHeader>
         <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
           {items.length === 0 && (
@@ -179,13 +189,13 @@ export function ExpertTeamPage() {
             >
               <div style={{ fontWeight: 'var(--font-weight-semibold)' }}>{displayName(m)}</div>
               <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>
-                userId: {m.userId} · {roleLabel(m.role)}
+                userId: {m.userId} · {teamRowLabel(m, data.createdByUserId)}
               </div>
               <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>
                 {m.email ?? '—'} · {m.coursesLabel}
                 {m.lastActivityAt ? ` · активность: ${new Date(m.lastActivityAt).toLocaleString('ru-RU')}` : ''}
               </div>
-              {isOwner && (
+              {canManageTeam && (
                 <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', alignItems: 'center' }}>
                   <select
                     value={m.role}
@@ -225,7 +235,7 @@ export function ExpertTeamPage() {
         </CardContent>
       </Card>
 
-      {isOwner && (
+      {canManageTeam && (
         <Card style={{ marginBottom: 'var(--sp-4)' }}>
           <CardHeader>
             <CardTitle style={{ fontSize: 'var(--text-md)' }}>Добавить по Telegram ID</CardTitle>

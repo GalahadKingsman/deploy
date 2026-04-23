@@ -19,6 +19,8 @@ export interface ExpertTeamMemberV1 {
 
 export interface ListExpertTeamResponseV1 {
   items: ExpertTeamMemberV1[];
+  /** Expert account creator (from `experts.created_by_user_id`); for UI: «владелец» / add team button. */
+  createdByUserId: string;
 }
 
 export const ExpertTeamMemberV1Schema = z.object({
@@ -35,4 +37,5 @@ export const ExpertTeamMemberV1Schema = z.object({
 
 export const ListExpertTeamResponseV1Schema = z.object({
   items: z.array(ExpertTeamMemberV1Schema),
+  createdByUserId: z.string().uuid(),
 });
