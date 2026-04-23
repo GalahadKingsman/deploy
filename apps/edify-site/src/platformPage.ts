@@ -4839,8 +4839,13 @@ if (platformMount) {
         void (async () => {
           const token = getAccessToken();
           if (!token) return;
-          const userId = (adminSelectedUserIdByField.platformUser ?? '').trim();
-          if (!userId) return window.alert('Выберите пользователя в блоке Platform role.');
+          const userId = (
+            adminSelectedUserIdByField.platformUser ??
+            adminSelectedUserIdByField.membersUser ??
+            adminSelectedUserIdByField.createOwner ??
+            ''
+          ).trim();
+          if (!userId) return window.alert('Выберите пользователя в любом из блоков поиска (например, «Создать эксперта»).');
           const ttlInp = shell.shadowRoot.querySelector('[data-ep-admin-password-reset-ttl]') as HTMLInputElement | null;
           const linkInp = shell.shadowRoot.querySelector('[data-ep-admin-password-reset-link]') as HTMLInputElement | null;
           const ttlMinRaw = (ttlInp?.value ?? '15').trim();
