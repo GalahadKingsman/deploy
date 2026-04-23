@@ -17,6 +17,10 @@ export interface ExpertTeamMemberV1 {
   lastActivityAt: string | null;
   /** Создатель кабинета (experts.created_by_user_id); для подписи «Владелец» при role !== owner. */
   isWorkspaceCreator: boolean;
+  /** URL аватара из профиля пользователя (может быть null). */
+  avatarUrl: string | null;
+  /** Id курсов из expert_member_course_access; у owner обычно пусто (все курсы не хранятся построчно). */
+  courseIds: string[];
 }
 
 export interface ListExpertTeamResponseV1 {
@@ -36,6 +40,8 @@ export const ExpertTeamMemberV1Schema = z.object({
   coursesLabel: z.string(),
   lastActivityAt: z.string().nullable(),
   isWorkspaceCreator: z.boolean(),
+  avatarUrl: z.string().nullable(),
+  courseIds: z.array(z.string().uuid()),
 });
 
 export const ListExpertTeamResponseV1Schema = z.object({

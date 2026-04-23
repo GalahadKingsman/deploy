@@ -138,6 +138,8 @@ if (platformMount) {
       coursesLabel: string;
       lastActivityAt: string | null;
       isWorkspaceCreator?: boolean;
+      avatarUrl?: string | null;
+      courseIds?: string[];
     };
     type ListExpertTeamResponseV1 = { items: ExpertTeamMemberRowV1[]; createdByUserId: string };
 
@@ -495,6 +497,8 @@ if (platformMount) {
     let expertTeamSoleMemberIsMe: boolean = false;
     let expertTeamUserSearchTimer: ReturnType<typeof setTimeout> | null = null;
     let expertTeamDrawerSelectedUserId: string | null = null;
+    let expertTeamLastRows: ExpertTeamMemberRowV1[] = [];
+    let expertTeamDrawerEdit: ExpertTeamMemberRowV1 | null = null;
     /** expertId владельца курса в конструкторе — при нескольких командах эксперта не путать с «активным» из подписки. */
     let expertBuilderExpertId: string | null = null;
 
@@ -2333,18 +2337,27 @@ if (platformMount) {
       return { label: 'Поддержка', cls: 'tag' };
     }
 
+    /** Строка «как владелец» — без шестерёнки и без редактирования как обычного участника. */
+    function expertTeamMemberIsOwnerLikeRow(
+      m: ExpertTeamMemberRowV1,
+      createdByUserId: string,
+      soleMemberIsThisRow: boolean,
+    ): boolean {
+      return (
+        m.role === 'owner' ||
+        m.isWorkspaceCreator === true ||
+        (Boolean(createdByUserId) && m.userId === createdByUserId) ||
+        soleMemberIsThisRow
+      );
+    }
+
     /** «Владелец» — owner, isWorkspaceCreator, created_by, или вы единственный в команде. */
     function expertMemberRoleForRow(
       m: ExpertTeamMemberRowV1,
       createdByUserId: string,
       soleMemberIsThisRow: boolean,
     ): { label: string; cls: string } {
-      const isOwnerRow =
-        m.role === 'owner' ||
-        m.isWorkspaceCreator === true ||
-        (Boolean(createdByUserId) && m.userId === createdByUserId) ||
-        soleMemberIsThisRow;
-      if (isOwnerRow) {
+      if (expertTeamMemberIsOwnerLikeRow(m, createdByUserId, soleMemberIsThisRow)) {
         return { label: 'Владелец', cls: 'tag tag-new' };
       }
       return expertMemberRoleUi(m.role);
@@ -2371,6 +2384,7 @@ if (platformMount) {
       syncExpertTeamOwnerButton(root);
       const token = getAccessToken();
       if (!token) {
+        expertTeamLastRows = [];
         expertTeamCreatedByUserId = null;
         expertTeamSoleMemberIsMe = false;
         syncExpertTeamOwnerButton(root);
@@ -2388,6 +2402,7 @@ if (platformMount) {
       }
       const eid = await resolveActiveExpertId();
       if (!eid) {
+        expertTeamLastRows = [];
         expertTeamCreatedByUserId = null;
         expertTeamSoleMemberIsMe = false;
         syncExpertTeamOwnerButton(root);
@@ -2438,6 +2453,7 @@ if (platformMount) {
         }
         expertTeamSoleMemberIsMe =
           items.length === 1 && Boolean(selfId) && items[0]!.userId === selfId;
+        expertTeamLastRows = items;
         syncExpertTeamOwnerButton(root);
         tbody.replaceChildren();
         const createdBy = data.createdByUserId ?? '';
@@ -2472,16 +2488,64 @@ if (platformMount) {
           av.className = 'avatar av-sm';
           av.style.background = 'var(--al)';
           av.style.color = 'var(--a)';
-          av.textContent = initials;
+          av.style.overflow = 'hidden';
+          const stored =
+            typeof m.avatarUrl === 'string' && m.avatarUrl.trim() ? m.avatarUrl.trim() : '';
+          const avatarSrc = stored ? getAvatarImageSrc(normalizeAssetUrl(stored) ?? stored) : '';
+          if (!avatarSrc) {
+            av.textContent = initials;
+          } else {
+            const img = document.createElement('img');
+            img.alt = '';
+            img.referrerPolicy = 'no-referrer';
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.borderRadius = '50%';
+            img.style.objectFit = 'cover';
+            img.addEventListener(
+              'error',
+              () => {
+                av.replaceChildren();
+                av.textContent = initials;
+              },
+              { once: true },
+            );
+            img.src = avatarSrc;
+            av.appendChild(img);
+          }
           const nameCol = document.createElement('div');
+          nameCol.style.minWidth = '0';
+          nameCol.style.flex = '1';
+          const nameRow = document.createElement('div');
+          nameRow.style.display = 'flex';
+          nameRow.style.alignItems = 'center';
+          nameRow.style.justifyContent = 'space-between';
+          nameRow.style.gap = '6px';
+          nameRow.style.minWidth = '0';
           const nm = document.createElement('div');
           nm.className = 'td-name';
+          nm.style.flex = '1';
+          nm.style.minWidth = '0';
           nm.textContent = name;
+          nameRow.appendChild(nm);
+          if (
+            canManageExpertTeam() &&
+            !expertTeamMemberIsOwnerLikeRow(m, createdBy, soleThis)
+          ) {
+            const gear = document.createElement('button');
+            gear.type = 'button';
+            gear.className = 'btn btn-ghost ep-team-member-gear';
+            gear.setAttribute('data-ep-team-member-edit', '');
+            gear.dataset.epTeamMemberUserId = m.userId;
+            gear.setAttribute('aria-label', 'Настройки участника');
+            gear.textContent = '⚙';
+            nameRow.appendChild(gear);
+          }
           const em = document.createElement('div');
           em.style.fontSize = '10px';
           em.style.color = 'var(--t3)';
           em.textContent = email || '—';
-          nameCol.append(nm, em);
+          nameCol.append(nameRow, em);
           wrap.append(av, nameCol);
           td1.appendChild(wrap);
 
@@ -2522,6 +2586,7 @@ if (platformMount) {
         td.textContent = 'Не удалось загрузить команду.';
         tr.appendChild(td);
         tbody.appendChild(tr);
+        expertTeamLastRows = [];
         expertTeamCreatedByUserId = null;
         expertTeamSoleMemberIsMe = false;
         syncExpertTeamOwnerButton(root);
@@ -2535,6 +2600,18 @@ if (platformMount) {
       if (dr) dr.style.display = 'none';
       const sg = root.querySelector('[data-ep-team-user-suggest]') as HTMLElement | null;
       if (sg) sg.style.display = 'none';
+      expertTeamDrawerEdit = null;
+      const search = root.querySelector('[data-ep-team-user-search]') as HTMLInputElement | null;
+      if (search) {
+        search.readOnly = false;
+        search.removeAttribute('readonly');
+      }
+      const title = root.querySelector('[data-ep-team-drawer-title]') as HTMLElement | null;
+      const submitBtn = root.querySelector('[data-ep-team-submit]') as HTMLButtonElement | null;
+      const delBtn = root.querySelector('[data-ep-team-drawer-delete]') as HTMLButtonElement | null;
+      if (title) title.textContent = 'Добавить участника';
+      if (submitBtn) submitBtn.textContent = 'Добавить';
+      if (delBtn) delBtn.style.display = 'none';
     }
 
     function renderExpertTeamUserSuggest(
@@ -2586,6 +2663,11 @@ if (platformMount) {
         renderExpertTeamUserSuggest(root, []);
         return;
       }
+      const teamSearchInp = root.querySelector('[data-ep-team-user-search]') as HTMLInputElement | null;
+      if (teamSearchInp?.readOnly) {
+        renderExpertTeamUserSuggest(root, []);
+        return;
+      }
       const token = getAccessToken();
       if (!token) return;
       const eid = await resolveActiveExpertId();
@@ -2605,7 +2687,26 @@ if (platformMount) {
       }
     }
 
-    async function fillExpertTeamCourseCheckboxes(root: ShadowRoot): Promise<void> {
+    type ExpertTeamCourseCheckboxSelection = null | 'all' | Set<string>;
+
+    function syncExpertTeamCoursesSelectAllCheckbox(root: ShadowRoot): void {
+      const allChk = root.querySelector('[data-ep-team-courses-select-all]') as HTMLInputElement | null;
+      const boxes = root.querySelectorAll<HTMLInputElement>('input[type="checkbox"][data-ep-team-course-id]');
+      if (!allChk || boxes.length === 0) {
+        if (allChk) allChk.checked = false;
+        return;
+      }
+      let every = true;
+      boxes.forEach((cb) => {
+        if (!cb.checked) every = false;
+      });
+      allChk.checked = every;
+    }
+
+    async function fillExpertTeamCourseCheckboxes(
+      root: ShadowRoot,
+      selection: ExpertTeamCourseCheckboxSelection = null,
+    ): Promise<void> {
       const host = root.querySelector('[data-ep-team-courses-list]') as HTMLElement | null;
       const allChk = root.querySelector('[data-ep-team-courses-select-all]') as HTMLInputElement | null;
       if (!host) return;
@@ -2638,12 +2739,20 @@ if (platformMount) {
           const cb = document.createElement('input');
           cb.type = 'checkbox';
           cb.dataset.epTeamCourseId = c.id;
+          if (selection === 'all') {
+            cb.checked = true;
+          } else if (selection instanceof Set) {
+            cb.checked = selection.has(c.id);
+          } else {
+            cb.checked = false;
+          }
           const span = document.createElement('span');
           span.style.color = 'var(--t2)';
           span.textContent = c.title;
           lab.append(cb, span);
           host.appendChild(lab);
         }
+        syncExpertTeamCoursesSelectAllCheckbox(root);
       } catch {
         const p = document.createElement('div');
         p.style.color = 'var(--err)';
@@ -2655,20 +2764,76 @@ if (platformMount) {
 
     async function openExpertTeamDrawer(root: ShadowRoot): Promise<void> {
       if (!canManageExpertTeam()) return;
+      expertTeamDrawerEdit = null;
       const bd = root.querySelector('[data-ep-team-drawer-backdrop]') as HTMLElement | null;
       const dr = root.querySelector('[data-ep-team-drawer]') as HTMLElement | null;
       if (!bd || !dr) return;
       bd.style.display = '';
       dr.style.display = '';
+      const title = root.querySelector('[data-ep-team-drawer-title]') as HTMLElement | null;
+      const submitBtn = root.querySelector('[data-ep-team-submit]') as HTMLButtonElement | null;
+      const delBtn = root.querySelector('[data-ep-team-drawer-delete]') as HTMLButtonElement | null;
+      if (title) title.textContent = 'Добавить участника';
+      if (submitBtn) submitBtn.textContent = 'Добавить';
+      if (delBtn) delBtn.style.display = 'none';
       const search = root.querySelector('[data-ep-team-user-search]') as HTMLInputElement | null;
       const hid = root.querySelector('[data-ep-team-user-id]') as HTMLInputElement | null;
       const role = root.querySelector('[data-ep-team-role]') as HTMLSelectElement | null;
-      if (search) search.value = '';
+      if (search) {
+        search.value = '';
+        search.readOnly = false;
+        search.removeAttribute('readonly');
+      }
       if (hid) hid.value = '';
       if (role) role.value = 'manager';
       expertTeamDrawerSelectedUserId = null;
       renderExpertTeamUserSuggest(root, []);
-      await fillExpertTeamCourseCheckboxes(root);
+      await fillExpertTeamCourseCheckboxes(root, null);
+    }
+
+    async function openExpertTeamDrawerEdit(root: ShadowRoot, member: ExpertTeamMemberRowV1): Promise<void> {
+      if (!canManageExpertTeam()) return;
+      const createdBy = expertTeamCreatedByUserId ?? '';
+      const selfId = currentMe?.id ?? '';
+      const soleThis =
+        expertTeamLastRows.length === 1 && Boolean(selfId) && member.userId === selfId;
+      if (expertTeamMemberIsOwnerLikeRow(member, createdBy, soleThis)) return;
+
+      const bd = root.querySelector('[data-ep-team-drawer-backdrop]') as HTMLElement | null;
+      const dr = root.querySelector('[data-ep-team-drawer]') as HTMLElement | null;
+      if (!bd || !dr) return;
+      expertTeamDrawerEdit = member;
+      bd.style.display = '';
+      dr.style.display = '';
+      const title = root.querySelector('[data-ep-team-drawer-title]') as HTMLElement | null;
+      const submitBtn = root.querySelector('[data-ep-team-submit]') as HTMLButtonElement | null;
+      const delBtn = root.querySelector('[data-ep-team-drawer-delete]') as HTMLButtonElement | null;
+      if (title) title.textContent = 'Участник команды';
+      if (submitBtn) submitBtn.textContent = 'Сохранить';
+      if (delBtn) delBtn.style.display = '';
+
+      const search = root.querySelector('[data-ep-team-user-search]') as HTMLInputElement | null;
+      const hid = root.querySelector('[data-ep-team-user-id]') as HTMLInputElement | null;
+      const role = root.querySelector('[data-ep-team-role]') as HTMLSelectElement | null;
+      if (search) {
+        search.value = expertMemberDisplayName(member);
+        search.readOnly = true;
+      }
+      if (hid) hid.value = member.userId;
+      expertTeamDrawerSelectedUserId = member.userId;
+      const r = member.role;
+      if (role) {
+        if (r === 'manager' || r === 'reviewer' || r === 'support') role.value = r;
+        else role.value = 'manager';
+      }
+      renderExpertTeamUserSuggest(root, []);
+
+      let selection: ExpertTeamCourseCheckboxSelection = new Set();
+      if (Array.isArray(member.courseIds) && member.courseIds.length > 0) {
+        selection = new Set(member.courseIds);
+      }
+
+      await fillExpertTeamCourseCheckboxes(root, selection);
     }
 
     function builderScreen(root: ShadowRoot): HTMLElement | null {
@@ -4379,6 +4544,36 @@ if (platformMount) {
         void openExpertTeamDrawer(shell.shadowRoot);
         return;
       }
+      if (t?.closest('[data-ep-team-member-edit]')) {
+        ev.preventDefault();
+        const btn = t.closest('[data-ep-team-member-edit]') as HTMLElement | null;
+        const uid = (btn?.dataset.epTeamMemberUserId ?? '').trim();
+        if (!uid) return;
+        const row = expertTeamLastRows.find((x) => x.userId === uid);
+        if (!row) return;
+        void openExpertTeamDrawerEdit(shell.shadowRoot, row);
+        return;
+      }
+      if (t?.closest('[data-ep-team-drawer-delete]')) {
+        ev.preventDefault();
+        void (async () => {
+          if (!canManageExpertTeam() || !expertTeamDrawerEdit) return;
+          if (!window.confirm('Удалить участника из команды? Доступ к курсам будет отозван.')) return;
+          const token = getAccessToken();
+          const eid = await resolveActiveExpertId();
+          const uid = expertTeamDrawerEdit.userId;
+          if (!token || !eid || !uid) return;
+          try {
+            await deleteJson(`/experts/${encodeURIComponent(eid)}/team/members/${encodeURIComponent(uid)}`, token);
+            closeExpertTeamDrawer(shell.shadowRoot);
+            void hydrateExpertTeam(shell.shadowRoot);
+            window.alert('Участник удалён из команды.');
+          } catch {
+            window.alert('Не удалось удалить участника.');
+          }
+        })();
+        return;
+      }
       if (t?.closest('[data-ep-team-submit]')) {
         ev.preventDefault();
         void (async () => {
@@ -4389,22 +4584,55 @@ if (platformMount) {
           const hid = shell.shadowRoot.querySelector('[data-ep-team-user-id]') as HTMLInputElement | null;
           const roleSel = shell.shadowRoot.querySelector('[data-ep-team-role]') as HTMLSelectElement | null;
           const userId = (hid?.value ?? expertTeamDrawerSelectedUserId ?? '').trim();
-          const role = (roleSel?.value ?? 'manager').trim() as 'manager' | 'reviewer' | 'support';
-          if (!userId) {
-            window.alert('Выберите пользователя из подсказки поиска.');
-            return;
-          }
-          const boxes = shell.shadowRoot.querySelectorAll<HTMLInputElement>('input[type="checkbox"][data-ep-team-course-id]');
+          const role = (roleSel?.value ?? 'manager').trim() as 'owner' | 'manager' | 'reviewer' | 'support';
+          const boxes = shell.shadowRoot.querySelectorAll<HTMLInputElement>(
+            'input[type="checkbox"][data-ep-team-course-id]',
+          );
           const courseIds: string[] = [];
           boxes.forEach((cb) => {
             if (cb.checked && cb.dataset.epTeamCourseId) courseIds.push(cb.dataset.epTeamCourseId);
           });
+
+          if (expertTeamDrawerEdit) {
+            if (!userId) {
+              window.alert('Не удалось определить пользователя.');
+              return;
+            }
+            if (role !== 'owner' && courseIds.length === 0) {
+              window.alert('Выберите хотя бы один курс.');
+              return;
+            }
+            try {
+              const body: { role: typeof role; courseIds?: string[] } = { role };
+              if (role !== 'owner') body.courseIds = courseIds;
+              await patchJson(
+                `/experts/${encodeURIComponent(eid)}/team/members/${encodeURIComponent(userId)}`,
+                body,
+                token,
+              );
+              closeExpertTeamDrawer(shell.shadowRoot);
+              void hydrateExpertTeam(shell.shadowRoot);
+              window.alert('Изменения сохранены.');
+            } catch {
+              window.alert('Не удалось сохранить изменения.');
+            }
+            return;
+          }
+
+          if (!userId) {
+            window.alert('Выберите пользователя из подсказки поиска.');
+            return;
+          }
           if (courseIds.length === 0) {
             window.alert('Выберите хотя бы один курс.');
             return;
           }
           try {
-            await postJson(`/experts/${encodeURIComponent(eid)}/team/members`, { userId, role, courseIds }, token);
+            await postJson(
+              `/experts/${encodeURIComponent(eid)}/team/members`,
+              { userId, role: role as 'manager' | 'reviewer' | 'support', courseIds },
+              token,
+            );
             closeExpertTeamDrawer(shell.shadowRoot);
             void hydrateExpertTeam(shell.shadowRoot);
             window.alert('Участник добавлен.');
@@ -5061,6 +5289,7 @@ if (platformMount) {
       }
 
       if (inp.matches('[data-ep-team-user-search]')) {
+        if (inp.readOnly) return;
         expertTeamDrawerSelectedUserId = null;
         const hid = shell.shadowRoot.querySelector('[data-ep-team-user-id]') as HTMLInputElement | null;
         if (hid) hid.value = '';

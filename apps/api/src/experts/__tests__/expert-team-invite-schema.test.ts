@@ -36,6 +36,8 @@ describe('AddExpertTeamMemberByUserRequestV1Schema', () => {
       coursesLabel: '2 курса',
       lastActivityAt: '2026-01-02T00:00:00.000Z',
       isWorkspaceCreator: true,
+      avatarUrl: null,
+      courseIds: [courseId],
     });
     assert.strictEqual(r.success, true);
   });

@@ -1494,7 +1494,7 @@
     <div class="ep-access-drawer-head">
       <div>
         <div class="ep-access-drawer-kicker">Команда</div>
-        <div class="ep-access-drawer-title">Добавить участника</div>
+        <div class="ep-access-drawer-title" data-ep-team-drawer-title>Добавить участника</div>
       </div>
       <button type="button" class="btn btn-ghost btn-sm ep-access-drawer-close" data-ep-team-drawer-close aria-label="Закрыть">✕</button>
     </div>
@@ -1522,7 +1522,10 @@
         </div>
         <div data-ep-team-courses-list style="display:flex;flex-direction:column;gap:8px;max-height:220px;overflow:auto;font-size:12px"></div>
       </div>
-      <button type="button" class="btn btn-primary" style="width:100%;justify-content:center" data-ep-team-submit>Добавить</button>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+        <button type="button" class="btn btn-primary" style="width:100%;justify-content:center" data-ep-team-submit>Добавить</button>
+        <button type="button" class="btn ep-team-drawer-delete" style="display:none;width:100%;justify-content:center" data-ep-team-drawer-delete>Удалить из команды</button>
+      </div>
     </div>
   </aside>
 

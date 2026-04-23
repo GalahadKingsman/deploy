@@ -38,8 +38,20 @@ export const AddExpertTeamMemberByUserRequestV1Schema = z
 /** Body: PATCH .../team/members/:userId */
 export interface UpdateExpertTeamMemberRoleRequestV1 {
   role: ExpertMemberRoleV1;
+  /**
+   * Если передано и роль не owner — полностью заменить доступ к курсам (expert_member_course_access).
+   * Если не передано — только смена роли, курсы по прежним правилам API.
+   */
+  courseIds?: string[];
 }
 
-export const UpdateExpertTeamMemberRoleRequestV1Schema = z.object({
-  role: ExpertMemberRoleV1Schema,
-});
+export const UpdateExpertTeamMemberRoleRequestV1Schema = z
+  .object({
+    role: ExpertMemberRoleV1Schema,
+    courseIds: z.array(z.string().uuid()).optional(),
+  })
+  .superRefine((d, ctx) => {
+    if (d.role !== 'owner' && d.courseIds !== undefined && d.courseIds.length < 1) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'courseIds must include at least one course', path: ['courseIds'] });
+    }
+  });

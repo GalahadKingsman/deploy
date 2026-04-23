@@ -258,6 +258,25 @@ export class ExpertTeamController {
     );
     if (parsed.data.role === 'owner') {
       await this.expertMemberCourseAccessRepository.deleteAllForMember(expertId, targetUserId);
+    } else if (parsed.data.courseIds !== undefined) {
+      await this.coursesRepository.assertAllCoursesBelongToExpert(expertId, parsed.data.courseIds);
+      const c = await this.pool.connect();
+      try {
+        await c.query('BEGIN');
+        await this.expertMemberCourseAccessRepository.deleteForMember(c, expertId, targetUserId);
+        await this.expertMemberCourseAccessRepository.insertPairsForMember(
+          c,
+          expertId,
+          targetUserId,
+          parsed.data.courseIds,
+        );
+        await c.query('COMMIT');
+      } catch (e) {
+        await c.query('ROLLBACK');
+        throw e;
+      } finally {
+        c.release();
+      }
     } else {
       const cnt = await this.expertMemberCourseAccessRepository.countForMember(expertId, targetUserId);
       if (cnt === 0) {
@@ -278,7 +297,13 @@ export class ExpertTeamController {
       action: 'expert.team.role_change',
       entityType: 'expert',
       entityId: expertId,
-      meta: { expertId, userId: targetUserId, prevRole: current.role, role: parsed.data.role },
+      meta: {
+        expertId,
+        userId: targetUserId,
+        prevRole: current.role,
+        role: parsed.data.role,
+        ...(parsed.data.courseIds !== undefined ? { courseIds: parsed.data.courseIds } : {}),
+      },
       traceId: traceIdFrom(req),
     });
     return { member };
@@ -307,6 +332,13 @@ export class ExpertTeamController {
           message: 'Cannot remove the last owner',
         });
       }
+    }
+    const expert = await this.expertsRepository.findExpertById(expertId);
+    if (expert && expert.createdByUserId === targetUserId) {
+      throw new ForbiddenException({
+        code: ErrorCodes.CONFLICT,
+        message: 'Нельзя удалить создателя кабинета из команды',
+      });
     }
     await this.expertMembersRepository.removeMember(expertId, targetUserId);
     await this.auditService.write({

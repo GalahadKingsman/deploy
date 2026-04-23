@@ -39,8 +39,10 @@ interface ExpertTeamMemberRow {
   last_name: string | null;
   email: string | null;
   updated_at: Date;
+  avatar_url: string | null;
   course_access_count: string;
   is_workspace_creator: boolean;
+  course_ids: string[] | null;
 }
 
 export class ExpertMembersRepository {
@@ -179,8 +181,17 @@ export class ExpertMembersRepository {
     const result = await this.pool.query<ExpertTeamMemberRow>(
       `
       SELECT em.user_id, em.role, em.created_at, u.username, u.first_name, u.last_name, u.email, u.updated_at,
+        u.avatar_url,
         COALESCE(acc.n, 0)::text AS course_access_count,
-        (e.created_by_user_id IS NOT NULL AND e.created_by_user_id = em.user_id) AS is_workspace_creator
+        (e.created_by_user_id IS NOT NULL AND e.created_by_user_id = em.user_id) AS is_workspace_creator,
+        COALESCE(
+          (
+            SELECT array_agg(emca.course_id ORDER BY emca.course_id)
+            FROM expert_member_course_access emca
+            WHERE emca.expert_id = em.expert_id AND emca.user_id = em.user_id
+          ),
+          ARRAY[]::uuid[]
+        ) AS course_ids
       FROM expert_members em
       JOIN users u ON u.id = em.user_id
       JOIN experts e ON e.id = em.expert_id
@@ -197,6 +208,8 @@ export class ExpertMembersRepository {
 
     return result.rows.map((r) => {
       const courseAccessCount = parseInt(r.course_access_count, 10) || 0;
+      const rawCourseIds = r.course_ids;
+      const courseIds = Array.isArray(rawCourseIds) ? rawCourseIds.map((id) => String(id)) : [];
       return {
         userId: r.user_id,
         role: r.role as ContractsV1.ExpertMemberRoleV1,
@@ -208,6 +221,8 @@ export class ExpertMembersRepository {
         coursesLabel: formatCoursesLabelRu(r.role, courseAccessCount),
         lastActivityAt: r.updated_at ? r.updated_at.toISOString() : null,
         isWorkspaceCreator: r.is_workspace_creator,
+        avatarUrl: r.avatar_url,
+        courseIds,
       };
     });
   }
