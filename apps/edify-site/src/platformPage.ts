@@ -7,7 +7,7 @@ import { mountPlatformShell } from './platform/mountPlatformShell.js';
 import { normalizeRutubeEmbedUrl } from './util/rutubeEmbed.js';
 import { downloadAuthenticatedFile, previewAuthenticatedFile } from './downloadAuthenticatedFile.js';
 import { setRichTextWithLinks } from './renderTextWithLinksDom.js';
-import { getAvatarImageSrc } from './avatarImageUrl.js';
+import { applyUserAvatarToElement } from './userAvatarEl.js';
 
 function renderAuthGate(): void {
   document.body.classList.add('platform-gate');
@@ -755,36 +755,8 @@ if (platformMount) {
 
         const av = screen.querySelector('[data-ep-profile-avatar]') as HTMLElement | null;
         if (av) {
-          const raw = typeof u.avatarUrl === 'string' ? u.avatarUrl.trim() : '';
-          av.replaceChildren();
-          const initials = initialsFromNameLocal(disp);
-          if (!raw) {
-            av.textContent = initials;
-          } else {
-            const img = document.createElement('img');
-            img.alt = '';
-            img.referrerPolicy = 'no-referrer';
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.borderRadius = '50%';
-            img.style.objectFit = 'cover';
-            img.addEventListener(
-              'error',
-              () => {
-                av.replaceChildren();
-                av.textContent = initials;
-              },
-              { once: true },
-            );
-            const src = getAvatarImageSrc(raw);
-            if (!src) {
-              av.replaceChildren();
-              av.textContent = initials;
-            } else {
-              img.src = src;
-              av.appendChild(img);
-            }
-          }
+          const initialsP = initialsFromNameLocal(disp);
+          applyUserAvatarToElement(av, u.avatarUrl, initialsP);
         }
 
         const tgBtn = screen.querySelector('[data-ep-profile-connect-telegram]') as HTMLButtonElement | null;
@@ -1844,42 +1816,6 @@ if (platformMount) {
       return (a + b).slice(0, 2) || 'ED';
     }
 
-    /** Круг: фото с `/public/avatar` / URL или инициалы (та же схема, что в «Кураторы и менеджеры»). */
-    function setAvatarNode(
-      el: HTMLElement,
-      rawUrl: string | null | undefined,
-      nameForInitials: string,
-    ): void {
-      el.replaceChildren();
-      const initials = initialsFromName(nameForInitials);
-      const stored = typeof rawUrl === 'string' ? rawUrl.trim() : '';
-      const avatarSrc = stored ? getAvatarImageSrc(normalizeAssetUrl(stored) ?? stored) : '';
-      el.style.background = 'var(--al)';
-      el.style.color = 'var(--a)';
-      if (!avatarSrc) {
-        el.textContent = initials;
-        return;
-      }
-      const img = document.createElement('img');
-      img.alt = '';
-      img.referrerPolicy = 'no-referrer';
-      img.style.width = '100%';
-      img.style.height = '100%';
-      img.style.borderRadius = '50%';
-      img.style.objectFit = 'cover';
-      img.style.display = 'block';
-      img.addEventListener(
-        'error',
-        () => {
-          el.replaceChildren();
-          el.textContent = initials;
-        },
-        { once: true },
-      );
-      img.src = avatarSrc;
-      el.appendChild(img);
-    }
-
     /** Как в веб-приложении (ExpertHomePage): при активной подписке — expertId из /me/expert-subscription, иначе первое членство. */
     type ExpertSubscriptionPickV1 = {
       expertId: string;
@@ -2031,36 +1967,8 @@ if (platformMount) {
         const name = displayName(u);
         nameEl.textContent = name;
         roleEl.textContent = inExpertTeam ? 'Эксперт' : 'Ученик';
-        const raw = typeof u.avatarUrl === 'string' ? u.avatarUrl.trim() : '';
-        avatarEl.replaceChildren();
-        const initials = initialsFromName(name);
-        if (!raw) {
-          avatarEl.textContent = initials;
-          return;
-        }
-        const img = document.createElement('img');
-        img.alt = '';
-        img.referrerPolicy = 'no-referrer';
-        img.style.width = '100%';
-        img.style.height = '100%';
-        img.style.borderRadius = '50%';
-        img.style.objectFit = 'cover';
-        img.addEventListener(
-          'error',
-          () => {
-            avatarEl.replaceChildren();
-            avatarEl.textContent = initials;
-          },
-          { once: true },
-        );
-        const src = getAvatarImageSrc(raw);
-        if (!src) {
-          avatarEl.replaceChildren();
-          avatarEl.textContent = initials;
-          return;
-        }
-        img.src = src;
-        avatarEl.appendChild(img);
+        const initialsT = initialsFromName(name);
+        applyUserAvatarToElement(avatarEl, u.avatarUrl, initialsT);
       } catch {
         expertShellAccess.allowed = false;
         activeExpertId = null;
@@ -2527,6 +2435,7 @@ if (platformMount) {
         for (const m of items) {
           const tr = document.createElement('tr');
           const name = expertMemberDisplayName(m);
+          const nameInitials = initialsFromName(name);
           const isSelf = Boolean(selfId && m.userId === selfId);
           const soleThis =
             items.length === 1 && Boolean(selfId) && m.userId === selfId;
@@ -2543,7 +2452,7 @@ if (platformMount) {
           av.style.overflow = 'hidden';
           const rawAv = (m as { avatarUrl?: string | null; avatar_url?: string | null }).avatarUrl;
           const rawSnake = (m as { avatar_url?: string | null }).avatar_url;
-          setAvatarNode(av, rawAv ?? rawSnake ?? null, name);
+          applyUserAvatarToElement(av, rawAv ?? rawSnake ?? null, nameInitials);
           const nameCol = document.createElement('div');
           nameCol.style.minWidth = '0';
           nameCol.style.flex = '1';
@@ -2779,7 +2688,7 @@ if (platformMount) {
             : typeof uRow.student_avatar_url === 'string' && uRow.student_avatar_url.trim()
               ? uRow.student_avatar_url
               : null;
-        setAvatarNode(av, rawStuAv, disp);
+        applyUserAvatarToElement(av, rawStuAv, initialsFromName(disp));
 
         const body = document.createElement('div');
         body.className = 'hw-card-body';
@@ -2926,7 +2835,7 @@ if (platformMount) {
 
         if (av) {
           const stu = d.student as { avatarUrl?: string | null; avatar_url?: string | null };
-          setAvatarNode(av, stu.avatarUrl ?? stu.avatar_url ?? null, disp);
+          applyUserAvatarToElement(av, stu.avatarUrl ?? stu.avatar_url ?? null, initialsFromName(disp));
         }
 
         if (fileRow) {
