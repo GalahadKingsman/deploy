@@ -1,8 +1,8 @@
 import { createHmac, randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ContractsV1, ErrorCodes, ApiEnvSchema, validateOrThrow } from '@tracked/shared';
-import type { Pool } from 'pg';
+import { Pool } from 'pg';
 import { UsersRepository } from '../../users/users.repository.js';
 
 const env = validateOrThrow(ApiEnvSchema, process.env);
@@ -10,7 +10,7 @@ const env = validateOrThrow(ApiEnvSchema, process.env);
 @Injectable()
 export class PasswordResetService {
   constructor(
-    private readonly pool: Pool,
+    @Inject(Pool) private readonly pool: Pool,
     private readonly usersRepository: UsersRepository,
   ) {}
 
