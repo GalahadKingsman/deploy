@@ -261,10 +261,10 @@ table.tbl tr:hover td{background:var(--bg)}
 }
 .ep-team-member-gear{
   flex-shrink:0;
-  font-size:15px;
+  font-size:18px;
   line-height:1;
-  padding:4px 6px;
-  min-width:32px;
+  padding:6px 10px;
+  min-width:44px;
   color:var(--t3);
 }
 .ep-team-member-gear:hover{color:var(--t1)}

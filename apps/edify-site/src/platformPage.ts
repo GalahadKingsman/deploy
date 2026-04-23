@@ -2544,19 +2544,6 @@ if (platformMount) {
           nm.style.minWidth = '0';
           nm.textContent = name;
           nameRow.appendChild(nm);
-          if (
-            canManageExpertTeam() &&
-            !expertTeamMemberIsOwnerLikeRow(m, createdBy, soleThis)
-          ) {
-            const gear = document.createElement('button');
-            gear.type = 'button';
-            gear.className = 'btn btn-ghost ep-team-member-gear';
-            gear.setAttribute('data-ep-team-member-edit', '');
-            gear.dataset.epTeamMemberUserId = m.userId;
-            gear.setAttribute('aria-label', 'Настройки участника');
-            gear.textContent = '⚙';
-            nameRow.appendChild(gear);
-          }
           const em = document.createElement('div');
           em.style.fontSize = '10px';
           em.style.color = 'var(--t3)';
@@ -2588,6 +2575,20 @@ if (platformMount) {
           td4.textContent = formatExpertLastActivity(m.lastActivityAt);
 
           const td5 = document.createElement('td');
+          td5.style.textAlign = 'right';
+          if (
+            canManageExpertTeam() &&
+            !expertTeamMemberIsOwnerLikeRow(m, createdBy, soleThis)
+          ) {
+            const gear = document.createElement('button');
+            gear.type = 'button';
+            gear.className = 'btn btn-ghost ep-team-member-gear';
+            gear.setAttribute('data-ep-team-member-edit', '');
+            gear.dataset.epTeamMemberUserId = m.userId;
+            gear.setAttribute('aria-label', 'Настройки участника');
+            gear.textContent = '⚙';
+            td5.appendChild(gear);
+          }
           tr.append(td1, td2, td3, td4, td5);
           tbody.appendChild(tr);
         }
