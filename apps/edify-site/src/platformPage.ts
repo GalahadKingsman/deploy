@@ -2429,7 +2429,7 @@ if (platformMount) {
               selfId = meRes.user.id;
             }
           } catch {
-            // остаёмся без selfId — без метки (вы) и единственного участника
+            // остаёмся без selfId — без «это вы» в колонке роли
           }
         }
         const meFromTeam = selfId ? items.find((x) => x.userId === selfId) : undefined;
@@ -2457,10 +2457,10 @@ if (platformMount) {
           const tr = document.createElement('tr');
           const name = expertMemberDisplayName(m);
           const initials = initialsFromName(name);
+          const isSelf = Boolean(selfId && m.userId === selfId);
           const soleThis =
             items.length === 1 && Boolean(selfId) && m.userId === selfId;
           const roleUi = expertMemberRoleForRow(m, createdBy, soleThis);
-          const isSelf = Boolean(selfId && m.userId === selfId);
           const email = (m.email ?? '').trim();
 
           const td1 = document.createElement('td');
@@ -2476,7 +2476,7 @@ if (platformMount) {
           const nameCol = document.createElement('div');
           const nm = document.createElement('div');
           nm.className = 'td-name';
-          nm.textContent = isSelf ? `${name} (вы)` : name;
+          nm.textContent = name;
           const em = document.createElement('div');
           em.style.fontSize = '10px';
           em.style.color = 'var(--t3)';
@@ -2486,10 +2486,17 @@ if (platformMount) {
           td1.appendChild(wrap);
 
           const td2 = document.createElement('td');
-          const tag = document.createElement('span');
-          tag.className = roleUi.cls;
-          tag.textContent = roleUi.label;
-          td2.appendChild(tag);
+          if (isSelf) {
+            const you = document.createElement('span');
+            you.className = 'ep-team-role-you';
+            you.textContent = 'это вы';
+            td2.appendChild(you);
+          } else {
+            const tag = document.createElement('span');
+            tag.className = roleUi.cls;
+            tag.textContent = roleUi.label;
+            td2.appendChild(tag);
+          }
 
           const td3 = document.createElement('td');
           td3.style.color = 'var(--t2)';

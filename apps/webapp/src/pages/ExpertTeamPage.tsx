@@ -202,11 +202,13 @@ export function ExpertTeamPage() {
               <div style={{ fontWeight: 'var(--font-weight-semibold)' }}>{displayName(m)}</div>
               <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>
                 userId: {m.userId} ·{' '}
-                {teamRowLabel(
-                  m,
-                  data.createdByUserId,
-                  data.items.length === 1 && m.userId === meRow?.userId,
-                )}
+                {meRow && m.userId === meRow.userId
+                  ? 'это вы'
+                  : teamRowLabel(
+                      m,
+                      data.createdByUserId,
+                      data.items.length === 1 && m.userId === meRow?.userId,
+                    )}
               </div>
               <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>
                 {m.email ?? '—'} · {m.coursesLabel}

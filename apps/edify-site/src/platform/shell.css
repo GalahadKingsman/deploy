@@ -252,6 +252,13 @@ table.tbl tr:hover td{background:var(--bg)}
 .ep-team-members-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 .ep-team-members-heading .sec-title{margin-bottom:0}
 .ep-team-members-heading [data-ep-team-add-open]{flex-shrink:0}
+/* Текущий пользователь в таблице команды — подпись в колонке «Роль» */
+.ep-team-role-you{
+  font-size:12px;
+  color:var(--t3);
+  font-weight:500;
+  letter-spacing:0.01em;
+}
 
 /* Divider */
 .div{height:1px;background:var(--line);margin:20px 0}
