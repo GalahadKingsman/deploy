@@ -2765,8 +2765,10 @@ if (platformMount) {
         const avatarSrc = stored ? getAvatarImageSrc(normalizeAssetUrl(stored) ?? stored) : '';
         av.style.background = 'var(--al)';
         av.style.color = 'var(--a)';
-        av.textContent = initials;
-        if (avatarSrc) {
+        av.replaceChildren();
+        if (!avatarSrc) {
+          av.textContent = initials;
+        } else {
           const img = document.createElement('img');
           img.alt = '';
           img.referrerPolicy = 'no-referrer';
@@ -2778,8 +2780,6 @@ if (platformMount) {
             'error',
             () => {
               av.replaceChildren();
-              av.style.background = 'var(--al)';
-              av.style.color = 'var(--a)';
               av.textContent = initials;
             },
             { once: true },
@@ -2934,8 +2934,9 @@ if (platformMount) {
           const avatarSrc = stored ? getAvatarImageSrc(normalizeAssetUrl(stored) ?? stored) : '';
           av.style.background = 'var(--al)';
           av.style.color = 'var(--a)';
-          av.textContent = initials;
-          if (avatarSrc) {
+          if (!avatarSrc) {
+            av.textContent = initials;
+          } else {
             const img = document.createElement('img');
             img.alt = '';
             img.referrerPolicy = 'no-referrer';
@@ -2947,8 +2948,6 @@ if (platformMount) {
               'error',
               () => {
                 av.replaceChildren();
-                av.style.background = 'var(--al)';
-                av.style.color = 'var(--a)';
                 av.textContent = initials;
               },
               { once: true },
