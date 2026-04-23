@@ -2801,7 +2801,7 @@ if (platformMount) {
         search.removeAttribute('readonly');
       }
       if (hid) hid.value = '';
-      if (role) role.value = 'manager';
+      if (role) role.value = 'reviewer';
       expertTeamDrawerSelectedUserId = null;
       renderExpertTeamUserSuggest(root, []);
       await fillExpertTeamCourseCheckboxes(root, null);
@@ -2839,8 +2839,8 @@ if (platformMount) {
       expertTeamDrawerSelectedUserId = member.userId;
       const r = member.role;
       if (role) {
-        if (r === 'manager' || r === 'reviewer' || r === 'support') role.value = r;
-        else role.value = 'manager';
+        if (r === 'reviewer' || r === 'support') role.value = r;
+        else role.value = 'reviewer';
       }
       renderExpertTeamUserSuggest(root, []);
 
@@ -4600,7 +4600,7 @@ if (platformMount) {
           const hid = shell.shadowRoot.querySelector('[data-ep-team-user-id]') as HTMLInputElement | null;
           const roleSel = shell.shadowRoot.querySelector('[data-ep-team-role]') as HTMLSelectElement | null;
           const userId = (hid?.value ?? expertTeamDrawerSelectedUserId ?? '').trim();
-          const role = (roleSel?.value ?? 'manager').trim() as 'owner' | 'manager' | 'reviewer' | 'support';
+          const role = (roleSel?.value ?? 'reviewer').trim() as 'reviewer' | 'support';
           const boxes = shell.shadowRoot.querySelectorAll<HTMLInputElement>(
             'input[type="checkbox"][data-ep-team-course-id]',
           );
@@ -4614,13 +4614,12 @@ if (platformMount) {
               window.alert('Не удалось определить пользователя.');
               return;
             }
-            if (role !== 'owner' && courseIds.length === 0) {
+            if (courseIds.length === 0) {
               window.alert('Выберите хотя бы один курс.');
               return;
             }
             try {
-              const body: { role: typeof role; courseIds?: string[] } = { role };
-              if (role !== 'owner') body.courseIds = courseIds;
+              const body: { role: typeof role; courseIds: string[] } = { role, courseIds };
               await patchJson(
                 `/experts/${encodeURIComponent(eid)}/team/members/${encodeURIComponent(userId)}`,
                 body,
@@ -4646,7 +4645,7 @@ if (platformMount) {
           try {
             await postJson(
               `/experts/${encodeURIComponent(eid)}/team/members`,
-              { userId, role: role as 'manager' | 'reviewer' | 'support', courseIds },
+              { userId, role, courseIds },
               token,
             );
             closeExpertTeamDrawer(shell.shadowRoot);
