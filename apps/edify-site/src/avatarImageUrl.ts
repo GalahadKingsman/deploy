@@ -36,10 +36,23 @@ export function getAvatarImageSrc(avatarUrl: string | null | undefined): string 
   const api = getApiBaseUrl();
   if (key.startsWith('avatars/')) {
     if (api) return `${api}/public/avatar?key=${encodeURIComponent(key)}`;
+    // Без VITE_API_BASE_URL и пустой meta: относительный /public/avatar уйдёт на origin сайта, а не API.
+    if (typeof window !== 'undefined' && window.location?.hostname) {
+      const h = window.location.hostname;
+      if (h === 'edify.su' || h.endsWith('.edify.su')) {
+        return `https://api.edify.su/public/avatar?key=${encodeURIComponent(key)}`;
+      }
+    }
     return `/public/avatar?key=${encodeURIComponent(key)}`;
   }
   if (raw.startsWith('/')) {
     if (api) return `${api.replace(/\/$/, '')}${raw}`;
+    if (typeof window !== 'undefined' && window.location?.hostname) {
+      const h = window.location.hostname;
+      if (h === 'edify.su' || h.endsWith('.edify.su')) {
+        return `https://api.edify.su${raw}`;
+      }
+    }
     return raw;
   }
   return raw;

@@ -10,6 +10,10 @@ import { SubmissionsRepository } from '../../submissions/submissions.repository.
 import { AssignmentsRepository } from '../../assignments/assignments.repository.js';
 import { LessonsRepository } from '../../authoring/lessons.repository.js';
 import { ExpertCourseAccessService } from './expert-course-access.service.js';
+import {
+  getPublicApiBaseFromRequest,
+  resolveUserAvatarToAbsoluteForBrowser,
+} from '../../common/http/resolve-user-avatar-for-browser.js';
 
 @ApiTags('Expert Homework')
 @Controller('experts/:expertId/homework')
@@ -66,7 +70,16 @@ export class ExpertHomeworkController {
       filter: f,
       limit: 200,
     });
-    return { items };
+    const base = getPublicApiBaseFromRequest(req);
+    return {
+      items: items.map((it) => {
+        const abs = resolveUserAvatarToAbsoluteForBrowser(it.studentAvatarUrl, base);
+        return {
+          ...it,
+          studentAvatarUrl: abs ?? it.studentAvatarUrl,
+        };
+      }),
+    };
   }
 
   @Get('submissions/:submissionId')
@@ -117,13 +130,19 @@ export class ExpertHomeworkController {
       (await this.lessonsRepository.getTitleForExpertLesson({ expertId, lessonId: d.submission.lessonId })) ??
       d.lessonTitle;
 
+    const base = getPublicApiBaseFromRequest(req);
+    const avatarAbs = resolveUserAvatarToAbsoluteForBrowser(d.student.avatarUrl, base);
+
     return {
       submission: d.submission,
       assignmentPromptMarkdown: prompt,
       courseTitle: d.courseTitle,
       moduleTitle: d.moduleTitle,
       lessonTitle: lt,
-      student: d.student,
+      student: {
+        ...d.student,
+        avatarUrl: avatarAbs ?? d.student.avatarUrl,
+      },
     };
   }
 }
