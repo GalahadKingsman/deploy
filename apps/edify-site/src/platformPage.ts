@@ -1651,6 +1651,8 @@ if (platformMount) {
       img.alt = '';
       img.referrerPolicy = 'no-referrer';
       img.loading = 'lazy';
+      img.dataset.epLessonSliderFs = '1';
+      img.setAttribute('title', 'На весь экран');
       imgWrap.appendChild(img);
 
       const controls = document.createElement('div');
@@ -6076,6 +6078,14 @@ if (platformMount) {
           cb.checked = on;
         });
       }
+    });
+
+    window.addEventListener('keydown', (ev: KeyboardEvent) => {
+      if (ev.key !== 'Escape') return;
+      const vw = shell.shadowRoot.querySelector('[data-ep-slider-viewer]') as HTMLElement | null;
+      if (!vw || vw.style.display === 'none') return;
+      ev.preventDefault();
+      closeBuilderSliderViewer(shell.shadowRoot);
     });
   }
 }

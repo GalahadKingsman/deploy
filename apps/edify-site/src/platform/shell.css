@@ -583,6 +583,7 @@ textarea.form-input{resize:vertical;min-height:80px}
   height:100%;
   object-fit:cover;
   display:block;
+  cursor:pointer;
 }
 .ep-lesson-slider__controls{
   display:flex;
