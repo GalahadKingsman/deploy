@@ -5921,40 +5921,42 @@ if (platformMount) {
         const files = Array.from(inp.files ?? []);
         inp.value = '';
         if (!builderSliderDraft) return;
-        const tok = getAccessToken();
-        const eid = await resolveBuilderExpertId();
-        const mid = builderSelectedModuleId;
-        const lid = builderSliderDraft.lessonId;
-        if (!tok || !eid || !mid || !lid) return;
+        void (async () => {
+          const tok = getAccessToken();
+          const eid = await resolveBuilderExpertId();
+          const mid = builderSelectedModuleId;
+          const lid = builderSliderDraft!.lessonId;
+          if (!tok || !eid || !mid || !lid) return;
 
-        const maxBytes = 15 * 1024 * 1024;
-        for (const f of files) {
-          if (!f) continue;
-          if (f.size > maxBytes) {
-            window.alert('Фото больше 15 МБ.');
-            continue;
-          }
-          if (typeof f.type === 'string' && f.type && !f.type.startsWith('image/')) {
-            window.alert('Можно загружать только фото.');
-            continue;
-          }
-          try {
-            const form = new FormData();
-            form.append('file', f, f.name || 'image');
-            const up = await fetchMultipartJson<{ key: string }>(
-              `/experts/${encodeURIComponent(eid)}/modules/${encodeURIComponent(mid)}/lessons/${encodeURIComponent(lid)}/slider/upload`,
-              form,
-              tok,
-            );
-            const key = (up?.key ?? '').trim();
-            if (key) {
-              builderSliderDraft.images = [...builderSliderDraft.images, { key }];
-              renderBuilderSliderGrid(shell.shadowRoot);
+          const maxBytes = 15 * 1024 * 1024;
+          for (const f of files) {
+            if (!f) continue;
+            if (f.size > maxBytes) {
+              window.alert('Фото больше 15 МБ.');
+              continue;
             }
-          } catch {
-            window.alert('Не удалось загрузить фото.');
+            if (typeof f.type === 'string' && f.type && !f.type.startsWith('image/')) {
+              window.alert('Можно загружать только фото.');
+              continue;
+            }
+            try {
+              const form = new FormData();
+              form.append('file', f, f.name || 'image');
+              const up = await fetchMultipartJson<{ key: string }>(
+                `/experts/${encodeURIComponent(eid)}/modules/${encodeURIComponent(mid)}/lessons/${encodeURIComponent(lid)}/slider/upload`,
+                form,
+                tok,
+              );
+              const key = (up?.key ?? '').trim();
+              if (key) {
+                builderSliderDraft!.images = [...builderSliderDraft!.images, { key }];
+                renderBuilderSliderGrid(shell.shadowRoot);
+              }
+            } catch {
+              window.alert('Не удалось загрузить фото.');
+            }
           }
-        }
+        })();
         return;
       }
       if (!t?.matches('input[data-ep-homework-file-input]')) return;
