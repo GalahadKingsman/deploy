@@ -5009,22 +5009,24 @@ if (platformMount) {
       }
       if (t?.closest('[data-ep-builder-slider-open]')) {
         ev.preventDefault();
-        const tok = getAccessToken();
-        const eid = await resolveBuilderExpertId();
-        const mid = builderSelectedModuleId;
-        const lid = builderSelectedLessonId;
-        if (!tok || !eid || !mid || !lid) {
-          window.alert('Выберите урок в дереве слева.');
-          return;
-        }
-        const bd = shell.shadowRoot.querySelector('[data-ep-slider-backdrop]') as HTMLElement | null;
-        const md = shell.shadowRoot.querySelector('[data-ep-slider-modal]') as HTMLElement | null;
-        if (!bd || !md) return;
-        const existing = builderSliderByLessonId.get(lid) ?? { images: [] as { key: string }[] };
-        builderSliderDraft = { lessonId: lid, images: existing.images.slice() };
-        bd.style.display = '';
-        md.style.display = '';
-        renderBuilderSliderGrid(shell.shadowRoot);
+        void (async () => {
+          const tok = getAccessToken();
+          const eid = await resolveBuilderExpertId();
+          const mid = builderSelectedModuleId;
+          const lid = builderSelectedLessonId;
+          if (!tok || !eid || !mid || !lid) {
+            window.alert('Выберите урок в дереве слева.');
+            return;
+          }
+          const bd = shell.shadowRoot.querySelector('[data-ep-slider-backdrop]') as HTMLElement | null;
+          const md = shell.shadowRoot.querySelector('[data-ep-slider-modal]') as HTMLElement | null;
+          if (!bd || !md) return;
+          const existing = builderSliderByLessonId.get(lid) ?? { images: [] as { key: string }[] };
+          builderSliderDraft = { lessonId: lid, images: existing.images.slice() };
+          bd.style.display = '';
+          md.style.display = '';
+          renderBuilderSliderGrid(shell.shadowRoot);
+        })();
         return;
       }
       if (
