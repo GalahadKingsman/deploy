@@ -13,6 +13,7 @@ export interface ExpertLessonV1 {
   title: string;
   position: number;
   contentMarkdown?: string | null;
+  slider?: { images: { key: string }[] } | null;
   video?: LessonVideoV1;
   deletedAt?: IsoDateTime | null;
   createdAt: IsoDateTime;
@@ -26,6 +27,7 @@ export const ExpertLessonV1Schema = z.object({
   title: z.string(),
   position: z.number(),
   contentMarkdown: z.string().nullable().optional(),
+  slider: LessonV1Schema.shape.slider,
   video: LessonVideoV1Schema,
   deletedAt: z.string().nullable().optional(),
   createdAt: z.string(),
@@ -43,24 +45,28 @@ export const ListExpertLessonsResponseV1Schema = z.object({
 export interface CreateExpertLessonRequestV1 {
   title: string;
   contentMarkdown?: string | null;
+  slider?: { images: { key: string }[] } | null;
   video?: LessonVideoV1;
 }
 
 export const CreateExpertLessonRequestV1Schema = z.object({
   title: z.string().min(1),
   contentMarkdown: z.string().nullable().optional(),
+  slider: LessonV1Schema.shape.slider,
   video: LessonVideoV1Schema.optional(),
 });
 
 export interface UpdateExpertLessonRequestV1 {
   title?: string;
   contentMarkdown?: string | null;
+  slider?: { images: { key: string }[] } | null;
   video?: LessonVideoV1;
 }
 
 export const UpdateExpertLessonRequestV1Schema = z.object({
   title: z.string().min(1).optional(),
   contentMarkdown: z.string().nullable().optional(),
+  slider: LessonV1Schema.shape.slider,
   video: LessonVideoV1Schema.optional(),
 });
 

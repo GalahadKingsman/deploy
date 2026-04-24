@@ -23,6 +23,7 @@ import { LessonsRepository } from '../../authoring/lessons.repository.js';
 import { AuditService } from '../../audit/audit.service.js';
 import type { FastifyRequest } from 'fastify';
 import { ExpertCourseAccessService } from './expert-course-access.service.js';
+import { S3StorageService } from '../../storage/s3-storage.service.js';
 
 function normalizeRutubeInVideo(
   v: ContractsV1.LessonVideoV1 | undefined | null,
@@ -53,6 +54,7 @@ export class ExpertLessonsController {
     private readonly lessonsRepository: LessonsRepository,
     private readonly auditService: AuditService,
     private readonly expertCourseAccessService: ExpertCourseAccessService,
+    private readonly storage: S3StorageService,
   ) {}
 
   @Get()
@@ -102,6 +104,7 @@ export class ExpertLessonsController {
       moduleId,
       title: parsed.data.title,
       contentMarkdown: parsed.data.contentMarkdown ?? null,
+      slider: parsed.data.slider ?? null,
       video: normalizeRutubeInVideo(parsed.data.video) ?? undefined,
     });
     await this.auditService.write({
@@ -157,6 +160,60 @@ export class ExpertLessonsController {
       traceId: getTraceId(req),
     });
     return updated;
+  }
+
+  @Post(':lessonId/slider/upload')
+  @RequireExpertRole('manager')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Upload slider image (multipart, manager+)' })
+  @ApiResponse({ status: 201, description: 'Image stored' })
+  async uploadSliderImage(
+    @Param('expertId') expertId: string,
+    @Param('moduleId') moduleId: string,
+    @Param('lessonId') lessonId: string,
+    @Req()
+    req: FastifyRequest & {
+      user?: { userId: string };
+      file?: (opts?: any) => Promise<any>;
+    },
+  ): Promise<{ key: string }> {
+    await this.expertCourseAccessService.assertCanAccessLesson({
+      expertId,
+      userId: req.user!.userId,
+      lessonId,
+    });
+
+    // Ensure lesson belongs to module as well (defense-in-depth)
+    const current = await this.lessonsRepository.listByModuleId(moduleId);
+    if (!current.some((x) => x.id === lessonId)) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Invalid lessonId for module' });
+    }
+
+    const file = await (req as any).file?.();
+    if (!file) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'file is required' });
+    }
+
+    const mt = typeof file.mimetype === 'string' ? file.mimetype.trim() : '';
+    if (!mt.startsWith('image/')) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Only images are allowed' });
+    }
+
+    const buf: Buffer = await file.toBuffer();
+    if (!buf || buf.length === 0) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Empty file' });
+    }
+
+    const original = typeof file.filename === 'string' && file.filename.trim() ? file.filename.trim() : 'image';
+    const safeName = original.replace(/[^\w.\-]+/g, '_').slice(0, 120);
+    const key = `lesson-media/${lessonId}/${Date.now()}-${safeName}`;
+    await this.storage.putObject({
+      key,
+      body: new Uint8Array(buf),
+      contentType: mt || null,
+    });
+
+    return { key };
   }
 
   @Post('reorder')

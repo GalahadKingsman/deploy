@@ -19,6 +19,7 @@ export interface LessonV1 {
   title: string;
   order: number;
   contentMarkdown?: string | null;
+  slider?: { images: { key: string }[] } | null;
   updatedAt: IsoDateTime;
   video?: LessonVideoV1;
 }
@@ -51,6 +52,16 @@ export const LessonV1Schema = z.object({
   title: z.string(),
   order: z.number(),
   contentMarkdown: z.string().nullable().optional(),
+  slider: z
+    .object({
+      images: z.array(
+        z.object({
+          key: z.string().min(1),
+        }),
+      ),
+    })
+    .nullable()
+    .optional(),
   updatedAt: z.string(),
   video: LessonVideoV1Schema.optional(),
 });

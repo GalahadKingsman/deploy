@@ -19,6 +19,7 @@ interface LessonRow {
   title: string;
   position: number;
   content_md: string | null;
+  slider: unknown | null;
   updated_at: Date;
   video: unknown | null;
 }
@@ -85,7 +86,7 @@ export class StudentCoursesRepository {
     if (!this.pool) return [];
     const res = await this.pool.query<LessonRow>(
       `
-      SELECT l.id, m.course_id, l.title, l.position, l.content_md, l.updated_at, l.video
+      SELECT l.id, m.course_id, l.title, l.position, l.content_md, l.slider, l.updated_at, l.video
       FROM lessons l
       JOIN course_modules m ON m.id = l.module_id
       WHERE m.course_id = $1 AND l.deleted_at IS NULL AND m.deleted_at IS NULL
@@ -99,6 +100,7 @@ export class StudentCoursesRepository {
       title: r.title,
       order: r.position,
       contentMarkdown: r.content_md ?? null,
+      slider: (r.slider as any) ?? null,
       updatedAt: r.updated_at.toISOString(),
       video: (r.video as any) ?? undefined,
     }));
@@ -108,7 +110,7 @@ export class StudentCoursesRepository {
     if (!this.pool) return [];
     const res = await this.pool.query<LessonRow>(
       `
-      SELECT l.id, m.course_id, l.title, l.position, l.content_md, l.updated_at, l.video
+      SELECT l.id, m.course_id, l.title, l.position, l.content_md, l.slider, l.updated_at, l.video
       FROM lessons l
       JOIN course_modules m ON m.id = l.module_id
       WHERE m.course_id = $1 AND m.id = $2 AND l.deleted_at IS NULL AND m.deleted_at IS NULL
@@ -122,6 +124,7 @@ export class StudentCoursesRepository {
       title: r.title,
       order: r.position,
       contentMarkdown: r.content_md ?? null,
+      slider: (r.slider as any) ?? null,
       updatedAt: r.updated_at.toISOString(),
       video: (r.video as any) ?? undefined,
     }));
@@ -131,7 +134,7 @@ export class StudentCoursesRepository {
     if (!this.pool) return null;
     const res = await this.pool.query<LessonRow>(
       `
-      SELECT l.id, m.course_id, l.title, l.position, l.content_md, l.updated_at, l.video
+      SELECT l.id, m.course_id, l.title, l.position, l.content_md, l.slider, l.updated_at, l.video
       FROM lessons l
       JOIN course_modules m ON m.id = l.module_id
       WHERE l.id = $1 AND l.deleted_at IS NULL AND m.deleted_at IS NULL
@@ -147,6 +150,7 @@ export class StudentCoursesRepository {
       title: r.title,
       order: r.position,
       contentMarkdown: r.content_md ?? null,
+      slider: (r.slider as any) ?? null,
       updatedAt: r.updated_at.toISOString(),
       video: (r.video as any) ?? undefined,
     };
@@ -165,7 +169,7 @@ export class StudentCoursesRepository {
       }
     >(
       `
-      SELECT l.id, m.course_id, l.title, l.position, l.content_md, l.updated_at, l.video,
+      SELECT l.id, m.course_id, l.title, l.position, l.content_md, l.slider, l.updated_at, l.video,
              c.title AS course_title, m.title AS module_title
       FROM lessons l
       JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
@@ -184,6 +188,7 @@ export class StudentCoursesRepository {
         title: r.title,
         order: r.position,
         contentMarkdown: r.content_md ?? null,
+        slider: (r.slider as any) ?? null,
         updatedAt: r.updated_at.toISOString(),
         video: (r.video as any) ?? undefined,
       },

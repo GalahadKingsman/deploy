@@ -536,6 +536,8 @@ if (platformMount) {
     let suppressBuilderNavigateHydrate = false;
     let builderSelectedModuleId: string | null = null;
     let builderSelectedLessonId: string | null = null;
+    let builderSliderDraft: { lessonId: string; images: { key: string }[] } | null = null;
+    const builderSliderByLessonId = new Map<string, { images: { key: string }[] }>();
     type BuilderModuleV1 = { id: string; courseId: string; title: string; position: number };
     type BuilderLessonV1 = {
       id: string;
@@ -543,6 +545,7 @@ if (platformMount) {
       title: string;
       position: number;
       contentMarkdown?: string | null;
+      slider?: { images: { key: string }[] } | null;
       video?: { kind: string; url?: string } | null;
       createdAt: string;
       updatedAt: string;
@@ -1461,6 +1464,7 @@ if (platformMount) {
 
       // Video: reuse the same Rutube embed logic as in Telegram webapp
       const videoHost = root.querySelector('#screen-s-lesson [data-ep-video]') as HTMLElement | null;
+      const sliderHost = root.querySelector('#screen-s-lesson [data-ep-lesson-slider]') as HTMLElement | null;
       if (videoHost) {
         // clean previous iframe if any
         videoHost.querySelectorAll('iframe').forEach((x) => x.remove());
@@ -1499,6 +1503,14 @@ if (platformMount) {
           const overlay = videoHost.querySelector('.video-overlay-bottom') as HTMLElement | null;
           if (overlay) overlay.style.display = '';
         }
+      }
+
+      // Slider (after video, before text)
+      if (sliderHost) {
+        const keys = Array.isArray((lesson as any)?.slider?.images)
+          ? ((lesson as any).slider.images as Array<{ key?: string }>).map((x) => String(x?.key ?? '').trim()).filter(Boolean)
+          : [];
+        renderInlineLessonSlider(root, sliderHost, keys);
       }
 
       // Homework + materials
@@ -1619,6 +1631,69 @@ if (platformMount) {
       setGoHomeworkButtonVisible(goHwBtn, hasExpertHomework && !latestSub);
 
       updatePrevLessonUi(root, lessonId);
+    }
+
+    function renderInlineLessonSlider(root: ShadowRoot, host: HTMLElement, keys: string[]): void {
+      host.replaceChildren();
+      if (!keys.length) {
+        host.style.display = 'none';
+        return;
+      }
+      host.style.display = '';
+      let idx = 0;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'ep-lesson-slider';
+
+      const imgWrap = document.createElement('div');
+      imgWrap.className = 'ep-lesson-slider__img';
+      const img = document.createElement('img');
+      img.alt = '';
+      img.referrerPolicy = 'no-referrer';
+      img.loading = 'lazy';
+      imgWrap.appendChild(img);
+
+      const controls = document.createElement('div');
+      controls.className = 'ep-lesson-slider__controls';
+
+      const prev = document.createElement('button');
+      prev.type = 'button';
+      prev.className = 'btn btn-ghost btn-sm';
+      prev.textContent = '←';
+      prev.dataset.epLessonSliderPrev = '1';
+
+      const next = document.createElement('button');
+      next.type = 'button';
+      next.className = 'btn btn-ghost btn-sm';
+      next.textContent = '→';
+      next.dataset.epLessonSliderNext = '1';
+
+      const count = document.createElement('div');
+      count.className = 'ep-lesson-slider__count';
+
+      const fs = document.createElement('button');
+      fs.type = 'button';
+      fs.className = 'btn btn-outline btn-sm';
+      fs.textContent = '⛶';
+      fs.dataset.epLessonSliderFs = '1';
+
+      controls.append(prev, count, next, fs);
+      wrap.append(imgWrap, controls);
+      host.appendChild(wrap);
+
+      const setIdx = (n: number): void => {
+        idx = ((n % keys.length) + keys.length) % keys.length;
+        const src = sliderImageSrc(keys[idx]!);
+        img.src = src;
+        count.textContent = `${idx + 1}/${keys.length}`;
+        prev.toggleAttribute('disabled', keys.length <= 1);
+        next.toggleAttribute('disabled', keys.length <= 1);
+      };
+
+      (host as any).__epSliderKeys = keys;
+      (host as any).__epSliderIndex = () => idx;
+      (host as any).__epSliderSet = setIdx;
+      setIdx(0);
     }
 
     function isShellStudentMode(root: ShadowRoot): boolean {
@@ -3291,6 +3366,14 @@ if (platformMount) {
       const v = lesson.video;
       if (rutubeInp) rutubeInp.value = v && v.kind === 'rutube' && v.url ? v.url : '';
 
+      // Slider draft cache (for editor modal)
+      const slider = (lesson.slider ?? null) as { images?: { key: string }[] } | null;
+      if (builderSelectedLessonId) {
+        builderSliderByLessonId.set(builderSelectedLessonId, {
+          images: Array.isArray(slider?.images) ? slider!.images.filter((x) => x && typeof x.key === 'string') : [],
+        });
+      }
+
       resetHwEditorState();
       try {
         const a = await fetchJson<{
@@ -3424,11 +3507,13 @@ if (platformMount) {
         video = { kind: 'rutube', url: embed };
       }
       try {
+        const slider = lid ? (builderSliderByLessonId.get(lid) ?? null) : null;
         const updated = await patchJson<BuilderLessonV1>(
           `/experts/${encodeURIComponent(eid)}/modules/${encodeURIComponent(mid)}/lessons/${encodeURIComponent(lid)}`,
           {
             title,
             contentMarkdown: bodyTa?.value ?? '',
+            slider,
             video,
           },
           token,
@@ -3730,6 +3815,8 @@ if (platformMount) {
       const bodyEl = root.querySelector('[data-ep-lesson-preview-body]') as HTMLElement | null;
       const videoCard = root.querySelector('[data-ep-lesson-preview-video]') as HTMLElement | null;
       const iframe = root.querySelector('[data-ep-lesson-preview-video-iframe]') as HTMLIFrameElement | null;
+      const sliderCard = root.querySelector('[data-ep-lesson-preview-slider]') as HTMLElement | null;
+      const sliderHost = root.querySelector('[data-ep-lesson-preview-slider-host]') as HTMLElement | null;
       const hwBody = root.querySelector('[data-ep-lesson-preview-hw-body]') as HTMLElement | null;
       const hwEmpty = root.querySelector('[data-ep-lesson-preview-hw-empty]') as HTMLElement | null;
       const hwTag = root.querySelector('[data-ep-lesson-preview-hw-tag]') as HTMLElement | null;
@@ -3744,6 +3831,8 @@ if (platformMount) {
         if (titleEl) titleEl.textContent = 'Урок';
         if (bodyEl) bodyEl.textContent = '';
         if (videoCard) videoCard.style.display = 'none';
+        if (sliderCard) sliderCard.style.display = 'none';
+        if (sliderHost) sliderHost.replaceChildren();
         if (hwBody) hwBody.textContent = '';
         if (hwEmpty) hwEmpty.style.display = '';
         if (hwTag) hwTag.textContent = 'не заполнено';
@@ -3767,6 +3856,20 @@ if (platformMount) {
         } else {
           videoCard.style.display = 'none';
           iframe.src = 'about:blank';
+        }
+      }
+
+      // Slider preview: use saved draft (from modal) if present, else from lesson cache
+      if (sliderCard && sliderHost) {
+        const lid = builderSelectedLessonId;
+        const slider = lid ? builderSliderByLessonId.get(lid) ?? null : null;
+        const keys = Array.isArray(slider?.images) ? slider!.images.map((x) => String(x.key ?? '').trim()).filter(Boolean) : [];
+        sliderHost.replaceChildren();
+        if (!keys.length) {
+          sliderCard.style.display = 'none';
+        } else {
+          sliderCard.style.display = '';
+          renderInlineLessonSlider(root, sliderHost, keys);
         }
       }
 
@@ -3808,6 +3911,125 @@ if (platformMount) {
           setPreviewFiles(root, []);
         }
       }
+    }
+
+    function sliderImageSrc(key: string): string {
+      const api = getApiBaseUrl();
+      if (!api) return '';
+      return `${api}/public/lesson-media?key=${encodeURIComponent(key)}`;
+    }
+
+    function closeBuilderSliderModal(root: ShadowRoot): void {
+      const bd = root.querySelector('[data-ep-slider-backdrop]') as HTMLElement | null;
+      const md = root.querySelector('[data-ep-slider-modal]') as HTMLElement | null;
+      if (bd) bd.style.display = 'none';
+      if (md) md.style.display = 'none';
+      builderSliderDraft = null;
+    }
+
+    function renderBuilderSliderGrid(root: ShadowRoot): void {
+      const host = root.querySelector('[data-ep-slider-grid]') as HTMLElement | null;
+      if (!host || !builderSliderDraft) return;
+      host.replaceChildren();
+      const items = builderSliderDraft.images;
+      if (!items.length) {
+        const p = document.createElement('div');
+        p.style.padding = '14px';
+        p.style.border = '1px dashed var(--line)';
+        p.style.borderRadius = '12px';
+        p.style.background = 'var(--surface2)';
+        p.style.color = 'var(--t3)';
+        p.style.fontSize = '12px';
+        p.textContent = 'Добавьте фото для слайдера.';
+        host.appendChild(p);
+        return;
+      }
+
+      items.forEach((it, idx) => {
+        const card = document.createElement('div');
+        card.className = 'ep-slider-item';
+        card.draggable = true;
+        card.dataset.epSliderIdx = String(idx);
+
+        const img = document.createElement('img');
+        img.alt = '';
+        img.referrerPolicy = 'no-referrer';
+        const src = sliderImageSrc(it.key);
+        if (src) img.src = src;
+        card.appendChild(img);
+
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'ep-slider-item__x';
+        x.textContent = '✕';
+        x.dataset.epSliderDelIdx = String(idx);
+        card.appendChild(x);
+
+        card.addEventListener('dragstart', (ev) => {
+          card.classList.add('dragging');
+          ev.dataTransfer?.setData('text/plain', String(idx));
+          ev.dataTransfer?.setDragImage(card, 10, 10);
+        });
+        card.addEventListener('dragend', () => {
+          card.classList.remove('dragging');
+        });
+        card.addEventListener('dragover', (ev) => {
+          ev.preventDefault();
+        });
+        card.addEventListener('drop', (ev) => {
+          ev.preventDefault();
+          const from = Number(ev.dataTransfer?.getData('text/plain') ?? 'NaN');
+          const to = idx;
+          if (!builderSliderDraft) return;
+          if (!Number.isFinite(from) || from < 0 || from >= builderSliderDraft.images.length) return;
+          if (from === to) return;
+          const next = builderSliderDraft.images.slice();
+          const [moved] = next.splice(from, 1);
+          next.splice(to, 0, moved!);
+          builderSliderDraft.images = next;
+          renderBuilderSliderGrid(root);
+        });
+
+        host.appendChild(card);
+      });
+    }
+
+    function openKeyViewer(root: ShadowRoot, keys: string[], startIdx: number): void {
+      const bd = root.querySelector('[data-ep-slider-viewer-backdrop]') as HTMLElement | null;
+      const vw = root.querySelector('[data-ep-slider-viewer]') as HTMLElement | null;
+      const img = root.querySelector('[data-ep-slider-viewer-img]') as HTMLImageElement | null;
+      const cnt = root.querySelector('[data-ep-slider-viewer-count]') as HTMLElement | null;
+      if (!bd || !vw || !img || !cnt) return;
+      if (!Array.isArray(keys) || keys.length === 0) return;
+
+      let idx = Math.max(0, Math.min(keys.length - 1, startIdx));
+      const sync = (): void => {
+        const k = keys[idx] ?? '';
+        img.src = k ? sliderImageSrc(k) : '';
+        cnt.textContent = `${idx + 1}/${keys.length}`;
+      };
+
+      (vw as any).__epSliderGetIndex = () => idx;
+      (vw as any).__epSliderSetIndex = (n: number) => {
+        idx = ((n % keys.length) + keys.length) % keys.length;
+        sync();
+      };
+
+      bd.style.display = '';
+      vw.style.display = '';
+      sync();
+    }
+
+    function openBuilderSliderViewer(root: ShadowRoot, startIdx: number): void {
+      if (!builderSliderDraft) return;
+      openKeyViewer(root, builderSliderDraft.images.map((x) => x.key), startIdx);
+    }
+
+    function closeBuilderSliderViewer(root: ShadowRoot): void {
+      const bd = root.querySelector('[data-ep-slider-viewer-backdrop]') as HTMLElement | null;
+      const vw = root.querySelector('[data-ep-slider-viewer]') as HTMLElement | null;
+      if (bd) bd.style.display = 'none';
+      if (vw) vw.style.display = 'none';
     }
 
     function closeBuilderCourseAccessDrawer(root: ShadowRoot): void {
@@ -4785,6 +5007,110 @@ if (platformMount) {
         void saveBuilderLesson(shell.shadowRoot);
         return;
       }
+      if (t?.closest('[data-ep-builder-slider-open]')) {
+        ev.preventDefault();
+        const tok = getAccessToken();
+        const eid = await resolveBuilderExpertId();
+        const mid = builderSelectedModuleId;
+        const lid = builderSelectedLessonId;
+        if (!tok || !eid || !mid || !lid) {
+          window.alert('Выберите урок в дереве слева.');
+          return;
+        }
+        const bd = shell.shadowRoot.querySelector('[data-ep-slider-backdrop]') as HTMLElement | null;
+        const md = shell.shadowRoot.querySelector('[data-ep-slider-modal]') as HTMLElement | null;
+        if (!bd || !md) return;
+        const existing = builderSliderByLessonId.get(lid) ?? { images: [] as { key: string }[] };
+        builderSliderDraft = { lessonId: lid, images: existing.images.slice() };
+        bd.style.display = '';
+        md.style.display = '';
+        renderBuilderSliderGrid(shell.shadowRoot);
+        return;
+      }
+      if (
+        t?.closest('[data-ep-slider-backdrop]') ||
+        t?.closest('[data-ep-slider-close]') ||
+        t?.closest('[data-ep-slider-cancel]')
+      ) {
+        ev.preventDefault();
+        closeBuilderSliderModal(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-slider-add]')) {
+        ev.preventDefault();
+        const inp = shell.shadowRoot.querySelector('[data-ep-slider-file-input]') as HTMLInputElement | null;
+        inp?.click();
+        return;
+      }
+      const del = t?.closest('[data-ep-slider-del-idx]') as HTMLElement | null;
+      if (del && builderSliderDraft) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const idx = Number(del.dataset.epSliderDelIdx ?? 'NaN');
+        if (Number.isFinite(idx) && idx >= 0 && idx < builderSliderDraft.images.length) {
+          builderSliderDraft.images = builderSliderDraft.images.filter((_, i) => i !== idx);
+          renderBuilderSliderGrid(shell.shadowRoot);
+        }
+        return;
+      }
+      const item = t?.closest('[data-ep-slider-idx]') as HTMLElement | null;
+      if (item && builderSliderDraft) {
+        const idx = Number(item.dataset.epSliderIdx ?? 'NaN');
+        if (Number.isFinite(idx)) {
+          ev.preventDefault();
+          openBuilderSliderViewer(shell.shadowRoot, idx);
+          return;
+        }
+      }
+      if (t?.closest('[data-ep-slider-save]')) {
+        ev.preventDefault();
+        if (!builderSliderDraft) return;
+        builderSliderByLessonId.set(builderSliderDraft.lessonId, { images: builderSliderDraft.images.slice() });
+        closeBuilderSliderModal(shell.shadowRoot);
+        window.alert('Слайдер сохранён. Не забудьте нажать «Сохранить» для урока.');
+        return;
+      }
+      if (
+        t?.closest('[data-ep-slider-viewer-backdrop]') ||
+        t?.closest('[data-ep-slider-viewer-close]')
+      ) {
+        ev.preventDefault();
+        closeBuilderSliderViewer(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-slider-viewer-prev]') || t?.closest('[data-ep-slider-viewer-next]')) {
+        ev.preventDefault();
+        const vw = shell.shadowRoot.querySelector('[data-ep-slider-viewer]') as any;
+        if (!vw || typeof vw.__epSliderGetIndex !== 'function' || typeof vw.__epSliderSetIndex !== 'function') return;
+        const cur = Number(vw.__epSliderGetIndex());
+        const delta = t.closest('[data-ep-slider-viewer-prev]') ? -1 : 1;
+        vw.__epSliderSetIndex(cur + delta);
+        return;
+      }
+
+      const lessonSlider = t?.closest('[data-ep-lesson-slider]') as HTMLElement | null;
+      if (lessonSlider) {
+        const host = lessonSlider;
+        const set = (host as any).__epSliderSet as ((n: number) => void) | undefined;
+        const getIndex = (host as any).__epSliderIndex as (() => number) | undefined;
+        const keys = (host as any).__epSliderKeys as string[] | undefined;
+        if (!set || !getIndex || !Array.isArray(keys) || keys.length === 0) return;
+        if (t.closest('[data-ep-lesson-slider-prev]')) {
+          ev.preventDefault();
+          set(getIndex() - 1);
+          return;
+        }
+        if (t.closest('[data-ep-lesson-slider-next]')) {
+          ev.preventDefault();
+          set(getIndex() + 1);
+          return;
+        }
+        if (t.closest('[data-ep-lesson-slider-fs]')) {
+          ev.preventDefault();
+          openKeyViewer(shell.shadowRoot, keys, getIndex());
+          return;
+        }
+      }
       if (t?.closest('[data-ep-builder-save-hw]')) {
         ev.preventDefault();
         void saveBuilderHomework(shell.shadowRoot);
@@ -5586,6 +5912,47 @@ if (platformMount) {
         void builderUploadHwFiles(shell.shadowRoot, inp.files).finally(() => {
           inp.value = '';
         });
+        return;
+      }
+      if (t?.matches('input[data-ep-slider-file-input]')) {
+        const inp = t as HTMLInputElement;
+        const files = Array.from(inp.files ?? []);
+        inp.value = '';
+        if (!builderSliderDraft) return;
+        const tok = getAccessToken();
+        const eid = await resolveBuilderExpertId();
+        const mid = builderSelectedModuleId;
+        const lid = builderSliderDraft.lessonId;
+        if (!tok || !eid || !mid || !lid) return;
+
+        const maxBytes = 15 * 1024 * 1024;
+        for (const f of files) {
+          if (!f) continue;
+          if (f.size > maxBytes) {
+            window.alert('Фото больше 15 МБ.');
+            continue;
+          }
+          if (typeof f.type === 'string' && f.type && !f.type.startsWith('image/')) {
+            window.alert('Можно загружать только фото.');
+            continue;
+          }
+          try {
+            const form = new FormData();
+            form.append('file', f, f.name || 'image');
+            const up = await fetchMultipartJson<{ key: string }>(
+              `/experts/${encodeURIComponent(eid)}/modules/${encodeURIComponent(mid)}/lessons/${encodeURIComponent(lid)}/slider/upload`,
+              form,
+              tok,
+            );
+            const key = (up?.key ?? '').trim();
+            if (key) {
+              builderSliderDraft.images = [...builderSliderDraft.images, { key }];
+              renderBuilderSliderGrid(shell.shadowRoot);
+            }
+          } catch {
+            window.alert('Не удалось загрузить фото.');
+          }
+        }
         return;
       }
       if (!t?.matches('input[data-ep-homework-file-input]')) return;

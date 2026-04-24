@@ -7,6 +7,7 @@ interface LessonRow {
   module_id: string;
   title: string;
   content_md: string | null;
+  slider: unknown | null;
   position: number;
   video: unknown | null;
   deleted_at: Date | null;
@@ -27,6 +28,7 @@ function mapRow(row: LessonRow, courseId: string): ContractsV1.ExpertLessonV1 {
     title: row.title,
     position: row.position,
     contentMarkdown: row.content_md ?? null,
+    slider: (row.slider as any) ?? null,
     // video is stored as jsonb, expected to conform to LessonVideoV1 (validated on write)
     video: (row.video as any) ?? undefined,
     deletedAt: row.deleted_at ? row.deleted_at.toISOString() : null,
@@ -119,6 +121,7 @@ export class LessonsRepository {
     moduleId: string;
     title: string;
     contentMarkdown?: string | null;
+    slider?: { images: { key: string }[] } | null;
     video?: ContractsV1.LessonVideoV1;
   }): Promise<ContractsV1.ExpertLessonV1> {
     if (!this.pool) {
@@ -134,8 +137,8 @@ export class LessonsRepository {
 
     const result = await this.pool.query<LessonRow>(
       `
-      INSERT INTO lessons (id, module_id, title, content_md, position, video, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6::jsonb, NOW(), NOW())
+      INSERT INTO lessons (id, module_id, title, content_md, slider, position, video, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7::jsonb, NOW(), NOW())
       RETURNING *
       `,
       [
@@ -143,6 +146,7 @@ export class LessonsRepository {
         params.moduleId,
         params.title.trim(),
         params.contentMarkdown ?? null,
+        params.slider ? JSON.stringify(params.slider) : null,
         next,
         params.video ? JSON.stringify(params.video) : null,
       ],
@@ -166,7 +170,8 @@ export class LessonsRepository {
       SET
         title = COALESCE($3, title),
         content_md = COALESCE($4, content_md),
-        video = COALESCE($5::jsonb, video),
+        slider = COALESCE($5::jsonb, slider),
+        video = COALESCE($6::jsonb, video),
         updated_at = NOW()
       WHERE id = $1 AND module_id = $2 AND deleted_at IS NULL
       RETURNING *
@@ -176,6 +181,7 @@ export class LessonsRepository {
         params.moduleId,
         params.patch.title?.trim() ?? null,
         params.patch.contentMarkdown === undefined ? null : params.patch.contentMarkdown,
+        params.patch.slider === undefined ? null : JSON.stringify(params.patch.slider),
         params.patch.video === undefined ? null : JSON.stringify(params.patch.video),
       ],
     );

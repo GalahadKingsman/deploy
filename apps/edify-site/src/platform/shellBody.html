@@ -246,6 +246,13 @@
             <div class="form-label">Текст урока (Markdown)</div>
             <textarea class="form-input" data-ep-builder-lesson-body rows="14" style="resize:vertical;line-height:1.55;font-size:13px" placeholder="Текст урока…"></textarea>
           </div>
+          <div class="form-group">
+            <div class="form-label">Слайдер</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <button type="button" class="btn btn-outline btn-sm" data-ep-builder-slider-open>+ Добавить слайдер</button>
+              <div style="font-size:11px;color:var(--t3);line-height:1.5">Фото появятся у студента после видео.</div>
+            </div>
+          </div>
         </div>
 
         <div data-ep-builder-panel="homework" style="display:none">
@@ -332,6 +339,11 @@
         </div>
       </div>
 
+      <div class="card" style="padding:18px;border-radius:var(--r2);display:none" data-ep-lesson-preview-slider>
+        <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:10px">Слайдер</div>
+        <div data-ep-lesson-preview-slider-host data-ep-lesson-slider></div>
+      </div>
+
       <div class="card" style="padding:18px;border-radius:var(--r2)">
         <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:10px">Текст урока</div>
         <div data-ep-lesson-preview-body style="white-space:pre-wrap;font-size:13px;color:var(--t2);line-height:1.65"></div>
@@ -352,6 +364,41 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Слайдер урока (редактор) -->
+  <div class="ep-slider-backdrop" data-ep-slider-backdrop style="display:none" aria-hidden="true"></div>
+  <div class="ep-slider-modal" data-ep-slider-modal style="display:none" aria-label="Слайдер урока">
+    <div class="ep-slider-modal__head">
+      <div>
+        <div class="ep-slider-modal__kicker">Урок</div>
+        <div class="ep-slider-modal__title">Слайдер</div>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" data-ep-slider-close aria-label="Закрыть">✕</button>
+    </div>
+    <div class="ep-slider-modal__body">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+        <input type="file" accept="image/*" multiple style="display:none" data-ep-slider-file-input />
+        <button type="button" class="btn btn-outline btn-sm" data-ep-slider-add>+ Добавить фото</button>
+        <div style="font-size:11px;color:var(--t3);line-height:1.5">Перетащите фото, чтобы поменять порядок.</div>
+      </div>
+      <div class="ep-slider-grid" data-ep-slider-grid></div>
+      <div class="div"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+        <button type="button" class="btn btn-outline btn-sm" data-ep-slider-cancel>Отмена</button>
+        <button type="button" class="btn btn-primary btn-sm" data-ep-slider-save>Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Слайдер: просмотр фото -->
+  <div class="ep-slider-viewer-backdrop" data-ep-slider-viewer-backdrop style="display:none" aria-hidden="true"></div>
+  <div class="ep-slider-viewer" data-ep-slider-viewer style="display:none" aria-label="Просмотр фото">
+    <button type="button" class="btn btn-ghost btn-sm ep-slider-viewer__close" data-ep-slider-viewer-close aria-label="Закрыть">✕</button>
+    <button type="button" class="btn btn-ghost btn-sm ep-slider-viewer__nav" data-ep-slider-viewer-prev aria-label="Назад">←</button>
+    <div class="ep-slider-viewer__img-wrap"><img data-ep-slider-viewer-img alt="" referrerpolicy="no-referrer"></div>
+    <button type="button" class="btn btn-ghost btn-sm ep-slider-viewer__nav" data-ep-slider-viewer-next aria-label="Вперёд">→</button>
+    <div class="ep-slider-viewer__count" data-ep-slider-viewer-count>1/1</div>
   </div>
 
   <!-- Доступ к курсу (как в TG mini app) -->
@@ -1075,6 +1122,7 @@
             <span style="font-size:12px;color:rgba(255,255,255,.6)">⛶</span>
           </div>
         </div>
+        <div data-ep-lesson-slider style="display:none;margin-bottom:20px"></div>
         <div data-ep-lesson-body style="font-size:14px;color:var(--t2);line-height:1.7;margin-bottom:16px">
           В этом уроке мы разберём, что такое контент-план, зачем он нужен и как его составить на практике для любой ниши. Контент-план — это расписание публикаций, которое помогает систематизировать работу с контентом.<br><br>
           <strong style="color:var(--t1)">Ключевые элементы контент-плана:</strong> дата и время публикации, тема и формат, платформа, цель публикации, ответственный исполнитель.
