@@ -5074,7 +5074,9 @@ if (platformMount) {
       }
       if (
         t?.closest('[data-ep-slider-viewer-backdrop]') ||
-        t?.closest('[data-ep-slider-viewer-close]')
+        t?.closest('[data-ep-slider-viewer-close]') ||
+        t?.matches?.('[data-ep-slider-viewer]') ||
+        t?.matches?.('.ep-slider-viewer__img-wrap')
       ) {
         ev.preventDefault();
         closeBuilderSliderViewer(shell.shadowRoot);
