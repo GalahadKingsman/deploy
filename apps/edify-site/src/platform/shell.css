@@ -155,6 +155,64 @@
 .btn-sm{font-size:11px;padding:5px 12px}
 .btn-icon{width:32px;height:32px;padding:0;border-radius:7px;justify-content:center;font-size:14px}
 
+/* Catalog topics + category dropdown */
+.ep-cat-topic{
+  padding:10px 14px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:8px;
+  font-size:12px;
+  color:var(--t2);
+  text-align:center;
+  cursor:pointer;
+  user-select:none;
+  transition:all .12s;
+}
+.ep-cat-topic:hover{border-color:var(--t1);color:var(--t1)}
+.ep-cat-topic.active{
+  background:var(--t1);
+  color:#fff;
+  border-color:transparent;
+  font-weight:600;
+}
+.ep-cat-dd-backdrop{
+  position:absolute;inset:0;z-index:60;
+  background:rgba(12,18,32,0.35);
+  backdrop-filter:blur(2px);
+}
+.ep-cat-dd{
+  position:absolute;top:86px;right:32px;z-index:61;
+  width:min(360px, calc(100vw - 280px));
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:14px;
+  box-shadow:var(--sh2);
+  overflow:hidden;
+}
+.ep-cat-dd__head{
+  padding:12px 14px;
+  border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.ep-cat-dd__title{font-family:var(--fd);font-size:12px;font-weight:800;color:var(--t1)}
+.ep-cat-dd__body{
+  max-height:320px;overflow:auto;
+  padding:10px;
+  display:flex;flex-direction:column;gap:6px;
+}
+.ep-cat-dd__item{
+  width:100%;
+  border:1px solid var(--line);
+  background:var(--surface2);
+  border-radius:10px;
+  padding:10px 12px;
+  cursor:pointer;
+  text-align:left;
+  font-size:12px;
+  color:var(--t2);
+}
+.ep-cat-dd__item:hover{border-color:var(--ab);background:var(--al);color:var(--t1)}
+
 /* Telegram connect button (profile) */
 .ep-telegram-connect{
   width:100%;

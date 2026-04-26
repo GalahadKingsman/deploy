@@ -911,10 +911,18 @@
     </div>
   </div>
   <div class="grid4" style="margin-bottom:16px">
-    <div style="padding:10px 14px;background:var(--t1);color:#fff;border-radius:8px;font-size:12px;font-weight:600;text-align:center;cursor:pointer" data-ep-catalog-topic="all">Все курсы</div>
-    <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;font-size:12px;color:var(--t2);text-align:center;cursor:pointer" data-ep-catalog-topic="marketing">Маркетинг</div>
-    <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;font-size:12px;color:var(--t2);text-align:center;cursor:pointer" data-ep-catalog-topic="sales">Продажи</div>
-    <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;font-size:12px;color:var(--t2);text-align:center;cursor:pointer" data-ep-catalog-topic="finance">Финансы</div>
+    <div class="ep-cat-topic active" data-ep-catalog-topic="all">Все курсы</div>
+    <div class="ep-cat-topic" data-ep-catalog-topic="marketing">Маркетинг</div>
+    <div class="ep-cat-topic" data-ep-catalog-topic="sales">Продажи</div>
+    <div class="ep-cat-topic" data-ep-catalog-topic="finance">Финансы</div>
+  </div>
+  <div class="ep-cat-dd-backdrop" data-ep-catalog-dd-backdrop style="display:none" aria-hidden="true"></div>
+  <div class="ep-cat-dd" data-ep-catalog-dd style="display:none" aria-label="Категории">
+    <div class="ep-cat-dd__head">
+      <div class="ep-cat-dd__title">Категория</div>
+      <button type="button" class="btn btn-ghost btn-sm" data-ep-catalog-dd-close aria-label="Закрыть">✕</button>
+    </div>
+    <div class="ep-cat-dd__body" data-ep-catalog-dd-body></div>
   </div>
   <div class="grid3">
     <div class="course-card-s" data-ep-screen="s-lesson">

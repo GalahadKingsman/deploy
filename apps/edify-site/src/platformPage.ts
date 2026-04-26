@@ -669,25 +669,7 @@ if (platformMount) {
         ) {
           // Avoid showing design placeholder content while loading the real lesson
           const root = action.shadowRoot;
-          setLessonContent(root, { moduleTitle: 'Загрузка…', lessonTitle: 'Текущий урок', bodyText: 'Загрузка урока…' });
-          const videoHost = root.querySelector('#screen-s-lesson [data-ep-video]') as HTMLElement | null;
-          if (videoHost) {
-            videoHost.style.display = 'none';
-            videoHost.querySelectorAll('iframe').forEach((x) => x.remove());
-          }
-          const sliderHost = root.querySelector('#screen-s-lesson [data-ep-lesson-slider]') as HTMLElement | null;
-          if (sliderHost) {
-            sliderHost.style.display = 'none';
-            sliderHost.replaceChildren();
-          }
-          const hwWrap = root.querySelector('#screen-s-lesson [data-ep-homework]') as HTMLElement | null;
-          if (hwWrap) hwWrap.style.display = 'none';
-          const matsTitle = root.querySelector('#screen-s-lesson [data-ep-materials-title]') as HTMLElement | null;
-          if (matsTitle) matsTitle.style.display = 'none';
-          const mats = root.querySelector('#screen-s-lesson [data-ep-materials]') as HTMLElement | null;
-          if (mats) mats.replaceChildren();
-          const subWrap = root.querySelector('#screen-s-lesson [data-ep-my-submission-wrap]') as HTMLElement | null;
-          if (subWrap) subWrap.style.display = 'none';
+          primeStudentLessonLoadingState(root);
           void enterStudentCurrentLessonOrEmpty(action.shadowRoot);
         }
         if (action.type === 'builder_tab') {
@@ -713,6 +695,7 @@ if (platformMount) {
     });
 
     if (initialScreenId === 's-lesson' && isShellStudentMode(shell.shadowRoot)) {
+      primeStudentLessonLoadingState(shell.shadowRoot);
       void enterStudentCurrentLessonOrEmpty(shell.shadowRoot);
     }
     if (initialScreenId === 'e-team') {
@@ -2310,6 +2293,56 @@ if (platformMount) {
       }
     }
 
+    async function openCatalogCategoryDropdown(): Promise<void> {
+      const token = getAccessToken();
+      if (!token) return;
+      const root = shell.shadowRoot;
+      const bd = root.querySelector('[data-ep-catalog-dd-backdrop]') as HTMLElement | null;
+      const dd = root.querySelector('[data-ep-catalog-dd]') as HTMLElement | null;
+      const body = root.querySelector('[data-ep-catalog-dd-body]') as HTMLElement | null;
+      if (!bd || !dd || !body) return;
+
+      body.replaceChildren();
+      bd.style.display = '';
+      dd.style.display = '';
+
+      try {
+        const topics = await ensureCatalogTopics(token);
+        if (!topics.length) {
+          body.appendChild(
+            Object.assign(document.createElement('div'), {
+              style: 'font-size:12px;color:var(--t3);padding:8px 4px',
+              textContent: 'Тем пока нет.',
+            }),
+          );
+          return;
+        }
+        topics.forEach((t) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'ep-cat-dd__item';
+          btn.dataset.epCatalogDdItem = t.slug;
+          btn.textContent = t.title;
+          body.appendChild(btn);
+        });
+      } catch {
+        body.appendChild(
+          Object.assign(document.createElement('div'), {
+            style: 'font-size:12px;color:var(--t3);padding:8px 4px',
+            textContent: 'Не удалось загрузить темы.',
+          }),
+        );
+      }
+    }
+
+    function closeCatalogCategoryDropdown(): void {
+      const root = shell.shadowRoot;
+      const bd = root.querySelector('[data-ep-catalog-dd-backdrop]') as HTMLElement | null;
+      const dd = root.querySelector('[data-ep-catalog-dd]') as HTMLElement | null;
+      if (bd) bd.style.display = 'none';
+      if (dd) dd.style.display = 'none';
+    }
+
     function renderStarsInto(host: HTMLElement, avgScore: number | null): void {
       if (avgScore == null) {
         host.textContent = '—';
@@ -2328,13 +2361,33 @@ if (platformMount) {
     let catalogSearchQ: string = '';
     let catalogSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
-    function catalogStaticTopicToSlug(v: string): string | null {
+    let catalogTopicsCache: Array<{ id: string; slug: string; title: string }> | null = null;
+    async function ensureCatalogTopics(token: string): Promise<Array<{ id: string; slug: string; title: string }>> {
+      if (catalogTopicsCache) return catalogTopicsCache;
+      const res = await fetchJson<{ items?: Array<{ id: string; slug: string; title: string }> }>('/topics', token);
+      catalogTopicsCache = res.items ?? [];
+      return catalogTopicsCache;
+    }
+    function pickTopicSlugByTitle(topics: Array<{ slug: string; title: string }>, titleRu: string): string | null {
+      const want = titleRu.trim().toLowerCase();
+      const found = topics.find((t) => (t.title ?? '').trim().toLowerCase() === want);
+      return found?.slug ?? null;
+    }
+    async function catalogStaticTopicToSlug(token: string, v: string): Promise<string | null> {
       const s = (v || '').trim();
       if (s === 'all') return null;
-      if (s === 'marketing') return 'маркетинг';
-      if (s === 'sales') return 'продажи';
-      if (s === 'finance') return 'финансы';
+      const topics = await ensureCatalogTopics(token);
+      if (s === 'marketing') return pickTopicSlugByTitle(topics, 'Маркетинг');
+      if (s === 'sales') return pickTopicSlugByTitle(topics, 'Продажи');
+      if (s === 'finance') return pickTopicSlugByTitle(topics, 'Финансы');
       return null;
+    }
+
+    function syncCatalogTopicActive(root: ShadowRoot): void {
+      root.querySelectorAll<HTMLElement>('#screen-s-catalog [data-ep-catalog-topic]').forEach((el) => {
+        const key = (el.dataset.epCatalogTopic ?? '').trim();
+        el.classList.toggle('active', key === catalogTopic);
+      });
     }
 
     async function hydrateStudentCatalog(params?: { q?: string; topicSlug?: string | null }): Promise<void> {
@@ -5122,6 +5175,12 @@ if (platformMount) {
     shell.shadowRoot.addEventListener('click', (ev) => {
       const t = ev.target as HTMLElement | null;
 
+      // When clicking sidebar item, show "Loading…" immediately (before shell swaps screens)
+      const navBtn = t?.closest?.('[data-ep-screen]') as HTMLElement | null;
+      if (navBtn?.dataset?.epScreen === 's-lesson' && isShellStudentMode(shell.shadowRoot)) {
+        primeStudentLessonLoadingState(shell.shadowRoot);
+      }
+
       // Close access suggestions when clicking outside input/list
       const suggestHost = shell.shadowRoot.querySelector('[data-ep-access-suggest]') as HTMLElement | null;
       if (
@@ -6187,42 +6246,43 @@ if (platformMount) {
         const inp = shell.shadowRoot.querySelector('#screen-s-catalog [data-ep-catalog-search]') as HTMLInputElement | null;
         if (inp) inp.value = '';
         catalogTopic = catTopicKey;
-        const topicSlug = catalogStaticTopicToSlug(catalogTopic);
-        void hydrateStudentCatalog({ topicSlug });
+        syncCatalogTopicActive(shell.shadowRoot);
+        void (async () => {
+          const tok = getAccessToken();
+          if (!tok) return;
+          const topicSlug = await catalogStaticTopicToSlug(tok, catalogTopic);
+          void hydrateStudentCatalog({ topicSlug });
+        })();
         return;
       }
 
       const catBtn = t?.closest('[data-ep-catalog-category]') as HTMLElement | null;
       if (catBtn) {
         ev.preventDefault();
-        void (async () => {
-          try {
-            const tok = getAccessToken();
-            if (!tok) return;
-            const items = (await fetchJson<{ items?: Array<{ id: string; slug: string; title: string }> }>('/topics', tok)).items ?? [];
-            if (!items.length) {
-              window.alert('Тем пока нет.');
-              return;
-            }
-            const pick = window.prompt(
-              `Введите тему из списка:\n\n${items.map((x) => x.title).slice(0, 25).join('\n')}${items.length > 25 ? '\n…' : ''}`,
-            );
-            const chosen = (pick ?? '').trim();
-            if (!chosen) return;
-            const found = items.find((x) => x.title.toLowerCase() === chosen.toLowerCase());
-            if (!found) {
-              window.alert('Тема не найдена.');
-              return;
-            }
-            catalogSearchQ = '';
-            const inp = shell.shadowRoot.querySelector('#screen-s-catalog [data-ep-catalog-search]') as HTMLInputElement | null;
-            if (inp) inp.value = '';
-            catalogTopic = 'all';
-            void hydrateStudentCatalog({ topicSlug: found.slug });
-          } catch {
-            window.alert('Не удалось загрузить темы.');
-          }
-        })();
+        void openCatalogCategoryDropdown();
+        return;
+      }
+
+      if (
+        t?.closest('[data-ep-catalog-dd-backdrop]') ||
+        t?.closest('[data-ep-catalog-dd-close]')
+      ) {
+        ev.preventDefault();
+        closeCatalogCategoryDropdown();
+        return;
+      }
+
+      const ddPick = t?.closest('[data-ep-catalog-dd-item]') as HTMLElement | null;
+      const ddSlug = (ddPick?.dataset.epCatalogDdItem ?? '').trim();
+      if (ddPick && ddSlug) {
+        ev.preventDefault();
+        catalogSearchQ = '';
+        const inp = shell.shadowRoot.querySelector('#screen-s-catalog [data-ep-catalog-search]') as HTMLInputElement | null;
+        if (inp) inp.value = '';
+        catalogTopic = 'all';
+        syncCatalogTopicActive(shell.shadowRoot);
+        closeCatalogCategoryDropdown();
+        void hydrateStudentCatalog({ topicSlug: ddSlug });
         return;
       }
 
@@ -6245,6 +6305,28 @@ if (platformMount) {
         return;
       }
     });
+
+    function primeStudentLessonLoadingState(root: ShadowRoot): void {
+      setLessonContent(root, { moduleTitle: 'Загрузка…', lessonTitle: 'Текущий урок', bodyText: 'Загрузка урока…' });
+      const videoHost = root.querySelector('#screen-s-lesson [data-ep-video]') as HTMLElement | null;
+      if (videoHost) {
+        videoHost.style.display = 'none';
+        videoHost.querySelectorAll('iframe').forEach((x) => x.remove());
+      }
+      const sliderHost = root.querySelector('#screen-s-lesson [data-ep-lesson-slider]') as HTMLElement | null;
+      if (sliderHost) {
+        sliderHost.style.display = 'none';
+        sliderHost.replaceChildren();
+      }
+      const hwWrap = root.querySelector('#screen-s-lesson [data-ep-homework]') as HTMLElement | null;
+      if (hwWrap) hwWrap.style.display = 'none';
+      const matsTitle = root.querySelector('#screen-s-lesson [data-ep-materials-title]') as HTMLElement | null;
+      if (matsTitle) matsTitle.style.display = 'none';
+      const mats = root.querySelector('#screen-s-lesson [data-ep-materials]') as HTMLElement | null;
+      if (mats) mats.replaceChildren();
+      const subWrap = root.querySelector('#screen-s-lesson [data-ep-my-submission-wrap]') as HTMLElement | null;
+      if (subWrap) subWrap.style.display = 'none';
+    }
 
     shell.shadowRoot.addEventListener('change', (ev) => {
       const t = ev.target as HTMLElement | null;
@@ -6335,6 +6417,7 @@ if (platformMount) {
         const q = inp.value;
         catalogSearchQ = q;
         catalogTopic = 'all'; // search always across all courses
+        syncCatalogTopicActive(shell.shadowRoot);
         if (catalogSearchTimer) window.clearTimeout(catalogSearchTimer);
         catalogSearchTimer = window.setTimeout(() => {
           void hydrateStudentCatalog({ q: catalogSearchQ });
