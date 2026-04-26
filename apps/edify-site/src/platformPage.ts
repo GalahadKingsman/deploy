@@ -2368,10 +2368,10 @@ if (platformMount) {
       catalogTopicsCache = res.items ?? [];
       return catalogTopicsCache;
     }
-    function pickTopicSlugByKeyword(
-      topics: Array<{ slug: string; title: string }>,
+    function pickTopicIdOrSlugByKeyword(
+      topics: Array<{ id?: string; slug: string; title: string }>,
       keywordRuLower: string,
-    ): string | null {
+    ): { id: string; slug: string } | null {
       const kw = keywordRuLower.trim().toLowerCase();
       if (!kw) return null;
       const norm = (v: string): string =>
@@ -2386,15 +2386,27 @@ if (platformMount) {
         const slug = norm(String(t.slug ?? ''));
         return title.includes(kw) || slug.includes(kw);
       });
-      return found?.slug ?? null;
+      const id = String((found as any)?.id ?? '').trim();
+      const slug = String((found as any)?.slug ?? '').trim();
+      if (!slug) return null;
+      return { id, slug };
     }
-    async function catalogStaticTopicToSlug(token: string, v: string): Promise<string | null> {
+    async function catalogStaticTopicToTopicParam(token: string, v: string): Promise<string | null> {
       const s = (v || '').trim();
       if (s === 'all') return null;
       const topics = await ensureCatalogTopics(token);
-      if (s === 'marketing') return pickTopicSlugByKeyword(topics, 'маркет');
-      if (s === 'sales') return pickTopicSlugByKeyword(topics, 'продаж');
-      if (s === 'finance') return pickTopicSlugByKeyword(topics, 'финанс');
+      const picked =
+        s === 'marketing'
+          ? pickTopicIdOrSlugByKeyword(topics, 'маркет')
+          : s === 'sales'
+            ? pickTopicIdOrSlugByKeyword(topics, 'продаж')
+            : s === 'finance'
+              ? pickTopicIdOrSlugByKeyword(topics, 'финанс')
+              : null;
+      // Prefer UUID param (more robust than slug); fallback to slug
+      return picked?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(picked.id)
+        ? picked.id
+        : picked?.slug ?? null;
       return null;
     }
 
@@ -2405,7 +2417,7 @@ if (platformMount) {
       });
     }
 
-    async function hydrateStudentCatalog(params?: { q?: string; topicSlug?: string | null }): Promise<void> {
+    async function hydrateStudentCatalog(params?: { q?: string; topic?: string | null }): Promise<void> {
       const root = shell.shadowRoot;
       const screen = root.getElementById('screen-s-catalog');
       const grid = screen?.querySelector('.grid3');
@@ -2413,10 +2425,10 @@ if (platformMount) {
       grid.replaceChildren();
 
       const q = (params?.q ?? '').trim();
-      const topicSlug = (params?.topicSlug ?? null) || null;
+      const topic = (params?.topic ?? null) || null;
       const qs = new URLSearchParams();
       if (q) qs.set('q', q);
-      if (topicSlug) qs.set('topic', topicSlug);
+      if (topic) qs.set('topic', topic);
       const path = qs.toString() ? `/library?${qs.toString()}` : '/library';
       const data = await fetchJson<LibraryResponseV1>(path);
       const courses = (data.courses ?? []).slice(0, 12);
@@ -2427,7 +2439,7 @@ if (platformMount) {
         empty.style.color = 'var(--t3)';
         empty.style.fontSize = '13px';
         empty.style.lineHeight = '1.55';
-        empty.textContent = topicSlug
+        empty.textContent = topic
           ? 'В этой категории пока нет курсов.'
           : q
             ? 'Ничего не найдено по вашему запросу.'
@@ -6280,8 +6292,13 @@ if (platformMount) {
         void (async () => {
           const tok = getAccessToken();
           if (!tok) return;
-          const topicSlug = await catalogStaticTopicToSlug(tok, catalogTopic);
-          void hydrateStudentCatalog({ topicSlug });
+          const topic = await catalogStaticTopicToTopicParam(tok, catalogTopic);
+          // If there is no matching topic in DB, show empty (not "all courses")
+          if (catalogTopic !== 'all' && !topic) {
+            void hydrateStudentCatalog({ topic: '__missing__' });
+            return;
+          }
+          void hydrateStudentCatalog({ topic });
         })();
         return;
       }
@@ -6312,7 +6329,7 @@ if (platformMount) {
         catalogTopic = 'all';
         syncCatalogTopicActive(shell.shadowRoot);
         closeCatalogCategoryDropdown();
-        void hydrateStudentCatalog({ topicSlug: ddSlug });
+        void hydrateStudentCatalog({ topic: ddSlug });
         return;
       }
 
