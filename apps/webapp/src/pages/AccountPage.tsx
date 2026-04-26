@@ -726,8 +726,8 @@ export function AccountPage() {
 
       <ExpertCtaBlock />
 
-      {/* Referral Card */}
-      <ReferralCard />
+      {/* Реферальная программа — только у эксперта с активной подпиской (приглашение других экспертов) */}
+      {expertState === 'active' && <ReferralCard />}
 
       {/* Stats Row */}
       <StatsRow />
