@@ -85,6 +85,7 @@ export class MeController {
 
     // Update streak on "visit" (UTC day)
     const user = await this.usersRepository.bumpStreakOnVisit(userId);
+    await this.usersRepository.touchLastPlatformVisit(userId);
 
     // Best-effort: sync avatar from Telegram once per 24h if current avatar points to Telegram CDN
     try {

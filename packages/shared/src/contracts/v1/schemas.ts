@@ -130,6 +130,7 @@ export { MeExpertApplicationResponseV1Schema } from './me-expert-application.js'
 export { MeExpertMembershipsResponseV1Schema } from './me-expert-memberships.js';
 export { MeCoursesResponseV1Schema, MyCourseProgressV1Schema } from './me-courses.js';
 export { ExpertTeamMemberV1Schema, ListExpertTeamResponseV1Schema } from './expert-team.js';
+export { ExpertStudentRowV1Schema, ListExpertStudentsResponseV1Schema } from './expert-students.js';
 export {
   PaymentRefundRequestV1Schema,
   ListPaymentRefundRequestsResponseV1Schema,

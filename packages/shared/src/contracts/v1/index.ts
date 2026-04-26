@@ -139,6 +139,11 @@ export type { MeExpertApplicationResponseV1 } from './me-expert-application.js';
 export type { MeExpertMembershipsResponseV1 } from './me-expert-memberships.js';
 export type { MeCoursesResponseV1, MyCourseProgressV1 } from './me-courses.js';
 export type { ExpertTeamMemberV1, ListExpertTeamResponseV1 } from './expert-team.js';
+export type { ExpertStudentRowV1, ListExpertStudentsResponseV1 } from './expert-students.js';
+export {
+  ExpertStudentRowV1Schema,
+  ListExpertStudentsResponseV1Schema,
+} from './expert-students.js';
 export type {
   PaymentRefundRequestV1,
   ListPaymentRefundRequestsResponseV1,
@@ -249,6 +254,8 @@ export {
   MyCourseProgressV1Schema,
   ExpertTeamMemberV1Schema,
   ListExpertTeamResponseV1Schema,
+  ExpertStudentRowV1Schema,
+  ListExpertStudentsResponseV1Schema,
   PaymentRefundRequestV1Schema,
   ListPaymentRefundRequestsResponseV1Schema,
   PartnerPayoutRequestV1Schema,

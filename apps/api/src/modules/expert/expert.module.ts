@@ -20,6 +20,8 @@ import { ExpertSubmissionsController } from './expert-submissions.controller.js'
 import { ExpertTeamController } from './expert-team.controller.js';
 import { ExpertCourseTopicsController } from './expert-course-topics.controller.js';
 import { ExpertHomeworkController } from './expert-homework.controller.js';
+import { ExpertStudentsController } from './expert-students.controller.js';
+import { ExpertStudentsRepository } from './expert-students.repository.js';
 import { IntegrationsModule } from '../../integrations/integrations.module.js';
 import { StorageModule } from '../../storage/storage.module.js';
 import { ExpertCourseAccessService } from './expert-course-access.service.js';
@@ -50,7 +52,8 @@ import { ExpertCourseAccessService } from './expert-course-access.service.js';
     ExpertHomeworkController,
     ExpertTeamController,
     ExpertCourseTopicsController,
+    ExpertStudentsController,
   ],
-  providers: [JwtAuthGuard, ExpertCourseAccessService],
+  providers: [JwtAuthGuard, ExpertCourseAccessService, ExpertStudentsRepository],
 })
 export class ExpertModule {}

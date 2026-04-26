@@ -20,6 +20,7 @@ interface UserDbModel {
   streak_days?: number | null;
   streak_last_day?: string | null;
   avatar_synced_at?: Date | null;
+  last_platform_visit_at?: Date | null;
   created_at: Date;
   updated_at: Date;
   banned_at: Date | null;
@@ -601,6 +602,16 @@ export class UsersRepository {
       throw new Error(`User not found: ${userId}`);
     }
     return this.mapRowToUserWithBan(res.rows[0]);
+  }
+
+  /**
+   * Updates the timestamp used for "last activity" on the expert students screen (GET /me, etc.).
+   */
+  async touchLastPlatformVisit(userId: string): Promise<void> {
+    if (!this.pool) {
+      return;
+    }
+    await this.pool.query(`UPDATE users SET last_platform_visit_at = NOW() WHERE id = $1`, [userId]);
   }
 
   async getAvatarSyncMeta(userId: string): Promise<{ telegramUserId: string | null; avatarUrl: string | null; avatarSyncedAt: string | null }> {

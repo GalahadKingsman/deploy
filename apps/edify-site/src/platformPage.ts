@@ -650,6 +650,9 @@ if (platformMount) {
         if (action.type === 'navigate' && action.screenId === 'e-homework') {
           void hydrateExpertHomework(action.shadowRoot);
         }
+        if (action.type === 'navigate' && action.screenId === 'e-students') {
+          void hydrateExpertStudents(action.shadowRoot);
+        }
         if (action.type === 'navigate' && action.screenId === 'e-builder') {
           if (suppressBuilderNavigateHydrate) return;
           const src = action.sourceElement ?? null;
@@ -700,6 +703,9 @@ if (platformMount) {
     }
     if (initialScreenId === 'e-team') {
       void hydrateExpertTeam(shell.shadowRoot);
+    }
+    if (initialScreenId === 'e-students' && initialRole === 'expert') {
+      void hydrateExpertStudents(shell.shadowRoot);
     }
 
     type ModuleV1 = { id: string; title: string; position?: number };
@@ -2796,6 +2802,305 @@ if (platformMount) {
         return '—';
       }
     }
+
+    type ExpertStudentsRowV1 = {
+      userId: string;
+      courseId: string;
+      courseTitle: string;
+      firstName: string | null;
+      lastName: string | null;
+      email: string | null;
+      username: string | null;
+      avatarUrl: string | null;
+      streakDays: number;
+      lastPlatformVisitAt: string | null;
+      progressPercent: number;
+      homeworkSubmittedCount: number;
+      homeworkAvgScore: number | null;
+    };
+    type ExpertStudentsResponseV1 = {
+      items: ExpertStudentsRowV1[];
+      totalUniqueStudents: number;
+      activeLast7DaysUnique: number;
+      avgCompletionPercent: number | null;
+      globalAvgHomeworkScore: number | null;
+    };
+    let expertStudentsData: ExpertStudentsResponseV1 | null = null;
+    let expertStudentsSearchTimer: ReturnType<typeof setTimeout> | null = null;
+    function expertStudentsDisplayName(s: {
+      firstName: string | null;
+      lastName: string | null;
+      username: string | null;
+    }): string {
+      const n = [s.lastName, s.firstName].filter(Boolean).join(' ').trim();
+      if (n) return n;
+      if (s.username) return `@${s.username}`;
+      return 'Студент';
+    }
+    function formatStudentLastActivityRu(iso: string | null): { text: string; useErr: boolean } {
+      if (!iso) return { text: '—', useErr: false };
+      const ts = Date.parse(iso);
+      if (!Number.isFinite(ts)) return { text: '—', useErr: false };
+      const diff = Math.max(0, Date.now() - ts);
+      const dayMs = 86400000;
+      const dFull = Math.floor(diff / dayMs);
+      if (dFull >= 1) {
+        return {
+          text: `${dFull} ${pluralRu(dFull, ['день', 'дня', 'дней'])} назад`,
+          useErr: dFull >= 7,
+        };
+      }
+      const totalMin = Math.floor(diff / 60000);
+      if (totalMin < 1) return { text: 'только что', useErr: false };
+      if (totalMin < 60) {
+        return {
+          text: `${totalMin} ${pluralRu(totalMin, ['минуту', 'минуты', 'минут'])} назад`,
+          useErr: false,
+        };
+      }
+      const h = Math.floor(totalMin / 60);
+      const mRem = totalMin - h * 60;
+      if (mRem > 0) {
+        return {
+          text: `${h} ${pluralRu(h, ['час', 'часа', 'часов'])} ${mRem} ${pluralRu(mRem, ['минуту', 'минуты', 'минут'])} назад`,
+          useErr: false,
+        };
+      }
+      return { text: `${h} ${pluralRu(h, ['час', 'часа', 'часов'])} назад`, useErr: false };
+    }
+    function renderEStudentsTbodyFromCache(root: ShadowRoot | null): void {
+      const tbody = root?.querySelector('[data-ep-e-students-tbody]') as HTMLElement | null;
+      if (!tbody || !expertStudentsData) return;
+      const q = (
+        (root?.querySelector('[data-ep-e-students-search]') as HTMLInputElement | null)?.value ?? ''
+      )
+        .trim()
+        .toLowerCase();
+      let items = expertStudentsData.items ?? [];
+      if (q) {
+        items = items.filter((it) => {
+          const name = expertStudentsDisplayName(it).toLowerCase();
+          const em = (it.email ?? '').toLowerCase();
+          const ct = (it.courseTitle ?? '').toLowerCase();
+          return name.includes(q) || em.includes(q) || ct.includes(q);
+        });
+      }
+      tbody.replaceChildren();
+      if (items.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 8;
+        td.style.textAlign = 'center';
+        td.style.color = 'var(--t3)';
+        td.style.fontSize = '12px';
+        td.style.padding = '20px 12px';
+        td.textContent = expertStudentsData.items.length === 0 ? 'Пока нет зачисленных студентов.' : 'Никого не найдено.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+      for (const it of items) {
+        const tr = document.createElement('tr');
+        const nameStr = expertStudentsDisplayName(it);
+        const tdSt = document.createElement('td');
+        const rowWrap = document.createElement('div');
+        rowWrap.style.display = 'flex';
+        rowWrap.style.alignItems = 'center';
+        rowWrap.style.gap = '8px';
+        const av = document.createElement('div');
+        av.className = 'avatar av-sm';
+        av.style.overflow = 'hidden';
+        applyUserAvatarToElement(av, it.avatarUrl, initialsFromName(nameStr));
+        const nameCol = document.createElement('div');
+        const h4 = document.createElement('div');
+        h4.className = 'td-name';
+        h4.textContent = nameStr;
+        const em = document.createElement('div');
+        em.style.fontSize = '10px';
+        em.style.color = 'var(--t3)';
+        em.textContent = (it.email ?? '').trim() || '—';
+        nameCol.append(h4, em);
+        rowWrap.append(av, nameCol);
+        tdSt.appendChild(rowWrap);
+        const tdCr = document.createElement('td');
+        tdCr.textContent = (it.courseTitle ?? '').trim() || '—';
+        const tdProg = document.createElement('td');
+        const pw = document.createElement('div');
+        pw.className = 'prog-wrap';
+        pw.style.width = '120px';
+        const bar = document.createElement('div');
+        bar.className = 'prog-bar';
+        const fill = document.createElement('div');
+        fill.className = 'prog-fill';
+        const pct = Math.max(0, Math.min(100, Math.round(it.progressPercent || 0)));
+        fill.style.width = `${pct}%`;
+        bar.appendChild(fill);
+        const pv = document.createElement('div');
+        pv.className = 'prog-val';
+        pv.textContent = `${pct}%`;
+        pw.append(bar, pv);
+        tdProg.appendChild(pw);
+        const tdStreak = document.createElement('td');
+        if (it.streakDays > 0) {
+          if (it.streakDays >= 7) {
+            tdStreak.innerHTML = `<span style="color:var(--warn)">🔥</span> ${it.streakDays} дн.`;
+          } else {
+            tdStreak.textContent = `${it.streakDays} дн.`;
+          }
+        } else {
+          tdStreak.textContent = '—';
+        }
+        const tdScore = document.createElement('td');
+        const sh = document.createElement('div');
+        renderStarsInto(sh, it.homeworkAvgScore);
+        tdScore.appendChild(sh);
+        const tdHw = document.createElement('td');
+        const c = it.homeworkSubmittedCount ?? 0;
+        if (c > 0) {
+          const tag = document.createElement('span');
+          tag.className = 'tag tag-new';
+          tag.textContent = `${c} сдано`;
+          tdHw.appendChild(tag);
+        } else {
+          tdHw.innerHTML = '<span style="color:var(--t3)">0 сдано</span>';
+        }
+        const tdAct = document.createElement('td');
+        tdAct.style.fontSize = '11px';
+        const when = formatStudentLastActivityRu(it.lastPlatformVisitAt);
+        tdAct.textContent = when.text;
+        tdAct.style.color = when.useErr ? 'var(--err)' : 'var(--t3)';
+        const tdMsg = document.createElement('td');
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'btn btn-ghost btn-sm btn-icon';
+        b.textContent = '💬';
+        b.title = 'Сообщения (скоро)';
+        tdMsg.appendChild(b);
+        tr.append(tdSt, tdCr, tdProg, tdStreak, tdScore, tdHw, tdAct, tdMsg);
+        tbody.appendChild(tr);
+      }
+    }
+    async function hydrateExpertStudents(root: ShadowRoot | null): Promise<void> {
+      if (!root) return;
+      const sub = root.querySelector('[data-ep-e-students-sub]') as HTMLElement | null;
+      const stTotal = root.querySelector('[data-ep-e-students-stat-total]') as HTMLElement | null;
+      const stAct = root.querySelector('[data-ep-e-students-stat-active]') as HTMLElement | null;
+      const stAvg = root.querySelector('[data-ep-e-students-stat-avg]') as HTMLElement | null;
+      const stHw = root.querySelector('[data-ep-e-students-stat-hw]') as HTMLElement | null;
+      const sideBadge = root.querySelector('[data-ep-e-students-count]') as HTMLElement | null;
+      const token = getAccessToken();
+      if (!token) {
+        expertStudentsData = null;
+        if (sub) sub.textContent = 'Войдите, чтобы видеть студентов.';
+        if (stTotal) stTotal.textContent = '—';
+        if (stAct) stAct.textContent = '—';
+        if (stAvg) stAvg.textContent = '—';
+        if (stHw) stHw.textContent = '—';
+        if (sideBadge) {
+          sideBadge.textContent = '';
+          sideBadge.style.display = 'none';
+        }
+        const tbody = root.querySelector('[data-ep-e-students-tbody]') as HTMLElement | null;
+        if (tbody) {
+          tbody.replaceChildren();
+          const tr = document.createElement('tr');
+          const td = document.createElement('td');
+          td.colSpan = 8;
+          td.style.textAlign = 'center';
+          td.style.color = 'var(--t3)';
+          td.style.padding = '20px 12px';
+          td.textContent = 'Войдите, чтобы видеть список.';
+          tr.appendChild(td);
+          tbody.appendChild(tr);
+        }
+        return;
+      }
+      if (stTotal) stTotal.textContent = '…';
+      if (stAct) stAct.textContent = '…';
+      if (stAvg) stAvg.textContent = '…';
+      if (stHw) stHw.textContent = '…';
+      const eid = await resolveActiveExpertId();
+      if (!eid) {
+        expertStudentsData = null;
+        if (sub) sub.textContent = 'Нет доступа к курсу эксперта.';
+        if (stTotal) stTotal.textContent = '—';
+        if (stAct) stAct.textContent = '—';
+        if (stAvg) stAvg.textContent = '—';
+        if (stHw) stHw.textContent = '—';
+        if (sideBadge) {
+          sideBadge.textContent = '';
+          sideBadge.style.display = 'none';
+        }
+        return;
+      }
+      try {
+        const data = await fetchJson<ExpertStudentsResponseV1>(
+          `/experts/${encodeURIComponent(eid)}/students`,
+          token,
+        );
+        expertStudentsData = data;
+        const total = data.totalUniqueStudents ?? 0;
+        if (sub) {
+          sub.textContent = `${total} ${pluralRu(total, ['студент', 'студента', 'студентов'])} во всех курсах`;
+        }
+        if (stTotal) stTotal.textContent = String(total);
+        if (stAct) stAct.textContent = String(data.activeLast7DaysUnique ?? 0);
+        if (stAvg) {
+          const a = data.avgCompletionPercent;
+          stAvg.textContent =
+            a == null || !Number.isFinite(a) ? '—' : Math.abs(a - Math.round(a)) < 1e-6 ? `${Math.round(a)}%` : `${a.toFixed(1)}%`;
+        }
+        if (stHw) {
+          const g = data.globalAvgHomeworkScore;
+          stHw.textContent = g == null || !Number.isFinite(g) ? '—' : g.toFixed(1);
+        }
+        if (sideBadge) {
+          if (total > 0) {
+            sideBadge.textContent = String(total);
+            sideBadge.style.display = '';
+          } else {
+            sideBadge.textContent = '';
+            sideBadge.style.display = 'none';
+          }
+        }
+        renderEStudentsTbodyFromCache(root);
+      } catch {
+        expertStudentsData = null;
+        if (sub) sub.textContent = 'Не удалось загрузить список.';
+        if (stTotal) stTotal.textContent = '—';
+        if (stAct) stAct.textContent = '—';
+        if (stAvg) stAvg.textContent = '—';
+        if (stHw) stHw.textContent = '—';
+        if (sideBadge) {
+          sideBadge.textContent = '';
+          sideBadge.style.display = 'none';
+        }
+        const tbody = root.querySelector('[data-ep-e-students-tbody]') as HTMLElement | null;
+        if (tbody) {
+          tbody.replaceChildren();
+          const tr = document.createElement('tr');
+          const td = document.createElement('td');
+          td.colSpan = 8;
+          td.style.textAlign = 'center';
+          td.style.color = 'var(--err)';
+          td.style.fontSize = '12px';
+          td.style.padding = '20px 12px';
+          td.textContent = 'Ошибка загрузки. Обновите страницу.';
+          tr.appendChild(td);
+          tbody.appendChild(tr);
+        }
+      }
+    }
+
+    shell.shadowRoot.addEventListener('input', (ev) => {
+      const inp = ev.target as HTMLInputElement | null;
+      if (inp?.matches?.('[data-ep-e-students-search]')) {
+        if (expertStudentsSearchTimer) clearTimeout(expertStudentsSearchTimer);
+        expertStudentsSearchTimer = setTimeout(() => {
+          renderEStudentsTbodyFromCache(shell.shadowRoot);
+        }, 200);
+      }
+    });
 
     async function hydrateExpertTeam(root: ShadowRoot | null): Promise<void> {
       if (!root) return;
@@ -5216,6 +5521,14 @@ if (platformMount) {
     // Since we already have `onAction` above, we handle actions via ShadowRoot click hooks:
     shell.shadowRoot.addEventListener('click', (ev) => {
       const t = ev.target as HTMLElement | null;
+
+      const eStF = t?.closest?.('[data-ep-e-students-filter]') as HTMLElement | null;
+      const eStI = t?.closest?.('[data-ep-e-students-invite]') as HTMLElement | null;
+      if (eStF || eStI) {
+        ev.preventDefault();
+        window.alert('Скоро.');
+        return;
+      }
 
       // When clicking sidebar item, show "Loading…" immediately (before shell swaps screens)
       const navBtn = t?.closest?.('[data-ep-screen]') as HTMLElement | null;
