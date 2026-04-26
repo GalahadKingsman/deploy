@@ -25,7 +25,7 @@ export class ProgressRepository {
         -- New progress-based completion
         SELECT p.lesson_id, p.completed_at AS at
         FROM lesson_progress p
-        JOIN lessons l ON l.id = p.lesson_id AND l.deleted_at IS NULL
+        JOIN lessons l ON l.id = p.lesson_id AND l.deleted_at IS NULL AND l.hidden_from_students = false
         JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
         WHERE p.user_id = $1 AND m.course_id = $2
 
@@ -35,7 +35,7 @@ export class ProgressRepository {
         SELECT a.lesson_id, s.decided_at AS at
         FROM submissions s
         JOIN assignments a ON a.id = s.assignment_id
-        JOIN lessons l ON l.id = a.lesson_id AND l.deleted_at IS NULL
+        JOIN lessons l ON l.id = a.lesson_id AND l.deleted_at IS NULL AND l.hidden_from_students = false
         JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
         WHERE s.student_user_id = $1 AND m.course_id = $2 AND s.score IS NOT NULL
       )
@@ -56,7 +56,7 @@ export class ProgressRepository {
       WITH completed AS (
         SELECT p.lesson_id
         FROM lesson_progress p
-        JOIN lessons l ON l.id = p.lesson_id AND l.deleted_at IS NULL
+        JOIN lessons l ON l.id = p.lesson_id AND l.deleted_at IS NULL AND l.hidden_from_students = false
         JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
         WHERE p.user_id = $1 AND m.course_id = $2
 
@@ -65,7 +65,7 @@ export class ProgressRepository {
         SELECT a.lesson_id
         FROM submissions s
         JOIN assignments a ON a.id = s.assignment_id
-        JOIN lessons l ON l.id = a.lesson_id AND l.deleted_at IS NULL
+        JOIN lessons l ON l.id = a.lesson_id AND l.deleted_at IS NULL AND l.hidden_from_students = false
         JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
         WHERE s.student_user_id = $1 AND m.course_id = $2 AND s.score IS NOT NULL
       )
@@ -85,6 +85,7 @@ export class ProgressRepository {
       FROM lessons l
       JOIN course_modules m ON m.id = l.module_id
       WHERE m.course_id = $1 AND l.deleted_at IS NULL AND m.deleted_at IS NULL
+        AND l.hidden_from_students = false
       `,
       [courseId],
     );

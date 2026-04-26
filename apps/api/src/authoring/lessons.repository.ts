@@ -10,6 +10,7 @@ interface LessonRow {
   slider: unknown | null;
   position: number;
   video: unknown | null;
+  hidden_from_students: boolean;
   deleted_at: Date | null;
   created_at: Date;
   updated_at: Date;
@@ -27,6 +28,7 @@ function mapRow(row: LessonRow, courseId: string): ContractsV1.ExpertLessonV1 {
     moduleId: row.module_id,
     title: row.title,
     position: row.position,
+    hiddenFromStudents: Boolean(row.hidden_from_students),
     contentMarkdown: row.content_md ?? null,
     slider: (row.slider as any) ?? null,
     // video is stored as jsonb, expected to conform to LessonVideoV1 (validated on write)
@@ -137,8 +139,8 @@ export class LessonsRepository {
 
     const result = await this.pool.query<LessonRow>(
       `
-      INSERT INTO lessons (id, module_id, title, content_md, slider, position, video, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7::jsonb, NOW(), NOW())
+      INSERT INTO lessons (id, module_id, title, content_md, slider, position, video, hidden_from_students, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7::jsonb, false, NOW(), NOW())
       RETURNING *
       `,
       [
@@ -164,6 +166,8 @@ export class LessonsRepository {
     }
     const courseId = await this.resolveCourseIdByModuleId(params.moduleId);
 
+    const hiddenFromStudents =
+      params.patch.hiddenFromStudents === undefined ? null : params.patch.hiddenFromStudents;
     const result = await this.pool.query<LessonRow>(
       `
       UPDATE lessons
@@ -172,6 +176,7 @@ export class LessonsRepository {
         content_md = COALESCE($4, content_md),
         slider = COALESCE($5::jsonb, slider),
         video = COALESCE($6::jsonb, video),
+        hidden_from_students = COALESCE($7, hidden_from_students),
         updated_at = NOW()
       WHERE id = $1 AND module_id = $2 AND deleted_at IS NULL
       RETURNING *
@@ -183,6 +188,7 @@ export class LessonsRepository {
         params.patch.contentMarkdown === undefined ? null : params.patch.contentMarkdown,
         params.patch.slider === undefined ? null : JSON.stringify(params.patch.slider),
         params.patch.video === undefined ? null : JSON.stringify(params.patch.video),
+        hiddenFromStudents,
       ],
     );
     const row = result.rows[0];

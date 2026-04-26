@@ -11,6 +11,7 @@ interface CourseRow {
   updated_at: Date;
   status: string;
   visibility: string;
+  lesson_access_mode?: string | null;
 }
 
 interface LessonRow {
@@ -95,7 +96,7 @@ export class StudentCoursesRepository {
     if (!this.pool) return null;
     const res = await this.pool.query<CourseRow>(
       `
-      SELECT id, title, description, cover_url, price_cents, currency, updated_at, status, visibility
+      SELECT id, title, description, cover_url, price_cents, currency, updated_at, status, visibility, lesson_access_mode
       FROM courses
       WHERE id = $1 AND deleted_at IS NULL
       LIMIT 1
@@ -115,6 +116,7 @@ export class StudentCoursesRepository {
       updatedAt: r.updated_at.toISOString(),
       status: r.status as any,
       visibility: r.visibility as any,
+      lessonAccessMode: r.lesson_access_mode === 'open' ? 'open' : 'sequential',
     };
   }
 
@@ -126,6 +128,7 @@ export class StudentCoursesRepository {
       FROM lessons l
       JOIN course_modules m ON m.id = l.module_id
       WHERE m.course_id = $1 AND l.deleted_at IS NULL AND m.deleted_at IS NULL
+        AND l.hidden_from_students = false
       ORDER BY m.position ASC, l.position ASC, l.created_at ASC
       `,
       [courseId],
@@ -150,6 +153,7 @@ export class StudentCoursesRepository {
       FROM lessons l
       JOIN course_modules m ON m.id = l.module_id
       WHERE m.course_id = $1 AND m.id = $2 AND l.deleted_at IS NULL AND m.deleted_at IS NULL
+        AND l.hidden_from_students = false
       ORDER BY l.position ASC, l.created_at ASC
       `,
       [params.courseId, params.moduleId],
@@ -174,6 +178,7 @@ export class StudentCoursesRepository {
       FROM lessons l
       JOIN course_modules m ON m.id = l.module_id
       WHERE l.id = $1 AND l.deleted_at IS NULL AND m.deleted_at IS NULL
+        AND l.hidden_from_students = false
       LIMIT 1
       `,
       [lessonId],
@@ -211,6 +216,7 @@ export class StudentCoursesRepository {
       JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
       JOIN courses c ON c.id = m.course_id AND c.deleted_at IS NULL
       WHERE l.id = $1 AND l.deleted_at IS NULL
+        AND l.hidden_from_students = false
       LIMIT 1
       `,
       [lessonId],

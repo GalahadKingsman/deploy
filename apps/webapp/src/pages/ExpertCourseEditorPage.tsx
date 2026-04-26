@@ -13,6 +13,7 @@ export function ExpertCourseEditorPage() {
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [visibility, setVisibility] = React.useState<'private' | 'public'>('private');
+  const [lessonAccessMode, setLessonAccessMode] = React.useState<'sequential' | 'open'>('sequential');
   const [coverUrl, setCoverUrl] = React.useState<string>('');
   const [coverFile, setCoverFile] = React.useState<File | null>(null);
   const [coverUploading, setCoverUploading] = React.useState(false);
@@ -53,6 +54,7 @@ export function ExpertCourseEditorPage() {
         setTitle(c.title);
         setDescription(c.description ?? '');
         setVisibility((c.visibility ?? 'private') === 'public' ? 'public' : 'private');
+        setLessonAccessMode(c.lessonAccessMode === 'open' ? 'open' : 'sequential');
         setCoverUrl((c.coverUrl ?? '') || '');
       } finally {
         if (!cancelled) setLoading(false);
@@ -76,6 +78,7 @@ export function ExpertCourseEditorPage() {
           description: description.trim() ? description.trim() : null,
           visibility,
           coverUrl: coverUrl.trim() ? coverUrl.trim() : null,
+          lessonAccessMode,
         },
       });
       setCourse(updated);
@@ -216,6 +219,26 @@ export function ExpertCourseEditorPage() {
               >
                 <option value="private">private (только по ссылке)</option>
                 <option value="public">public (в библиотеке)</option>
+              </select>
+            </div>
+            <div style={{ flex: '0 1 200px' }}>
+              <div style={{ marginBottom: 'var(--sp-2)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-medium)' }}>
+                Доступ к урокам
+              </div>
+              <select
+                value={lessonAccessMode}
+                onChange={(e) => setLessonAccessMode(e.target.value === 'open' ? 'open' : 'sequential')}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: 'var(--r-sm)',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg)',
+                  color: 'var(--fg)',
+                }}
+              >
+                <option value="sequential">поочерёдно</option>
+                <option value="open">все сразу (кроме скрытых)</option>
               </select>
             </div>
           </div>

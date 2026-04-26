@@ -13,7 +13,7 @@ export {
   ExpertSubscriptionStatusV1Schema,
   ExpertSubscriptionV1Schema,
 } from './subscription.js';
-export { CourseV1Schema } from './course.js';
+export { CourseV1Schema, CourseLessonAccessModeV1Schema } from './course.js';
 export { LessonV1Schema } from './lesson.js';
 export {
   EnrollmentV1Schema,

@@ -517,6 +517,7 @@ if (platformMount) {
       visibility?: string;
       description?: string | null;
       coverUrl?: string | null;
+      lessonAccessMode?: 'sequential' | 'open';
     };
     let builderCourseDetail: BuilderCourseDetailV1 | null = null;
     type BuilderTopicV1 = { id: string; title: string };
@@ -542,8 +543,10 @@ if (platformMount) {
     type BuilderLessonV1 = {
       id: string;
       moduleId: string;
+      courseId?: string;
       title: string;
       position: number;
+      hiddenFromStudents?: boolean;
       contentMarkdown?: string | null;
       slider?: { images: { key: string }[] } | null;
       video?: { kind: string; url?: string } | null;
@@ -649,6 +652,7 @@ if (platformMount) {
         }
         if (action.type === 'navigate' && action.screenId === 'e-homework') {
           void hydrateExpertHomework(action.shadowRoot);
+          void hydrateExpertHomeworkBadge(action.shadowRoot);
         }
         if (action.type === 'navigate' && action.screenId === 'e-students') {
           void hydrateExpertStudents(action.shadowRoot);
@@ -2184,6 +2188,7 @@ if (platformMount) {
         currentMe = null;
         currentPlatformRole = null;
         syncExpertTeamOwnerButton(root);
+        void hydrateExpertHomeworkBadge(shell.shadowRoot);
         return;
       }
 
@@ -2208,6 +2213,7 @@ if (platformMount) {
           currentMe = null;
           currentPlatformRole = null;
           syncExpertTeamOwnerButton(root);
+          void hydrateExpertHomeworkBadge(root);
           return;
         }
         currentMe = u;
@@ -2243,6 +2249,7 @@ if (platformMount) {
         }
         expertShellAccess.allowed = inExpertTeam;
         syncExpertTeamOwnerButton(root);
+        void hydrateExpertHomeworkBadge(root);
         const name = displayName(u);
         nameEl.textContent = name;
         roleEl.textContent = inExpertTeam ? 'Эксперт' : 'Ученик';
@@ -2258,6 +2265,7 @@ if (platformMount) {
         currentMe = null;
         currentPlatformRole = null;
         syncExpertTeamOwnerButton(root);
+        void hydrateExpertHomeworkBadge(root);
         // не ломаем интерфейс, если /me недоступен
       }
     }
@@ -2995,7 +3003,7 @@ if (platformMount) {
         if (stTotal) stTotal.textContent = '—';
         if (stAct) stAct.textContent = '—';
         if (stAvg) stAvg.textContent = '—';
-        if (stHw) stHw.textContent = '—';
+        if (stHw) renderStarsInto(stHw, null);
         if (sideBadge) {
           sideBadge.textContent = '';
           sideBadge.style.display = 'none';
@@ -3026,7 +3034,7 @@ if (platformMount) {
         if (stTotal) stTotal.textContent = '—';
         if (stAct) stAct.textContent = '—';
         if (stAvg) stAvg.textContent = '—';
-        if (stHw) stHw.textContent = '—';
+        if (stHw) renderStarsInto(stHw, null);
         if (sideBadge) {
           sideBadge.textContent = '';
           sideBadge.style.display = 'none';
@@ -3052,7 +3060,7 @@ if (platformMount) {
         }
         if (stHw) {
           const g = data.globalAvgHomeworkScore;
-          stHw.textContent = g == null || !Number.isFinite(g) ? '—' : g.toFixed(1);
+          renderStarsInto(stHw, g == null || !Number.isFinite(g) ? null : g);
         }
         if (sideBadge) {
           if (total > 0) {
@@ -3070,7 +3078,7 @@ if (platformMount) {
         if (stTotal) stTotal.textContent = '—';
         if (stAct) stAct.textContent = '—';
         if (stAvg) stAvg.textContent = '—';
-        if (stHw) stHw.textContent = '—';
+        if (stHw) renderStarsInto(stHw, null);
         if (sideBadge) {
           sideBadge.textContent = '';
           sideBadge.style.display = 'none';
@@ -3352,6 +3360,49 @@ if (platformMount) {
         expertWorkspaceMyRole === 'manager' ||
         expertWorkspaceMyRole === 'owner'
       );
+    }
+
+    async function hydrateExpertHomeworkBadge(root: ShadowRoot | null): Promise<void> {
+      if (!root) return;
+      const el = root.querySelector('[data-ep-e-homework-badge]') as HTMLElement | null;
+      if (!el) return;
+      const clear = () => {
+        el.textContent = '';
+        el.style.display = 'none';
+      };
+      if (!getAccessToken() || !expertShellAccess.allowed) {
+        clear();
+        return;
+      }
+      if (!canReviewHomework()) {
+        clear();
+        return;
+      }
+      const eid = await resolveActiveExpertId();
+      if (!eid) {
+        clear();
+        return;
+      }
+      try {
+        const tok = getAccessToken();
+        if (!tok) {
+          clear();
+          return;
+        }
+        const r = await fetchJson<{ count?: number }>(
+          `/experts/${encodeURIComponent(eid)}/homework/pending-count`,
+          tok,
+        );
+        const n = Math.max(0, Math.floor(Number(r.count ?? 0) || 0));
+        if (n > 0) {
+          el.textContent = String(n);
+          el.style.display = '';
+        } else {
+          clear();
+        }
+      } catch {
+        clear();
+      }
     }
 
     function formatRelativeTime(iso: string): string {
@@ -3986,7 +4037,7 @@ if (platformMount) {
           ico.textContent = '▶';
           const nm = document.createElement('span');
           nm.className = 'lesson-name';
-          nm.textContent = l.title;
+          nm.textContent = l.hiddenFromStudents ? `${l.title} · скрыт` : l.title;
           row.append(ico, nm);
           box.appendChild(row);
         }
@@ -4006,6 +4057,7 @@ if (platformMount) {
       const titleInp = root.querySelector('[data-ep-builder-lesson-title]') as HTMLInputElement | null;
       const rutubeInp = root.querySelector('[data-ep-builder-rutube]') as HTMLInputElement | null;
       const bodyTa = root.querySelector('[data-ep-builder-lesson-body]') as HTMLTextAreaElement | null;
+      const hiddenCb = root.querySelector('[data-ep-builder-lesson-hidden]') as HTMLInputElement | null;
       const hwTa = root.querySelector('[data-ep-builder-hw-body]') as HTMLTextAreaElement | null;
       const filesHost = root.querySelector('[data-ep-builder-hw-files]') as HTMLElement | null;
       const forbiddenEl = root.querySelector('[data-ep-builder-hw-forbidden]') as HTMLElement | null;
@@ -4030,6 +4082,7 @@ if (platformMount) {
         if (titleInp) titleInp.value = '';
         if (rutubeInp) rutubeInp.value = '';
         if (bodyTa) bodyTa.value = '';
+        if (hiddenCb) hiddenCb.checked = false;
         syncBuilderHomeworkLessonGate(root, false);
         resetHwEditorState();
         return;
@@ -4040,6 +4093,7 @@ if (platformMount) {
         if (titleInp) titleInp.value = '';
         if (rutubeInp) rutubeInp.value = '';
         if (bodyTa) bodyTa.value = '';
+        if (hiddenCb) hiddenCb.checked = false;
         syncBuilderHomeworkLessonGate(root, false);
         resetHwEditorState();
         return;
@@ -4048,6 +4102,7 @@ if (platformMount) {
       syncBuilderHomeworkLessonGate(root, true);
       if (titleInp) titleInp.value = lesson.title;
       if (bodyTa) bodyTa.value = lesson.contentMarkdown ?? '';
+      if (hiddenCb) hiddenCb.checked = Boolean(lesson.hiddenFromStudents);
       const v = lesson.video;
       if (rutubeInp) rutubeInp.value = v && v.kind === 'rutube' && v.url ? v.url : '';
 
@@ -4176,6 +4231,7 @@ if (platformMount) {
       const titleInp = root.querySelector('[data-ep-builder-lesson-title]') as HTMLInputElement | null;
       const rutubeInp = root.querySelector('[data-ep-builder-rutube]') as HTMLInputElement | null;
       const bodyTa = root.querySelector('[data-ep-builder-lesson-body]') as HTMLTextAreaElement | null;
+      const hiddenCb = root.querySelector('[data-ep-builder-lesson-hidden]') as HTMLInputElement | null;
       const title = (titleInp?.value ?? '').trim();
       if (!title) {
         window.alert('Укажите название урока.');
@@ -4200,6 +4256,7 @@ if (platformMount) {
             contentMarkdown: bodyTa?.value ?? '',
             slider,
             video,
+            hiddenFromStudents: hiddenCb?.checked ?? false,
           },
           token,
         );
@@ -5256,10 +5313,15 @@ if (platformMount) {
         const descTa = root.querySelector('[data-ep-course-desc]') as HTMLTextAreaElement | null;
         const visSel = root.querySelector('[data-ep-course-visibility]') as HTMLSelectElement | null;
         const coverInp = root.querySelector('[data-ep-course-cover-url]') as HTMLInputElement | null;
+        const lessonAccSel = root.querySelector('[data-ep-course-lesson-access]') as HTMLSelectElement | null;
         if (titleInp) titleInp.value = course.title ?? '';
         if (descTa) descTa.value = (course.description ?? '').trim();
         if (visSel) visSel.value = (course.visibility ?? 'private') === 'public' ? 'public' : 'private';
         if (coverInp) coverInp.value = (course.coverUrl ?? '').trim();
+        if (lessonAccSel) {
+          const m = course.lessonAccessMode === 'open' ? 'open' : 'sequential';
+          lessonAccSel.value = m;
+        }
 
         builderCourseSettingsAllTopics = allItems;
         const baseIds = new Set(allItems.map((t) => t.id));
@@ -5308,6 +5370,7 @@ if (platformMount) {
       const descTa = root.querySelector('[data-ep-course-desc]') as HTMLTextAreaElement | null;
       const visSel = root.querySelector('[data-ep-course-visibility]') as HTMLSelectElement | null;
       const coverInp = root.querySelector('[data-ep-course-cover-url]') as HTMLInputElement | null;
+      const lessonAccSel = root.querySelector('[data-ep-course-lesson-access]') as HTMLSelectElement | null;
       const title = (titleInp?.value ?? '').trim();
       if (!title) {
         window.alert('Укажите название курса.');
@@ -5316,6 +5379,7 @@ if (platformMount) {
       const visibility = visSel?.value === 'public' ? 'public' : 'private';
       const description = (descTa?.value ?? '').trim();
       const coverUrl = (coverInp?.value ?? '').trim();
+      const lessonAccessMode = lessonAccSel?.value === 'open' ? 'open' : 'sequential';
       try {
         const updated = await patchJson<BuilderCourseDetailV1>(
           `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}`,
@@ -5324,6 +5388,7 @@ if (platformMount) {
             description: description ? description : null,
             visibility,
             coverUrl: coverUrl ? coverUrl : null,
+            lessonAccessMode,
           },
           token,
         );
@@ -6021,6 +6086,7 @@ if (platformMount) {
             );
             window.alert('Оценка отправлена.');
             void openExpertHomeworkDetail(shell.shadowRoot, submissionId);
+            void hydrateExpertHomeworkBadge(shell.shadowRoot);
           } catch {
             window.alert('Не удалось отправить оценку.');
           }

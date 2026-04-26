@@ -18,7 +18,7 @@ export type {
   ExpertSubscriptionPlanV1,
   ExpertSubscriptionStatusV1,
 } from './subscription.js';
-export type { CourseV1 } from './course.js';
+export type { CourseV1, CourseLessonAccessModeV1 } from './course.js';
 export type { LessonV1, LessonVideoV1 } from './lesson.js';
 export type {
   EnrollmentV1,
@@ -185,6 +185,7 @@ export {
   ExpertSubscriptionStatusV1Schema,
   ExpertSubscriptionV1Schema,
   CourseV1Schema,
+  CourseLessonAccessModeV1Schema,
   LessonV1Schema,
   EnrollmentV1Schema,
   ActivateInviteRequestV1Schema,

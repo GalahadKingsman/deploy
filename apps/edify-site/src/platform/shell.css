@@ -270,6 +270,7 @@
 .stat-card .num.a{color:var(--a)}
 .stat-card .num.ok{color:var(--ok)}
 .stat-card .num.warn{color:var(--warn)}
+.stat-card .num.warn .ep-stars{font-size:20px}
 .stat-card .lbl{font-family:var(--fm);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--t3)}
 .stat-card .delta{font-size:11px;margin-top:4px}
 .delta-up{color:var(--ok)}

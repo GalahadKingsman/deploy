@@ -69,6 +69,15 @@ export class ExpertHomeworkController {
     return { items };
   }
 
+  @Get('pending-count')
+  @RequireExpertRole('reviewer')
+  @ApiOperation({ summary: 'Count homework items that need action (new + not yet checked, i.e. not accepted)' })
+  @ApiResponse({ status: 200, description: '{ count: number }' })
+  async pendingCount(@Param('expertId') expertId: string): Promise<{ count: number }> {
+    const count = await this.submissionsRepository.countExpertHomeworkPendingInboxForExpert(expertId);
+    return { count };
+  }
+
   @Get('submissions/:submissionId')
   @RequireExpertRole('reviewer')
   @ApiOperation({ summary: 'Homework detail (marks opened)' })

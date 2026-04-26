@@ -188,6 +188,35 @@ export class SubmissionsRepository {
     return mapped.filter((x) => x.uiStatus === 'unchecked');
   }
 
+  /**
+   * Latest row per (student, lesson) that is not yet accepted = «новые» + «не проверено» in the expert inbox
+   * (same rules as `listExpertHomeworkInbox` uiStatus new/unchecked).
+   */
+  async countExpertHomeworkPendingInboxForExpert(expertId: string): Promise<number> {
+    if (!this.pool) return 0;
+    const res = await this.pool.query<{ c: string }>(
+      `
+      WITH latest AS (
+        SELECT DISTINCT ON (s.student_user_id, a.lesson_id)
+          s.id AS submission_id,
+          s.status
+        FROM submissions s
+        JOIN assignments a ON a.id = s.assignment_id
+        JOIN lessons l ON l.id = a.lesson_id AND l.deleted_at IS NULL
+        JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+        JOIN courses c ON c.id = m.course_id AND c.deleted_at IS NULL
+        WHERE c.expert_id = $1
+        ORDER BY s.student_user_id, a.lesson_id, s.created_at DESC
+      )
+      SELECT COUNT(*)::text AS c
+      FROM latest
+      WHERE latest.status IS DISTINCT FROM 'accepted'
+      `,
+      [expertId],
+    );
+    return Math.max(0, parseInt(res.rows[0]?.c ?? '0', 10) || 0);
+  }
+
   async getExpertHomeworkDetailAndMarkOpened(params: {
     expertId: string;
     reviewerUserId: string;

@@ -12,6 +12,8 @@ export interface ExpertLessonV1 {
   moduleId: Id;
   title: string;
   position: number;
+  /** When true, lesson is not listed or openable for students; experts still edit in builder. */
+  hiddenFromStudents: boolean;
   contentMarkdown?: string | null;
   slider?: { images: { key: string }[] } | null;
   video?: LessonVideoV1;
@@ -26,6 +28,7 @@ export const ExpertLessonV1Schema = z.object({
   moduleId: z.string(),
   title: z.string(),
   position: z.number(),
+  hiddenFromStudents: z.boolean(),
   contentMarkdown: z.string().nullable().optional(),
   slider: LessonV1Schema.shape.slider,
   video: LessonVideoV1Schema,
@@ -58,6 +61,7 @@ export const CreateExpertLessonRequestV1Schema = z.object({
 
 export interface UpdateExpertLessonRequestV1 {
   title?: string;
+  hiddenFromStudents?: boolean;
   contentMarkdown?: string | null;
   slider?: { images: { key: string }[] } | null;
   video?: LessonVideoV1;
@@ -65,6 +69,7 @@ export interface UpdateExpertLessonRequestV1 {
 
 export const UpdateExpertLessonRequestV1Schema = z.object({
   title: z.string().min(1).optional(),
+  hiddenFromStudents: z.boolean().optional(),
   contentMarkdown: z.string().nullable().optional(),
   slider: LessonV1Schema.shape.slider,
   video: LessonVideoV1Schema.optional(),

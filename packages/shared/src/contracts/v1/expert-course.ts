@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import type { Id, IsoDateTime, UrlString } from './common.js';
+import type { CourseLessonAccessModeV1 } from './course.js';
+import { CourseLessonAccessModeV1Schema } from './course.js';
 
 export type CourseStatusV1 = 'draft' | 'published' | 'archived';
 export const CourseStatusV1Schema = z.enum(['draft', 'published', 'archived']);
@@ -22,6 +24,11 @@ export interface ExpertCourseV1 {
   currency: string;
   status: CourseStatusV1;
   visibility: CourseVisibilityV1;
+  /**
+   * sequential — next lesson only after the previous is done (incl. homework rules);
+   * open — all non-hidden lessons are unlocked for students.
+   */
+  lessonAccessMode: CourseLessonAccessModeV1;
   publishedAt?: IsoDateTime | null;
   deletedAt?: IsoDateTime | null;
   createdAt: IsoDateTime;
@@ -38,6 +45,7 @@ export const ExpertCourseV1Schema = z.object({
   currency: z.string().min(1),
   status: CourseStatusV1Schema,
   visibility: CourseVisibilityV1Schema,
+  lessonAccessMode: CourseLessonAccessModeV1Schema,
   publishedAt: z.string().nullable().optional(),
   deletedAt: z.string().nullable().optional(),
   createdAt: z.string(),
@@ -86,6 +94,7 @@ export interface CreateExpertCourseRequestV1 {
   priceCents?: number;
   currency?: string;
   visibility?: CourseVisibilityV1;
+  lessonAccessMode?: CourseLessonAccessModeV1;
 }
 
 export const CreateExpertCourseRequestV1Schema = z.object({
@@ -95,6 +104,7 @@ export const CreateExpertCourseRequestV1Schema = z.object({
   priceCents: z.number().int().min(0).optional(),
   currency: z.string().min(1).max(8).optional(),
   visibility: CourseVisibilityV1Schema.optional(),
+  lessonAccessMode: CourseLessonAccessModeV1Schema.optional(),
 });
 
 export interface UpdateExpertCourseRequestV1 {
@@ -104,6 +114,7 @@ export interface UpdateExpertCourseRequestV1 {
   priceCents?: number;
   currency?: string;
   visibility?: CourseVisibilityV1;
+  lessonAccessMode?: CourseLessonAccessModeV1;
 }
 
 export const UpdateExpertCourseRequestV1Schema = z.object({
@@ -113,5 +124,6 @@ export const UpdateExpertCourseRequestV1Schema = z.object({
   priceCents: z.number().int().min(0).optional(),
   currency: z.string().min(1).max(8).optional(),
   visibility: CourseVisibilityV1Schema.optional(),
+  lessonAccessMode: CourseLessonAccessModeV1Schema.optional(),
 });
 

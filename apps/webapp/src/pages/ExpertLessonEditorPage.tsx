@@ -33,6 +33,7 @@ export function ExpertLessonEditorPage() {
   const [homeworkSaving, setHomeworkSaving] = React.useState(false);
   const [homeworkUploading, setHomeworkUploading] = React.useState(false);
   const [lesson, setLesson] = React.useState<ContractsV1.ExpertLessonV1 | null>(null);
+  const [hiddenFromStudents, setHiddenFromStudents] = React.useState(false);
   const homeworkFileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -49,6 +50,7 @@ export function ExpertLessonEditorPage() {
         if (cancelled) return;
         setLesson(found);
         setTitle(found?.title ?? '');
+        setHiddenFromStudents(Boolean(found?.hiddenFromStudents));
         setContentMarkdown(found?.contentMarkdown ?? '');
         const v = found?.video;
         setRutubeUrl(v && v.kind === 'rutube' ? v.url : '');
@@ -101,6 +103,7 @@ export function ExpertLessonEditorPage() {
           title,
           contentMarkdown,
           video,
+          hiddenFromStudents,
         },
       });
       setLesson(updated);
@@ -222,6 +225,16 @@ export function ExpertLessonEditorPage() {
         </CardHeader>
         <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
           <Input label="Название" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <label style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'flex-start', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={hiddenFromStudents}
+              onChange={(e) => setHiddenFromStudents(e.target.checked)}
+            />
+            <span style={{ fontSize: 'var(--text-sm)', lineHeight: 1.4 }}>
+              Скрыть урок от учеников (доступен только вам в конструкторе)
+            </span>
+          </label>
           <Input
             label="Rutube URL"
             placeholder="https://rutube.ru/video/..."

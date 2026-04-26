@@ -9,9 +9,9 @@ export type CourseLessonAccess = {
 };
 
 /**
- * Access rule:
- * - completed lessons are always accessible
- * - plus exactly one next lesson (first incomplete in course order)
+ * Access rules (student-facing, **visible** lessons only; hidden are skipped in order and unlock):
+ * - `sequential` (default): same as before — next lesson only after previous is complete; uses only non-hidden lessons in course order.
+ * - `open`: all visible lessons are unlocked; still tracks completion and `next` as first incomplete.
  */
 export async function computeCourseLessonAccess(params: {
   userId: string;
@@ -19,7 +19,8 @@ export async function computeCourseLessonAccess(params: {
   coursesRepository: StudentCoursesRepository;
   progressRepository: ProgressRepository;
 }): Promise<CourseLessonAccess> {
-  const [lessons, completed] = await Promise.all([
+  const [course, lessons, completed] = await Promise.all([
+    params.coursesRepository.getCourse(params.courseId),
     params.coursesRepository.listLessonsByCourseId(params.courseId),
     params.progressRepository.listCompletedLessonIdsByCourse({
       userId: params.userId,
@@ -27,7 +28,14 @@ export async function computeCourseLessonAccess(params: {
     }),
   ]);
 
+  if (!course) {
+    return { completedLessonIds: [], unlockedLessonIds: [], nextUnlockedLessonId: null };
+  }
+
+  const visibleIdOrder = lessons.map((l) => l.id);
   const completedSet = new Set(completed);
+  const mode = course.lessonAccessMode === 'open' ? 'open' : 'sequential';
+
   let next: ContractsV1.LessonV1 | null = null;
   for (const l of lessons) {
     if (!completedSet.has(l.id)) {
@@ -36,13 +44,21 @@ export async function computeCourseLessonAccess(params: {
     }
   }
 
-  const unlocked = new Set<string>(completed);
-  if (next) unlocked.add(next.id);
+  const completedVisible = completed;
 
+  if (mode === 'open') {
+    return {
+      completedLessonIds: completedVisible,
+      unlockedLessonIds: visibleIdOrder,
+      nextUnlockedLessonId: next?.id ?? null,
+    };
+  }
+
+  const unlocked = new Set<string>(completedVisible);
+  if (next) unlocked.add(next.id);
   return {
-    completedLessonIds: completed,
+    completedLessonIds: completedVisible,
     unlockedLessonIds: Array.from(unlocked),
     nextUnlockedLessonId: next?.id ?? null,
   };
 }
-

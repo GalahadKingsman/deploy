@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import type { Id, IsoDateTime, UrlString } from './common.js';
 
+/** How students unlock lessons: sequential (next after complete) or open (all visible lessons at once). */
+export type CourseLessonAccessModeV1 = 'sequential' | 'open';
+export const CourseLessonAccessModeV1Schema = z.enum(['sequential', 'open']);
+
 /**
  * Course entity V1
  */
@@ -16,6 +20,8 @@ export interface CourseV1 {
   updatedAt: IsoDateTime;
   status?: 'draft' | 'published' | 'archived';
   visibility?: 'private' | 'public';
+  /** Omitted in older clients; when present, drives student lesson unlock (with per-lesson hide). */
+  lessonAccessMode?: CourseLessonAccessModeV1;
 }
 
 /**
@@ -33,4 +39,5 @@ export const CourseV1Schema = z.object({
   updatedAt: z.string(),
   status: z.enum(['draft', 'published', 'archived']).optional(),
   visibility: z.enum(['private', 'public']).optional(),
+  lessonAccessMode: CourseLessonAccessModeV1Schema.optional(),
 });

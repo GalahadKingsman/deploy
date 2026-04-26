@@ -16,6 +16,7 @@ interface CourseRow {
   currency?: string | null;
   status: string;
   visibility: string;
+  lesson_access_mode: string;
   published_at: Date | null;
   deleted_at: Date | null;
   created_at: Date;
@@ -23,6 +24,7 @@ interface CourseRow {
 }
 
 function mapRow(row: CourseRow): ContractsV1.ExpertCourseV1 {
+  const mode = row.lesson_access_mode;
   return {
     id: row.id,
     expertId: row.expert_id,
@@ -33,6 +35,7 @@ function mapRow(row: CourseRow): ContractsV1.ExpertCourseV1 {
     currency: row.currency ?? 'RUB',
     status: row.status as CourseStatus,
     visibility: row.visibility as CourseVisibility,
+    lessonAccessMode: mode === 'open' ? 'open' : 'sequential',
     publishedAt: row.published_at ? row.published_at.toISOString() : null,
     deletedAt: row.deleted_at ? row.deleted_at.toISOString() : null,
     createdAt: row.created_at.toISOString(),
@@ -279,14 +282,14 @@ export class CoursesRepository {
               FROM (
                 SELECT p.user_id, p.lesson_id
                 FROM lesson_progress p
-                JOIN lessons l ON l.id = p.lesson_id AND l.deleted_at IS NULL
+                JOIN lessons l ON l.id = p.lesson_id AND l.deleted_at IS NULL AND l.hidden_from_students = false
                 JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
                 WHERE m.course_id = c.id
                 UNION ALL
                 SELECT s.student_user_id AS user_id, a.lesson_id
                 FROM submissions s
                 JOIN assignments a ON a.id = s.assignment_id
-                JOIN lessons l ON l.id = a.lesson_id AND l.deleted_at IS NULL
+                JOIN lessons l ON l.id = a.lesson_id AND l.deleted_at IS NULL AND l.hidden_from_students = false
                 JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
                 WHERE m.course_id = c.id AND s.status = 'accepted'
               ) cl
@@ -296,7 +299,7 @@ export class CoursesRepository {
               SELECT COUNT(l.id)::int AS cnt
               FROM lessons l
               JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
-              WHERE m.course_id = c.id AND l.deleted_at IS NULL
+              WHERE m.course_id = c.id AND l.deleted_at IS NULL AND l.hidden_from_students = false
             ) lc_inner
             WHERE e.course_id = c.id
               AND e.revoked_at IS NULL
@@ -362,6 +365,7 @@ export class CoursesRepository {
     priceCents: number;
     currency: string;
     visibility: CourseVisibility;
+    lessonAccessMode?: ContractsV1.CourseLessonAccessModeV1;
   }): Promise<ContractsV1.ExpertCourseV1> {
     if (!this.pool) {
       throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
@@ -372,10 +376,11 @@ export class CoursesRepository {
       throw new NotFoundException({ code: ErrorCodes.EXPERT_NOT_FOUND, message: 'Expert not found' });
     }
 
+    const lessonAccessMode = params.lessonAccessMode ?? 'sequential';
     const result = await this.pool.query<CourseRow>(
       `
-      INSERT INTO courses (id, expert_id, title, description, cover_url, price_cents, currency, status, visibility, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft', $8, NOW(), NOW())
+      INSERT INTO courses (id, expert_id, title, description, cover_url, price_cents, currency, status, visibility, lesson_access_mode, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft', $8, $9, NOW(), NOW())
       RETURNING *
       `,
       [
@@ -387,6 +392,7 @@ export class CoursesRepository {
         params.priceCents,
         params.currency,
         params.visibility,
+        lessonAccessMode,
       ],
     );
     return mapRow(result.rows[0]);
@@ -413,6 +419,8 @@ export class CoursesRepository {
       params.patch.priceCents === undefined ? null : params.patch.priceCents;
     const currency = params.patch.currency === undefined ? null : params.patch.currency.trim();
 
+    const lessonMode =
+      params.patch.lessonAccessMode === undefined ? null : params.patch.lessonAccessMode;
     const result = await this.pool.query<CourseRow>(
       `
       UPDATE courses
@@ -423,6 +431,7 @@ export class CoursesRepository {
         visibility = COALESCE($6, visibility),
         price_cents = COALESCE($7, price_cents),
         currency = COALESCE($8, currency),
+        lesson_access_mode = COALESCE($9, lesson_access_mode),
         updated_at = NOW()
       WHERE id = $1 AND expert_id = $2
       RETURNING *
@@ -436,6 +445,7 @@ export class CoursesRepository {
         params.patch.visibility ?? null,
         priceCents,
         currency || null,
+        lessonMode,
       ],
     );
     const row = result.rows[0];

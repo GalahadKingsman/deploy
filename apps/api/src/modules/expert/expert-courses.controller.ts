@@ -162,6 +162,7 @@ export class ExpertCoursesController {
       priceCents: parsed.data.priceCents ?? 0,
       currency: (parsed.data.currency ?? 'RUB').trim(),
       visibility: parsed.data.visibility ?? 'private',
+      lessonAccessMode: parsed.data.lessonAccessMode,
     });
 
     await this.auditService.write({
