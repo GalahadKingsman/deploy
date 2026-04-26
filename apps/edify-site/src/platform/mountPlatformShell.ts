@@ -54,6 +54,16 @@ function emit(
   }
 }
 
+function setMobileNavOpen(root: ShadowRoot, open: boolean): void {
+  const shell = root.querySelector('.ep-platform-root') as HTMLElement | null;
+  const btn = root.querySelector('[data-ep-mobile-menu]') as HTMLButtonElement | null;
+  if (shell) shell.classList.toggle('ep-platform-root--nav-open', open);
+  if (btn) {
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.setAttribute('aria-label', open ? 'Закрыть меню' : 'Открыть меню');
+  }
+}
+
 function showScreen(
   root: ShadowRoot,
   id: string,
@@ -69,6 +79,7 @@ function showScreen(
   });
 
   root.getElementById('main-content')?.scrollTo(0, 0);
+  setMobileNavOpen(root, false);
   emit(handlers, { type: 'navigate', screenId: id, shadowRoot: root, sourceElement: sourceElement ?? null }, ev);
 }
 
@@ -89,6 +100,7 @@ function setRole(
   if (expert) expert.style.display = role === 'expert' ? 'flex' : 'none';
   if (student) student.style.display = role === 'student' ? 'flex' : 'none';
 
+  setMobileNavOpen(root, false);
   emit(options, { type: 'role', role }, ev);
   const def = role === 'expert' ? 'e-dashboard' : 's-catalog';
   const screenId = (setOptions?.screenId && setOptions.screenId.trim()) || def;
@@ -99,9 +111,25 @@ function onShadowClick(ev: MouseEvent, root: ShadowRoot, handlers: PlatformShell
   const target = ev.target as HTMLElement | null;
   if (!target) return;
 
+  const mobileMenu = target.closest('[data-ep-mobile-menu]') as HTMLElement | null;
+  if (mobileMenu) {
+    ev.preventDefault();
+    const shell = root.querySelector('.ep-platform-root');
+    const open = !shell?.classList.contains('ep-platform-root--nav-open');
+    setMobileNavOpen(root, open);
+    return;
+  }
+
+  if (target.closest('[data-ep-nav-backdrop]')) {
+    ev.preventDefault();
+    setMobileNavOpen(root, false);
+    return;
+  }
+
   const topUser = target.closest('.topbar-user') as HTMLElement | null;
   if (topUser) {
     ev.preventDefault();
+    setMobileNavOpen(root, false);
     showScreen(root, 's-profile', handlers, ev, topUser);
     return;
   }
@@ -196,11 +224,23 @@ export function mountPlatformShell(
   };
   shadow.addEventListener('click', listener);
 
+  const closeNavOnWide = (): void => {
+    try {
+      if (window.matchMedia('(min-width: 901px)').matches) setMobileNavOpen(shadow, false);
+    } catch {
+      /* ignore */
+    }
+  };
+  window.addEventListener('resize', closeNavOnWide);
+
   const controller: PlatformShellController = {
     shadowRoot: shadow,
     setRole: (role, setRoleOpts) => setRole(shadow, role, options, new Event('init'), setRoleOpts),
     showScreen: (screenId) => showScreen(shadow, screenId, options, new Event('init')),
-    destroy: () => shadow.removeEventListener('click', listener),
+    destroy: () => {
+      shadow.removeEventListener('click', listener);
+      window.removeEventListener('resize', closeNavOnWide);
+    },
   };
 
   const role = options.initialRole ?? 'expert';

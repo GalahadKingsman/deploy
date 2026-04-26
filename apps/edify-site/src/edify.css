@@ -62,6 +62,17 @@ body.platform-standalone{overflow:hidden}
   transition:all .15s;
 }
 .platform-standalone-back:hover{color:var(--t1);border-color:var(--a-border)}
+@media (max-width:900px){
+  .platform-standalone-back{
+    left:auto;
+    right:max(10px, env(safe-area-inset-right, 0px));
+    top:max(8px, env(safe-area-inset-top, 0px));
+  }
+  .platform-shell-host--standalone{
+    min-height:100dvh;
+    height:100dvh;
+  }
+}
 
 /* ── PLATFORM AUTH GATE (/platform/) ── */
 body.platform-gate{background:var(--bg);color:var(--t1)}
@@ -1309,8 +1320,13 @@ footer{background:var(--t1);padding:56px 0 40px}
   .compare-col{padding:28px 20px}
   .compare-list li{font-size:13px;padding:9px 12px}
 
-  /* PLATFORM SECTION */
-  .platform-shell-host{min-height:min(75vh,800px);margin-top:22px}
+  /* PLATFORM SECTION — встроенный макет на всю ширину экрана */
+  .s-platform{overflow-x:hidden}
+  .s-platform .container{max-width:100%;padding-left:0;padding-right:0}
+  .s-platform .s-label,
+  .s-platform .s-h2,
+  .s-platform .s-sub{padding-left:16px;padding-right:16px}
+  .platform-shell-host{min-height:min(75vh,800px);margin-top:22px;border-radius:0;border-left:none;border-right:none;width:100%;max-width:100vw}
 
   /* STEPS */
   .steps-grid{grid-template-columns:1fr;border-radius:12px}

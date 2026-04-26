@@ -1,5 +1,10 @@
+<div class="ep-platform-root">
+<div class="ep-nav-backdrop" data-ep-nav-backdrop aria-hidden="true"></div>
 <!-- TOPBAR -->
 <div class="topbar">
+  <button type="button" class="ep-mobile-menu-btn" data-ep-mobile-menu aria-label="Открыть меню" aria-expanded="false">
+    <span class="ep-mobile-menu-bars" aria-hidden="true"><span></span><span></span><span></span></span>
+  </button>
   <div class="topbar-logo">
     <img src="/logo.jpg" alt="EDIFY"/>
     <span class="topbar-logo-name">EDIFY</span>
@@ -201,7 +206,7 @@
 
 <!-- E-BUILDER (данные с API — см. platformPage.ts) -->
 <div class="screen" id="screen-e-builder" style="padding:0;position:relative">
-  <div style="display:flex;height:calc(100vh - 56px)">
+  <div class="ep-builder-shell" style="display:flex;height:calc(100vh - 56px)">
 
     <div style="width:260px;flex-shrink:0;background:var(--surface2);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden">
       <div style="padding:14px 16px;border-bottom:1px solid var(--line);background:var(--surface)">
@@ -591,7 +596,7 @@
 
 <!-- E-HOMEWORK -->
 <div class="screen" id="screen-e-homework" style="padding:0">
-  <div style="display:flex;height:calc(100vh - 56px)">
+  <div class="ep-split-screen" style="display:flex;height:calc(100vh - 56px)">
     <!-- List panel -->
     <div style="width:320px;flex-shrink:0;border-right:1px solid var(--line);display:flex;flex-direction:column;background:var(--surface)">
       <div style="padding:16px;border-bottom:1px solid var(--line)">
@@ -825,7 +830,7 @@
 
 <!-- E-MESSAGES -->
 <div class="screen" id="screen-e-messages">
-  <div style="display:flex;height:calc(100vh - 56px)">
+  <div class="ep-split-screen" style="display:flex;height:calc(100vh - 56px)">
     <div style="width:300px;border-right:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column">
       <div style="padding:14px 16px;border-bottom:1px solid var(--line)">
         <div style="font-family:var(--fd);font-size:13px;font-weight:700;margin-bottom:10px">Сообщения</div>
@@ -1491,3 +1496,4 @@
   </aside>
 
 </div><!-- end main-content -->
+</div><!-- ep-platform-root -->
