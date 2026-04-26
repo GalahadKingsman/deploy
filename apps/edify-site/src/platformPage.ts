@@ -637,6 +637,9 @@ if (platformMount) {
         if (action.type === 'navigate' && action.screenId === 's-profile') {
           void hydrateProfileScreen(action.shadowRoot);
         }
+        if (action.type === 'navigate' && action.screenId === 's-progress') {
+          void hydrateProgressScreen(action.shadowRoot);
+        }
         if (action.type === 'navigate' && action.screenId === 'e-courses') {
           expertBuilderExpertId = null;
           void hydrateExpertCourses(action.shadowRoot);
@@ -779,6 +782,114 @@ if (platformMount) {
         }
       } catch {
         // ignore
+      }
+    }
+
+    function renderProgressCourseRow(params: {
+      title: string;
+      done: number;
+      total: number;
+      percent: number;
+      color?: string;
+    }): HTMLElement {
+      const wrap = document.createElement('div');
+      wrap.style.marginBottom = '14px';
+      const top = document.createElement('div');
+      top.style.display = 'flex';
+      top.style.justifyContent = 'space-between';
+      top.style.marginBottom = '6px';
+      const left = document.createElement('span');
+      left.style.fontSize = '13px';
+      left.style.fontWeight = '600';
+      left.style.color = 'var(--t1)';
+      left.textContent = params.title;
+      const right = document.createElement('span');
+      right.style.fontFamily = 'var(--fm)';
+      right.style.fontSize = '11px';
+      right.style.color = 'var(--t3)';
+      right.textContent = `${params.done}/${params.total}`;
+      top.append(left, right);
+
+      const barWrap = document.createElement('div');
+      barWrap.className = 'prog-wrap';
+      barWrap.innerHTML =
+        '<div class="prog-bar" style="height:8px;border-radius:4px"><div class="prog-fill" style="height:100%;border-radius:4px"></div></div>';
+      const fill = barWrap.querySelector('.prog-fill') as HTMLElement | null;
+      if (fill) {
+        fill.style.width = `${Math.max(0, Math.min(100, Math.round(params.percent)))}%`;
+        if (params.color) fill.style.background = params.color;
+      }
+
+      wrap.append(top, barWrap);
+      return wrap;
+    }
+
+    async function hydrateProgressScreen(root: ShadowRoot): Promise<void> {
+      const token = getAccessToken();
+      if (!token) return;
+      const screen = root.getElementById('screen-s-progress') as HTMLElement | null;
+      if (!screen) return;
+
+      // /me -> streak + avgScore
+      try {
+        const me = await fetchJson<{ user?: any }>('/me', token);
+        const u = me.user ?? null;
+        const streakEl = screen.querySelector('[data-ep-progress-streak]') as HTMLElement | null;
+        if (streakEl) {
+          const n = Math.max(0, Number(u?.streakDays ?? 0) || 0);
+          streakEl.textContent = n >= 7 ? `🔥 ${n}` : String(n);
+        }
+        const avgHost = screen.querySelector('[data-ep-homework-avg-stars]') as HTMLElement | null;
+        if (avgHost) {
+          const raw = u?.homeworkAvgScore;
+          const avg = typeof raw === 'number' && Number.isFinite(raw) ? Math.max(0, Math.min(5, raw)) : null;
+          renderStarsInto(avgHost, avg);
+        }
+      } catch {
+        /* ignore */
+      }
+
+      // /me/courses -> per course progress + sum done lessons
+      const coursesHost = screen.querySelector('[data-ep-progress-courses]') as HTMLElement | null;
+      if (!coursesHost) return;
+      coursesHost.replaceChildren();
+      try {
+        const data = await fetchJson<MyCoursesResponseV1>('/me/courses', token);
+        const items = Array.isArray(data.items) ? data.items : [];
+        let doneTotal = 0;
+        items.forEach((it, idx) => {
+          const done = Math.max(0, Number((it as any).doneLessons ?? 0) || 0);
+          const total = Math.max(0, Number((it as any).totalLessons ?? 0) || 0);
+          doneTotal += done;
+          const pct = total > 0 ? Math.round((done / total) * 100) : Math.round(Number(it.progressPercent ?? 0) || 0);
+          const color = idx % 3 === 1 ? 'var(--purple)' : idx % 3 === 2 ? 'var(--ok)' : undefined;
+          coursesHost.appendChild(
+            renderProgressCourseRow({
+              title: (it.course?.title ?? '').trim() || 'Курс',
+              done,
+              total,
+              percent: pct,
+              color,
+            }),
+          );
+        });
+        const doneEl = screen.querySelector('[data-ep-progress-lessons-done]') as HTMLElement | null;
+        if (doneEl) doneEl.textContent = String(doneTotal);
+        if (items.length === 0) {
+          coursesHost.appendChild(
+            Object.assign(document.createElement('div'), {
+              style: 'font-size:12px;color:var(--t3);line-height:1.55',
+              textContent: 'Пока нет курсов. Зачислитесь на курс, чтобы видеть прогресс.',
+            }),
+          );
+        }
+      } catch {
+        coursesHost.appendChild(
+          Object.assign(document.createElement('div'), {
+            style: 'font-size:12px;color:var(--t3);line-height:1.55',
+            textContent: 'Не удалось загрузить прогресс. Попробуйте обновить страницу.',
+          }),
+        );
       }
     }
 
@@ -1520,6 +1631,7 @@ if (platformMount) {
       ) as HTMLElement | null;
       const hwWrap = root.querySelector('#screen-s-lesson [data-ep-homework]') as HTMLElement | null;
       const goHwBtn = root.querySelector('#screen-s-lesson [data-ep-go-homework]') as HTMLElement | null;
+      const completeBtn = root.querySelector('#screen-s-lesson [data-ep-lesson-complete]') as HTMLElement | null;
       const matsTitle = root.querySelector('#screen-s-lesson [data-ep-materials-title]') as HTMLElement | null;
       const mats = root.querySelector('#screen-s-lesson [data-ep-materials]') as HTMLElement | null;
       if (mats) mats.replaceChildren();
@@ -1629,6 +1741,10 @@ if (platformMount) {
       }
 
       setGoHomeworkButtonVisible(goHwBtn, hasExpertHomework && !latestSub);
+      // "Complete lesson" is available only for lessons without homework
+      if (completeBtn) {
+        completeBtn.style.display = !hasExpertHomework ? '' : 'none';
+      }
 
       updatePrevLessonUi(root, lessonId);
     }
@@ -5920,6 +6036,26 @@ if (platformMount) {
       if (goHw) {
         ev.preventDefault();
         void prepareHomeworkScreen();
+        return;
+      }
+
+      const completeLesson = t?.closest('[data-ep-lesson-complete]') as HTMLElement | null;
+      if (completeLesson) {
+        ev.preventDefault();
+        void (async () => {
+          const token = getAccessToken();
+          const lessonId = (root as any).__epHomework?.lessonId as string | undefined;
+          const courseId = currentCourseId;
+          if (!token || !lessonId || !courseId) return;
+          try {
+            await postJson(`/lessons/${encodeURIComponent(lessonId)}/complete`, {}, token);
+            // Refresh course state (completed/unlocked/progress) and keep user on lesson screen
+            await openCourse(courseId);
+          } catch (e) {
+            window.alert(e instanceof Error ? e.message : 'Не удалось завершить урок');
+          }
+        })();
+        return;
       }
     });
 

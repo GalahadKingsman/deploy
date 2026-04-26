@@ -36,7 +36,7 @@ export class MeCoursesController {
       const total = await this.progressRepository.countLessonsInCourse(courseId);
       const done = await this.progressRepository.countCompletedByCourse({ userId, courseId });
       const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-      items.push({ course, progressPercent: pct });
+      items.push({ course, doneLessons: done, totalLessons: total, progressPercent: pct });
     }
 
     return { items };

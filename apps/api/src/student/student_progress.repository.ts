@@ -31,13 +31,13 @@ export class ProgressRepository {
 
         UNION ALL
 
-        -- Backfill compatibility: accepted homework implies lesson completion
+        -- Homework completion: any scored submission implies lesson completion
         SELECT a.lesson_id, s.decided_at AS at
         FROM submissions s
         JOIN assignments a ON a.id = s.assignment_id
         JOIN lessons l ON l.id = a.lesson_id AND l.deleted_at IS NULL
         JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
-        WHERE s.student_user_id = $1 AND m.course_id = $2 AND s.status = 'accepted'
+        WHERE s.student_user_id = $1 AND m.course_id = $2 AND s.score IS NOT NULL
       )
       SELECT lesson_id
       FROM completed
@@ -53,11 +53,24 @@ export class ProgressRepository {
     if (!this.pool) return 0;
     const res = await this.pool.query<{ cnt: string }>(
       `
+      WITH completed AS (
+        SELECT p.lesson_id
+        FROM lesson_progress p
+        JOIN lessons l ON l.id = p.lesson_id AND l.deleted_at IS NULL
+        JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+        WHERE p.user_id = $1 AND m.course_id = $2
+
+        UNION
+
+        SELECT a.lesson_id
+        FROM submissions s
+        JOIN assignments a ON a.id = s.assignment_id
+        JOIN lessons l ON l.id = a.lesson_id AND l.deleted_at IS NULL
+        JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+        WHERE s.student_user_id = $1 AND m.course_id = $2 AND s.score IS NOT NULL
+      )
       SELECT COUNT(*)::text as cnt
-      FROM lesson_progress p
-      JOIN lessons l ON l.id = p.lesson_id AND l.deleted_at IS NULL
-      JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
-      WHERE p.user_id = $1 AND m.course_id = $2
+      FROM completed
       `,
       [params.userId, params.courseId],
     );

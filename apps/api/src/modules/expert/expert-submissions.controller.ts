@@ -118,8 +118,8 @@ export class ExpertSubmissionsController {
       );
     }
 
-    // Unlock progression: only accepted homework completes the lesson.
-    if (updated.status === 'accepted') {
+    // Unlock progression: any scored homework completes the lesson.
+    if (scoreProvided && updated.score != null) {
       await this.progressRepository.markLessonCompleted({ userId: updated.studentId, lessonId });
     }
     return { submission: updated };

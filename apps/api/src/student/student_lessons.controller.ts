@@ -17,7 +17,20 @@ import { JwtAuthGuard } from '../auth/session/jwt-auth.guard.js';
 import type { FastifyRequest } from 'fastify';
 import { EnrollmentsRepository } from './student_enrollments.repository.js';
 import { AssignmentsRepository } from '../assignments/assignments.repository.js';
+import { AssignmentFilesRepository } from '../assignments/assignment-files.repository.js';
 import { computeCourseLessonAccess } from './student_lesson_access.js';
+
+function assignmentHasBody(raw: string | null | undefined): boolean {
+  if (raw == null) return false;
+  let s = String(raw)
+    .replace(/^\uFEFF/, '')
+    .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, ' ')
+    .trim();
+  if (!s) return false;
+  const noTags = s.replace(/<[^>]+>/g, ' ');
+  const collapsed = noTags.replace(/\s+/g, ' ').trim();
+  return collapsed.length > 0;
+}
 
 @ApiTags('Lessons')
 @Controller()
@@ -27,6 +40,7 @@ export class LessonsController {
     private readonly progressRepository: ProgressRepository,
     private readonly enrollmentsRepository: EnrollmentsRepository,
     private readonly assignmentsRepository: AssignmentsRepository,
+    private readonly assignmentFilesRepository: AssignmentFilesRepository,
   ) {}
 
   @Get('lessons/:id')
@@ -101,10 +115,17 @@ export class LessonsController {
     // Manual completion is allowed only when lesson has no assignment.
     const assignment = await this.assignmentsRepository.getByLessonId(id);
     if (assignment) {
+      const files = await this.assignmentFilesRepository.listByAssignmentId(assignment.id);
+      const hasBody = assignmentHasBody(assignment.promptMarkdown);
+      const hasFiles = files.length > 0;
+      if (!hasBody && !hasFiles) {
+        // Allow "empty" homework scaffolding lessons to be completed manually.
+      } else {
       throw new BadRequestException({
         code: ErrorCodes.FORBIDDEN,
         message: 'Lesson has homework. It can be completed only after expert review.',
       });
+      }
     }
     await this.progressRepository.markLessonCompleted({ userId, lessonId: id });
     return { ok: true, lessonId: id };
