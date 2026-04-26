@@ -14,6 +14,7 @@ import { AccessDataModule } from '../../access/access-data.module.js';
 import { SubscriptionsModule } from '../../subscriptions/subscriptions.module.js';
 import { StorageModule } from '../../storage/storage.module.js';
 import { SubmissionsModule } from '../../submissions/submissions.module.js';
+import { TelegramAvatarSyncService } from '../../auth/telegram/telegram-avatar-sync.service.js';
 
 @Module({
   imports: [
@@ -34,6 +35,6 @@ import { SubmissionsModule } from '../../submissions/submissions.module.js';
     MeExpertMembershipsController,
     MeExpertSubscriptionController,
   ],
-  providers: [JwtAuthGuard],
+  providers: [JwtAuthGuard, TelegramAvatarSyncService],
 })
 export class MeModule {}

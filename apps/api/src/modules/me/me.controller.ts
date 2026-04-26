@@ -22,6 +22,7 @@ import { OrdersRepository } from '../../payments/orders.repository.js';
 import { PayoutRequestsRepository } from '../../payments/payout-requests.repository.js';
 import { S3StorageService } from '../../storage/s3-storage.service.js';
 import { SubmissionsRepository } from '../../submissions/submissions.repository.js';
+import { TelegramAvatarSyncService } from '../../auth/telegram/telegram-avatar-sync.service.js';
 import { ErrorCodes } from '@tracked/shared';
 import { validateTelegramInitData, TelegramInitDataValidationError } from '../../auth/telegram/telegram-init-data.js';
 import { ApiEnvSchema, validateOrThrow } from '@tracked/shared';
@@ -41,6 +42,7 @@ export class MeController {
     private readonly payoutRequestsRepository: PayoutRequestsRepository,
     private readonly storage: S3StorageService,
     private readonly submissionsRepository: SubmissionsRepository,
+    private readonly telegramAvatarSync: TelegramAvatarSyncService,
   ) {}
 
   @Get('me')
@@ -83,6 +85,31 @@ export class MeController {
 
     // Update streak on "visit" (UTC day)
     const user = await this.usersRepository.bumpStreakOnVisit(userId);
+
+    // Best-effort: sync avatar from Telegram once per 24h if current avatar points to Telegram CDN
+    try {
+      const meta = await this.usersRepository.getAvatarSyncMeta(userId);
+      const tgId = (meta.telegramUserId ?? '').trim();
+      const rawAvatar = (meta.avatarUrl ?? '').trim();
+      const last = meta.avatarSyncedAt ? new Date(meta.avatarSyncedAt).getTime() : 0;
+      const stale = !last || Date.now() - last > 24 * 60 * 60 * 1000;
+      const looksLikeTelegramCdn = /^https?:\/\/t\.me\/i\/userpic\//i.test(rawAvatar);
+      if (stale && tgId && looksLikeTelegramCdn) {
+        const up = await this.telegramAvatarSync.syncAvatarToS3({ telegramUserId: tgId, userId });
+        if (up?.key) {
+          const publicPath = `/public/avatar?key=${encodeURIComponent(up.key)}`;
+          await this.usersRepository.updateAvatarUrl(userId, publicPath);
+          await this.usersRepository.touchAvatarSyncedAt(userId);
+          // keep local variable up-to-date for response below
+          (user as any).avatarUrl = publicPath;
+        } else {
+          // avoid retry storm if Telegram is temporarily unavailable
+          await this.usersRepository.touchAvatarSyncedAt(userId);
+        }
+      }
+    } catch {
+      // ignore avatar sync errors (do not break /me)
+    }
     const hw = await this.submissionsRepository.getStudentHomeworkAvgScore(userId);
 
     if (!user) {

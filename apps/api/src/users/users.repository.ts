@@ -19,6 +19,7 @@ interface UserDbModel {
   auth_invalid_before?: Date | null;
   streak_days?: number | null;
   streak_last_day?: string | null;
+  avatar_synced_at?: Date | null;
   created_at: Date;
   updated_at: Date;
   banned_at: Date | null;
@@ -600,6 +601,29 @@ export class UsersRepository {
       throw new Error(`User not found: ${userId}`);
     }
     return this.mapRowToUserWithBan(res.rows[0]);
+  }
+
+  async getAvatarSyncMeta(userId: string): Promise<{ telegramUserId: string | null; avatarUrl: string | null; avatarSyncedAt: string | null }> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    const res = await this.pool.query<{ telegram_user_id: string | null; avatar_url: string | null; avatar_synced_at: Date | null }>(
+      `SELECT telegram_user_id, avatar_url, avatar_synced_at FROM users WHERE id = $1 LIMIT 1`,
+      [userId],
+    );
+    const row = res.rows[0];
+    return {
+      telegramUserId: row?.telegram_user_id ?? null,
+      avatarUrl: row?.avatar_url ?? null,
+      avatarSyncedAt: row?.avatar_synced_at ? row.avatar_synced_at.toISOString() : null,
+    };
+  }
+
+  async touchAvatarSyncedAt(userId: string): Promise<void> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    await this.pool.query(`UPDATE users SET avatar_synced_at = NOW(), updated_at = NOW() WHERE id = $1`, [userId]);
   }
 
   private mapRowToUserWithBan(row: UserDbModel): UserWithBan {
