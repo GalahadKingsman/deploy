@@ -2368,18 +2368,33 @@ if (platformMount) {
       catalogTopicsCache = res.items ?? [];
       return catalogTopicsCache;
     }
-    function pickTopicSlugByTitle(topics: Array<{ slug: string; title: string }>, titleRu: string): string | null {
-      const want = titleRu.trim().toLowerCase();
-      const found = topics.find((t) => (t.title ?? '').trim().toLowerCase() === want);
+    function pickTopicSlugByKeyword(
+      topics: Array<{ slug: string; title: string }>,
+      keywordRuLower: string,
+    ): string | null {
+      const kw = keywordRuLower.trim().toLowerCase();
+      if (!kw) return null;
+      const norm = (v: string): string =>
+        v
+          .toLowerCase()
+          .replace(/ё/g, 'е')
+          .replace(/[^\p{L}\p{N}]+/gu, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+      const found = topics.find((t) => {
+        const title = norm(String(t.title ?? ''));
+        const slug = norm(String(t.slug ?? ''));
+        return title.includes(kw) || slug.includes(kw);
+      });
       return found?.slug ?? null;
     }
     async function catalogStaticTopicToSlug(token: string, v: string): Promise<string | null> {
       const s = (v || '').trim();
       if (s === 'all') return null;
       const topics = await ensureCatalogTopics(token);
-      if (s === 'marketing') return pickTopicSlugByTitle(topics, 'Маркетинг');
-      if (s === 'sales') return pickTopicSlugByTitle(topics, 'Продажи');
-      if (s === 'finance') return pickTopicSlugByTitle(topics, 'Финансы');
+      if (s === 'marketing') return pickTopicSlugByKeyword(topics, 'маркет');
+      if (s === 'sales') return pickTopicSlugByKeyword(topics, 'продаж');
+      if (s === 'finance') return pickTopicSlugByKeyword(topics, 'финанс');
       return null;
     }
 
@@ -2405,6 +2420,21 @@ if (platformMount) {
       const path = qs.toString() ? `/library?${qs.toString()}` : '/library';
       const data = await fetchJson<LibraryResponseV1>(path);
       const courses = (data.courses ?? []).slice(0, 12);
+      if (courses.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'card';
+        empty.style.padding = '18px';
+        empty.style.color = 'var(--t3)';
+        empty.style.fontSize = '13px';
+        empty.style.lineHeight = '1.55';
+        empty.textContent = topicSlug
+          ? 'В этой категории пока нет курсов.'
+          : q
+            ? 'Ничего не найдено по вашему запросу.'
+            : 'Пока нет курсов.';
+        grid.appendChild(empty);
+        return;
+      }
       courses.forEach((c) => grid.appendChild(renderCourseCard(c)));
     }
 
