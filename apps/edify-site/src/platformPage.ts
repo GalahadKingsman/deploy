@@ -787,6 +787,7 @@ if (platformMount) {
 
     function renderProgressCourseRow(params: {
       title: string;
+      coverUrl?: string | null;
       done: number;
       total: number;
       percent: number;
@@ -798,11 +799,70 @@ if (platformMount) {
       top.style.display = 'flex';
       top.style.justifyContent = 'space-between';
       top.style.marginBottom = '6px';
-      const left = document.createElement('span');
-      left.style.fontSize = '13px';
-      left.style.fontWeight = '600';
-      left.style.color = 'var(--t1)';
-      left.textContent = params.title;
+      const left = document.createElement('div');
+      left.style.display = 'flex';
+      left.style.alignItems = 'center';
+      left.style.gap = '10px';
+      left.style.minWidth = '0';
+
+      const avatar = document.createElement('div');
+      avatar.style.width = '34px';
+      avatar.style.height = '34px';
+      avatar.style.borderRadius = '10px';
+      avatar.style.border = '1px solid var(--line)';
+      avatar.style.background = 'var(--bg2)';
+      avatar.style.flexShrink = '0';
+      avatar.style.overflow = 'hidden';
+
+      const cover = normalizeAssetUrl(params.coverUrl ?? null);
+      if (cover) {
+        const img = document.createElement('img');
+        img.alt = '';
+        img.src = cover;
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.referrerPolicy = 'no-referrer';
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'cover';
+        img.style.display = 'block';
+        img.addEventListener(
+          'error',
+          () => {
+            avatar.replaceChildren();
+            avatar.style.display = 'flex';
+            avatar.style.alignItems = 'center';
+            avatar.style.justifyContent = 'center';
+            avatar.style.fontFamily = 'var(--fd)';
+            avatar.style.fontWeight = '900';
+            avatar.style.color = 'rgba(10,168,200,.6)';
+            avatar.style.background = 'rgba(10,168,200,.08)';
+            avatar.textContent = initialsFromTitle(params.title);
+          },
+          { once: true },
+        );
+        avatar.appendChild(img);
+      } else {
+        avatar.style.display = 'flex';
+        avatar.style.alignItems = 'center';
+        avatar.style.justifyContent = 'center';
+        avatar.style.fontFamily = 'var(--fd)';
+        avatar.style.fontWeight = '900';
+        avatar.style.color = 'rgba(10,168,200,.6)';
+        avatar.style.background = 'rgba(10,168,200,.08)';
+        avatar.textContent = initialsFromTitle(params.title);
+      }
+
+      const title = document.createElement('span');
+      title.style.fontSize = '13px';
+      title.style.fontWeight = '600';
+      title.style.color = 'var(--t1)';
+      title.style.overflow = 'hidden';
+      title.style.textOverflow = 'ellipsis';
+      title.style.whiteSpace = 'nowrap';
+      title.textContent = params.title;
+
+      left.append(avatar, title);
       const right = document.createElement('span');
       right.style.fontFamily = 'var(--fm)';
       right.style.fontSize = '11px';
@@ -866,6 +926,7 @@ if (platformMount) {
           coursesHost.appendChild(
             renderProgressCourseRow({
               title: (it.course?.title ?? '').trim() || 'Курс',
+              coverUrl: (it.course as any)?.coverUrl ?? null,
               done,
               total,
               percent: pct,
