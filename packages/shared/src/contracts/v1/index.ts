@@ -140,10 +140,6 @@ export type { MeExpertMembershipsResponseV1 } from './me-expert-memberships.js';
 export type { MeCoursesResponseV1, MyCourseProgressV1 } from './me-courses.js';
 export type { ExpertTeamMemberV1, ListExpertTeamResponseV1 } from './expert-team.js';
 export type { ExpertStudentRowV1, ListExpertStudentsResponseV1 } from './expert-students.js';
-export {
-  ExpertStudentRowV1Schema,
-  ListExpertStudentsResponseV1Schema,
-} from './expert-students.js';
 export type {
   PaymentRefundRequestV1,
   ListPaymentRefundRequestsResponseV1,
