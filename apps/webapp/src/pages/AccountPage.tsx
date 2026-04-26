@@ -29,7 +29,6 @@ const SUPPORT_LINK =
 
 const mockStats = {
   progress: { completed: 12, total: 30, label: 'Прогресс' },
-  streak: { value: 5, label: 'Streak' },
   points: { value: 1240, label: 'Очки' },
 };
 
@@ -426,6 +425,8 @@ function ReferralCard() {
 
 // Stats Row Component
 function StatsRow() {
+  const { data: me } = useMe();
+  const streakDays = Math.max(0, Number(me?.user?.streakDays ?? 0) || 0);
   return (
     <div
       style={{
@@ -471,7 +472,7 @@ function StatsRow() {
             marginBottom: 'var(--sp-2)',
           }}
         >
-          {mockStats.streak.label}
+          Streak
         </div>
         <div
           style={{
@@ -480,7 +481,7 @@ function StatsRow() {
             color: 'var(--fg)',
           }}
         >
-          {mockStats.streak.value}
+          {streakDays}
         </div>
         <div
           style={{

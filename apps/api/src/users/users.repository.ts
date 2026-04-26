@@ -17,6 +17,8 @@ interface UserDbModel {
   phone?: string | null;
   password_hash?: string | null;
   auth_invalid_before?: Date | null;
+  streak_days?: number | null;
+  streak_last_day?: string | null;
   created_at: Date;
   updated_at: Date;
   banned_at: Date | null;
@@ -561,6 +563,45 @@ export class UsersRepository {
     return { email: row?.email ?? null, phone: row?.phone ?? null };
   }
 
+  /**
+   * Update daily login streak on user "visit".
+   * Rules (UTC):
+   * - first visit -> streak=1
+   * - same day -> unchanged
+   * - next day -> +1
+   * - gap -> reset to 1
+   */
+  async bumpStreakOnVisit(userId: string): Promise<UserWithBan> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+
+    const res = await this.pool.query<UserDbModel>(
+      `
+      WITH today AS (
+        SELECT (NOW() AT TIME ZONE 'UTC')::date AS d
+      )
+      UPDATE users u
+      SET
+        streak_days = CASE
+          WHEN u.streak_last_day IS NULL THEN 1
+          WHEN u.streak_last_day = (SELECT d FROM today) THEN u.streak_days
+          WHEN u.streak_last_day = ((SELECT d FROM today) - INTERVAL '1 day')::date THEN u.streak_days + 1
+          ELSE 1
+        END,
+        streak_last_day = (SELECT d FROM today),
+        updated_at = NOW()
+      WHERE u.id = $1
+      RETURNING *
+      `,
+      [userId],
+    );
+    if (res.rows.length === 0) {
+      throw new Error(`User not found: ${userId}`);
+    }
+    return this.mapRowToUserWithBan(res.rows[0]);
+  }
+
   private mapRowToUserWithBan(row: UserDbModel): UserWithBan {
     const role = row.platform_role ?? 'user';
     return {
@@ -571,6 +612,7 @@ export class UsersRepository {
       lastName: row.last_name ?? undefined,
       avatarUrl: row.avatar_url ?? null,
       email: row.email ?? null,
+      streakDays: Math.max(0, Number(row.streak_days ?? 0) || 0),
       platformRole: role as 'user' | 'moderator' | 'admin' | 'owner',
       createdAt: row.created_at.toISOString(),
       updatedAt: row.updated_at.toISOString(),

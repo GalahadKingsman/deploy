@@ -17,6 +17,7 @@ export type MeUserV1 = {
   lastName?: string;
   avatarUrl?: string | null;
   email?: string | null;
+  streakDays?: number;
   platformRole: string;
 };
 

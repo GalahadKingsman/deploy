@@ -79,8 +79,8 @@ export class MeController {
       });
     }
 
-    // Find user by ID
-    const user = await this.usersRepository.findById(userId);
+    // Update streak on "visit" (UTC day) and return current user
+    const user = await this.usersRepository.bumpStreakOnVisit(userId);
 
     if (!user) {
       throw new UnauthorizedException({
@@ -98,6 +98,7 @@ export class MeController {
       lastName: user.lastName,
       avatarUrl: user.avatarUrl,
       email: (user as any).email ?? null,
+      streakDays: (user as any).streakDays ?? 0,
       platformRole: ((user as { platformRole?: ContractsV1.PlatformRoleV1 }).platformRole ??
         'user') as ContractsV1.PlatformRoleV1,
       createdAt: user.createdAt,

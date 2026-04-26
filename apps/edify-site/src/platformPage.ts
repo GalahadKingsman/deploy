@@ -2025,6 +2025,12 @@ if (platformMount) {
         }
         currentMe = u;
         currentPlatformRole = u.platformRole ?? null;
+        // Update streak UI (student sidebar; best-effort)
+        const streakEl = root.querySelector('[data-ep-streak-days]') as HTMLElement | null;
+        if (streakEl) {
+          const n = Math.max(0, Number((u as any).streakDays ?? 0) || 0);
+          streakEl.textContent = String(n);
+        }
         let inExpertTeam = false;
         activeExpertId = null;
         try {

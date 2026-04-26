@@ -34,6 +34,7 @@ const MIGRATION_LIST = [
   '022_password_reset_tokens',
   '023_expert_submission_views',
   '024_lessons_slider',
+  '025_user_streak',
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {
