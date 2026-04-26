@@ -2031,6 +2031,13 @@ if (platformMount) {
           const n = Math.max(0, Number((u as any).streakDays ?? 0) || 0);
           streakEl.textContent = String(n);
         }
+        // Update homework avg score stars (student sidebar; best-effort)
+        const avgHost = root.querySelector('[data-ep-homework-avg-stars]') as HTMLElement | null;
+        if (avgHost) {
+          const raw = (u as any).homeworkAvgScore;
+          const avg = typeof raw === 'number' && Number.isFinite(raw) ? Math.max(0, Math.min(5, raw)) : null;
+          renderStarsInto(avgHost, avg);
+        }
         let inExpertTeam = false;
         activeExpertId = null;
         try {
@@ -2064,6 +2071,20 @@ if (platformMount) {
         syncExpertTeamOwnerButton(root);
         // не ломаем интерфейс, если /me недоступен
       }
+    }
+
+    function renderStarsInto(host: HTMLElement, avgScore: number | null): void {
+      if (avgScore == null) {
+        host.textContent = '—';
+        return;
+      }
+      const v = Math.max(0, Math.min(5, avgScore));
+      const fillPct = `${(v / 5) * 100}%`;
+      host.innerHTML =
+        `<span class="ep-stars" style="--fill:${fillPct}" aria-label="Рейтинг ${v.toFixed(2)} из 5">` +
+        `<span class="ep-stars__bg">★★★★★</span>` +
+        `<span class="ep-stars__fg">★★★★★</span>` +
+        `</span>`;
     }
 
     async function hydrateStudentCatalog(): Promise<void> {

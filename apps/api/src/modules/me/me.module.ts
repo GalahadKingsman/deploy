@@ -13,6 +13,7 @@ import { PaymentsModule } from '../../payments/payments.module.js';
 import { AccessDataModule } from '../../access/access-data.module.js';
 import { SubscriptionsModule } from '../../subscriptions/subscriptions.module.js';
 import { StorageModule } from '../../storage/storage.module.js';
+import { SubmissionsModule } from '../../submissions/submissions.module.js';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { StorageModule } from '../../storage/storage.module.js';
     PaymentsModule,
     AccessDataModule,
     StorageModule,
+    SubmissionsModule,
   ],
   controllers: [
     MeController,

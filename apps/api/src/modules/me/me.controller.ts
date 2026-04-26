@@ -21,6 +21,7 @@ import { EnrollmentsRepository } from '../../student/student_enrollments.reposit
 import { OrdersRepository } from '../../payments/orders.repository.js';
 import { PayoutRequestsRepository } from '../../payments/payout-requests.repository.js';
 import { S3StorageService } from '../../storage/s3-storage.service.js';
+import { SubmissionsRepository } from '../../submissions/submissions.repository.js';
 import { ErrorCodes } from '@tracked/shared';
 import { validateTelegramInitData, TelegramInitDataValidationError } from '../../auth/telegram/telegram-init-data.js';
 import { ApiEnvSchema, validateOrThrow } from '@tracked/shared';
@@ -39,6 +40,7 @@ export class MeController {
     private readonly ordersRepository: OrdersRepository,
     private readonly payoutRequestsRepository: PayoutRequestsRepository,
     private readonly storage: S3StorageService,
+    private readonly submissionsRepository: SubmissionsRepository,
   ) {}
 
   @Get('me')
@@ -79,8 +81,9 @@ export class MeController {
       });
     }
 
-    // Update streak on "visit" (UTC day) and return current user
+    // Update streak on "visit" (UTC day)
     const user = await this.usersRepository.bumpStreakOnVisit(userId);
+    const hw = await this.submissionsRepository.getStudentHomeworkAvgScore(userId);
 
     if (!user) {
       throw new UnauthorizedException({
@@ -99,6 +102,7 @@ export class MeController {
       avatarUrl: user.avatarUrl,
       email: (user as any).email ?? null,
       streakDays: (user as any).streakDays ?? 0,
+      homeworkAvgScore: hw.avgScore,
       platformRole: ((user as { platformRole?: ContractsV1.PlatformRoleV1 }).platformRole ??
         'user') as ContractsV1.PlatformRoleV1,
       createdAt: user.createdAt,

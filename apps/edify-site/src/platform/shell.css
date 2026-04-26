@@ -602,6 +602,31 @@ textarea.form-input{resize:vertical;min-height:80px}
   padding:0 6px;
 }
 
+/* Stars rating (avg homework score) */
+.ep-stars{
+  --fill: 0%;
+  position:relative;
+  display:inline-block;
+  line-height:1;
+  letter-spacing:2px;
+  font-size:22px;
+  font-family:var(--fd);
+  user-select:none;
+}
+.ep-stars__bg{
+  color:rgba(255,255,255,0.22);
+}
+.ep-stars__fg{
+  position:absolute;
+  left:0;
+  top:0;
+  overflow:hidden;
+  width:var(--fill);
+  color:var(--warn);
+  white-space:nowrap;
+  pointer-events:none;
+}
+
 /* Grade buttons */
 .grade-row{display:flex;gap:8px}
 .grade-btn{

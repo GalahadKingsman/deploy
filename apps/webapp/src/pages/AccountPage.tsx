@@ -29,7 +29,6 @@ const SUPPORT_LINK =
 
 const mockStats = {
   progress: { completed: 12, total: 30, label: 'Прогресс' },
-  points: { value: 1240, label: 'Очки' },
 };
 
 // Copy to clipboard helper with fallback
@@ -427,6 +426,45 @@ function ReferralCard() {
 function StatsRow() {
   const { data: me } = useMe();
   const streakDays = Math.max(0, Number(me?.user?.streakDays ?? 0) || 0);
+  const avgScore = ((): number | null => {
+    const raw = (me?.user as any)?.homeworkAvgScore;
+    if (typeof raw !== 'number' || !Number.isFinite(raw)) return null;
+    return Math.max(0, Math.min(5, raw));
+  })();
+
+  const Stars = ({ avg }: { avg: number | null }) => {
+    if (avg == null) return <span>—</span>;
+    const v = Math.max(0, Math.min(5, avg));
+    const fill = `${(v / 5) * 100}%`;
+    return (
+      <span
+        style={{
+          position: 'relative',
+          display: 'inline-block',
+          lineHeight: 1,
+          letterSpacing: 2,
+          userSelect: 'none',
+        }}
+        aria-label={`Рейтинг ${v.toFixed(2)} из 5`}
+      >
+        <span style={{ color: 'rgba(255,255,255,0.22)' }}>★★★★★</span>
+        <span
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            overflow: 'hidden',
+            width: fill,
+            whiteSpace: 'nowrap',
+            color: 'var(--warning-fg, var(--fg))',
+            pointerEvents: 'none',
+          }}
+        >
+          ★★★★★
+        </span>
+      </span>
+    );
+  };
   return (
     <div
       style={{
@@ -501,7 +539,7 @@ function StatsRow() {
             marginBottom: 'var(--sp-2)',
           }}
         >
-          {mockStats.points.label}
+          Средний балл
         </div>
         <div
           style={{
@@ -510,7 +548,7 @@ function StatsRow() {
             color: 'var(--fg)',
           }}
         >
-          {mockStats.points.value.toLocaleString('ru-RU')}
+          <Stars avg={avgScore} />
         </div>
       </Card>
     </div>

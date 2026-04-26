@@ -42,6 +42,24 @@ function mapRow(
 export class SubmissionsRepository {
   constructor(private readonly pool: Pool | null) {}
 
+  async getStudentHomeworkAvgScore(studentUserId: string): Promise<{ avgScore: number | null; gradedCount: number }> {
+    if (!this.pool) return { avgScore: null, gradedCount: 0 };
+    const res = await this.pool.query<{ avg: number | null; cnt: string }>(
+      `
+      SELECT AVG(score)::float AS avg, COUNT(score)::text AS cnt
+      FROM submissions
+      WHERE student_user_id = $1 AND score IS NOT NULL
+      `,
+      [studentUserId],
+    );
+    const row = res.rows[0];
+    const avg = typeof row?.avg === 'number' && Number.isFinite(row.avg) ? row.avg : null;
+    const cnt = Math.max(0, parseInt(row?.cnt ?? '0', 10) || 0);
+    // Clamp to expected domain (score check constraint is 1..5, but be defensive)
+    const clamped = avg == null ? null : Math.max(1, Math.min(5, avg));
+    return { avgScore: clamped, gradedCount: cnt };
+  }
+
   async listExpertHomeworkInbox(params: {
     expertId: string;
     reviewerUserId: string;

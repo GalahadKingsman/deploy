@@ -15,6 +15,8 @@ export interface UserV1 {
   email?: string | null;
   /** Daily login streak (UTC days). */
   streakDays?: number;
+  /** Average homework grade (1..5). Null when no graded submissions. */
+  homeworkAvgScore?: number | null;
   platformRole: import('./platform-role.js').PlatformRoleV1;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;
@@ -32,6 +34,7 @@ export const UserV1Schema = z.object({
   avatarUrl: z.string().nullable().optional(),
   email: z.string().email().nullable().optional(),
   streakDays: z.number().int().min(0).optional(),
+  homeworkAvgScore: z.number().min(1).max(5).nullable().optional(),
   platformRole: PlatformRoleV1Schema,
   createdAt: z.string(),
   updatedAt: z.string(),
