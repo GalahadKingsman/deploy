@@ -27,16 +27,52 @@ interface LessonRow {
 export class StudentCoursesRepository {
   constructor(private readonly pool: Pool | null) {}
 
-  async listLibrary(): Promise<{ courses: ContractsV1.CourseV1[]; recommended: ContractsV1.CourseV1[] }> {
+  async listLibrary(params?: {
+    q?: string;
+    /** topic slug or id */
+    topic?: string;
+  }): Promise<{ courses: ContractsV1.CourseV1[]; recommended: ContractsV1.CourseV1[] }> {
     if (!this.pool) return { courses: [], recommended: [] };
+    const q = (params?.q ?? '').trim();
+    const topic = (params?.topic ?? '').trim();
+    const wantSearch = q.length > 0;
+    const wantTopic = topic.length > 0;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(topic);
+
+    const where: string[] = [`c.deleted_at IS NULL`, `c.status = 'published'`, `c.visibility = 'public'`];
+    const args: any[] = [];
+    let i = 1;
+
+    if (wantSearch) {
+      where.push(`LOWER(c.title) LIKE LOWER($${i})`);
+      args.push(`%${q}%`);
+      i += 1;
+    }
+    if (wantTopic) {
+      if (isUuid) {
+        where.push(`EXISTS (SELECT 1 FROM course_topics ct WHERE ct.course_id = c.id AND ct.topic_id = $${i}::uuid)`);
+        args.push(topic);
+        i += 1;
+      } else {
+        where.push(
+          `EXISTS (` +
+            `SELECT 1 FROM course_topics ct JOIN topics t ON t.id = ct.topic_id ` +
+            `WHERE ct.course_id = c.id AND t.slug = $${i}` +
+          `)`,
+        );
+        args.push(topic);
+        i += 1;
+      }
+    }
     const res = await this.pool.query<CourseRow>(
       `
-      SELECT id, title, description, cover_url, price_cents, currency, updated_at, status, visibility
-      FROM courses
-      WHERE deleted_at IS NULL AND status = 'published' AND visibility = 'public'
-      ORDER BY updated_at DESC
+      SELECT c.id, c.title, c.description, c.cover_url, c.price_cents, c.currency, c.updated_at, c.status, c.visibility
+      FROM courses c
+      WHERE ${where.join(' AND ')}
+      ORDER BY c.updated_at DESC
       LIMIT 200
       `,
+      args,
     );
     const courses = res.rows.map((r) => ({
       id: r.id,

@@ -44,9 +44,9 @@
 <nav class="sidebar" id="sidebar-student" style="display:none">
   <div class="sb-section">Обучение</div>
   <button class="sb-item active" data-ep-screen="s-catalog"><span class="sb-icon">🏠</span>Каталог курсов</button>
-  <button class="sb-item" data-ep-screen="s-mycourses"><span class="sb-icon">📚</span>Мои курсы<span class="sb-badge sb-badge-blue">3</span></button>
+  <button class="sb-item" data-ep-screen="s-mycourses"><span class="sb-icon">📚</span>Мои курсы<span class="sb-badge sb-badge-blue" data-ep-student-badge-mycourses style="display:none"></span></button>
   <button class="sb-item" data-ep-screen="s-lesson"><span class="sb-icon">▶️</span>Текущий урок</button>
-  <button class="sb-item" data-ep-screen="s-homework"><span class="sb-icon">📝</span>Домашние задания<span class="sb-badge sb-badge-red">2</span></button>
+  <button class="sb-item" data-ep-screen="s-homework"><span class="sb-icon">📝</span>Домашние задания<span class="sb-badge sb-badge-red" data-ep-student-badge-homework style="display:none"></span></button>
   <div class="sb-section">Профиль</div>
   <button class="sb-item" data-ep-screen="s-progress"><span class="sb-icon">🏆</span>Мой прогресс</button>
   <button class="sb-item" data-ep-screen="s-profile"><span class="sb-icon">👤</span>Профиль</button>
@@ -906,15 +906,15 @@
   <div class="page-header">
     <div><div class="page-title">Каталог курсов</div><div class="page-sub">Найдите подходящий курс</div></div>
     <div class="actions-row">
-      <div class="search-input"><span>🔍</span><input placeholder="Поиск курсов..."/></div>
-      <button class="btn btn-outline btn-sm">Категория ▾</button>
+      <div class="search-input"><span>🔍</span><input placeholder="Поиск курсов..." data-ep-catalog-search type="search" autocomplete="off"/></div>
+      <button class="btn btn-outline btn-sm" type="button" data-ep-catalog-category>Категория ▾</button>
     </div>
   </div>
   <div class="grid4" style="margin-bottom:16px">
-    <div style="padding:10px 14px;background:var(--t1);color:#fff;border-radius:8px;font-size:12px;font-weight:600;text-align:center;cursor:pointer">Все курсы</div>
-    <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;font-size:12px;color:var(--t2);text-align:center;cursor:pointer">Маркетинг</div>
-    <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;font-size:12px;color:var(--t2);text-align:center;cursor:pointer">Продажи</div>
-    <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;font-size:12px;color:var(--t2);text-align:center;cursor:pointer">Финансы</div>
+    <div style="padding:10px 14px;background:var(--t1);color:#fff;border-radius:8px;font-size:12px;font-weight:600;text-align:center;cursor:pointer" data-ep-catalog-topic="all">Все курсы</div>
+    <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;font-size:12px;color:var(--t2);text-align:center;cursor:pointer" data-ep-catalog-topic="marketing">Маркетинг</div>
+    <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;font-size:12px;color:var(--t2);text-align:center;cursor:pointer" data-ep-catalog-topic="sales">Продажи</div>
+    <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;font-size:12px;color:var(--t2);text-align:center;cursor:pointer" data-ep-catalog-topic="finance">Финансы</div>
   </div>
   <div class="grid3">
     <div class="course-card-s" data-ep-screen="s-lesson">

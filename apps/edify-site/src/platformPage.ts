@@ -667,6 +667,27 @@ if (platformMount) {
           isShellStudentMode(action.shadowRoot) &&
           navigationToLessonIsFromDataEpScreen(action.sourceElement)
         ) {
+          // Avoid showing design placeholder content while loading the real lesson
+          const root = action.shadowRoot;
+          setLessonContent(root, { moduleTitle: 'Загрузка…', lessonTitle: 'Текущий урок', bodyText: 'Загрузка урока…' });
+          const videoHost = root.querySelector('#screen-s-lesson [data-ep-video]') as HTMLElement | null;
+          if (videoHost) {
+            videoHost.style.display = 'none';
+            videoHost.querySelectorAll('iframe').forEach((x) => x.remove());
+          }
+          const sliderHost = root.querySelector('#screen-s-lesson [data-ep-lesson-slider]') as HTMLElement | null;
+          if (sliderHost) {
+            sliderHost.style.display = 'none';
+            sliderHost.replaceChildren();
+          }
+          const hwWrap = root.querySelector('#screen-s-lesson [data-ep-homework]') as HTMLElement | null;
+          if (hwWrap) hwWrap.style.display = 'none';
+          const matsTitle = root.querySelector('#screen-s-lesson [data-ep-materials-title]') as HTMLElement | null;
+          if (matsTitle) matsTitle.style.display = 'none';
+          const mats = root.querySelector('#screen-s-lesson [data-ep-materials]') as HTMLElement | null;
+          if (mats) mats.replaceChildren();
+          const subWrap = root.querySelector('#screen-s-lesson [data-ep-my-submission-wrap]') as HTMLElement | null;
+          if (subWrap) subWrap.style.display = 'none';
           void enterStudentCurrentLessonOrEmpty(action.shadowRoot);
         }
         if (action.type === 'builder_tab') {
@@ -2202,6 +2223,8 @@ if (platformMount) {
         }
         currentMe = u;
         currentPlatformRole = u.platformRole ?? null;
+        // Student sidebar badges (best-effort)
+        void hydrateStudentMenuBadges(shell.shadowRoot, token);
         // Update streak UI (student sidebar; best-effort)
         const streakEl = root.querySelector('[data-ep-streak-days]') as HTMLElement | null;
         if (streakEl) {
@@ -2250,6 +2273,43 @@ if (platformMount) {
       }
     }
 
+    async function hydrateStudentMenuBadges(root: ShadowRoot, token: string): Promise<void> {
+      const myCoursesBadge = root.querySelector('[data-ep-student-badge-mycourses]') as HTMLElement | null;
+      const hwBadge = root.querySelector('[data-ep-student-badge-homework]') as HTMLElement | null;
+
+      try {
+        const data = await fetchJson<MyCoursesResponseV1>('/me/courses', token);
+        const n = (data.items ?? []).length;
+        if (myCoursesBadge) {
+          if (n > 0) {
+            myCoursesBadge.textContent = String(n);
+            myCoursesBadge.style.display = '';
+          } else {
+            myCoursesBadge.textContent = '';
+            myCoursesBadge.style.display = 'none';
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+
+      try {
+        const next = await fetchJson<{ homework: any | null }>('/me/homework/next-pending', token);
+        const show = !!next?.homework;
+        if (hwBadge) {
+          if (show) {
+            hwBadge.textContent = '1';
+            hwBadge.style.display = '';
+          } else {
+            hwBadge.textContent = '';
+            hwBadge.style.display = 'none';
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
     function renderStarsInto(host: HTMLElement, avgScore: number | null): void {
       if (avgScore == null) {
         host.textContent = '—';
@@ -2264,14 +2324,33 @@ if (platformMount) {
         `</span>`;
     }
 
-    async function hydrateStudentCatalog(): Promise<void> {
+    let catalogTopic: string = 'all';
+    let catalogSearchQ: string = '';
+    let catalogSearchTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function catalogStaticTopicToSlug(v: string): string | null {
+      const s = (v || '').trim();
+      if (s === 'all') return null;
+      if (s === 'marketing') return 'маркетинг';
+      if (s === 'sales') return 'продажи';
+      if (s === 'finance') return 'финансы';
+      return null;
+    }
+
+    async function hydrateStudentCatalog(params?: { q?: string; topicSlug?: string | null }): Promise<void> {
       const root = shell.shadowRoot;
       const screen = root.getElementById('screen-s-catalog');
       const grid = screen?.querySelector('.grid3');
       if (!grid) return;
       grid.replaceChildren();
 
-      const data = await fetchJson<LibraryResponseV1>('/library');
+      const q = (params?.q ?? '').trim();
+      const topicSlug = (params?.topicSlug ?? null) || null;
+      const qs = new URLSearchParams();
+      if (q) qs.set('q', q);
+      if (topicSlug) qs.set('topic', topicSlug);
+      const path = qs.toString() ? `/library?${qs.toString()}` : '/library';
+      const data = await fetchJson<LibraryResponseV1>(path);
       const courses = (data.courses ?? []).slice(0, 12);
       courses.forEach((c) => grid.appendChild(renderCourseCard(c)));
     }
@@ -6100,6 +6179,53 @@ if (platformMount) {
         return;
       }
 
+      const catTopic = t?.closest('[data-ep-catalog-topic]') as HTMLElement | null;
+      const catTopicKey = (catTopic?.dataset.epCatalogTopic ?? '').trim();
+      if (catTopic && catTopicKey) {
+        ev.preventDefault();
+        catalogSearchQ = '';
+        const inp = shell.shadowRoot.querySelector('#screen-s-catalog [data-ep-catalog-search]') as HTMLInputElement | null;
+        if (inp) inp.value = '';
+        catalogTopic = catTopicKey;
+        const topicSlug = catalogStaticTopicToSlug(catalogTopic);
+        void hydrateStudentCatalog({ topicSlug });
+        return;
+      }
+
+      const catBtn = t?.closest('[data-ep-catalog-category]') as HTMLElement | null;
+      if (catBtn) {
+        ev.preventDefault();
+        void (async () => {
+          try {
+            const tok = getAccessToken();
+            if (!tok) return;
+            const items = (await fetchJson<{ items?: Array<{ id: string; slug: string; title: string }> }>('/topics', tok)).items ?? [];
+            if (!items.length) {
+              window.alert('Тем пока нет.');
+              return;
+            }
+            const pick = window.prompt(
+              `Введите тему из списка:\n\n${items.map((x) => x.title).slice(0, 25).join('\n')}${items.length > 25 ? '\n…' : ''}`,
+            );
+            const chosen = (pick ?? '').trim();
+            if (!chosen) return;
+            const found = items.find((x) => x.title.toLowerCase() === chosen.toLowerCase());
+            if (!found) {
+              window.alert('Тема не найдена.');
+              return;
+            }
+            catalogSearchQ = '';
+            const inp = shell.shadowRoot.querySelector('#screen-s-catalog [data-ep-catalog-search]') as HTMLInputElement | null;
+            if (inp) inp.value = '';
+            catalogTopic = 'all';
+            void hydrateStudentCatalog({ topicSlug: found.slug });
+          } catch {
+            window.alert('Не удалось загрузить темы.');
+          }
+        })();
+        return;
+      }
+
       const completeLesson = t?.closest('[data-ep-lesson-complete]') as HTMLElement | null;
       if (completeLesson) {
         ev.preventDefault();
@@ -6204,6 +6330,17 @@ if (platformMount) {
     shell.shadowRoot.addEventListener('input', (ev) => {
       const inp = ev.target as HTMLInputElement | null;
       if (!inp?.matches) return;
+
+      if (inp.matches('#screen-s-catalog [data-ep-catalog-search]')) {
+        const q = inp.value;
+        catalogSearchQ = q;
+        catalogTopic = 'all'; // search always across all courses
+        if (catalogSearchTimer) window.clearTimeout(catalogSearchTimer);
+        catalogSearchTimer = window.setTimeout(() => {
+          void hydrateStudentCatalog({ q: catalogSearchQ });
+        }, 250);
+        return;
+      }
 
       if (inp.matches('[data-ep-expert-courses-search]')) {
         window.clearTimeout(expertCoursesSearchTimer);
