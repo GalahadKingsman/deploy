@@ -56,7 +56,8 @@ export const ApiEnvSchema = z.object({
   TELEGRAM_INITDATA_MAX_AGE_SECONDS: z.coerce.number().default(86400),
   OWNER_TELEGRAM_USER_ID: z.string().optional(),
   JWT_ACCESS_SECRET: z.string().min(16, 'JWT_ACCESS_SECRET must be at least 16 characters'),
-  JWT_ACCESS_TTL_SECONDS: z.coerce.number().default(900),
+  // Access token TTL (seconds). Production default is 14 days.
+  JWT_ACCESS_TTL_SECONDS: z.coerce.number().default(14 * 24 * 60 * 60),
   SWAGGER_ENABLED: z
     .preprocess((val) => {
       if (val === undefined || val === null || val === '') return false;
