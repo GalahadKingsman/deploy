@@ -663,13 +663,13 @@
   <div class="page-header">
     <div><div class="page-title">Кураторы и менеджеры</div><div class="page-sub">Управление командой</div></div>
   </div>
-  <div class="grid2">
+  <div class="grid2 ep-team-page-grid">
     <div>
       <div class="ep-team-members-heading">
         <div class="sec-title">Участники команды</div>
         <button type="button" class="btn btn-primary btn-sm" data-ep-team-add-open style="display:none">+ Добавить участника</button>
       </div>
-      <div class="card" style="overflow:hidden">
+      <div class="card ep-team-members-table-card">
         <table class="tbl">
           <thead><tr><th>Участник</th><th>Роль</th><th>Курсы</th><th>Последняя активность</th><th></th></tr></thead>
           <tbody data-ep-expert-team-tbody></tbody>
@@ -678,14 +678,14 @@
     </div>
     <div>
       <div class="sec-title">Права доступа по ролям</div>
-      <div class="card" style="padding:20px">
-        <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;font-size:12px;margin-bottom:10px">
+      <div class="card ep-team-rights-card" style="padding:20px">
+        <div class="ep-team-perm-head">
           <div style="color:var(--t3);font-family:var(--fm);font-size:9px;letter-spacing:.06em;text-transform:uppercase">Действие</div>
           <div style="color:var(--t3);font-family:var(--fm);font-size:9px;text-align:center;letter-spacing:.06em;text-transform:uppercase">КУРАТОР</div>
           <div style="color:var(--t3);font-family:var(--fm);font-size:9px;text-align:center;letter-spacing:.06em;text-transform:uppercase">МЕНЕДЖЕР</div>
         </div>
         <div class="div" style="margin:0 0 10px"></div>
-        <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;row-gap:10px;font-size:12px;align-items:center">
+        <div class="ep-team-perm-body">
           <span style="color:var(--t2)">Проверка домашних заданий</span><span style="text-align:center;color:var(--ok)">✓</span><span style="text-align:center;color:var(--err)">✗</span>
           <span style="color:var(--t2)">Переписка со студентами</span><span style="text-align:center;color:var(--ok)">✓</span><span style="text-align:center;color:var(--ok)">✓</span>
           <span style="color:var(--t2)">Просмотр аналитики</span><span style="text-align:center;color:var(--err)">✗</span><span style="text-align:center;color:var(--ok)">✓</span>
@@ -1052,19 +1052,19 @@
     </div>
   </div>
   <div
-    class="ep-s-lesson-app"
+    class="ep-s-lesson-app ep-s-lesson-layout"
     data-ep-s-lesson-app
     style="display:flex;gap:20px;height:calc(100vh - 56px - 56px);overflow:hidden"
   >
     <!-- Module tree -->
-    <div style="width:240px;flex-shrink:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);padding:14px;overflow-y:auto;height:fit-content">
+    <div class="ep-s-lesson-tree" style="width:240px;flex-shrink:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);padding:14px;overflow-y:auto;height:fit-content">
       <div data-ep-course-title style="font-family:var(--fd);font-size:11px;font-weight:700;color:var(--t1);margin-bottom:2px">—</div>
       <div class="prog-wrap" style="margin:8px 0 14px"><div class="prog-bar"><div class="prog-fill" style="width:0%"></div></div><div class="prog-val">—</div></div>
       <div class="mod-tree" data-ep-lesson-tree></div>
     </div>
 
     <!-- Main lesson area -->
-    <div style="flex:1;overflow-y:auto">
+    <div class="ep-s-lesson-main" style="flex:1;overflow-y:auto;min-width:0">
       <div style="margin-bottom:16px">
         <div data-ep-lesson-meta style="font-size:11px;color:var(--t3);margin-bottom:4px;font-family:var(--fm)">Загрузка…</div>
         <div data-ep-lesson-title style="font-family:var(--fd);font-size:20px;font-weight:700;letter-spacing:-.02em;color:var(--t1);margin-bottom:16px">Текущий урок</div>
@@ -1101,7 +1101,7 @@
     </div>
 
     <!-- Stats sidebar -->
-    <div style="width:200px;flex-shrink:0;display:flex;flex-direction:column;gap:12px">
+    <div class="ep-s-lesson-stats" style="width:200px;flex-shrink:0;display:flex;flex-direction:column;gap:12px">
       <div class="card-sm" style="padding:16px;text-align:center">
         <div style="font-family:var(--fd);font-size:28px;font-weight:900;color:var(--warn);margin-bottom:4px">🔥 <span data-ep-streak-days>—</span></div>
         <div style="font-family:var(--fm);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em">Streak дней</div>

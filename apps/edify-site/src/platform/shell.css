@@ -330,6 +330,23 @@ table.tbl tr:hover td{background:var(--bg)}
 .ep-team-members-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 .ep-team-members-heading .sec-title{margin-bottom:0}
 .ep-team-members-heading [data-ep-team-add-open]{flex-shrink:0}
+/* Матрица «Права доступа по ролям» (заголовок + строки) */
+.ep-team-perm-head,
+.ep-team-perm-body{
+  display:grid;
+  grid-template-columns:1fr auto auto;
+  gap:8px 14px;
+  align-items:center;
+  font-size:12px;
+}
+.ep-team-perm-body{row-gap:10px}
+.ep-team-members-table-card{
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  overflow-y:visible;
+  border-radius:var(--r2);
+}
+.ep-team-members-table-card .tbl{min-width:520px}
 /* Текущий пользователь в таблице команды — подпись в колонке «Роль» */
 .ep-team-role-you{
   font-size:12px;
@@ -1221,6 +1238,72 @@ textarea.form-input{resize:vertical;min-height:80px}
   .form-input{max-width:100%}
   [data-ep-lesson-nav]{flex-wrap:wrap}
   [data-ep-lesson-nav] .btn{flex:1 1 auto;min-width:0;justify-content:center}
+
+  /* E-TEAM: таблица участников + матрица прав */
+  #screen-e-team{min-width:0}
+  .ep-team-page-grid{min-width:0}
+  .ep-team-rights-card{
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    min-width:0;
+  }
+  .ep-team-rights-card .ep-team-perm-head,
+  .ep-team-rights-card .ep-team-perm-body{
+    min-width:min(100%, 280px);
+  }
+
+  /* S-LESSON: дерево + урок + статистика */
+  #screen-s-lesson{min-width:0}
+  .ep-s-lesson-not-enrolled{
+    max-width:100% !important;
+    margin:0 !important;
+    padding:24px 16px !important;
+  }
+  .ep-s-lesson-layout{
+    flex-direction:column !important;
+    align-items:stretch !important;
+    height:auto !important;
+    min-height:calc(100dvh - var(--ep-topbar-h) - 24px) !important;
+    max-height:none !important;
+    overflow:visible !important;
+    gap:12px !important;
+  }
+  .ep-s-lesson-layout .ep-s-lesson-tree,
+  .ep-s-lesson-layout .ep-s-lesson-main,
+  .ep-s-lesson-layout .ep-s-lesson-stats{
+    width:100% !important;
+    max-width:100% !important;
+  }
+  .ep-s-lesson-tree{
+    max-height:min(38vh, 300px) !important;
+    height:auto !important;
+    flex:0 0 auto !important;
+    order:2;
+  }
+  .ep-s-lesson-main{
+    flex:1 1 auto !important;
+    min-height:0;
+    max-height:none !important;
+    overflow-y:visible !important;
+    order:1;
+  }
+  .ep-s-lesson-stats{
+    flex:0 0 auto !important;
+    flex-direction:row !important;
+    flex-wrap:wrap !important;
+    align-items:stretch;
+    gap:8px !important;
+    order:3;
+  }
+  .ep-s-lesson-stats .card-sm{
+    flex:1 1 calc(33.333% - 6px) !important;
+    min-width:min(100%, 100px) !important;
+  }
+  #screen-s-lesson .video-player{
+    width:100%;
+    max-width:100%;
+    box-sizing:border-box;
+  }
 }
 
 @media (max-width:480px){
