@@ -4774,13 +4774,12 @@ if (platformMount) {
     }
 
     async function getSignedFileUrl(key: string): Promise<string | null> {
-      const api = getApiBaseUrl();
       const tok = getAccessToken();
-      if (!api || !tok) return null;
+      if (!tok) return null;
       try {
-        const res = await fetchJson<{ url: string }>(`${api}/files/signed?key=${encodeURIComponent(key)}`, tok);
+        const res = await fetchJson<{ url: string }>(`/files/signed?key=${encodeURIComponent(key)}`, tok);
         const u = (res?.url ?? '').trim();
-        return u ? (u.startsWith('http') ? u : `${api}${u}`) : null;
+        return u ? resolvePublicUrl(u) : null;
       } catch {
         return null;
       }
