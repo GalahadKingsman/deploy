@@ -539,6 +539,10 @@ if (platformMount) {
     let builderSelectedLessonId: string | null = null;
     let builderSliderDraft: { lessonId: string; images: { key: string }[] } | null = null;
     const builderSliderByLessonId = new Map<string, { images: { key: string }[] }>();
+    const builderPresentationByLessonId = new Map<
+      string,
+      { pptxKey: string; pdfKey: string; originalFilename: string } | null
+    >();
     type BuilderModuleV1 = { id: string; courseId: string; title: string; position: number };
     type BuilderLessonV1 = {
       id: string;
@@ -549,6 +553,7 @@ if (platformMount) {
       hiddenFromStudents?: boolean;
       contentMarkdown?: string | null;
       slider?: { images: { key: string }[] } | null;
+      presentation?: { pptxKey: string; pdfKey: string; originalFilename: string } | null;
       video?: { kind: string; url?: string } | null;
       createdAt: string;
       updatedAt: string;
@@ -1650,6 +1655,7 @@ if (platformMount) {
 
       // Video: reuse the same Rutube embed logic as in Telegram webapp
       const videoHost = root.querySelector('#screen-s-lesson [data-ep-video]') as HTMLElement | null;
+      const presHost = root.querySelector('#screen-s-lesson [data-ep-lesson-presentation]') as HTMLElement | null;
       const sliderHost = root.querySelector('#screen-s-lesson [data-ep-lesson-slider]') as HTMLElement | null;
       if (videoHost) {
         // clean previous iframe if any
@@ -1688,6 +1694,22 @@ if (platformMount) {
           if (play) play.style.display = '';
           const overlay = videoHost.querySelector('.video-overlay-bottom') as HTMLElement | null;
           if (overlay) overlay.style.display = '';
+        }
+      }
+
+      // Presentation (after video, before slider)
+      if (presHost) {
+        const p = (lesson as any)?.presentation ?? null;
+        const pres =
+          p && typeof p.pptxKey === 'string' && typeof p.pdfKey === 'string' && typeof p.originalFilename === 'string'
+            ? { pptxKey: p.pptxKey, pdfKey: p.pdfKey, originalFilename: p.originalFilename }
+            : null;
+        if (!pres) {
+          presHost.style.display = 'none';
+          presHost.replaceChildren();
+        } else {
+          presHost.style.display = '';
+          void renderPresentationViewer(root, presHost, pres);
         }
       }
 
@@ -4058,6 +4080,9 @@ if (platformMount) {
       const rutubeInp = root.querySelector('[data-ep-builder-rutube]') as HTMLInputElement | null;
       const bodyTa = root.querySelector('[data-ep-builder-lesson-body]') as HTMLTextAreaElement | null;
       const hiddenCb = root.querySelector('[data-ep-builder-lesson-hidden]') as HTMLInputElement | null;
+      const presStatus = root.querySelector('[data-ep-builder-presentation-status]') as HTMLElement | null;
+      const presPreview = root.querySelector('[data-ep-builder-presentation-preview]') as HTMLElement | null;
+      const presRemove = root.querySelector('[data-ep-builder-presentation-remove]') as HTMLElement | null;
       const hwTa = root.querySelector('[data-ep-builder-hw-body]') as HTMLTextAreaElement | null;
       const filesHost = root.querySelector('[data-ep-builder-hw-files]') as HTMLElement | null;
       const forbiddenEl = root.querySelector('[data-ep-builder-hw-forbidden]') as HTMLElement | null;
@@ -4083,6 +4108,15 @@ if (platformMount) {
         if (rutubeInp) rutubeInp.value = '';
         if (bodyTa) bodyTa.value = '';
         if (hiddenCb) hiddenCb.checked = false;
+        if (presStatus) {
+          presStatus.style.display = 'none';
+          presStatus.textContent = '';
+        }
+        if (presPreview) {
+          presPreview.style.display = 'none';
+          presPreview.replaceChildren();
+        }
+        if (presRemove) presRemove.style.display = 'none';
         syncBuilderHomeworkLessonGate(root, false);
         resetHwEditorState();
         return;
@@ -4094,6 +4128,15 @@ if (platformMount) {
         if (rutubeInp) rutubeInp.value = '';
         if (bodyTa) bodyTa.value = '';
         if (hiddenCb) hiddenCb.checked = false;
+        if (presStatus) {
+          presStatus.style.display = 'none';
+          presStatus.textContent = '';
+        }
+        if (presPreview) {
+          presPreview.style.display = 'none';
+          presPreview.replaceChildren();
+        }
+        if (presRemove) presRemove.style.display = 'none';
         syncBuilderHomeworkLessonGate(root, false);
         resetHwEditorState();
         return;
@@ -4112,6 +4155,31 @@ if (platformMount) {
         builderSliderByLessonId.set(builderSelectedLessonId, {
           images: Array.isArray(slider?.images) ? slider!.images.filter((x) => x && typeof x.key === 'string') : [],
         });
+      }
+
+      // Presentation cache (for preview + quick render)
+      if (builderSelectedLessonId) {
+        const pres = (lesson.presentation ?? null) as { pptxKey?: string; pdfKey?: string; originalFilename?: string } | null;
+        const valid = pres && pres.pptxKey && pres.pdfKey && pres.originalFilename ? {
+          pptxKey: String(pres.pptxKey),
+          pdfKey: String(pres.pdfKey),
+          originalFilename: String(pres.originalFilename),
+        } : null;
+        builderPresentationByLessonId.set(builderSelectedLessonId, valid);
+        if (presRemove) presRemove.style.display = valid ? '' : 'none';
+        if (presPreview) {
+          presPreview.replaceChildren();
+          if (!valid) {
+            presPreview.style.display = 'none';
+          } else {
+            presPreview.style.display = '';
+            void renderPresentationViewer(root, presPreview, valid);
+          }
+        }
+        if (presStatus) {
+          presStatus.style.display = 'none';
+          presStatus.textContent = '';
+        }
       }
 
       resetHwEditorState();
@@ -4615,6 +4683,50 @@ if (platformMount) {
         }
       }
 
+      const presCard = root.querySelector('[data-ep-lesson-preview-presentation]') as HTMLElement | null;
+      const presHost = root.querySelector('[data-ep-lesson-preview-presentation-host]') as HTMLElement | null;
+      const presOpen = root.querySelector('[data-ep-lesson-preview-presentation-open]') as HTMLElement | null;
+      const presDlPdf = root.querySelector('[data-ep-lesson-preview-presentation-dl-pdf]') as HTMLElement | null;
+      const presDlPptx = root.querySelector('[data-ep-lesson-preview-presentation-dl-pptx]') as HTMLElement | null;
+      if (presCard && presHost) {
+        const lid = builderSelectedLessonId;
+        const pres = lid ? builderPresentationByLessonId.get(lid) ?? null : null;
+        presHost.replaceChildren();
+        if (!pres) {
+          presCard.style.display = 'none';
+          if (presOpen) presOpen.setAttribute('disabled', '');
+          if (presDlPdf) presDlPdf.setAttribute('disabled', '');
+          if (presDlPptx) presDlPptx.setAttribute('disabled', '');
+        } else {
+          presCard.style.display = '';
+          if (presOpen) presOpen.removeAttribute('disabled');
+          if (presDlPdf) presDlPdf.removeAttribute('disabled');
+          if (presDlPptx) presDlPptx.removeAttribute('disabled');
+          void (async () => {
+            const pdfUrl = await getSignedFileUrl(pres.pdfKey);
+            const pptxUrl = await getSignedFileUrl(pres.pptxKey);
+            if (!pdfUrl) return;
+            const iframe = document.createElement('iframe');
+            iframe.className = 'ep-lesson-pres__frame';
+            iframe.style.height = '520px';
+            iframe.src = pdfUrl;
+            iframe.title = 'Презентация (PDF)';
+            iframe.loading = 'lazy';
+            iframe.referrerPolicy = 'no-referrer';
+            const wrap = document.createElement('div');
+            wrap.className = 'ep-lesson-pres';
+            wrap.appendChild(iframe);
+            presHost.appendChild(wrap);
+            if (presOpen) (presOpen as any).dataset.epPresPdfUrl = pdfUrl;
+            if (presDlPdf) (presDlPdf as any).dataset.epPresUrl = pdfUrl;
+            if (presDlPdf) (presDlPdf as any).dataset.epPresName = encodeURIComponent(pres.originalFilename.replace(/\.pptx$/i, '.pdf'));
+            if (presDlPptx) (presDlPptx as any).dataset.epPresUrl = pptxUrl ?? '';
+            if (presDlPptx) (presDlPptx as any).dataset.epPresName = encodeURIComponent(pres.originalFilename);
+            if (presDlPptx) (presDlPptx as HTMLButtonElement).disabled = !pptxUrl;
+          })();
+        }
+      }
+
       const hwText = (hwTa?.value ?? '').trim();
       if (!hwText) {
         if (hwEmpty) hwEmpty.style.display = '';
@@ -4659,6 +4771,86 @@ if (platformMount) {
       const api = getApiBaseUrl();
       if (!api) return '';
       return `${api}/public/lesson-media?key=${encodeURIComponent(key)}`;
+    }
+
+    async function getSignedFileUrl(key: string): Promise<string | null> {
+      const api = getApiBaseUrl();
+      const tok = getAccessToken();
+      if (!api || !tok) return null;
+      try {
+        const res = await fetchJson<{ url: string }>(`${api}/files/signed?key=${encodeURIComponent(key)}`, tok);
+        const u = (res?.url ?? '').trim();
+        return u ? (u.startsWith('http') ? u : `${api}${u}`) : null;
+      } catch {
+        return null;
+      }
+    }
+
+    async function renderPresentationViewer(
+      root: ShadowRoot,
+      host: HTMLElement,
+      pres: { pptxKey: string; pdfKey: string; originalFilename: string },
+    ): Promise<void> {
+      host.replaceChildren();
+      const pdfUrl = await getSignedFileUrl(pres.pdfKey);
+      const pptxUrl = await getSignedFileUrl(pres.pptxKey);
+      if (!pdfUrl) {
+        host.style.display = 'none';
+        return;
+      }
+      host.style.display = '';
+
+      const wrap = document.createElement('div');
+      wrap.className = 'ep-lesson-pres';
+
+      const head = document.createElement('div');
+      head.className = 'ep-lesson-pres__head';
+
+      const title = document.createElement('div');
+      title.className = 'ep-lesson-pres__title';
+      title.textContent = 'Презентация';
+
+      const actions = document.createElement('div');
+      actions.className = 'ep-lesson-pres__actions';
+
+      const open = document.createElement('button');
+      open.type = 'button';
+      open.className = 'btn btn-outline btn-sm';
+      open.textContent = 'Открыть';
+      open.dataset.epPresOpen = '1';
+      open.dataset.epPresPdfUrl = pdfUrl;
+
+      const dlPdf = document.createElement('button');
+      dlPdf.type = 'button';
+      dlPdf.className = 'btn btn-ghost btn-sm';
+      dlPdf.textContent = 'PDF';
+      dlPdf.dataset.epPresDl = '1';
+      dlPdf.dataset.epPresUrl = pdfUrl;
+      dlPdf.dataset.epPresName = encodeURIComponent(pres.originalFilename.replace(/\.pptx$/i, '.pdf'));
+
+      const dlPptx = document.createElement('button');
+      dlPptx.type = 'button';
+      dlPptx.className = 'btn btn-ghost btn-sm';
+      dlPptx.textContent = 'PPTX';
+      dlPptx.disabled = !pptxUrl;
+      if (pptxUrl) {
+        dlPptx.dataset.epPresDl = '1';
+        dlPptx.dataset.epPresUrl = pptxUrl;
+        dlPptx.dataset.epPresName = encodeURIComponent(pres.originalFilename);
+      }
+
+      actions.append(open, dlPdf, dlPptx);
+      head.append(title, actions);
+
+      const iframe = document.createElement('iframe');
+      iframe.className = 'ep-lesson-pres__frame';
+      iframe.src = pdfUrl;
+      iframe.title = 'Презентация (PDF)';
+      iframe.referrerPolicy = 'no-referrer';
+      iframe.loading = 'lazy';
+
+      wrap.append(head, iframe);
+      host.appendChild(wrap);
     }
 
     function closeBuilderSliderModal(root: ShadowRoot): void {
@@ -5793,6 +5985,46 @@ if (platformMount) {
         })();
         return;
       }
+      if (t?.closest('[data-ep-builder-presentation-add]')) {
+        ev.preventDefault();
+        if (!builderSelectedLessonId) {
+          window.alert('Выберите урок в дереве слева.');
+          return;
+        }
+        const inp = shell.shadowRoot.querySelector('input[data-ep-presentation-file-input]') as HTMLInputElement | null;
+        inp?.click();
+        return;
+      }
+      if (t?.closest('[data-ep-builder-presentation-remove]')) {
+        ev.preventDefault();
+        void (async () => {
+          const tok = getAccessToken();
+          const eid = await resolveBuilderExpertId();
+          const mid = builderSelectedModuleId;
+          const lid = builderSelectedLessonId;
+          if (!tok || !eid || !mid || !lid) return;
+          if (!window.confirm('Удалить презентацию из урока?')) return;
+          try {
+            await patchJson(
+              `/experts/${encodeURIComponent(eid)}/modules/${encodeURIComponent(mid)}/lessons/${encodeURIComponent(lid)}`,
+              { presentation: null },
+              tok,
+            );
+            builderPresentationByLessonId.set(lid, null);
+            const preview = shell.shadowRoot.querySelector('[data-ep-builder-presentation-preview]') as HTMLElement | null;
+            if (preview) {
+              preview.style.display = 'none';
+              preview.replaceChildren();
+            }
+            const removeBtn = shell.shadowRoot.querySelector('[data-ep-builder-presentation-remove]') as HTMLElement | null;
+            if (removeBtn) removeBtn.style.display = 'none';
+            window.alert('Презентация удалена.');
+          } catch {
+            window.alert('Не удалось удалить презентацию.');
+          }
+        })();
+        return;
+      }
       if (
         t?.closest('[data-ep-slider-backdrop]') ||
         t?.closest('[data-ep-slider-close]') ||
@@ -5806,6 +6038,23 @@ if (platformMount) {
         ev.preventDefault();
         const inp = shell.shadowRoot.querySelector('[data-ep-slider-file-input]') as HTMLInputElement | null;
         inp?.click();
+        return;
+      }
+
+      const presOpen = t?.closest('[data-ep-pres-open]') as HTMLElement | null;
+      if (presOpen) {
+        ev.preventDefault();
+        const url = (presOpen.dataset.epPresPdfUrl ?? '').trim();
+        if (url) window.open(url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      const presDl = t?.closest('[data-ep-pres-dl]') as HTMLElement | null;
+      if (presDl) {
+        ev.preventDefault();
+        const url = (presDl.dataset.epPresUrl ?? '').trim();
+        if (!url) return;
+        const dlUrl = url.includes('?') ? `${url}&dl=1` : `${url}?dl=1`;
+        window.open(dlUrl, '_blank', 'noopener,noreferrer');
         return;
       }
       const del = t?.closest('[data-ep-slider-del-idx]') as HTMLElement | null;
@@ -6739,6 +6988,11 @@ if (platformMount) {
         videoHost.style.display = 'none';
         videoHost.querySelectorAll('iframe').forEach((x) => x.remove());
       }
+      const presHost = root.querySelector('#screen-s-lesson [data-ep-lesson-presentation]') as HTMLElement | null;
+      if (presHost) {
+        presHost.style.display = 'none';
+        presHost.replaceChildren();
+      }
       const sliderHost = root.querySelector('#screen-s-lesson [data-ep-lesson-slider]') as HTMLElement | null;
       if (sliderHost) {
         sliderHost.style.display = 'none';
@@ -6816,6 +7070,68 @@ if (platformMount) {
               }
             } catch {
               window.alert('Не удалось загрузить фото.');
+            }
+          }
+        })();
+        return;
+      }
+      if (t?.matches('input[data-ep-presentation-file-input]')) {
+        const inp = t as HTMLInputElement;
+        const f = inp.files?.[0] ?? null;
+        inp.value = '';
+        void (async () => {
+          const tok = getAccessToken();
+          const eid = await resolveBuilderExpertId();
+          const mid = builderSelectedModuleId;
+          const lid = builderSelectedLessonId;
+          const status = shell.shadowRoot.querySelector('[data-ep-builder-presentation-status]') as HTMLElement | null;
+          const preview = shell.shadowRoot.querySelector('[data-ep-builder-presentation-preview]') as HTMLElement | null;
+          const removeBtn = shell.shadowRoot.querySelector('[data-ep-builder-presentation-remove]') as HTMLElement | null;
+          if (!tok || !eid || !mid || !lid) {
+            window.alert('Выберите урок в дереве слева.');
+            return;
+          }
+          if (!f) return;
+          const name = (f.name || '').trim() || 'presentation.pptx';
+          if (!name.toLowerCase().endsWith('.pptx')) {
+            window.alert('Можно загрузить только файл .pptx');
+            return;
+          }
+          if (status) {
+            status.style.display = '';
+            status.textContent = 'Загружаем…';
+          }
+          if (preview) {
+            preview.style.display = 'none';
+            preview.replaceChildren();
+          }
+          try {
+            const form = new FormData();
+            form.append('file', f, name);
+            if (status) status.textContent = 'Конвертируем…';
+            const up = await fetchMultipartJson<{ presentation: { pptxKey: string; pdfKey: string; originalFilename: string } }>(
+              `/experts/${encodeURIComponent(eid)}/modules/${encodeURIComponent(mid)}/lessons/${encodeURIComponent(lid)}/presentation/upload`,
+              form,
+              tok,
+            );
+            const pres = up?.presentation ?? null;
+            if (!pres || !pres.pdfKey || !pres.pptxKey) {
+              throw new Error('Invalid response');
+            }
+            builderPresentationByLessonId.set(lid, pres);
+            if (removeBtn) removeBtn.style.display = '';
+            if (status) {
+              status.style.display = 'none';
+              status.textContent = '';
+            }
+            if (preview) {
+              preview.style.display = '';
+              await renderPresentationViewer(shell.shadowRoot, preview, pres);
+            }
+          } catch {
+            if (status) {
+              status.style.display = '';
+              status.textContent = 'Не удалось загрузить презентацию.';
             }
           }
         })();

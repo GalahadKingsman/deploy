@@ -63,7 +63,7 @@ async function bootstrap() {
   await (app.getHttpAdapter().getInstance() as any).register(multipart as any, {
     limits: {
       // iPhone photos (jpeg) are often >10MB; keep reasonably high to avoid "Load failed" in WebView.
-      fileSize: 25 * 1024 * 1024, // 25MB
+      fileSize: 200 * 1024 * 1024, // 200MB
       files: 1,
     },
   });

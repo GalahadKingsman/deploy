@@ -104,7 +104,8 @@ export class FilesController {
     }
     const isSubmission = cleanKey.startsWith('submissions/');
     const isAvatar = cleanKey.startsWith(`avatars/${userId}/`);
-    if (!isSubmission && !isAvatar) {
+    const isLessonPresentation = cleanKey.startsWith('lesson-presentations/');
+    if (!isSubmission && !isAvatar && !isLessonPresentation) {
       throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'File not found' });
     }
     if (isSubmission) {
@@ -121,6 +122,65 @@ export class FilesController {
         throw new ForbiddenException({ code: ErrorCodes.FORBIDDEN, message: 'Forbidden' });
       }
     }
+    if (isLessonPresentation) {
+      if (!this.pool) {
+        throw new NotFoundException({ code: ErrorCodes.INTERNAL_ERROR, message: 'Database is disabled' });
+      }
+      const parts = cleanKey.split('/');
+      const lessonId = parts.length >= 2 ? parts[1] : '';
+      if (!lessonId) throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'File not found' });
+      const meta = await this.pool.query<{ course_id: string; expert_id: string }>(
+        `
+        SELECT c.id AS course_id, c.expert_id AS expert_id
+        FROM lessons l
+        JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+        JOIN courses c ON c.id = m.course_id AND c.deleted_at IS NULL
+        WHERE l.id = $1 AND l.deleted_at IS NULL
+        LIMIT 1
+        `,
+        [lessonId],
+      );
+      const row = meta.rows[0];
+      if (!row) throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'File not found' });
+
+      const enr = await this.pool.query(
+        `
+        SELECT 1
+        FROM enrollments
+        WHERE user_id = $1 AND course_id = $2
+          AND revoked_at IS NULL
+          AND (access_end IS NULL OR access_end > NOW())
+        LIMIT 1
+        `,
+        [userId, row.course_id],
+      );
+      if (enr.rows.length > 0) {
+        const t = this.jwtService.signFileToken({ userId, key: cleanKey, ttlSeconds: 120 });
+        return { url: `/files/public?t=${encodeURIComponent(t)}` };
+      }
+
+      const member = await this.pool.query<{ role: string }>(
+        `SELECT role FROM expert_members WHERE expert_id = $1 AND user_id = $2 LIMIT 1`,
+        [row.expert_id, userId],
+      );
+      const role = member.rows[0]?.role ?? null;
+      if (role === 'owner') {
+        const t = this.jwtService.signFileToken({ userId, key: cleanKey, ttlSeconds: 120 });
+        return { url: `/files/public?t=${encodeURIComponent(t)}` };
+      }
+      const access = await this.pool.query(
+        `
+        SELECT 1
+        FROM expert_member_course_access
+        WHERE expert_id = $1 AND user_id = $2 AND course_id = $3
+        LIMIT 1
+        `,
+        [row.expert_id, userId, row.course_id],
+      );
+      if (access.rows.length === 0) {
+        throw new ForbiddenException({ code: ErrorCodes.FORBIDDEN, message: 'Forbidden' });
+      }
+    }
     const t = this.jwtService.signFileToken({ userId, key: cleanKey, ttlSeconds: 120 });
     return { url: `/files/public?t=${encodeURIComponent(t)}` };
   }
@@ -130,6 +190,7 @@ export class FilesController {
   @ApiResponse({ status: 200, description: 'File stream' })
   async getPublic(
     @Query('t') token: string,
+    @Query('dl') dl: string | undefined,
     @Res() reply: FastifyReply,
   ): Promise<void> {
     const cleanToken = String(token ?? '').trim();
@@ -140,7 +201,10 @@ export class FilesController {
     const key = decoded.key;
     const userId = decoded.userId;
 
-    if (!key.startsWith('submissions/') && !key.startsWith(`avatars/${userId}/`)) {
+    const isSubmission = key.startsWith('submissions/');
+    const isAvatar = key.startsWith(`avatars/${userId}/`);
+    const isLessonPresentation = key.startsWith('lesson-presentations/');
+    if (!isSubmission && !isAvatar && !isLessonPresentation) {
       throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'File not found' });
     }
 
@@ -157,11 +221,13 @@ export class FilesController {
 
     const lastSeg = key.includes('/') ? key.slice(key.lastIndexOf('/') + 1) : key;
     const asciiName = lastSeg.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_').slice(0, 180) || 'file';
-    reply.header('content-type', 'application/octet-stream');
+    const wantDownload = typeof dl === 'string' && (dl === '1' || dl.toLowerCase() === 'true');
+    const ct = obj.contentType ?? null;
+    reply.header('content-type', ct ?? 'application/octet-stream');
     reply.header('x-content-type-options', 'nosniff');
     reply.header(
       'content-disposition',
-      `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(lastSeg)}`,
+      `${wantDownload ? 'attachment' : 'inline'}; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(lastSeg)}`,
     );
     if (obj.contentLength != null) reply.header('content-length', String(obj.contentLength));
     return await reply.send(obj.body as any);

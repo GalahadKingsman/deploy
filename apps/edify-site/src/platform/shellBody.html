@@ -258,6 +258,17 @@
               <div style="font-size:11px;color:var(--t3);line-height:1.5">Фото появятся у студента после видео.</div>
             </div>
           </div>
+          <div class="form-group">
+            <div class="form-label">Презентация</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <input type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" style="display:none" data-ep-presentation-file-input />
+              <button type="button" class="btn btn-outline btn-sm" data-ep-builder-presentation-add>+ Добавить презентацию</button>
+              <button type="button" class="btn btn-ghost btn-sm" style="display:none" data-ep-builder-presentation-remove>Удалить</button>
+              <div style="font-size:11px;color:var(--t3);line-height:1.5">PPTX будет конвертирован в PDF для просмотра студентом.</div>
+            </div>
+            <div data-ep-builder-presentation-status style="margin-top:10px;display:none;font-size:12px;color:var(--t3)"></div>
+            <div data-ep-builder-presentation-preview style="display:none;margin-top:12px"></div>
+          </div>
         </div>
 
         <div data-ep-builder-panel="homework" style="display:none">
@@ -353,6 +364,18 @@
       <div class="card" style="padding:18px;border-radius:var(--r2);display:none" data-ep-lesson-preview-slider>
         <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:10px">Слайдер</div>
         <div data-ep-lesson-preview-slider-host data-ep-lesson-slider></div>
+      </div>
+
+      <div class="card" style="padding:18px;border-radius:var(--r2);display:none" data-ep-lesson-preview-presentation>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px">
+          <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1)">Презентация</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+            <button type="button" class="btn btn-outline btn-sm" data-ep-lesson-preview-presentation-open data-ep-pres-open>Открыть</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-ep-lesson-preview-presentation-dl-pdf data-ep-pres-dl>PDF</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-ep-lesson-preview-presentation-dl-pptx data-ep-pres-dl>PPTX</button>
+          </div>
+        </div>
+        <div data-ep-lesson-preview-presentation-host></div>
       </div>
 
       <div class="card" style="padding:18px;border-radius:var(--r2)">
@@ -1076,6 +1099,7 @@
             <span style="font-size:12px;color:rgba(255,255,255,.6)">⛶</span>
           </div>
         </div>
+        <div data-ep-lesson-presentation style="display:none;margin-bottom:20px"></div>
         <div data-ep-lesson-slider style="display:none;margin-bottom:20px"></div>
         <div data-ep-lesson-body style="font-size:14px;color:var(--t2);line-height:1.7;margin-bottom:16px">Загрузка урока…</div>
         <div data-ep-materials-title style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:10px;display:none">Материалы к уроку</div>

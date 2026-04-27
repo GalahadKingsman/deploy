@@ -8,6 +8,7 @@ interface LessonRow {
   title: string;
   content_md: string | null;
   slider: unknown | null;
+  presentation: unknown | null;
   position: number;
   video: unknown | null;
   hidden_from_students: boolean;
@@ -31,6 +32,7 @@ function mapRow(row: LessonRow, courseId: string): ContractsV1.ExpertLessonV1 {
     hiddenFromStudents: Boolean(row.hidden_from_students),
     contentMarkdown: row.content_md ?? null,
     slider: (row.slider as any) ?? null,
+    presentation: (row.presentation as any) ?? null,
     // video is stored as jsonb, expected to conform to LessonVideoV1 (validated on write)
     video: (row.video as any) ?? undefined,
     deletedAt: row.deleted_at ? row.deleted_at.toISOString() : null,
@@ -124,6 +126,7 @@ export class LessonsRepository {
     title: string;
     contentMarkdown?: string | null;
     slider?: { images: { key: string }[] } | null;
+    presentation?: { pptxKey: string; pdfKey: string; originalFilename: string } | null;
     video?: ContractsV1.LessonVideoV1;
   }): Promise<ContractsV1.ExpertLessonV1> {
     if (!this.pool) {
@@ -139,8 +142,8 @@ export class LessonsRepository {
 
     const result = await this.pool.query<LessonRow>(
       `
-      INSERT INTO lessons (id, module_id, title, content_md, slider, position, video, hidden_from_students, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7::jsonb, false, NOW(), NOW())
+      INSERT INTO lessons (id, module_id, title, content_md, slider, presentation, position, video, hidden_from_students, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8::jsonb, false, NOW(), NOW())
       RETURNING *
       `,
       [
@@ -149,6 +152,7 @@ export class LessonsRepository {
         params.title.trim(),
         params.contentMarkdown ?? null,
         params.slider ? JSON.stringify(params.slider) : null,
+        params.presentation ? JSON.stringify(params.presentation) : null,
         next,
         params.video ? JSON.stringify(params.video) : null,
       ],
@@ -175,8 +179,9 @@ export class LessonsRepository {
         title = COALESCE($3, title),
         content_md = COALESCE($4, content_md),
         slider = COALESCE($5::jsonb, slider),
-        video = COALESCE($6::jsonb, video),
-        hidden_from_students = COALESCE($7, hidden_from_students),
+        presentation = COALESCE($6::jsonb, presentation),
+        video = COALESCE($7::jsonb, video),
+        hidden_from_students = COALESCE($8, hidden_from_students),
         updated_at = NOW()
       WHERE id = $1 AND module_id = $2 AND deleted_at IS NULL
       RETURNING *
@@ -187,6 +192,7 @@ export class LessonsRepository {
         params.patch.title?.trim() ?? null,
         params.patch.contentMarkdown === undefined ? null : params.patch.contentMarkdown,
         params.patch.slider === undefined ? null : JSON.stringify(params.patch.slider),
+        params.patch.presentation === undefined ? null : JSON.stringify(params.patch.presentation),
         params.patch.video === undefined ? null : JSON.stringify(params.patch.video),
         hiddenFromStudents,
       ],

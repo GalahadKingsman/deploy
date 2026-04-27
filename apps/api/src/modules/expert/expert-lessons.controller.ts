@@ -24,6 +24,7 @@ import { AuditService } from '../../audit/audit.service.js';
 import type { FastifyRequest } from 'fastify';
 import { ExpertCourseAccessService } from './expert-course-access.service.js';
 import { S3StorageService } from '../../storage/s3-storage.service.js';
+import { convertPptxToPdf } from '../../common/convert/pptx-to-pdf.js';
 
 function normalizeRutubeInVideo(
   v: ContractsV1.LessonVideoV1 | undefined | null,
@@ -105,6 +106,7 @@ export class ExpertLessonsController {
       title: parsed.data.title,
       contentMarkdown: parsed.data.contentMarkdown ?? null,
       slider: parsed.data.slider ?? null,
+      presentation: parsed.data.presentation ?? null,
       video: normalizeRutubeInVideo(parsed.data.video) ?? undefined,
     });
     await this.auditService.write({
@@ -214,6 +216,93 @@ export class ExpertLessonsController {
     });
 
     return { key };
+  }
+
+  @Post(':lessonId/presentation/upload')
+  @RequireExpertRole('manager')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Upload lesson presentation (pptx) and convert to PDF (multipart, manager+)' })
+  @ApiResponse({ status: 201, description: 'Presentation stored + lesson updated' })
+  async uploadPresentation(
+    @Param('expertId') expertId: string,
+    @Param('moduleId') moduleId: string,
+    @Param('lessonId') lessonId: string,
+    @Req()
+    req: FastifyRequest & {
+      user?: { userId: string };
+      file?: (opts?: any) => Promise<any>;
+    },
+  ): Promise<{ presentation: { pptxKey: string; pdfKey: string; originalFilename: string } }> {
+    await this.expertCourseAccessService.assertCanAccessLesson({
+      expertId,
+      userId: req.user!.userId,
+      lessonId,
+    });
+
+    const current = await this.lessonsRepository.listByModuleId(moduleId);
+    if (!current.some((x) => x.id === lessonId)) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Invalid lessonId for module' });
+    }
+
+    const file = await (req as any).file?.();
+    if (!file) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'file is required' });
+    }
+
+    const mt = typeof file.mimetype === 'string' ? file.mimetype.trim() : '';
+    const original =
+      typeof file.filename === 'string' && file.filename.trim() ? file.filename.trim() : 'presentation.pptx';
+    const lower = original.toLowerCase();
+    const okExt = lower.endsWith('.pptx');
+    const okMime =
+      mt === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+      mt === 'application/octet-stream' ||
+      mt === '';
+    if (!okExt && !okMime) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Only .pptx is allowed' });
+    }
+
+    const buf: Buffer = await file.toBuffer();
+    if (!buf || buf.length === 0) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Empty file' });
+    }
+
+    const safeName = original.replace(/[^\w.\-]+/g, '_').slice(0, 120) || 'presentation.pptx';
+    const id = randomUUID();
+    const pptxKey = `lesson-presentations/${lessonId}/${id}-${safeName}`;
+    const pdfKey = `lesson-presentations/${lessonId}/${id}-${safeName.replace(/\.pptx$/i, '')}.pdf`;
+
+    await this.storage.putObject({
+      key: pptxKey,
+      body: new Uint8Array(buf),
+      contentType:
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    });
+
+    let pdf: Uint8Array;
+    try {
+      pdf = await convertPptxToPdf({ pptx: new Uint8Array(buf), timeoutMs: 90_000 });
+    } catch {
+      throw new BadRequestException({
+        code: ErrorCodes.VALIDATION_ERROR,
+        message: 'Failed to convert PPTX to PDF',
+      });
+    }
+
+    await this.storage.putObject({
+      key: pdfKey,
+      body: pdf,
+      contentType: 'application/pdf',
+    });
+
+    const presentation = { pptxKey, pdfKey, originalFilename: original };
+    await this.lessonsRepository.update({
+      moduleId,
+      lessonId,
+      patch: { presentation },
+    });
+
+    return { presentation };
   }
 
   @Post('reorder')

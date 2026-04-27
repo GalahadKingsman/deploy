@@ -16,6 +16,7 @@ export interface ExpertLessonV1 {
   hiddenFromStudents: boolean;
   contentMarkdown?: string | null;
   slider?: { images: { key: string }[] } | null;
+  presentation?: { pptxKey: string; pdfKey: string; originalFilename: string } | null;
   video?: LessonVideoV1;
   deletedAt?: IsoDateTime | null;
   createdAt: IsoDateTime;
@@ -31,6 +32,7 @@ export const ExpertLessonV1Schema = z.object({
   hiddenFromStudents: z.boolean(),
   contentMarkdown: z.string().nullable().optional(),
   slider: LessonV1Schema.shape.slider,
+  presentation: LessonV1Schema.shape.presentation,
   video: LessonVideoV1Schema,
   deletedAt: z.string().nullable().optional(),
   createdAt: z.string(),
@@ -49,6 +51,7 @@ export interface CreateExpertLessonRequestV1 {
   title: string;
   contentMarkdown?: string | null;
   slider?: { images: { key: string }[] } | null;
+  presentation?: { pptxKey: string; pdfKey: string; originalFilename: string } | null;
   video?: LessonVideoV1;
 }
 
@@ -56,6 +59,7 @@ export const CreateExpertLessonRequestV1Schema = z.object({
   title: z.string().min(1),
   contentMarkdown: z.string().nullable().optional(),
   slider: LessonV1Schema.shape.slider,
+  presentation: LessonV1Schema.shape.presentation,
   video: LessonVideoV1Schema.optional(),
 });
 
@@ -64,6 +68,7 @@ export interface UpdateExpertLessonRequestV1 {
   hiddenFromStudents?: boolean;
   contentMarkdown?: string | null;
   slider?: { images: { key: string }[] } | null;
+  presentation?: { pptxKey: string; pdfKey: string; originalFilename: string } | null;
   video?: LessonVideoV1;
 }
 
@@ -72,6 +77,7 @@ export const UpdateExpertLessonRequestV1Schema = z.object({
   hiddenFromStudents: z.boolean().optional(),
   contentMarkdown: z.string().nullable().optional(),
   slider: LessonV1Schema.shape.slider,
+  presentation: LessonV1Schema.shape.presentation,
   video: LessonVideoV1Schema.optional(),
 });
 
