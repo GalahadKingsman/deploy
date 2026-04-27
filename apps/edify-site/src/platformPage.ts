@@ -1697,7 +1697,15 @@ if (platformMount) {
         }
       }
 
-      // Presentation (after video, before slider)
+      // Slider (after video, before text)
+      if (sliderHost) {
+        const keys = Array.isArray((lesson as any)?.slider?.images)
+          ? ((lesson as any).slider.images as Array<{ key?: string }>).map((x) => String(x?.key ?? '').trim()).filter(Boolean)
+          : [];
+        renderInlineLessonSlider(root, sliderHost, keys);
+      }
+
+      // Presentation (after slider, before text)
       if (presHost) {
         const p = (lesson as any)?.presentation ?? null;
         const pres =
@@ -1711,14 +1719,6 @@ if (platformMount) {
           presHost.style.display = '';
           void renderPresentationViewer(root, presHost, pres);
         }
-      }
-
-      // Slider (after video, before text)
-      if (sliderHost) {
-        const keys = Array.isArray((lesson as any)?.slider?.images)
-          ? ((lesson as any).slider.images as Array<{ key?: string }>).map((x) => String(x?.key ?? '').trim()).filter(Boolean)
-          : [];
-        renderInlineLessonSlider(root, sliderHost, keys);
       }
 
       // Homework + materials
@@ -4819,6 +4819,13 @@ if (platformMount) {
       open.dataset.epPresOpen = '1';
       open.dataset.epPresPdfUrl = pdfUrl;
 
+      const fs = document.createElement('button');
+      fs.type = 'button';
+      fs.className = 'btn btn-outline btn-sm';
+      fs.textContent = '⛶';
+      fs.title = 'На весь экран';
+      fs.dataset.epPresFs = '1';
+
       const dlPdf = document.createElement('button');
       dlPdf.type = 'button';
       dlPdf.className = 'btn btn-ghost btn-sm';
@@ -4838,7 +4845,7 @@ if (platformMount) {
         dlPptx.dataset.epPresName = encodeURIComponent(pres.originalFilename);
       }
 
-      actions.append(open, dlPdf, dlPptx);
+      actions.append(open, fs, dlPdf, dlPptx);
       head.append(title, actions);
 
       const iframe = document.createElement('iframe');
@@ -6054,6 +6061,27 @@ if (platformMount) {
         if (!url) return;
         const dlUrl = url.includes('?') ? `${url}&dl=1` : `${url}?dl=1`;
         window.open(dlUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      const presFs = t?.closest('[data-ep-pres-fs]') as HTMLElement | null;
+      if (presFs) {
+        ev.preventDefault();
+        const presWrap = (presFs.closest('.ep-lesson-pres') as HTMLElement | null) ?? null;
+        const iframe = presWrap?.querySelector('iframe') as HTMLIFrameElement | null;
+        const target = (iframe as any) ?? presWrap;
+        const req = target && typeof (target as any).requestFullscreen === 'function' ? (target as any) : presWrap;
+        if (!req || typeof (req as any).requestFullscreen !== 'function') {
+          // Fallback: open in a new tab (browser PDF viewer has fullscreen)
+          const url = (presWrap?.querySelector('[data-ep-pres-open]') as HTMLElement | null)?.dataset.epPresPdfUrl ?? '';
+          if (url) window.open(url, '_blank', 'noopener,noreferrer');
+          return;
+        }
+        try {
+          void (req as any).requestFullscreen();
+        } catch {
+          const url = (presWrap?.querySelector('[data-ep-pres-open]') as HTMLElement | null)?.dataset.epPresPdfUrl ?? '';
+          if (url) window.open(url, '_blank', 'noopener,noreferrer');
+        }
         return;
       }
       const del = t?.closest('[data-ep-slider-del-idx]') as HTMLElement | null;
