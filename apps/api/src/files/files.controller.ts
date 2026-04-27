@@ -223,6 +223,11 @@ export class FilesController {
     const asciiName = lastSeg.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_').slice(0, 180) || 'file';
     const wantDownload = typeof dl === 'string' && (dl === '1' || dl.toLowerCase() === 'true');
     const ct = obj.contentType ?? null;
+    // Allow embedding PDFs in an <iframe> on the platform domain.
+    // Helmet sets X-Frame-Options by default; remove it for this endpoint.
+    reply.removeHeader('x-frame-options');
+    reply.header('content-security-policy', `frame-ancestors *`);
+    reply.header('cross-origin-resource-policy', 'cross-origin');
     reply.header('content-type', ct ?? 'application/octet-stream');
     reply.header('x-content-type-options', 'nosniff');
     reply.header(
