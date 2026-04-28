@@ -4120,6 +4120,7 @@ if (platformMount) {
         gear.addEventListener('click', (ev) => {
           ev.preventDefault();
           ev.stopPropagation();
+          openBuilderModuleActions(root, m.id);
         });
         head.append(arrow, name, cnt);
         head.appendChild(gear);
@@ -4141,19 +4142,22 @@ if (platformMount) {
           const dots = document.createElement('button');
           dots.type = 'button';
           dots.className = 'btn btn-ghost btn-sm';
-          dots.textContent = '⋯';
+          dots.textContent = '✕';
           dots.style.padding = '4px 8px';
           dots.style.minWidth = '32px';
           dots.style.minHeight = '28px';
           dots.style.lineHeight = '1';
-          dots.style.color = 'var(--t3)';
-          dots.dataset.epBuilderLessonMenu = '1';
+          dots.style.color = 'var(--err)';
+          dots.style.borderColor = 'rgba(220,38,38,0.22)';
+          dots.style.background = 'rgba(220,38,38,0.06)';
+          dots.dataset.epBuilderLessonDelete = '1';
           dots.dataset.epBuilderLessonId = l.id;
           dots.dataset.epBuilderModuleId = m.id;
-          dots.setAttribute('aria-label', 'Действия урока');
+          dots.setAttribute('aria-label', 'Удалить урок');
           dots.addEventListener('click', (ev) => {
             ev.preventDefault();
             ev.stopPropagation();
+            void builderDeleteLesson(root, m.id, l.id);
           });
           row.append(ico, nm, dots);
           box.appendChild(row);
