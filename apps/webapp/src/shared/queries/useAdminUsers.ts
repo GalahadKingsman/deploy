@@ -5,7 +5,10 @@ import { fetchJson, ApiClientError } from '../api/index.js';
 export type AdminUserPick = Pick<
   ContractsV1.UserV1,
   'id' | 'telegramUserId' | 'username' | 'firstName' | 'lastName' | 'platformRole' | 'createdAt' | 'updatedAt'
->;
+> & {
+  /** Same heuristic as GET /me/expert-subscription; omitted on older APIs. */
+  activeExpertId?: string | null;
+};
 
 export const adminUsersKey = (params?: { q?: string; limit?: number; offset?: number }) =>
   ['admin', 'users', params?.q ?? '', params?.limit ?? 50, params?.offset ?? 0] as const;

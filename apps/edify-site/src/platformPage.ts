@@ -5284,6 +5284,15 @@ if (platformMount) {
       root.querySelectorAll<HTMLElement>('[data-ep-admin-suggest]').forEach((el) => (el.style.display = 'none'));
     }
 
+    function applyAdminExpertIdFields(root: ShadowRoot, activeExpertId: string | null | undefined): void {
+      const v = typeof activeExpertId === 'string' ? activeExpertId.trim() : '';
+      if (!v) return;
+      const memEx = root.querySelector('[data-ep-admin-members-expert-id]') as HTMLInputElement | null;
+      const subEx = root.querySelector('[data-ep-admin-sub-expert-id]') as HTMLInputElement | null;
+      if (memEx) memEx.value = v;
+      if (subEx) subEx.value = v;
+    }
+
     function adminSearchInputQ(
       root: ShadowRoot,
       host: 'create-owner' | 'members-user' | 'platform-user',
@@ -5298,7 +5307,15 @@ if (platformMount) {
 
     function renderAdminSuggest(
       root: ShadowRoot,
-      items: Array<{ id: string; telegramUserId?: string; username?: string; firstName?: string; lastName?: string; platformRole: string }>,
+      items: Array<{
+        id: string;
+        telegramUserId?: string;
+        username?: string;
+        firstName?: string;
+        lastName?: string;
+        platformRole: string;
+        activeExpertId?: string | null;
+      }>,
       host: 'create-owner' | 'members-user' | 'platform-user',
     ): void {
       const hostEl = root.querySelector(`[data-ep-admin-suggest="${host}"]`) as HTMLElement | null;
@@ -5357,18 +5374,21 @@ if (platformMount) {
             const idInp = root.querySelector('[data-ep-admin-create-expert-owner-id]') as HTMLInputElement | null;
             if (idInp) idInp.value = u.id;
             adminSelectedUserIdByField = { ...adminSelectedUserIdByField, createOwner: u.id };
+            applyAdminExpertIdFields(root, u.activeExpertId ?? null);
           } else if (host === 'members-user') {
             const inp = root.querySelector('[data-ep-admin-members-user-search]') as HTMLInputElement | null;
             if (inp) inp.value = formatUserTitle(u);
             const idInp = root.querySelector('[data-ep-admin-members-user-id]') as HTMLInputElement | null;
             if (idInp) idInp.value = u.id;
             adminSelectedUserIdByField = { ...adminSelectedUserIdByField, membersUser: u.id };
+            applyAdminExpertIdFields(root, u.activeExpertId ?? null);
           } else {
             const inp = root.querySelector('[data-ep-admin-platform-user-search]') as HTMLInputElement | null;
             if (inp) inp.value = formatUserTitle(u);
             const idInp = root.querySelector('[data-ep-admin-platform-user-id]') as HTMLInputElement | null;
             if (idInp) idInp.value = u.id;
             adminSelectedUserIdByField = { ...adminSelectedUserIdByField, platformUser: u.id };
+            applyAdminExpertIdFields(root, u.activeExpertId ?? null);
           }
           hostEl.style.display = 'none';
         });
@@ -5392,7 +5412,15 @@ if (platformMount) {
       }
       try {
         const res = await fetchJson<{
-          items: Array<{ id: string; telegramUserId?: string; username?: string; firstName?: string; lastName?: string; platformRole: string }>;
+          items: Array<{
+            id: string;
+            telegramUserId?: string;
+            username?: string;
+            firstName?: string;
+            lastName?: string;
+            platformRole: string;
+            activeExpertId?: string | null;
+          }>;
         }>(`/admin/users?q=${encodeURIComponent(qq)}`, token);
         renderAdminSuggest(root, res.items ?? [], host);
       } catch {

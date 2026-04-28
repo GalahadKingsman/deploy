@@ -520,6 +520,76 @@ export class UsersRepository {
     return { items: res.rows.map((r) => this.mapRowToUserWithBan(r)) };
   }
 
+  /**
+   * Per user: pick one `expert_id` using the same idea as `GET /me/expert-subscription`
+   * (prefer subscription with status=active and current_period_end in the future; else latest end).
+   */
+  async adminListActiveExpertIdsByUserIds(userIds: string[]): Promise<Map<string, string | null>> {
+    const uniq = [...new Set(userIds.map((id) => (id ?? '').trim()).filter(Boolean))];
+    const out = new Map<string, string | null>();
+    for (const id of uniq) out.set(id, null);
+    if (!this.pool || uniq.length === 0) return out;
+
+    const res = await this.pool.query<{
+      user_id: string;
+      expert_id: string;
+      created_at: Date;
+      status: string | null;
+      current_period_end: Date | null;
+    }>(
+      `
+      SELECT em.user_id::text AS user_id,
+             em.expert_id::text AS expert_id,
+             em.created_at,
+             es.status,
+             es.current_period_end
+      FROM expert_members em
+      LEFT JOIN expert_subscriptions es ON es.expert_id = em.expert_id
+      WHERE em.user_id = ANY($1::uuid[])
+      ORDER BY em.user_id, em.created_at ASC
+      `,
+      [uniq],
+    );
+
+    const byUser = new Map<string, typeof res.rows>();
+    for (const r of res.rows) {
+      const arr = byUser.get(r.user_id) ?? [];
+      arr.push(r);
+      byUser.set(r.user_id, arr);
+    }
+
+    const nowMs = Date.now();
+    const isActive = (status: string, end: Date | null): boolean => {
+      if (status.trim() !== 'active') return false;
+      const endMs = end ? end.getTime() : null;
+      return endMs == null || endMs > nowMs;
+    };
+
+    for (const uid of uniq) {
+      const rows = byUser.get(uid) ?? [];
+      if (rows.length === 0) {
+        out.set(uid, null);
+        continue;
+      }
+      const picks = rows.map((row) => ({
+        expertId: row.expert_id,
+        status: (row.status ?? '').trim(),
+        end: row.current_period_end,
+      }));
+      const actives = picks.filter((p) => isActive(p.status, p.end));
+      const pickFrom = actives.length > 0 ? actives : picks;
+      pickFrom.sort((a, b) => {
+        const ae = a.end ? a.end.getTime() : Number.POSITIVE_INFINITY;
+        const be = b.end ? b.end.getTime() : Number.POSITIVE_INFINITY;
+        return be - ae;
+      });
+      const top = pickFrom[0]?.expertId ?? rows[0]?.expert_id ?? null;
+      out.set(uid, top ?? null);
+    }
+
+    return out;
+  }
+
   async updateContact(params: { userId: string; email?: string | null; phone?: string | null }): Promise<void> {
     if (!this.pool) {
       throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');

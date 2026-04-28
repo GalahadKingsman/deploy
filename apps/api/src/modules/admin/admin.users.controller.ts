@@ -29,7 +29,20 @@ export class AdminUsersController {
     @Query('q') q?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
-  ): Promise<{ items: Array<{ id: string; telegramUserId?: string; username?: string; firstName?: string; lastName?: string; platformRole: string; createdAt: string; updatedAt: string }> }> {
+  ): Promise<{
+    items: Array<{
+      id: string;
+      telegramUserId?: string;
+      username?: string;
+      firstName?: string;
+      lastName?: string;
+      platformRole: string;
+      createdAt: string;
+      updatedAt: string;
+      /** Prefer expert whose subscription matches /me/expert-subscription logic; null if none. */
+      activeExpertId: string | null;
+    }>;
+  }> {
     const parsedLimit = limit != null ? Number(limit) : undefined;
     const parsedOffset = offset != null ? Number(offset) : undefined;
 
@@ -38,6 +51,8 @@ export class AdminUsersController {
       limit: parsedLimit,
       offset: parsedOffset,
     });
+
+    const activeByUser = await this.usersRepository.adminListActiveExpertIdsByUserIds(res.items.map((u) => u.id));
 
     // Return public-ish shape (without bannedAt/contact fields)
     return {
@@ -50,6 +65,7 @@ export class AdminUsersController {
         platformRole: u.platformRole,
         createdAt: u.createdAt,
         updatedAt: u.updatedAt,
+        activeExpertId: activeByUser.get(u.id) ?? null,
       })),
     };
   }

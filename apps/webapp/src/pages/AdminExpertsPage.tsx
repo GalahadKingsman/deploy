@@ -20,7 +20,11 @@ function formatUserLabel(u: AdminUserPick): string {
   const name = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
   const username = u.username ? `@${u.username}` : '';
   const tg = u.telegramUserId ? `tg:${u.telegramUserId}` : '';
-  const parts = [name, username, tg].filter(Boolean).join(' · ');
+  const ex =
+    typeof u.activeExpertId === 'string' && u.activeExpertId.trim()
+      ? `expert:${u.activeExpertId.trim()}`
+      : '';
+  const parts = [name, username, tg, ex].filter(Boolean).join(' · ');
   return parts ? `${parts} · ${u.id}` : u.id;
 }
 
@@ -224,6 +228,8 @@ export function AdminExpertsPage() {
                     setMemberUserId(u.id);
                     setRoleUserId(u.id);
                     setRemoveUserId(u.id);
+                    const ae = typeof u.activeExpertId === 'string' ? u.activeExpertId.trim() : '';
+                    if (ae) setExpertId(ae);
                     toast.show({ title: 'Выбран пользователь', message: formatUserLabel(u), variant: 'info' });
                   }}
                   style={{ justifyContent: 'flex-start' }}
