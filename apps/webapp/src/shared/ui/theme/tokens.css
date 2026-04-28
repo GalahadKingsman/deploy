@@ -25,6 +25,19 @@
   --accent: #7ccfe6;
   --accent-2: #8ad9ee;
   --danger: #ef5350;
+  --success: #3ddc97;
+  --warning: #f5b14c;
+
+  /* Elevated surfaces */
+  --card-grad: radial-gradient(
+      120% 120% at 0% 0%,
+      rgba(255, 255, 255, 0.10) 0%,
+      rgba(255, 255, 255, 0.02) 55%,
+      rgba(0, 0, 0, 0) 100%
+    );
+  --btn-grad: linear-gradient(180deg, rgba(138, 217, 238, 1) 0%, rgba(124, 207, 230, 1) 100%);
+  --ring: 0 0 0 3px rgba(124, 207, 230, 0.22);
+  --ring-danger: 0 0 0 3px rgba(239, 83, 80, 0.22);
 
   /* Radii */
   --r-xs: 4px;
@@ -59,6 +72,7 @@
   /* Shadows */
   --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.2);
   --shadow-2: 0 4px 16px rgba(0, 0, 0, 0.3);
+  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.35);
 
   /* Glass Effect */
   --glass-bg: rgba(20, 26, 34, 0.72);

@@ -28,12 +28,12 @@ export function ListItem({
     alignItems: 'center',
     gap: 'var(--sp-3)',
     padding: 'var(--sp-3) var(--sp-4)',
-    backgroundColor: 'var(--card)',
-    border: '1px solid var(--border)',
+    background: 'linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.04) 100%)',
+    border: '1px solid rgba(255,255,255,0.10)',
     borderRadius: 'var(--r-md)',
     marginBottom: 'var(--sp-2)',
     cursor: onClick ? 'pointer' : 'default',
-    transition: 'background-color 0.2s',
+    transition: 'background-color 0.18s, border-color 0.18s, transform 0.18s',
     textAlign: 'left',
     width: '100%',
     ...style,
@@ -74,10 +74,12 @@ export function ListItem({
       {onClick && (
         <style>{`
           .list-item-interactive:hover {
-            background-color: var(--card-2) !important;
+            background-color: rgba(255,255,255,0.06) !important;
+            border-color: rgba(124,207,230,0.22) !important;
           }
           .list-item-interactive:active {
-            background-color: var(--card-2) !important;
+            background-color: rgba(255,255,255,0.06) !important;
+            transform: translateY(1px);
             opacity: 0.9;
           }
         `}</style>

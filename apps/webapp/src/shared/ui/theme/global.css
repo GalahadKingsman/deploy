@@ -30,6 +30,16 @@ body {
   color-scheme: dark;
 }
 
+/* Reduce tap highlights on mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Better text rendering on iOS */
+body {
+  text-rendering: geometricPrecision;
+}
+
 /* Basic link styles */
 a {
   color: var(--accent);
@@ -53,4 +63,11 @@ button {
 button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* Smooth scroll inside app containers (not global, keeps tg behavior ok) */
+@media (prefers-reduced-motion: no-preference) {
+  html:focus-within {
+    scroll-behavior: smooth;
+  }
 }

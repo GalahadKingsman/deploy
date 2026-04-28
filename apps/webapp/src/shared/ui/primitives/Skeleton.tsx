@@ -38,9 +38,9 @@ export function Skeleton({
           animation: shimmer 1.5s infinite linear;
           background: linear-gradient(
             to right,
-            var(--card-2) 0%,
-            var(--card) 50%,
-            var(--card-2) 100%
+            rgba(255,255,255,0.04) 0%,
+            rgba(255,255,255,0.10) 50%,
+            rgba(255,255,255,0.04) 100%
           );
           background-size: 1000px 100%;
         }

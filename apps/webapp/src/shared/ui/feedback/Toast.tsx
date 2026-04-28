@@ -44,17 +44,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const variantStyles: Record<ToastVariant, React.CSSProperties> = {
     success: {
-      backgroundColor: 'var(--accent)',
-      color: 'var(--bg)',
+      background: 'linear-gradient(180deg, rgba(61,220,151,0.95) 0%, rgba(61,220,151,0.80) 100%)',
+      color: 'rgba(10, 14, 18, 0.95)',
     },
     error: {
-      backgroundColor: 'var(--danger)',
+      background: 'linear-gradient(180deg, rgba(239,83,80,0.95) 0%, rgba(239,83,80,0.82) 100%)',
       color: '#fff',
     },
     info: {
+      background: 'var(--card-grad)',
       backgroundColor: 'var(--card)',
       color: 'var(--fg)',
-      border: '1px solid var(--border)',
+      border: '1px solid rgba(255,255,255,0.12)',
     },
   };
 
@@ -81,7 +82,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 ...variantStyles[toast.variant],
                 padding: 'var(--sp-3) var(--sp-4)',
                 borderRadius: 'var(--r-md)',
-                boxShadow: 'var(--shadow-2)',
+                boxShadow: 'var(--shadow-soft)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 'var(--sp-1)',

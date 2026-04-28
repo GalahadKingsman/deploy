@@ -25,7 +25,7 @@ export function BottomTabs() {
         backgroundColor: 'var(--chrome-bg)',
         backdropFilter: 'var(--glass-blur)',
         WebkitBackdropFilter: 'var(--glass-blur)',
-        borderTop: '1px solid var(--chrome-border)',
+        borderTop: '1px solid rgba(255,255,255,0.12)',
         paddingTop: 'var(--sp-2)',
         paddingBottom: 'var(--safe-bottom, 0px)',
         paddingLeft: 'var(--sp-2)',

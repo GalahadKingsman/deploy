@@ -34,8 +34,10 @@ export function Button({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 'var(--sp-2)',
-    transition: 'opacity 0.2s, background-color 0.2s',
+    transition: 'opacity 0.18s, transform 0.18s, background-color 0.18s, box-shadow 0.18s, border-color 0.18s',
     opacity: disabled ? 0.5 : 1,
+    userSelect: 'none',
+    WebkitTapHighlightColor: 'transparent',
   };
 
   const sizeStyles: Record<'sm' | 'md' | 'lg', React.CSSProperties> = {
@@ -55,17 +57,21 @@ export function Button({
 
   const variantStyles: Record<'primary' | 'secondary' | 'ghost' | 'danger', React.CSSProperties> = {
     primary: {
-      backgroundColor: 'var(--accent)',
+      background: 'var(--btn-grad)',
       color: 'var(--bg)',
+      boxShadow: '0 10px 26px rgba(124,207,230,0.18)',
     },
     secondary: {
-      backgroundColor: 'var(--card)',
+      backgroundColor: 'rgba(255,255,255,0.06)',
       color: 'var(--fg)',
-      border: '1px solid var(--border)',
+      border: '1px solid rgba(255,255,255,0.12)',
+      backdropFilter: 'var(--glass-blur)',
+      WebkitBackdropFilter: 'var(--glass-blur)',
     },
     ghost: {
       backgroundColor: 'transparent',
       color: 'var(--fg)',
+      border: '1px solid rgba(255,255,255,0.00)',
     },
     danger: {
       backgroundColor: 'var(--danger)',
@@ -166,6 +172,9 @@ export function Button({
         button:focus-visible {
           outline: 2px solid var(--accent);
           outline-offset: 2px;
+        }
+        button:not([disabled]):active {
+          transform: translateY(1px);
         }
       `}</style>
       <button

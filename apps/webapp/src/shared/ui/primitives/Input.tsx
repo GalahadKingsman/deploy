@@ -17,11 +17,11 @@ export function Input({ label, hint, error, className, style, id, ...props }: In
     fontSize: 'var(--text-md)',
     fontFamily: 'var(--font-sans)',
     color: 'var(--fg)',
-    backgroundColor: 'var(--card)',
-    border: `1px solid ${hasError ? 'var(--danger)' : 'var(--border)'}`,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    border: `1px solid ${hasError ? 'rgba(239,83,80,0.55)' : 'rgba(255,255,255,0.10)'}`,
     borderRadius: 'var(--r-md)',
     outline: 'none',
-    transition: 'border-color 0.2s',
+    transition: 'border-color 0.18s, box-shadow 0.18s, background-color 0.18s',
   };
 
   return (
@@ -74,6 +74,7 @@ export function Input({ label, hint, error, className, style, id, ...props }: In
       <style>{`
         input:focus {
           border-color: var(--accent) !important;
+          box-shadow: ${hasError ? 'var(--ring-danger)' : 'var(--ring)'} !important;
         }
         input::placeholder {
           color: var(--muted-fg);

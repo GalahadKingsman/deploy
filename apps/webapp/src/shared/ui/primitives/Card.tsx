@@ -10,10 +10,13 @@ export function Card({ children, className, style, ...props }: CardProps) {
     <div
       className={cn(className)}
       style={{
+        background: 'var(--card-grad)',
         backgroundColor: 'var(--card)',
-        border: '1px solid var(--border)',
+        border: '1px solid rgba(255,255,255,0.10)',
         borderRadius: 'var(--r-lg)',
-        boxShadow: 'var(--shadow-1)',
+        boxShadow: 'var(--shadow-soft)',
+        position: 'relative',
+        overflow: 'hidden',
         ...style,
       }}
       {...props}
