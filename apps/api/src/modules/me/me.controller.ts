@@ -93,7 +93,8 @@ export class MeController {
       const tgId = (meta.telegramUserId ?? '').trim();
       const rawAvatar = (meta.avatarUrl ?? '').trim();
       const last = meta.avatarSyncedAt ? new Date(meta.avatarSyncedAt).getTime() : 0;
-      const stale = !last || Date.now() - last > 24 * 60 * 60 * 1000;
+      // If Telegram is blocked from server network, sync can fail; retry periodically but not on every /me.
+      const stale = !last || Date.now() - last > 60 * 60 * 1000;
       const looksLikeTelegramCdn = /^https?:\/\/t\.me\/i\/userpic\//i.test(rawAvatar);
       if (stale && tgId && looksLikeTelegramCdn) {
         const up = await this.telegramAvatarSync.syncAvatarToS3({ telegramUserId: tgId, userId });
