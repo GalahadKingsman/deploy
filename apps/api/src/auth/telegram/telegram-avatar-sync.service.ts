@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ApiEnvSchema, validateOrThrow } from '@tracked/shared';
 import { S3StorageService } from '../../storage/s3-storage.service.js';
-import { ProxyAgent } from 'undici';
+import http from 'node:http';
+import https from 'node:https';
+import net from 'node:net';
+import { URL } from 'node:url';
 
 const env = validateOrThrow(ApiEnvSchema, process.env);
 
@@ -22,17 +25,120 @@ type TgGetFileResponse = {
 export class TelegramAvatarSyncService {
   constructor(private readonly storage: S3StorageService) {}
 
-  private getTelegramDispatcher(): ProxyAgent | undefined {
-    // Optional: route Telegram fetches through a proxy to обход блокировок.
-    // Use TELEGRAM_HTTP_PROXY or standard HTTPS_PROXY/HTTP_PROXY.
-    const raw =
-      (process.env.TELEGRAM_HTTP_PROXY ?? process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY ?? '').trim();
-    if (!raw) return undefined;
-    try {
-      return new ProxyAgent(raw);
-    } catch {
-      return undefined;
-    }
+  private pickProxyUrl(): string | null {
+    const raw = (process.env.TELEGRAM_HTTP_PROXY ?? process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY ?? '').trim();
+    return raw ? raw : null;
+  }
+
+  private httpsGetDirect(url: string): Promise<{ status: number; text: string; headers: http.IncomingHttpHeaders }> {
+    return new Promise((resolve, reject) => {
+      const req = https.get(url, (res) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
+        res.on('end', () => {
+          const text = Buffer.concat(chunks).toString('utf8');
+          resolve({ status: res.statusCode ?? 0, text, headers: res.headers });
+        });
+      });
+      req.on('error', reject);
+      req.end();
+    });
+  }
+
+  private async connectThroughHttpProxy(targetUrl: string, proxyUrl: string): Promise<net.Socket> {
+    const target = new URL(targetUrl);
+    const host = target.hostname;
+    const port = target.port ? Number(target.port) : target.protocol === 'https:' ? 443 : 80;
+
+    const proxy = new URL(proxyUrl);
+    const proxyHost = proxy.hostname;
+    const proxyPort = proxy.port ? Number(proxy.port) : proxy.protocol === 'https:' ? 443 : 80;
+
+    // HTTP CONNECT tunnels to host:443 (covers api.telegram.org and api.telegram.org file downloads)
+    return await new Promise((resolve, reject) => {
+      const req = http.request({
+        host: proxyHost,
+        port: proxyPort,
+        method: 'CONNECT',
+        path: `${host}:${port}`,
+      });
+      req.on('connect', (res, socket) => {
+        if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
+          socket.destroy();
+          reject(new Error(`CONNECT failed: HTTP ${res.statusCode ?? 'unknown'}`));
+          return;
+        }
+        resolve(socket);
+      });
+      req.on('error', reject);
+      req.end();
+    });
+  }
+
+  private async httpsGetTextViaProxy(url: string, proxyUrl: string): Promise<{ status: number; text: string; headers: http.IncomingHttpHeaders }> {
+    const socket = await this.connectThroughHttpProxy(url, proxyUrl);
+    const u = new URL(url);
+
+    return await new Promise((resolve, reject) => {
+      const req = https.request(
+        {
+          host: u.hostname,
+          path: `${u.pathname}${u.search}`,
+          method: 'GET',
+          headers: { host: u.host },
+          servername: u.hostname,
+          socket,
+          agent: false,
+        },
+        (res) => {
+          const chunks: Buffer[] = [];
+          res.on('data', (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
+          res.on('end', () => {
+            const text = Buffer.concat(chunks).toString('utf8');
+            resolve({ status: res.statusCode ?? 0, text, headers: res.headers });
+          });
+        },
+      );
+      req.on('error', reject);
+      req.end();
+    });
+  }
+
+  private httpsGetBufferDirect(url: string): Promise<{ status: number; buf: Buffer; headers: http.IncomingHttpHeaders }> {
+    return new Promise((resolve, reject) => {
+      const req = https.get(url, (res) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
+        res.on('end', () => resolve({ status: res.statusCode ?? 0, buf: Buffer.concat(chunks), headers: res.headers }));
+      });
+      req.on('error', reject);
+      req.end();
+    });
+  }
+
+  private async httpsGetBufferViaProxy(url: string, proxyUrl: string): Promise<{ status: number; buf: Buffer; headers: http.IncomingHttpHeaders }> {
+    const socket = await this.connectThroughHttpProxy(url, proxyUrl);
+    const u = new URL(url);
+    return await new Promise((resolve, reject) => {
+      const req = https.request(
+        {
+          host: u.hostname,
+          path: `${u.pathname}${u.search}`,
+          method: 'GET',
+          headers: { host: u.host },
+          servername: u.hostname,
+          socket,
+          agent: false,
+        },
+        (res) => {
+          const chunks: Buffer[] = [];
+          res.on('data', (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
+          res.on('end', () => resolve({ status: res.statusCode ?? 0, buf: Buffer.concat(chunks), headers: res.headers }));
+        },
+      );
+      req.on('error', reject);
+      req.end();
+    });
   }
 
   /**
@@ -47,14 +153,18 @@ export class TelegramAvatarSyncService {
     if (!tgUserId) return null;
 
     const apiBase = `https://api.telegram.org/bot${token}`;
-    const dispatcher = this.getTelegramDispatcher();
+    const proxy = this.pickProxyUrl();
 
-    const photosRes = await fetch(
-      `${apiBase}/getUserProfilePhotos?user_id=${encodeURIComponent(tgUserId)}&limit=1`,
-      dispatcher ? { method: 'GET', dispatcher } : { method: 'GET' },
-    );
-    if (!photosRes.ok) return null;
-    const photosJson = (await photosRes.json()) as TgGetUserProfilePhotosResponse;
+    const photosUrl = `${apiBase}/getUserProfilePhotos?user_id=${encodeURIComponent(tgUserId)}&limit=1`;
+    const photosRes = proxy ? await this.httpsGetTextViaProxy(photosUrl, proxy) : await this.httpsGetDirect(photosUrl);
+    if (photosRes.status < 200 || photosRes.status >= 300) return null;
+
+    let photosJson: TgGetUserProfilePhotosResponse;
+    try {
+      photosJson = JSON.parse(photosRes.text) as TgGetUserProfilePhotosResponse;
+    } catch {
+      return null;
+    }
     if (!photosJson?.ok) return null;
 
     const sets = photosJson.result?.photos ?? [];
@@ -64,25 +174,31 @@ export class TelegramAvatarSyncService {
     // Pick the largest image variant
     const best = variants.slice().sort((a, b) => (b.file_size ?? 0) - (a.file_size ?? 0))[0] ?? variants[variants.length - 1]!;
 
-    const fileRes = await fetch(
-      `${apiBase}/getFile?file_id=${encodeURIComponent(best.file_id)}`,
-      dispatcher ? { method: 'GET', dispatcher } : { method: 'GET' },
-    );
-    if (!fileRes.ok) return null;
-    const fileJson = (await fileRes.json()) as TgGetFileResponse;
+    const fileUrl = `${apiBase}/getFile?file_id=${encodeURIComponent(best.file_id)}`;
+    const fileRes = proxy ? await this.httpsGetTextViaProxy(fileUrl, proxy) : await this.httpsGetDirect(fileUrl);
+    if (fileRes.status < 200 || fileRes.status >= 300) return null;
+
+    let fileJson: TgGetFileResponse;
+    try {
+      fileJson = JSON.parse(fileRes.text) as TgGetFileResponse;
+    } catch {
+      return null;
+    }
+
     const path = (fileJson?.ok ? fileJson.result?.file_path : null) ?? null;
     if (!path) return null;
 
-    const dl = await fetch(
-      `https://api.telegram.org/file/bot${token}/${path}`,
-      dispatcher ? { method: 'GET', dispatcher } : { method: 'GET' },
-    );
-    if (!dl.ok) return null;
-    const ab = await dl.arrayBuffer();
-    const buf = Buffer.from(ab);
+    const dlUrl = `https://api.telegram.org/file/bot${token}/${path}`;
+    const dl = proxy ? await this.httpsGetBufferViaProxy(dlUrl, proxy) : await this.httpsGetBufferDirect(dlUrl);
+    if (dl.status < 200 || dl.status >= 300) return null;
+
+    const buf = dl.buf;
     if (!buf.length) return null;
 
-    const contentType = dl.headers.get('content-type') ?? null;
+    const hdrCt = dl.headers['content-type'];
+    const ct0 = Array.isArray(hdrCt) ? hdrCt[0] : hdrCt;
+    const contentType = typeof ct0 === 'string' && ct0 ? ct0 : null;
+
     const ext =
       contentType?.includes('png') ? 'png' : contentType?.includes('webp') ? 'webp' : contentType?.includes('svg') ? 'svg' : 'jpg';
 
@@ -95,4 +211,3 @@ export class TelegramAvatarSyncService {
     return { key };
   }
 }
-
