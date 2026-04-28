@@ -603,12 +603,6 @@ function ActionsList() {
         right="›"
         onClick={() => navigate('/account/orders')}
       />
-      <ListItem
-        title="Выплаты партнёрам"
-        subtitle="Заявки (заглушка, в разработке)"
-        right="›"
-        onClick={() => navigate('/account/partner-payouts')}
-      />
       {isAdmin && (
         <ListItem
           title="Admin: payments"
