@@ -87,8 +87,8 @@ export class TelegramAvatarSyncService {
           method: 'GET',
           headers: { host: u.host },
           servername: u.hostname,
-          socket,
           agent: false,
+          createConnection: () => socket,
         },
         (res) => {
           const chunks: Buffer[] = [];
@@ -127,8 +127,8 @@ export class TelegramAvatarSyncService {
           method: 'GET',
           headers: { host: u.host },
           servername: u.hostname,
-          socket,
           agent: false,
+          createConnection: () => socket,
         },
         (res) => {
           const chunks: Buffer[] = [];
