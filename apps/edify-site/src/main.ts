@@ -141,7 +141,7 @@ document.addEventListener('click', (ev) => {
 const platformMount = document.getElementById('edify-platform-mount');
 if (platformMount) {
   mountPlatformShell(platformMount, {
-    // На лендинге оставляем дефолтный старт (как в макете).
+    marketingPreview: true,
     onAction(action) {
       if (import.meta.env.DEV) console.debug('[edify-platform]', action);
     },

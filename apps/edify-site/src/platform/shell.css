@@ -42,6 +42,12 @@
   contain:layout paint;
 }
 
+/* Лендинг: макет без «Конструктора курса» (marketingPreview в mountPlatformShell) */
+.ep-platform-root--marketing #screen-e-builder{display:none!important}
+.ep-platform-root--marketing .sb-item[data-ep-screen="e-builder"]{display:none!important}
+.ep-platform-root--marketing #screen-e-dashboard [data-ep-screen="e-builder"],
+.ep-platform-root--marketing #screen-e-courses [data-ep-screen="e-builder"]{display:none!important}
+
 /* ── TOP BAR ── */
 .topbar{
   position:fixed;top:0;left:0;right:0;height:56px;z-index:100;

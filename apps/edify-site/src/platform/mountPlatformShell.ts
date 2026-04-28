@@ -33,6 +33,11 @@ export type PlatformShellOptions = PlatformShellHandlers & {
   initialScreenId?: string;
   /** Вернуть false, чтобы отменить смену роли (например, нет прав на кабинет эксперта). */
   beforeSetRole?: (role: 'expert' | 'student') => boolean;
+  /**
+   * Лендинг (#platform без авторизации): не показывать конструктор курса в макете.
+   * Полный кабинет на /platform/ использует те же разметку без этого флага.
+   */
+  marketingPreview?: boolean;
 };
 
 export type PlatformShellController = {
@@ -67,20 +72,21 @@ function setMobileNavOpen(root: ShadowRoot, open: boolean): void {
 function showScreen(
   root: ShadowRoot,
   id: string,
-  handlers: PlatformShellHandlers,
+  handlers: PlatformShellOptions,
   ev: Event,
   sourceElement?: HTMLElement | null,
 ): void {
+  const sid = handlers.marketingPreview && id === 'e-builder' ? 'e-dashboard' : id;
   root.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
-  root.getElementById(`screen-${id}`)?.classList.add('active');
+  root.getElementById(`screen-${sid}`)?.classList.add('active');
 
   root.querySelectorAll('.sb-item').forEach((b) => {
-    b.classList.toggle('active', (b as HTMLElement).dataset.epScreen === id);
+    b.classList.toggle('active', (b as HTMLElement).dataset.epScreen === sid);
   });
 
   root.getElementById('main-content')?.scrollTo(0, 0);
   setMobileNavOpen(root, false);
-  emit(handlers, { type: 'navigate', screenId: id, shadowRoot: root, sourceElement: sourceElement ?? null }, ev);
+  emit(handlers, { type: 'navigate', screenId: sid, shadowRoot: root, sourceElement: sourceElement ?? null }, ev);
 }
 
 function setRole(
@@ -218,6 +224,9 @@ export function mountPlatformShell(
   const inner = document.createElement('div');
   inner.innerHTML = shellHtml;
   shadow.append(style, inner);
+  if (options.marketingPreview) {
+    inner.querySelector('.ep-platform-root')?.classList.add('ep-platform-root--marketing');
+  }
 
   const listener = (ev: Event) => {
     if (ev instanceof MouseEvent) onShadowClick(ev, shadow, options);
