@@ -4193,13 +4193,16 @@ if (platformMount) {
       builderModuleActionsModuleId = null;
     }
 
-    async function builderRenameModule(root: ShadowRoot, moduleId: string): Promise<void> {
+    async function builderRenameModule(root: ShadowRoot, moduleId: string, nextTitle?: string | null): Promise<void> {
       const token = getAccessToken();
       const eid = await resolveBuilderExpertId();
       const cid = expertBuilderCourseId;
       if (!token || !eid || !cid) return;
       const current = builderModulesCache.find((x) => x.id === moduleId)?.title ?? 'Модуль';
-      const next = window.prompt('Название модуля', current);
+      const next =
+        typeof nextTitle === 'string'
+          ? nextTitle
+          : window.prompt('Название модуля', current);
       if (!next || !next.trim() || next.trim() === current) return;
       try {
         await patchJson(
@@ -6330,9 +6333,7 @@ if (platformMount) {
           return;
         }
         closeBuilderModuleActions(shell.shadowRoot);
-        void builderRenameModule(shell.shadowRoot, mid);
-        // builderRenameModule already asks title; reuse input by quick patch:
-        // set prompt value via temp override
+        void builderRenameModule(shell.shadowRoot, mid, next);
         return;
       }
 
