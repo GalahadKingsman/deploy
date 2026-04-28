@@ -28,7 +28,6 @@ export function applyUserAvatarToElement(
   el.classList.remove(INITIALS_CLASS);
   const img = document.createElement('img');
   img.alt = '';
-  img.referrerPolicy = 'no-referrer';
   img.style.width = '100%';
   img.style.height = '100%';
   img.style.borderRadius = '50%';
