@@ -11,6 +11,7 @@ import { AuthoringModule } from '../../authoring/authoring.module.js';
 import { ExpertCoursesController } from './expert-courses.controller.js';
 import { ExpertModulesController } from './expert-modules.controller.js';
 import { ExpertLessonsController } from './expert-lessons.controller.js';
+import { ExpertLessonMaterialsController } from './expert-lesson-materials.controller.js';
 import { ExpertAccessController } from './expert-access.controller.js';
 import { AccessDataModule } from '../../access/access-data.module.js';
 import { AssignmentsModule } from '../../assignments/assignments.module.js';
@@ -46,6 +47,7 @@ import { ExpertCourseAccessService } from './expert-course-access.service.js';
     ExpertCoursesController,
     ExpertModulesController,
     ExpertLessonsController,
+    ExpertLessonMaterialsController,
     ExpertAccessController,
     ExpertAssignmentsController,
     ExpertSubmissionsController,

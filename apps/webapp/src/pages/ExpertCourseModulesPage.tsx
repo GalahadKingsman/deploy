@@ -1,15 +1,19 @@
 import React from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input } from '../shared/ui/index.js';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, useToast, Modal } from '../shared/ui/index.js';
 import { fetchJson } from '../shared/api/index.js';
 import type { ContractsV1 } from '@tracked/shared';
 
 export function ExpertCourseModulesPage() {
   const navigate = useNavigate();
+  const toast = useToast();
   const { expertId, courseId } = useParams<{ expertId: string; courseId: string }>();
   const [items, setItems] = React.useState<ContractsV1.ExpertCourseModuleV1[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [title, setTitle] = React.useState('');
+  const [editing, setEditing] = React.useState<ContractsV1.ExpertCourseModuleV1 | null>(null);
+  const [editTitle, setEditTitle] = React.useState('');
+  const [confirmDelete, setConfirmDelete] = React.useState<ContractsV1.ExpertCourseModuleV1 | null>(null);
 
   const load = React.useCallback(async () => {
     if (!expertId || !courseId) return;
@@ -37,6 +41,44 @@ export function ExpertCourseModulesPage() {
     });
     setTitle('');
     await load();
+  };
+
+  const openRename = (m: ContractsV1.ExpertCourseModuleV1) => {
+    setEditing(m);
+    setEditTitle(m.title);
+  };
+
+  const saveRename = async () => {
+    if (!expertId || !courseId || !editing) return;
+    const next = editTitle.trim();
+    if (!next) return;
+    try {
+      await fetchJson<ContractsV1.ExpertCourseModuleV1>({
+        path: `/experts/${expertId}/courses/${courseId}/modules/${editing.id}`,
+        method: 'PATCH',
+        body: { title: next } satisfies ContractsV1.UpdateExpertCourseModuleRequestV1,
+      });
+      toast.show({ title: 'Модуль обновлён', variant: 'success' });
+      setEditing(null);
+      await load();
+    } catch (e) {
+      toast.show({ title: 'Не удалось переименовать', message: e instanceof Error ? e.message : 'Ошибка', variant: 'error' });
+    }
+  };
+
+  const deleteModule = async () => {
+    if (!expertId || !courseId || !confirmDelete) return;
+    try {
+      await fetchJson<{ ok: true }>({
+        path: `/experts/${expertId}/courses/${courseId}/modules/${confirmDelete.id}`,
+        method: 'DELETE',
+      });
+      toast.show({ title: 'Модуль удалён', variant: 'success' });
+      setConfirmDelete(null);
+      await load();
+    } catch (e) {
+      toast.show({ title: 'Не удалось удалить', message: e instanceof Error ? e.message : 'Ошибка', variant: 'error' });
+    }
   };
 
   return (
@@ -73,20 +115,68 @@ export function ExpertCourseModulesPage() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
         {items.map((m) => (
-          <Link
-            key={m.id}
-            to={`/expert/${expertId}/modules/${m.id}/lessons?courseId=${courseId}`}
-            style={{ textDecoration: 'none' }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle style={{ fontSize: 'var(--text-md)' }}>{m.title}</CardTitle>
-                <CardDescription>position: {m.position}</CardDescription>
-              </CardHeader>
-            </Card>
-          </Link>
+          <Card key={m.id} style={{ padding: 'var(--sp-4)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 'var(--text-md)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--fg)' }}>
+                  {m.title}
+                </div>
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)', marginTop: 2 }}>
+                  position: {m.position}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 'var(--sp-2)', flexShrink: 0 }}>
+                <Button variant="secondary" size="sm" onClick={() => openRename(m)} style={{ borderRadius: 12, minHeight: 40 }}>
+                  ✎
+                </Button>
+                <Button variant="danger" size="sm" onClick={() => setConfirmDelete(m)} style={{ borderRadius: 12, minHeight: 40 }}>
+                  🗑
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  asChild
+                  style={{ borderRadius: 12, minHeight: 40, padding: '0 14px' }}
+                >
+                  <Link to={`/expert/${expertId}/modules/${m.id}/lessons?courseId=${courseId}`}>Уроки →</Link>
+                </Button>
+              </div>
+            </div>
+          </Card>
         ))}
       </div>
+
+      <Modal
+        isOpen={editing != null}
+        onClose={() => setEditing(null)}
+        title="Переименовать модуль"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
+          <Input label="Название" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+          <div style={{ display: 'flex', gap: 'var(--sp-2)', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <Button variant="secondary" onClick={() => setEditing(null)}>Отмена</Button>
+            <Button variant="primary" onClick={saveRename} disabled={!editTitle.trim()}>Сохранить</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={confirmDelete != null}
+        onClose={() => setConfirmDelete(null)}
+        title="Удалить модуль?"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
+          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)', lineHeight: 1.5 }}>
+            Модуль <span style={{ color: 'var(--fg)', fontWeight: 'var(--font-weight-semibold)' }}>
+              {confirmDelete?.title ?? ''}
+            </span> будет скрыт. Уроки внутри тоже станут недоступны студентам.
+          </div>
+          <div style={{ display: 'flex', gap: 'var(--sp-2)', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Отмена</Button>
+            <Button variant="danger" onClick={deleteModule}>Удалить</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

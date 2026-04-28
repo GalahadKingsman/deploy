@@ -20,7 +20,7 @@ export interface LessonV1 {
   order: number;
   contentMarkdown?: string | null;
   slider?: { images: { key: string }[] } | null;
-  presentation?: { pptxKey: string; pdfKey: string; originalFilename: string } | null;
+  presentation?: { pptxKey?: string | null; pdfKey: string; originalFilename: string } | null;
   updatedAt: IsoDateTime;
   video?: LessonVideoV1;
 }
@@ -65,7 +65,7 @@ export const LessonV1Schema = z.object({
     .optional(),
   presentation: z
     .object({
-      pptxKey: z.string().min(1),
+      pptxKey: z.string().min(1).nullable().optional(),
       pdfKey: z.string().min(1),
       originalFilename: z.string().min(1),
     })

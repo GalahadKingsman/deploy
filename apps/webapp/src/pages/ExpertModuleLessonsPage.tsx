@@ -1,11 +1,12 @@
 import React from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input } from '../shared/ui/index.js';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, Modal, useToast } from '../shared/ui/index.js';
 import { fetchJson } from '../shared/api/index.js';
 import type { ContractsV1 } from '@tracked/shared';
 
 export function ExpertModuleLessonsPage() {
   const navigate = useNavigate();
+  const toast = useToast();
   const { expertId, moduleId } = useParams<{ expertId: string; moduleId: string }>();
   const [searchParams] = useSearchParams();
   const courseId = searchParams.get('courseId');
@@ -13,6 +14,7 @@ export function ExpertModuleLessonsPage() {
   const [items, setItems] = React.useState<ContractsV1.ExpertLessonV1[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [title, setTitle] = React.useState('');
+  const [confirmDelete, setConfirmDelete] = React.useState<ContractsV1.ExpertLessonV1 | null>(null);
 
   const load = React.useCallback(async () => {
     if (!expertId || !moduleId) return;
@@ -40,6 +42,21 @@ export function ExpertModuleLessonsPage() {
     });
     setTitle('');
     await load();
+  };
+
+  const deleteLesson = async () => {
+    if (!expertId || !moduleId || !confirmDelete) return;
+    try {
+      await fetchJson<{ ok: true }>({
+        path: `/experts/${expertId}/modules/${moduleId}/lessons/${confirmDelete.id}`,
+        method: 'DELETE',
+      });
+      toast.show({ title: 'Урок удалён', variant: 'success' });
+      setConfirmDelete(null);
+      await load();
+    } catch (e) {
+      toast.show({ title: 'Не удалось удалить урок', message: e instanceof Error ? e.message : 'Ошибка', variant: 'error' });
+    }
   };
 
   return (
@@ -81,20 +98,63 @@ export function ExpertModuleLessonsPage() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
         {items.map((l) => (
-          <Link
-            key={l.id}
-            to={`/expert/${expertId}/modules/${moduleId}/lessons/${l.id}`}
-            style={{ textDecoration: 'none' }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle style={{ fontSize: 'var(--text-md)' }}>{l.title}</CardTitle>
-                <CardDescription>position: {l.position}</CardDescription>
-              </CardHeader>
-            </Card>
-          </Link>
+          <Card key={l.id} style={{ padding: 'var(--sp-4)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 'var(--text-md)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--fg)' }}>
+                  {l.title}
+                </div>
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)', marginTop: 2 }}>
+                  position: {l.position}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 'var(--sp-2)', flexShrink: 0 }}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  asChild
+                  style={{ borderRadius: 12, minHeight: 40, padding: '0 14px' }}
+                >
+                  <Link to={`/expert/${expertId}/modules/${moduleId}/lessons/${l.id}`}>Открыть →</Link>
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => setConfirmDelete(l)}
+                  style={{ borderRadius: 12, minHeight: 40 }}
+                  aria-label="Удалить урок"
+                >
+                  🗑
+                </Button>
+              </div>
+            </div>
+          </Card>
         ))}
       </div>
+
+      <Modal
+        isOpen={confirmDelete != null}
+        onClose={() => setConfirmDelete(null)}
+        title="Удалить урок?"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
+          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)', lineHeight: 1.5 }}>
+            Урок{' '}
+            <span style={{ color: 'var(--fg)', fontWeight: 'var(--font-weight-semibold)' }}>
+              {confirmDelete?.title ?? ''}
+            </span>{' '}
+            будет скрыт у студентов.
+          </div>
+          <div style={{ display: 'flex', gap: 'var(--sp-2)', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <Button variant="secondary" onClick={() => setConfirmDelete(null)}>
+              Отмена
+            </Button>
+            <Button variant="danger" onClick={deleteLesson}>
+              Удалить
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

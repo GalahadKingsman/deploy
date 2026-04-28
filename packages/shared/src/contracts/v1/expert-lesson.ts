@@ -16,7 +16,7 @@ export interface ExpertLessonV1 {
   hiddenFromStudents: boolean;
   contentMarkdown?: string | null;
   slider?: { images: { key: string }[] } | null;
-  presentation?: { pptxKey: string; pdfKey: string; originalFilename: string } | null;
+  presentation?: { pptxKey?: string | null; pdfKey: string; originalFilename: string } | null;
   video?: LessonVideoV1;
   deletedAt?: IsoDateTime | null;
   createdAt: IsoDateTime;
@@ -51,7 +51,7 @@ export interface CreateExpertLessonRequestV1 {
   title: string;
   contentMarkdown?: string | null;
   slider?: { images: { key: string }[] } | null;
-  presentation?: { pptxKey: string; pdfKey: string; originalFilename: string } | null;
+  presentation?: { pptxKey?: string | null; pdfKey: string; originalFilename: string } | null;
   video?: LessonVideoV1;
 }
 
@@ -68,7 +68,7 @@ export interface UpdateExpertLessonRequestV1 {
   hiddenFromStudents?: boolean;
   contentMarkdown?: string | null;
   slider?: { images: { key: string }[] } | null;
-  presentation?: { pptxKey: string; pdfKey: string; originalFilename: string } | null;
+  presentation?: { pptxKey?: string | null; pdfKey: string; originalFilename: string } | null;
   video?: LessonVideoV1;
 }
 

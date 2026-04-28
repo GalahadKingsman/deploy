@@ -683,7 +683,8 @@ textarea.form-input{resize:vertical;min-height:80px}
 .ep-lesson-slider__img img{
   width:100%;
   height:100%;
-  object-fit:cover;
+  /* Do not crop slides: keep full image inside 16:9 */
+  object-fit:contain;
   display:block;
   cursor:pointer;
 }

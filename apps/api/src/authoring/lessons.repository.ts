@@ -126,7 +126,7 @@ export class LessonsRepository {
     title: string;
     contentMarkdown?: string | null;
     slider?: { images: { key: string }[] } | null;
-    presentation?: { pptxKey: string; pdfKey: string; originalFilename: string } | null;
+    presentation?: { pptxKey?: string | null; pdfKey: string; originalFilename: string } | null;
     video?: ContractsV1.LessonVideoV1;
   }): Promise<ContractsV1.ExpertLessonV1> {
     if (!this.pool) {

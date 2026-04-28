@@ -221,7 +221,7 @@ export class ExpertLessonsController {
   @Post(':lessonId/presentation/upload')
   @RequireExpertRole('manager')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Upload lesson presentation (pptx) and convert to PDF (multipart, manager+)' })
+  @ApiOperation({ summary: 'Upload lesson presentation (pptx -> pdf) or pdf (multipart, manager+)' })
   @ApiResponse({ status: 201, description: 'Presentation stored + lesson updated' })
   async uploadPresentation(
     @Param('expertId') expertId: string,
@@ -232,7 +232,7 @@ export class ExpertLessonsController {
       user?: { userId: string };
       file?: (opts?: any) => Promise<any>;
     },
-  ): Promise<{ presentation: { pptxKey: string; pdfKey: string; originalFilename: string } }> {
+  ): Promise<{ presentation: { pptxKey?: string | null; pdfKey: string; originalFilename: string } }> {
     await this.expertCourseAccessService.assertCanAccessLesson({
       expertId,
       userId: req.user!.userId,
@@ -251,15 +251,16 @@ export class ExpertLessonsController {
 
     const mt = typeof file.mimetype === 'string' ? file.mimetype.trim() : '';
     const original =
-      typeof file.filename === 'string' && file.filename.trim() ? file.filename.trim() : 'presentation.pptx';
+      typeof file.filename === 'string' && file.filename.trim() ? file.filename.trim() : 'presentation';
     const lower = original.toLowerCase();
-    const okExt = lower.endsWith('.pptx');
-    const okMime =
+    const isPptx = lower.endsWith('.pptx');
+    const isPdf = lower.endsWith('.pdf') || mt === 'application/pdf';
+    const okPptxMime =
       mt === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
       mt === 'application/octet-stream' ||
       mt === '';
-    if (!okExt && !okMime) {
-      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Only .pptx is allowed' });
+    if (!isPdf && !(isPptx && okPptxMime)) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Only .pptx or .pdf is allowed' });
     }
 
     const buf: Buffer = await file.toBuffer();
@@ -267,33 +268,40 @@ export class ExpertLessonsController {
       throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Empty file' });
     }
 
-    const safeName = original.replace(/[^\w.\-]+/g, '_').slice(0, 120) || 'presentation.pptx';
+    const safeName = original.replace(/[^\w.\-]+/g, '_').slice(0, 120) || (isPdf ? 'presentation.pdf' : 'presentation.pptx');
     const id = randomUUID();
-    const pptxKey = `lesson-presentations/${lessonId}/${id}-${safeName}`;
-    const pdfKey = `lesson-presentations/${lessonId}/${id}-${safeName.replace(/\.pptx$/i, '')}.pdf`;
+    const pptxKey = isPptx ? `lesson-presentations/${lessonId}/${id}-${safeName}` : null;
+    const pdfKey = `lesson-presentations/${lessonId}/${id}-${safeName.replace(/\.(pptx|pdf)$/i, '')}.pdf`;
 
-    await this.storage.putObject({
-      key: pptxKey,
-      body: new Uint8Array(buf),
-      contentType:
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    });
+    if (isPdf) {
+      await this.storage.putObject({
+        key: pdfKey,
+        body: new Uint8Array(buf),
+        contentType: 'application/pdf',
+      });
+    } else {
+      await this.storage.putObject({
+        key: pptxKey!,
+        body: new Uint8Array(buf),
+        contentType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      });
 
-    let pdf: Uint8Array;
-    try {
-      pdf = await convertPptxToPdf({ pptx: new Uint8Array(buf), timeoutMs: 90_000 });
-    } catch {
-      throw new BadRequestException({
-        code: ErrorCodes.VALIDATION_ERROR,
-        message: 'Failed to convert PPTX to PDF',
+      let pdf: Uint8Array;
+      try {
+        pdf = await convertPptxToPdf({ pptx: new Uint8Array(buf), timeoutMs: 90_000 });
+      } catch {
+        throw new BadRequestException({
+          code: ErrorCodes.VALIDATION_ERROR,
+          message: 'Failed to convert PPTX to PDF',
+        });
+      }
+
+      await this.storage.putObject({
+        key: pdfKey,
+        body: pdf,
+        contentType: 'application/pdf',
       });
     }
-
-    await this.storage.putObject({
-      key: pdfKey,
-      body: pdf,
-      contentType: 'application/pdf',
-    });
 
     const presentation = { pptxKey, pdfKey, originalFilename: original };
     await this.lessonsRepository.update({

@@ -105,7 +105,8 @@ export class FilesController {
     const isSubmission = cleanKey.startsWith('submissions/');
     const isAvatar = cleanKey.startsWith(`avatars/${userId}/`);
     const isLessonPresentation = cleanKey.startsWith('lesson-presentations/');
-    if (!isSubmission && !isAvatar && !isLessonPresentation) {
+    const isLessonMaterials = cleanKey.startsWith('lesson-materials/');
+    if (!isSubmission && !isAvatar && !isLessonPresentation && !isLessonMaterials) {
       throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'File not found' });
     }
     if (isSubmission) {
@@ -122,7 +123,7 @@ export class FilesController {
         throw new ForbiddenException({ code: ErrorCodes.FORBIDDEN, message: 'Forbidden' });
       }
     }
-    if (isLessonPresentation) {
+    if (isLessonPresentation || isLessonMaterials) {
       if (!this.pool) {
         throw new NotFoundException({ code: ErrorCodes.INTERNAL_ERROR, message: 'Database is disabled' });
       }
@@ -204,7 +205,8 @@ export class FilesController {
     const isSubmission = key.startsWith('submissions/');
     const isAvatar = key.startsWith(`avatars/${userId}/`);
     const isLessonPresentation = key.startsWith('lesson-presentations/');
-    if (!isSubmission && !isAvatar && !isLessonPresentation) {
+    const isLessonMaterials = key.startsWith('lesson-materials/');
+    if (!isSubmission && !isAvatar && !isLessonPresentation && !isLessonMaterials) {
       throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'File not found' });
     }
 

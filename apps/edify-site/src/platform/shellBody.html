@@ -261,13 +261,24 @@
           <div class="form-group">
             <div class="form-label">Презентация</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-              <input type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" style="display:none" data-ep-presentation-file-input />
+              <input type="file" accept=".pptx,.pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/pdf" style="display:none" data-ep-presentation-file-input />
               <button type="button" class="btn btn-outline btn-sm" data-ep-builder-presentation-add>+ Добавить презентацию</button>
               <button type="button" class="btn btn-ghost btn-sm" style="display:none" data-ep-builder-presentation-remove>Удалить</button>
               <div style="font-size:11px;color:var(--t3);line-height:1.5">PPTX будет конвертирован в PDF для просмотра студентом.</div>
             </div>
             <div data-ep-builder-presentation-status style="margin-top:10px;display:none;font-size:12px;color:var(--t3)"></div>
             <div data-ep-builder-presentation-preview style="display:none;margin-top:12px"></div>
+          </div>
+          <div class="form-group">
+            <div class="form-label">Материалы к уроку</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <input type="file" multiple style="display:none" data-ep-builder-materials-file-input />
+              <button type="button" class="btn btn-outline btn-sm" data-ep-builder-materials-add>+ Добавить материалы к уроку</button>
+              <div style="font-size:11px;color:var(--t3);line-height:1.5">Файлы появятся у студента в блоке «Материалы к уроку» перед домашним заданием.</div>
+            </div>
+            <div data-ep-builder-materials-status style="margin-top:10px;display:none;font-size:12px;color:var(--t3)"></div>
+            <div data-ep-builder-materials-empty style="margin-top:10px;font-size:12px;color:var(--t3);display:none">Пока нет материалов.</div>
+            <div data-ep-builder-materials-list style="display:flex;flex-direction:column;gap:8px;margin-top:12px"></div>
           </div>
         </div>
 
@@ -433,6 +444,31 @@
     <div class="ep-slider-viewer__img-wrap"><img data-ep-slider-viewer-img alt="" referrerpolicy="no-referrer"></div>
     <button type="button" class="btn btn-ghost btn-sm ep-slider-viewer__nav" data-ep-slider-viewer-next aria-label="Вперёд">→</button>
     <div class="ep-slider-viewer__count" data-ep-slider-viewer-count>1/1</div>
+  </div>
+
+  <!-- Модуль: действия (переименование / удаление) -->
+  <div class="ep-slider-backdrop" data-ep-module-actions-backdrop style="display:none" aria-hidden="true"></div>
+  <div class="ep-slider-modal" data-ep-module-actions-modal style="display:none" aria-label="Действия модуля">
+    <div class="ep-slider-modal__head">
+      <div>
+        <div class="ep-slider-modal__kicker">Модуль</div>
+        <div class="ep-slider-modal__title">Настройки</div>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" data-ep-module-actions-close aria-label="Закрыть">✕</button>
+    </div>
+    <div class="ep-slider-modal__body">
+      <div class="form-group" style="margin-bottom:12px">
+        <div class="form-label">Название модуля</div>
+        <input class="form-input" data-ep-module-actions-title placeholder="Название" autocomplete="off"/>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;margin-top:14px">
+        <button type="button" class="btn ep-team-drawer-delete" data-ep-module-actions-delete>Удалить модуль</button>
+        <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-left:auto">
+          <button type="button" class="btn btn-outline btn-sm" data-ep-module-actions-cancel>Отмена</button>
+          <button type="button" class="btn btn-primary btn-sm" data-ep-module-actions-save>Сохранить</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Доступ к курсу (как в TG mini app) -->

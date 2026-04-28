@@ -537,11 +537,16 @@ if (platformMount) {
     let suppressBuilderNavigateHydrate = false;
     let builderSelectedModuleId: string | null = null;
     let builderSelectedLessonId: string | null = null;
+    let builderModuleActionsModuleId: string | null = null;
     let builderSliderDraft: { lessonId: string; images: { key: string }[] } | null = null;
     const builderSliderByLessonId = new Map<string, { images: { key: string }[] }>();
     const builderPresentationByLessonId = new Map<
       string,
-      { pptxKey: string; pdfKey: string; originalFilename: string } | null
+      { pptxKey?: string | null; pdfKey: string; originalFilename: string } | null
+    >();
+    const builderMaterialsByLessonId = new Map<
+      string,
+      Array<{ id: string; lessonId: string; fileKey: string; filename: string; sizeBytes: number | null }> | null
     >();
     type BuilderModuleV1 = { id: string; courseId: string; title: string; position: number };
     type BuilderLessonV1 = {
@@ -553,7 +558,7 @@ if (platformMount) {
       hiddenFromStudents?: boolean;
       contentMarkdown?: string | null;
       slider?: { images: { key: string }[] } | null;
-      presentation?: { pptxKey: string; pdfKey: string; originalFilename: string } | null;
+      presentation?: { pptxKey?: string | null; pdfKey: string; originalFilename: string } | null;
       video?: { kind: string; url?: string } | null;
       createdAt: string;
       updatedAt: string;
@@ -1709,8 +1714,8 @@ if (platformMount) {
       if (presHost) {
         const p = (lesson as any)?.presentation ?? null;
         const pres =
-          p && typeof p.pptxKey === 'string' && typeof p.pdfKey === 'string' && typeof p.originalFilename === 'string'
-            ? { pptxKey: p.pptxKey, pdfKey: p.pdfKey, originalFilename: p.originalFilename }
+          p && typeof p.pdfKey === 'string' && typeof p.originalFilename === 'string'
+            ? { pptxKey: typeof p.pptxKey === 'string' ? p.pptxKey : null, pdfKey: p.pdfKey, originalFilename: p.originalFilename }
             : null;
         if (!pres) {
           presHost.style.display = 'none';
@@ -1732,6 +1737,63 @@ if (platformMount) {
       const matsTitle = root.querySelector('#screen-s-lesson [data-ep-materials-title]') as HTMLElement | null;
       const mats = root.querySelector('#screen-s-lesson [data-ep-materials]') as HTMLElement | null;
       if (mats) mats.replaceChildren();
+      if (matsTitle) matsTitle.style.display = 'none';
+
+      // Lesson materials (expert uploads visible before homework)
+      try {
+        const matsRes = await fetchJson<{ items?: any[] }>(`/lessons/${encodeURIComponent(lessonId)}/materials`, token);
+        const items = Array.isArray(matsRes.items) ? matsRes.items : [];
+        const norm = items
+          .map((x) => ({
+            fileKey: String(x?.fileKey ?? '').trim(),
+            filename: String(x?.filename ?? '').trim(),
+            sizeBytes: typeof x?.sizeBytes === 'number' ? x.sizeBytes : x?.sizeBytes == null ? null : Number(x.sizeBytes),
+          }))
+          .filter((x) => x.fileKey && x.filename);
+        if (matsTitle) matsTitle.style.display = norm.length ? '' : 'none';
+        if (mats) {
+          mats.replaceChildren();
+          if (norm.length) {
+            norm.forEach((f) => {
+              const row = document.createElement('div');
+              row.className = 'material-row';
+              row.style.cursor = 'pointer';
+              row.dataset.epLessonMaterialOpen = '1';
+              row.dataset.epLessonMaterialKey = f.fileKey;
+              row.dataset.epLessonMaterialName = encodeURIComponent(f.filename);
+
+              const ico = document.createElement('div');
+              ico.className = 'mat-ico';
+              ico.style.background = 'rgba(10,168,200,.08)';
+              ico.textContent = '📎';
+
+              const body = document.createElement('div');
+              body.style.flex = '1';
+              const nameEl = document.createElement('div');
+              nameEl.className = 'mat-name';
+              nameEl.textContent = f.filename;
+              const metaEl = document.createElement('div');
+              metaEl.className = 'mat-meta';
+              metaEl.textContent = f.sizeBytes ? `${Math.round(f.sizeBytes / 1024)} КБ` : 'Файл';
+              body.append(nameEl, metaEl);
+
+              const btn = document.createElement('button');
+              btn.className = 'btn btn-outline btn-sm';
+              btn.type = 'button';
+              btn.textContent = '⬇ Скачать';
+              btn.dataset.epLessonMaterialDownload = '1';
+              btn.dataset.epLessonMaterialKey = f.fileKey;
+              btn.dataset.epLessonMaterialName = encodeURIComponent(f.filename);
+
+              row.append(ico, body, btn);
+              mats.appendChild(row);
+            });
+          }
+        }
+      } catch {
+        if (matsTitle) matsTitle.style.display = 'none';
+        if (mats) mats.replaceChildren();
+      }
 
       let homeworkPrompt = '';
       let hasExpertHomework = false;
@@ -1796,8 +1858,6 @@ if (platformMount) {
             hwAssignmentFiles.style.display = 'none';
           }
         }
-
-        if (matsTitle) matsTitle.style.display = 'none';
 
         // homework prompt (блок «Домашнее задание»: текст и/или смысл через материалы)
         if (hwWrap) hwWrap.style.display = hasExpertHomework ? '' : 'none';
@@ -4033,6 +4093,7 @@ if (platformMount) {
         const head = document.createElement('div');
         head.className = 'mod-head';
         head.dataset.epModToggle = '1';
+        head.dataset.epBuilderModuleId = m.id;
         const isOpen = builderSelectedModuleId === m.id;
         if (isOpen) head.classList.add('active');
         const arrow = document.createElement('span');
@@ -4044,7 +4105,24 @@ if (platformMount) {
         const cnt = document.createElement('span');
         cnt.className = 'mod-cnt';
         cnt.textContent = String(lessons.length);
+        const gear = document.createElement('button');
+        gear.type = 'button';
+        gear.className = 'btn btn-ghost btn-sm';
+        gear.textContent = '⋯';
+        gear.style.padding = '4px 8px';
+        gear.style.minWidth = '32px';
+        gear.style.minHeight = '28px';
+        gear.style.lineHeight = '1';
+        gear.style.color = 'var(--t3)';
+        gear.dataset.epBuilderModuleMenu = '1';
+        gear.dataset.epBuilderModuleId = m.id;
+        gear.setAttribute('aria-label', 'Действия модуля');
+        gear.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+        });
         head.append(arrow, name, cnt);
+        head.appendChild(gear);
 
         const box = document.createElement('div');
         box.className = `mod-lessons${isOpen ? ' open' : ''}`;
@@ -4060,11 +4138,118 @@ if (platformMount) {
           const nm = document.createElement('span');
           nm.className = 'lesson-name';
           nm.textContent = l.hiddenFromStudents ? `${l.title} · скрыт` : l.title;
-          row.append(ico, nm);
+          const dots = document.createElement('button');
+          dots.type = 'button';
+          dots.className = 'btn btn-ghost btn-sm';
+          dots.textContent = '⋯';
+          dots.style.padding = '4px 8px';
+          dots.style.minWidth = '32px';
+          dots.style.minHeight = '28px';
+          dots.style.lineHeight = '1';
+          dots.style.color = 'var(--t3)';
+          dots.dataset.epBuilderLessonMenu = '1';
+          dots.dataset.epBuilderLessonId = l.id;
+          dots.dataset.epBuilderModuleId = m.id;
+          dots.setAttribute('aria-label', 'Действия урока');
+          dots.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+          });
+          row.append(ico, nm, dots);
           box.appendChild(row);
         }
         item.append(head, box);
         host.appendChild(item);
+      }
+    }
+
+    function openBuilderModuleActions(root: ShadowRoot, moduleId: string): void {
+      const bd = root.querySelector('[data-ep-module-actions-backdrop]') as HTMLElement | null;
+      const md = root.querySelector('[data-ep-module-actions-modal]') as HTMLElement | null;
+      const inp = root.querySelector('[data-ep-module-actions-title]') as HTMLInputElement | null;
+      if (!bd || !md || !inp) return;
+      builderModuleActionsModuleId = moduleId;
+      const cur = builderModulesCache.find((x) => x.id === moduleId)?.title ?? '';
+      inp.value = cur;
+      bd.style.display = '';
+      md.style.display = '';
+      try {
+        inp.focus();
+        inp.select();
+      } catch {
+        /* ignore */
+      }
+    }
+
+    function closeBuilderModuleActions(root: ShadowRoot): void {
+      const bd = root.querySelector('[data-ep-module-actions-backdrop]') as HTMLElement | null;
+      const md = root.querySelector('[data-ep-module-actions-modal]') as HTMLElement | null;
+      if (bd) bd.style.display = 'none';
+      if (md) md.style.display = 'none';
+      builderModuleActionsModuleId = null;
+    }
+
+    async function builderRenameModule(root: ShadowRoot, moduleId: string): Promise<void> {
+      const token = getAccessToken();
+      const eid = await resolveBuilderExpertId();
+      const cid = expertBuilderCourseId;
+      if (!token || !eid || !cid) return;
+      const current = builderModulesCache.find((x) => x.id === moduleId)?.title ?? 'Модуль';
+      const next = window.prompt('Название модуля', current);
+      if (!next || !next.trim() || next.trim() === current) return;
+      try {
+        await patchJson(
+          `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/modules/${encodeURIComponent(moduleId)}`,
+          { title: next.trim() },
+          token,
+        );
+        await builderLoadCourseData(root, eid, cid, token);
+      } catch {
+        window.alert('Не удалось переименовать модуль (нужна роль менеджера+).');
+      }
+    }
+
+    async function builderDeleteModule(root: ShadowRoot, moduleId: string): Promise<void> {
+      const token = getAccessToken();
+      const eid = await resolveBuilderExpertId();
+      const cid = expertBuilderCourseId;
+      if (!token || !eid || !cid) return;
+      const title = builderModulesCache.find((x) => x.id === moduleId)?.title ?? 'модуль';
+      if (!window.confirm(`Удалить модуль «${title}»? Уроки внутри будут скрыты.`)) return;
+      try {
+        await deleteJson(
+          `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/modules/${encodeURIComponent(moduleId)}`,
+          token,
+        );
+        if (builderSelectedModuleId === moduleId) {
+          builderSelectedModuleId = null;
+          builderSelectedLessonId = null;
+        }
+        await builderLoadCourseData(root, eid, cid, token);
+      } catch {
+        window.alert('Не удалось удалить модуль (нужна роль менеджера+).');
+      }
+    }
+
+    async function builderDeleteLesson(root: ShadowRoot, moduleId: string, lessonId: string): Promise<void> {
+      const token = getAccessToken();
+      const eid = await resolveBuilderExpertId();
+      const cid = expertBuilderCourseId;
+      if (!token || !eid || !cid) return;
+      const title =
+        (builderLessonsByModule.get(moduleId) ?? []).find((x) => x.id === lessonId)?.title ?? 'урок';
+      if (!window.confirm(`Удалить урок «${title}»? Он будет скрыт у студентов.`)) return;
+      try {
+        await deleteJson(
+          `/experts/${encodeURIComponent(eid)}/modules/${encodeURIComponent(moduleId)}/lessons/${encodeURIComponent(lessonId)}`,
+          token,
+        );
+        if (builderSelectedLessonId === lessonId) {
+          builderSelectedLessonId = null;
+        }
+        await builderLoadCourseData(root, eid, cid, token);
+      } catch {
+        window.alert('Не удалось удалить урок (нужна роль менеджера+).');
       }
     }
 
@@ -4088,6 +4273,9 @@ if (platformMount) {
       const forbiddenEl = root.querySelector('[data-ep-builder-hw-forbidden]') as HTMLElement | null;
       const filesEmptyEl = root.querySelector('[data-ep-builder-hw-files-empty]') as HTMLElement | null;
       const hwActions = root.querySelector('[data-ep-builder-hw-actions]') as HTMLElement | null;
+      const matsStatus = root.querySelector('[data-ep-builder-materials-status]') as HTMLElement | null;
+      const matsEmpty = root.querySelector('[data-ep-builder-materials-empty]') as HTMLElement | null;
+      const matsList = root.querySelector('[data-ep-builder-materials-list]') as HTMLElement | null;
 
       const resetHwEditorState = (): void => {
         if (forbiddenEl) forbiddenEl.style.display = 'none';
@@ -4117,6 +4305,12 @@ if (platformMount) {
           presPreview.replaceChildren();
         }
         if (presRemove) presRemove.style.display = 'none';
+        if (matsStatus) {
+          matsStatus.style.display = 'none';
+          matsStatus.textContent = '';
+        }
+        if (matsList) matsList.replaceChildren();
+        if (matsEmpty) matsEmpty.style.display = 'none';
         syncBuilderHomeworkLessonGate(root, false);
         resetHwEditorState();
         return;
@@ -4137,6 +4331,12 @@ if (platformMount) {
           presPreview.replaceChildren();
         }
         if (presRemove) presRemove.style.display = 'none';
+        if (matsStatus) {
+          matsStatus.style.display = 'none';
+          matsStatus.textContent = '';
+        }
+        if (matsList) matsList.replaceChildren();
+        if (matsEmpty) matsEmpty.style.display = 'none';
         syncBuilderHomeworkLessonGate(root, false);
         resetHwEditorState();
         return;
@@ -4164,6 +4364,10 @@ if (platformMount) {
           pptxKey: String(pres.pptxKey),
           pdfKey: String(pres.pdfKey),
           originalFilename: String(pres.originalFilename),
+        } : pres && pres.pdfKey && pres.originalFilename ? {
+          pptxKey: pres.pptxKey ? String(pres.pptxKey) : null,
+          pdfKey: String(pres.pdfKey),
+          originalFilename: String(pres.originalFilename),
         } : null;
         builderPresentationByLessonId.set(builderSelectedLessonId, valid);
         if (presRemove) presRemove.style.display = valid ? '' : 'none';
@@ -4180,6 +4384,82 @@ if (platformMount) {
           presStatus.style.display = 'none';
           presStatus.textContent = '';
         }
+      }
+
+      // Lesson materials (files visible to student before homework)
+      if (matsList) matsList.replaceChildren();
+      if (matsEmpty) matsEmpty.style.display = 'none';
+      if (matsStatus) {
+        matsStatus.style.display = 'none';
+        matsStatus.textContent = '';
+      }
+      try {
+        const m = await fetchJson<{ items?: any[] }>(
+          `/experts/${encodeURIComponent(eid)}/lessons/${encodeURIComponent(lesson.id)}/materials`,
+          token,
+        );
+        const items = Array.isArray(m.items) ? m.items : [];
+        const norm = items
+          .map((x) => ({
+            id: String(x?.id ?? ''),
+            lessonId: String(x?.lessonId ?? ''),
+            fileKey: String(x?.fileKey ?? ''),
+            filename: String(x?.filename ?? ''),
+            sizeBytes: typeof x?.sizeBytes === 'number' ? x.sizeBytes : x?.sizeBytes == null ? null : Number(x.sizeBytes),
+          }))
+          .filter((x) => x.id && x.lessonId && x.fileKey && x.filename);
+        builderMaterialsByLessonId.set(lesson.id, norm);
+        if (matsEmpty) matsEmpty.style.display = norm.length ? 'none' : '';
+        if (matsList && norm.length) {
+          for (const f of norm) {
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.justifyContent = 'space-between';
+            row.style.alignItems = 'center';
+            row.style.gap = '8px';
+            row.style.padding = '8px 10px';
+            row.style.border = '1px solid var(--line)';
+            row.style.borderRadius = '8px';
+            row.style.background = 'var(--surface2)';
+            const lab = document.createElement('span');
+            lab.textContent = f.filename;
+            lab.style.overflow = 'hidden';
+            lab.style.textOverflow = 'ellipsis';
+            lab.style.fontSize = '12px';
+            lab.style.color = 'var(--t2)';
+            const meta = document.createElement('span');
+            meta.textContent = f.sizeBytes ? `${Math.round(f.sizeBytes / 1024)} КБ` : 'Файл';
+            meta.style.fontFamily = 'var(--fm)';
+            meta.style.fontSize = '10px';
+            meta.style.color = 'var(--t3)';
+            meta.style.marginLeft = '8px';
+            const right = document.createElement('div');
+            right.style.display = 'flex';
+            right.style.alignItems = 'center';
+            right.style.gap = '6px';
+            const dl = document.createElement('button');
+            dl.type = 'button';
+            dl.className = 'btn btn-outline btn-sm';
+            dl.textContent = '⬇';
+            dl.dataset.epBuilderMaterialsDlKey = f.fileKey;
+            const del = document.createElement('button');
+            del.type = 'button';
+            del.className = 'btn btn-ghost btn-sm';
+            del.textContent = 'Удалить';
+            del.dataset.epBuilderMaterialsDelFile = f.id;
+            right.append(dl, del);
+            const left = document.createElement('div');
+            left.style.display = 'flex';
+            left.style.alignItems = 'baseline';
+            left.style.flex = '1';
+            left.style.minWidth = '0';
+            left.append(lab, meta);
+            row.append(left, right);
+            matsList.appendChild(row);
+          }
+        }
+      } catch {
+        if (matsEmpty) matsEmpty.style.display = '';
       }
 
       resetHwEditorState();
@@ -4788,11 +5068,11 @@ if (platformMount) {
     async function renderPresentationViewer(
       root: ShadowRoot,
       host: HTMLElement,
-      pres: { pptxKey: string; pdfKey: string; originalFilename: string },
+      pres: { pptxKey?: string | null; pdfKey: string; originalFilename: string },
     ): Promise<void> {
       host.replaceChildren();
       const pdfUrl = await getSignedFileUrl(pres.pdfKey);
-      const pptxUrl = await getSignedFileUrl(pres.pptxKey);
+      const pptxUrl = pres.pptxKey ? await getSignedFileUrl(pres.pptxKey) : null;
       if (!pdfUrl) {
         host.style.display = 'none';
         return;
@@ -4805,9 +5085,26 @@ if (platformMount) {
       const head = document.createElement('div');
       head.className = 'ep-lesson-pres__head';
 
+      const titleWrap = document.createElement('div');
+      titleWrap.style.display = 'flex';
+      titleWrap.style.alignItems = 'center';
+      titleWrap.style.gap = '10px';
+
       const title = document.createElement('div');
       title.className = 'ep-lesson-pres__title';
       title.textContent = 'Презентация';
+
+      const srcTag = document.createElement('span');
+      srcTag.className = 'tag';
+      srcTag.style.fontSize = '10px';
+      srcTag.style.padding = '4px 8px';
+      srcTag.style.borderRadius = '999px';
+      srcTag.style.border = '1px solid rgba(255,255,255,0.12)';
+      srcTag.style.background = 'rgba(255,255,255,0.06)';
+      srcTag.style.color = 'var(--t2)';
+      srcTag.textContent = pres.pptxKey ? 'Источник: PPTX' : 'Источник: PDF';
+
+      titleWrap.append(title, srcTag);
 
       const actions = document.createElement('div');
       actions.className = 'ep-lesson-pres__actions';
@@ -4846,7 +5143,7 @@ if (platformMount) {
       }
 
       actions.append(open, fs, dlPdf, dlPptx);
-      head.append(title, actions);
+      head.append(titleWrap, actions);
 
       const iframe = document.createElement('iframe');
       iframe.className = 'ep-lesson-pres__frame';
@@ -5866,6 +6163,60 @@ if (platformMount) {
         return;
       }
 
+      const assDl = t?.closest('[data-ep-assignment-download]') as HTMLElement | null;
+      const assFileId = assDl?.dataset.epAssignmentFileId;
+      const assLessonId = assDl?.dataset.epLessonId;
+      const assFilename = assDl?.dataset.epAssignmentFilename;
+      if (assFileId && assLessonId) {
+        ev.preventDefault();
+        void (async () => {
+          try {
+            const tok = getAccessToken() ?? undefined;
+            if (!tok) throw new Error('no token');
+            const api = getApiBaseUrl();
+            if (!api) throw new Error('API base url is empty');
+            const url = `${api}/lessons/${encodeURIComponent(assLessonId)}/assignment/files/${encodeURIComponent(assFileId)}/download`;
+            const name = assFilename ? decodeURIComponent(assFilename) : 'file';
+            await downloadAuthenticatedFile({ url, fallbackFilename: name || 'file' });
+          } catch {
+            window.alert('Не удалось скачать файл');
+          }
+        })();
+        return;
+      }
+
+      const matDl = t?.closest('[data-ep-lesson-material-download]') as HTMLElement | null;
+      const matKey = matDl?.dataset.epLessonMaterialKey;
+      if (matKey) {
+        ev.preventDefault();
+        void (async () => {
+          try {
+            const url = await getSignedFileUrl(matKey);
+            if (!url) throw new Error('no url');
+            window.open(url + (url.includes('?') ? '&' : '?') + 'dl=1', '_blank', 'noopener');
+          } catch {
+            window.alert('Не удалось скачать файл');
+          }
+        })();
+        return;
+      }
+
+      const matOpen = t?.closest('[data-ep-lesson-material-open]') as HTMLElement | null;
+      const matOpenKey = matOpen?.dataset.epLessonMaterialKey;
+      if (matOpenKey) {
+        ev.preventDefault();
+        void (async () => {
+          try {
+            const url = await getSignedFileUrl(matOpenKey);
+            if (!url) throw new Error('no url');
+            window.open(url, '_blank', 'noopener');
+          } catch {
+            window.alert('Не удалось открыть файл');
+          }
+        })();
+        return;
+      }
+
       const exCard = t?.closest('[data-ep-expert-course-card]') as HTMLElement | null;
       if (exCard) {
         const btn = t?.closest('button') as HTMLButtonElement | null;
@@ -5937,6 +6288,59 @@ if (platformMount) {
         return;
       }
 
+      const lessonMenu = t?.closest('[data-ep-builder-lesson-menu]') as HTMLElement | null;
+      const lmId = lessonMenu?.dataset.epBuilderLessonId;
+      const lmMid = lessonMenu?.dataset.epBuilderModuleId;
+      if (lessonMenu && lmId && lmMid) {
+        ev.preventDefault();
+        void builderDeleteLesson(shell.shadowRoot, lmMid, lmId);
+        return;
+      }
+
+      const modMenu = t?.closest('[data-ep-builder-module-menu]') as HTMLElement | null;
+      const mmId = modMenu?.dataset.epBuilderModuleId;
+      if (modMenu && mmId) {
+        ev.preventDefault();
+        openBuilderModuleActions(shell.shadowRoot, mmId);
+        return;
+      }
+
+      if (
+        t?.closest('[data-ep-module-actions-backdrop]') ||
+        t?.closest('[data-ep-module-actions-close]') ||
+        t?.closest('[data-ep-module-actions-cancel]')
+      ) {
+        ev.preventDefault();
+        closeBuilderModuleActions(shell.shadowRoot);
+        return;
+      }
+
+      if (t?.closest('[data-ep-module-actions-save]')) {
+        ev.preventDefault();
+        const mid = builderModuleActionsModuleId;
+        const inp = shell.shadowRoot.querySelector('[data-ep-module-actions-title]') as HTMLInputElement | null;
+        const next = (inp?.value ?? '').trim();
+        if (!mid) return;
+        if (!next) {
+          window.alert('Введите название модуля.');
+          return;
+        }
+        closeBuilderModuleActions(shell.shadowRoot);
+        void builderRenameModule(shell.shadowRoot, mid);
+        // builderRenameModule already asks title; reuse input by quick patch:
+        // set prompt value via temp override
+        return;
+      }
+
+      if (t?.closest('[data-ep-module-actions-delete]')) {
+        ev.preventDefault();
+        const mid = builderModuleActionsModuleId;
+        if (!mid) return;
+        closeBuilderModuleActions(shell.shadowRoot);
+        void builderDeleteModule(shell.shadowRoot, mid);
+        return;
+      }
+
       if (t?.closest('[data-ep-builder-add-module]')) {
         ev.preventDefault();
         void builderAddModule(shell.shadowRoot);
@@ -5999,6 +6403,57 @@ if (platformMount) {
         }
         const inp = shell.shadowRoot.querySelector('input[data-ep-presentation-file-input]') as HTMLInputElement | null;
         inp?.click();
+        return;
+      }
+
+      if (t?.closest('[data-ep-builder-materials-add]')) {
+        ev.preventDefault();
+        if (!builderSelectedLessonId) {
+          window.alert('Выберите урок в дереве слева.');
+          return;
+        }
+        const inp = shell.shadowRoot.querySelector('input[data-ep-builder-materials-file-input]') as HTMLInputElement | null;
+        inp?.click();
+        return;
+      }
+
+      const matsDel = t?.closest('[data-ep-builder-materials-del-file]') as HTMLElement | null;
+      const matsFileId = matsDel?.dataset.epBuilderMaterialsDelFile;
+      if (matsFileId) {
+        ev.preventDefault();
+        void (async () => {
+          const tok = getAccessToken();
+          const eid = await resolveBuilderExpertId();
+          const lid = builderSelectedLessonId;
+          if (!tok || !eid || !lid) return;
+          if (!window.confirm('Удалить материал из урока?')) return;
+          try {
+            await postJson(
+              `/experts/${encodeURIComponent(eid)}/lessons/${encodeURIComponent(lid)}/materials/${encodeURIComponent(matsFileId)}/delete`,
+              {},
+              tok,
+            );
+            await applyBuilderLessonToForm(shell.shadowRoot, eid, tok);
+          } catch {
+            window.alert('Не удалось удалить файл (нужна роль менеджера+).');
+          }
+        })();
+        return;
+      }
+
+      const matsDl = t?.closest('[data-ep-builder-materials-dl-key]') as HTMLElement | null;
+      const matsKey = matsDl?.dataset.epBuilderMaterialsDlKey;
+      if (matsKey) {
+        ev.preventDefault();
+        void (async () => {
+          try {
+            const url = await getSignedFileUrl(matsKey);
+            if (!url) throw new Error('no url');
+            window.open(url + (url.includes('?') ? '&' : '?') + 'dl=1', '_blank', 'noopener');
+          } catch {
+            window.alert('Не удалось скачать файл');
+          }
+        })();
         return;
       }
       if (t?.closest('[data-ep-builder-presentation-remove]')) {
@@ -7059,6 +7514,52 @@ if (platformMount) {
         });
         return;
       }
+      if (t?.matches('input[data-ep-builder-materials-file-input]')) {
+        const inp = t as HTMLInputElement;
+        const files = Array.from(inp.files ?? []);
+        inp.value = '';
+        void (async () => {
+          const tok = getAccessToken();
+          const eid = await resolveBuilderExpertId();
+          const lid = builderSelectedLessonId;
+          const status = shell.shadowRoot.querySelector('[data-ep-builder-materials-status]') as HTMLElement | null;
+          if (!tok || !eid || !lid) {
+            window.alert('Выберите урок в дереве слева.');
+            return;
+          }
+          if (status) {
+            status.style.display = '';
+            status.textContent = 'Загружаем…';
+          }
+          try {
+            for (const f of files) {
+              if (!f) continue;
+              const form = new FormData();
+              form.append('file', f, f.name || 'file');
+              await fetchMultipartJson(
+                `/experts/${encodeURIComponent(eid)}/lessons/${encodeURIComponent(lid)}/materials/upload`,
+                form,
+                tok,
+              );
+            }
+            if (status) {
+              status.style.display = '';
+              status.textContent = 'Готово';
+              window.setTimeout(() => {
+                if (status) status.style.display = 'none';
+              }, 1200);
+            }
+            await applyBuilderLessonToForm(shell.shadowRoot, eid, tok);
+          } catch {
+            if (status) {
+              status.style.display = '';
+              status.textContent = 'Не удалось загрузить файл';
+            }
+            window.alert('Не удалось загрузить файл.');
+          }
+        })();
+        return;
+      }
       if (t?.matches('input[data-ep-slider-file-input]')) {
         const inp = t as HTMLInputElement;
         const files = Array.from(inp.files ?? []);
@@ -7120,8 +7621,9 @@ if (platformMount) {
           }
           if (!f) return;
           const name = (f.name || '').trim() || 'presentation.pptx';
-          if (!name.toLowerCase().endsWith('.pptx')) {
-            window.alert('Можно загрузить только файл .pptx');
+          const lower = name.toLowerCase();
+          if (!lower.endsWith('.pptx') && !lower.endsWith('.pdf')) {
+            window.alert('Можно загрузить только файл .pptx или .pdf');
             return;
           }
           if (status) {
@@ -7136,13 +7638,13 @@ if (platformMount) {
             const form = new FormData();
             form.append('file', f, name);
             if (status) status.textContent = 'Конвертируем…';
-            const up = await fetchMultipartJson<{ presentation: { pptxKey: string; pdfKey: string; originalFilename: string } }>(
+            const up = await fetchMultipartJson<{ presentation: { pptxKey?: string | null; pdfKey: string; originalFilename: string } }>(
               `/experts/${encodeURIComponent(eid)}/modules/${encodeURIComponent(mid)}/lessons/${encodeURIComponent(lid)}/presentation/upload`,
               form,
               tok,
             );
             const pres = up?.presentation ?? null;
-            if (!pres || !pres.pdfKey || !pres.pptxKey) {
+            if (!pres || !pres.pdfKey) {
               throw new Error('Invalid response');
             }
             builderPresentationByLessonId.set(lid, pres);

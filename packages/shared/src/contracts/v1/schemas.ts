@@ -69,6 +69,7 @@ export {
   SubmissionStatusV1Schema,
   UpsertAssignmentRequestV1Schema,
 } from './assignment.js';
+export { LessonMaterialFileV1Schema } from './lesson-material.js';
 export {
   GetLessonAssignmentResponseV1Schema,
   CreateSubmissionRequestV1Schema,
@@ -80,6 +81,7 @@ export {
   NextPendingHomeworkV1Schema,
   DecideSubmissionRequestV1Schema,
 } from './assignments-api.js';
+export { ListLessonMaterialsResponseV1Schema } from './lesson-materials-api.js';
 export { SubmissionV1Schema } from './submission.js';
 export {
   OrderV1Schema,

@@ -95,6 +95,7 @@ export type {
   SubmissionStatusV1,
   UpsertAssignmentRequestV1,
 } from './assignment.js';
+export type { LessonMaterialFileV1 } from './lesson-material.js';
 export type {
   GetLessonAssignmentResponseV1,
   CreateSubmissionRequestV1,
@@ -106,6 +107,7 @@ export type {
   NextPendingHomeworkV1,
   DecideSubmissionRequestV1,
 } from './assignments-api.js';
+export type { ListLessonMaterialsResponseV1 } from './lesson-materials-api.js';
 export type { SubmissionV1 } from './submission.js';
 export type {
   OrderV1,

@@ -178,6 +178,42 @@ export function LessonPage() {
   const { data: mySubmissionsData } = useMyLessonSubmissions(id);
   const [completing, setCompleting] = React.useState(false);
   const [materialsOpen, setMaterialsOpen] = React.useState(false);
+  const [lessonMaterials, setLessonMaterials] = React.useState<ContractsV1.LessonMaterialFileV1[]>([]);
+  const [lessonMaterialsLoading, setLessonMaterialsLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      if (!id) return;
+      setLessonMaterialsLoading(true);
+      try {
+        const m = await fetchJson<ContractsV1.ListLessonMaterialsResponseV1>({
+          path: `/lessons/${id}/materials`,
+        });
+        if (cancelled) return;
+        setLessonMaterials(m.items ?? []);
+      } catch {
+        if (!cancelled) setLessonMaterials([]);
+      } finally {
+        if (!cancelled) setLessonMaterialsLoading(false);
+      }
+    }
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const downloadLessonMaterial = async (key: string, filename: string) => {
+    void filename;
+    const signed = await fetchJson<{ url: string }>({
+      path: `/files/signed`,
+      query: { key },
+    });
+    const url = signed.url + (signed.url.includes('?') ? '&' : '?') + 'dl=1';
+    // Telegram WebApp: open in new tab / system viewer
+    window.open(url, '_blank', 'noopener');
+  };
 
   const complete = async () => {
     if (!id) return;
@@ -316,6 +352,26 @@ export function LessonPage() {
           </CardContent>
         </Card>
       )}
+
+      {lessonMaterialsLoading ? null : lessonMaterials.length > 0 ? (
+        <Card style={{ marginBottom: 'var(--sp-4)' }}>
+          <CardHeader>
+            <CardTitle style={{ fontSize: 'var(--text-md)' }}>Материалы к уроку</CardTitle>
+            <CardDescription>Файлы от эксперта, которые можно скачать.</CardDescription>
+          </CardHeader>
+          <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
+            {lessonMaterials.map((f) => (
+              <Button
+                key={`${f.id}:${f.fileKey}`}
+                variant="secondary"
+                onClick={() => void downloadLessonMaterial(f.fileKey, f.filename)}
+              >
+                Скачать: {f.filename}
+              </Button>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {showHomeworkSection && (
         <Card style={{ marginBottom: 'var(--sp-4)' }}>

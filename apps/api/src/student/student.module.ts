@@ -21,6 +21,7 @@ import { StorageModule } from '../storage/storage.module.js';
 import { AuthoringModule } from '../authoring/authoring.module.js';
 import { StudentTopicsController } from './student_topics.controller.js';
 import { StudentCourseStructureController } from './student_course_structure.controller.js';
+import { StudentLessonMaterialsController } from './student_lesson_materials.controller.js';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { StudentCourseStructureController } from './student_course_structure.con
     LibraryController,
     CoursesController,
     LessonsController,
+    StudentLessonMaterialsController,
     LearnController,
     MeCoursesController,
     AccessController,

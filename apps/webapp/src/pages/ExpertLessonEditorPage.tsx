@@ -30,11 +30,14 @@ export function ExpertLessonEditorPage() {
   const [rutubeUrl, setRutubeUrl] = React.useState('');
   const [assignmentPrompt, setAssignmentPrompt] = React.useState('');
   const [assignmentFiles, setAssignmentFiles] = React.useState<ContractsV1.AssignmentFileV1[]>([]);
+  const [materialsFiles, setMaterialsFiles] = React.useState<ContractsV1.LessonMaterialFileV1[]>([]);
   const [homeworkSaving, setHomeworkSaving] = React.useState(false);
   const [homeworkUploading, setHomeworkUploading] = React.useState(false);
+  const [materialsUploading, setMaterialsUploading] = React.useState(false);
   const [lesson, setLesson] = React.useState<ContractsV1.ExpertLessonV1 | null>(null);
   const [hiddenFromStudents, setHiddenFromStudents] = React.useState(false);
   const homeworkFileInputRef = React.useRef<HTMLInputElement>(null);
+  const materialsFileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -66,6 +69,15 @@ export function ExpertLessonEditorPage() {
             setAssignmentFiles(a.files ?? []);
           } catch {
             // ignore: homework can be configured later
+          }
+          try {
+            const m = await fetchJson<ContractsV1.ListLessonMaterialsResponseV1>({
+              path: `/experts/${expertId}/lessons/${found.id}/materials`,
+            });
+            if (cancelled) return;
+            setMaterialsFiles(m.items ?? []);
+          } catch {
+            // ignore
           }
         }
       } finally {
@@ -192,6 +204,52 @@ export function ExpertLessonEditorPage() {
         body: {},
       });
       setAssignmentFiles((xs) => xs.filter((x) => x.id !== fileId));
+      toast.show({ title: 'Удалено', variant: 'success' });
+    } catch {
+      toast.show({ title: 'Ошибка', message: 'Не удалось удалить файл', variant: 'error' });
+    }
+  };
+
+  const uploadMaterialsFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    if (!expertId || !lessonId) return;
+    setMaterialsUploading(true);
+    try {
+      for (const f of Array.from(files)) {
+        const form = new FormData();
+        form.append('file', f, f.name);
+        await fetchMultipart<ContractsV1.LessonMaterialFileV1>({
+          path: `/experts/${expertId}/lessons/${lessonId}/materials/upload`,
+          form,
+        });
+      }
+      const m = await fetchJson<ContractsV1.ListLessonMaterialsResponseV1>({
+        path: `/experts/${expertId}/lessons/${lessonId}/materials`,
+      });
+      setMaterialsFiles(m.items ?? []);
+      toast.show({ title: 'Материалы добавлены', variant: 'success' });
+    } catch (e) {
+      const msg =
+        e instanceof ApiClientError
+          ? `${e.message} (HTTP ${e.status})`
+          : e instanceof Error
+            ? e.message
+            : 'Не удалось загрузить файлы';
+      toast.show({ title: 'Ошибка', message: msg, variant: 'error' });
+    } finally {
+      setMaterialsUploading(false);
+    }
+  };
+
+  const deleteMaterialFile = async (fileId: string) => {
+    if (!expertId || !lessonId) return;
+    try {
+      await fetchJson<{ ok: true }>({
+        path: `/experts/${expertId}/lessons/${lessonId}/materials/${fileId}/delete`,
+        method: 'POST',
+        body: {},
+      });
+      setMaterialsFiles((xs) => xs.filter((x) => x.id !== fileId));
       toast.show({ title: 'Удалено', variant: 'success' });
     } catch {
       toast.show({ title: 'Ошибка', message: 'Не удалось удалить файл', variant: 'error' });
@@ -326,6 +384,69 @@ export function ExpertLessonEditorPage() {
                         {f.filename}
                       </div>
                       <Button variant="secondary" size="sm" onClick={() => deleteHomeworkFile(f.id)}>
+                        Удалить
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <CardHeader>
+              <CardTitle style={{ fontSize: 'var(--text-md)' }}>Материалы к уроку</CardTitle>
+              <CardDescription>Файлы появятся у студента перед домашним заданием.</CardDescription>
+            </CardHeader>
+            <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
+              <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', alignItems: 'center' }}>
+                <input
+                  ref={materialsFileInputRef}
+                  type="file"
+                  multiple
+                  onChange={(e) => {
+                    void uploadMaterialsFiles(e.target.files);
+                    e.target.value = '';
+                  }}
+                  style={{ display: 'none' }}
+                  disabled={materialsUploading}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={materialsUploading}
+                  onClick={() => materialsFileInputRef.current?.click()}
+                >
+                  {materialsUploading ? 'Загрузка…' : '+ Добавить материалы к уроку'}
+                </Button>
+              </div>
+
+              {materialsFiles.length === 0 ? (
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>Пока нет материалов.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
+                  {materialsFiles.map((f) => (
+                    <div
+                      key={f.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 'var(--sp-2)',
+                        alignItems: 'center',
+                        padding: 'var(--sp-2)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: 'var(--r-md)',
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 'var(--text-sm)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {f.filename}
+                        </div>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--muted-fg)' }}>
+                          {typeof f.sizeBytes === 'number' && f.sizeBytes > 0 ? `${Math.round(f.sizeBytes / 1024)} КБ` : 'Файл'}
+                        </div>
+                      </div>
+                      <Button variant="secondary" size="sm" onClick={() => deleteMaterialFile(f.id)}>
                         Удалить
                       </Button>
                     </div>
