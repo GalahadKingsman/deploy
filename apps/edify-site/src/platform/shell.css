@@ -70,17 +70,6 @@
 }
 .role-tab.active{background:var(--surface);color:var(--t1);box-shadow:var(--sh);font-weight:500}
 .topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
-.topbar-notif{
-  width:32px;height:32px;border-radius:8px;border:1px solid var(--line);
-  background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  font-size:14px;position:relative;transition:all .15s;
-}
-.topbar-notif:hover{background:var(--bg2)}
-.notif-badge{
-  position:absolute;top:4px;right:4px;
-  width:7px;height:7px;border-radius:50%;
-  background:var(--err);border:1.5px solid var(--surface);
-}
 .topbar-user{display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 8px;border-radius:8px;transition:background .15s}
 .topbar-user:hover{background:var(--bg2)}
 .user-avatar{
@@ -1259,12 +1248,10 @@ textarea.form-input{resize:vertical;min-height:80px}
     flex:0 0 auto;
     overflow-y:auto;
   }
-  #screen-e-messages .ep-split-screen>div:nth-child(2),
   #screen-e-homework .ep-split-screen>div:nth-child(2){
     min-height:min(50vh,420px);
     max-height:none;
   }
-  #screen-e-messages .ep-split-screen>div:nth-child(1),
   #screen-e-homework .ep-split-screen>div:nth-child(1){
     max-height:40vh;
   }
@@ -1341,5 +1328,4 @@ textarea.form-input{resize:vertical;min-height:80px}
 
 @media (max-width:480px){
   .stats-row.stats-4{grid-template-columns:1fr}
-  .topbar-notif{display:none}
 }

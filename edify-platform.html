@@ -63,17 +63,6 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fb);font-size:14px;l
 }
 .role-tab.active{background:var(--surface);color:var(--t1);box-shadow:var(--sh);font-weight:500}
 .topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
-.topbar-notif{
-  width:32px;height:32px;border-radius:8px;border:1px solid var(--line);
-  background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  font-size:14px;position:relative;transition:all .15s;
-}
-.topbar-notif:hover{background:var(--bg2)}
-.notif-badge{
-  position:absolute;top:4px;right:4px;
-  width:7px;height:7px;border-radius:50%;
-  background:var(--err);border:1.5px solid var(--surface);
-}
 .topbar-user{display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 8px;border-radius:8px;transition:background .15s}
 .topbar-user:hover{background:var(--bg2)}
 .user-avatar{
@@ -416,7 +405,6 @@ textarea.form-input{resize:vertical;min-height:80px}
     <button class="role-tab" id="tab-student" onclick="setRole('student')">Студент</button>
   </div>
   <div class="topbar-right">
-    <button class="topbar-notif" title="Уведомления">🔔<div class="notif-badge"></div></button>
     <div class="topbar-user">
       <div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div>
       <div>
@@ -436,7 +424,6 @@ textarea.form-input{resize:vertical;min-height:80px}
   <button class="sb-item" onclick="showScreen('e-homework')"><span class="sb-icon">📋</span>Домашние задания<span class="sb-badge sb-badge-red">12</span></button>
   <div class="sb-section">Команда</div>
   <button class="sb-item" onclick="showScreen('e-team')"><span class="sb-icon">👔</span>Кураторы и менеджеры</button>
-  <button class="sb-item" onclick="showScreen('e-messages')"><span class="sb-icon">💬</span>Сообщения<span class="sb-badge sb-badge-red">3</span></button>
   <div class="sb-section">Монетизация</div>
   <button class="sb-item" onclick="showScreen('e-finance')"><span class="sb-icon">💰</span>Финансы</button>
   <button class="sb-item" onclick="showScreen('e-referral')"><span class="sb-icon">🔗</span>Реферальная программа</button>
@@ -1212,7 +1199,6 @@ textarea.form-input{resize:vertical;min-height:80px}
       <div class="settings-nav-item active">👤 Профиль</div>
       <div class="settings-nav-item">🎨 Оформление школы</div>
       <div class="settings-nav-item">💳 Платёжные реквизиты</div>
-      <div class="settings-nav-item">🔔 Уведомления</div>
       <div class="settings-nav-item">🔒 Безопасность</div>
     </div>
     <div class="card" style="padding:24px">
@@ -1231,50 +1217,6 @@ textarea.form-input{resize:vertical;min-height:80px}
         <div class="form-group"><div class="form-label">Никнейм</div><input class="form-input" value="@blondibabe"/></div>
       </div>
       <div class="form-group"><div class="form-label">О себе</div><textarea class="form-input">Маркетолог с 7-летним опытом. Автор курсов по интернет-маркетингу и продажам.</textarea></div>
-    </div>
-  </div>
-</div>
-
-
-<!-- E-MESSAGES -->
-<div class="screen" id="screen-e-messages">
-  <div style="display:flex;height:calc(100vh - 56px)">
-    <div style="width:300px;border-right:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column">
-      <div style="padding:14px 16px;border-bottom:1px solid var(--line)">
-        <div style="font-family:var(--fd);font-size:13px;font-weight:700;margin-bottom:10px">Сообщения</div>
-        <div class="search-input"><span>🔍</span><input placeholder="Поиск..."/></div>
-      </div>
-      <div style="flex:1;overflow-y:auto">
-        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer;background:var(--al)">
-          <div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div>
-          <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--t1)">Алина Карпова</div><div style="font-size:11px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Спасибо за обратную связь!</div></div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><div style="font-family:var(--fm);font-size:9px;color:var(--t3)">2 мин</div><div style="width:7px;height:7px;border-radius:50%;background:var(--a)"></div></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer">
-          <div class="avatar av-sm" style="background:rgba(124,58,237,.1);color:var(--purple)">ДМ</div>
-          <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--t1)">Дмитрий Морозов</div><div style="font-size:11px;color:var(--t3)">Когда будет следующий модуль?</div></div>
-          <div style="font-family:var(--fm);font-size:9px;color:var(--t3)">1 ч</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer">
-          <div class="avatar av-sm" style="background:rgba(22,163,74,.1);color:var(--ok)">СВ</div>
-          <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--t1)">Светлана В.</div><div style="font-size:11px;color:var(--t3)">Можно доп. материалы?</div></div>
-          <div style="font-family:var(--fm);font-size:9px;color:var(--t3)">3 ч</div>
-        </div>
-      </div>
-    </div>
-    <div style="flex:1;display:flex;flex-direction:column;background:var(--bg)">
-      <div style="display:flex;align-items:center;gap:10px;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--line)">
-        <div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div>
-        <div><div style="font-size:13px;font-weight:600;color:var(--t1)">Алина Карпова</div><div style="font-size:10px;color:var(--ok)"><span class="dot-online"></span> онлайн</div></div>
-      </div>
-      <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:10px">
-        <div style="display:flex;justify-content:flex-end"><div style="background:var(--a);color:#fff;border-radius:12px 12px 2px 12px;padding:10px 14px;max-width:320px;font-size:13px;line-height:1.5">Алина, посмотрел ваше домашнее задание — очень хорошая работа! Оценка 100 баллов.</div></div>
-        <div style="display:flex;gap:8px;align-items:flex-end"><div class="avatar av-sm" style="background:rgba(10,168,200,.12);color:var(--a)">АК</div><div style="background:var(--surface);border:1px solid var(--line);border-radius:12px 12px 12px 2px;padding:10px 14px;max-width:320px;font-size:13px;line-height:1.5">Спасибо большое! Очень рада получить такой отзыв 🙏</div></div>
-      </div>
-      <div style="padding:14px 20px;background:var(--surface);border-top:1px solid var(--line);display:flex;gap:8px">
-        <input class="form-input" placeholder="Написать сообщение..." style="flex:1"/>
-        <button class="btn btn-accent btn-icon" style="width:36px;height:36px">→</button>
-      </div>
     </div>
   </div>
 </div>

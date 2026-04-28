@@ -2979,7 +2979,7 @@ if (platformMount) {
       if (items.length === 0) {
         const tr = document.createElement('tr');
         const td = document.createElement('td');
-        td.colSpan = 8;
+        td.colSpan = 7;
         td.style.textAlign = 'center';
         td.style.color = 'var(--t3)';
         td.style.fontSize = '12px';
@@ -3059,14 +3059,7 @@ if (platformMount) {
         const when = formatStudentLastActivityRu(it.lastPlatformVisitAt);
         tdAct.textContent = when.text;
         tdAct.style.color = when.useErr ? 'var(--err)' : 'var(--t3)';
-        const tdMsg = document.createElement('td');
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'btn btn-ghost btn-sm btn-icon';
-        b.textContent = '💬';
-        b.title = 'Сообщения (скоро)';
-        tdMsg.appendChild(b);
-        tr.append(tdSt, tdCr, tdProg, tdStreak, tdScore, tdHw, tdAct, tdMsg);
+        tr.append(tdSt, tdCr, tdProg, tdStreak, tdScore, tdHw, tdAct);
         tbody.appendChild(tr);
       }
     }
@@ -3095,7 +3088,7 @@ if (platformMount) {
           tbody.replaceChildren();
           const tr = document.createElement('tr');
           const td = document.createElement('td');
-          td.colSpan = 8;
+          td.colSpan = 7;
           td.style.textAlign = 'center';
           td.style.color = 'var(--t3)';
           td.style.padding = '20px 12px';
@@ -3170,7 +3163,7 @@ if (platformMount) {
           tbody.replaceChildren();
           const tr = document.createElement('tr');
           const td = document.createElement('td');
-          td.colSpan = 8;
+          td.colSpan = 7;
           td.style.textAlign = 'center';
           td.style.color = 'var(--err)';
           td.style.fontSize = '12px';
