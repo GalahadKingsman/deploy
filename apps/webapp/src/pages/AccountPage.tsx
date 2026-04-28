@@ -368,21 +368,55 @@ function ReferralCard() {
         </div>
         <div
           style={{
-            fontSize: 'var(--text-sm)',
-            color: 'var(--fg)',
-            fontFamily: 'monospace',
-            wordBreak: 'break-all',
-            padding: 'var(--sp-2)',
-            backgroundColor: 'var(--card-2)',
-            borderRadius: 'var(--r-sm)',
-            marginBottom: 'var(--sp-3)',
+            display: 'flex',
+            gap: 'var(--sp-2)',
+            alignItems: 'stretch',
           }}
         >
-          {isLoading ? '…' : referralLink || '—'}
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              fontSize: 'var(--text-sm)',
+              color: 'var(--fg)',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              padding: 'var(--sp-3)',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              borderRadius: 'var(--r-md)',
+            }}
+            title={referralLink || ''}
+          >
+            {isLoading ? '…' : referralLink || '—'}
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleCopy}
+            disabled={!referralLink || isLoading}
+            style={{
+              flex: '0 0 auto',
+              minWidth: 44,
+              minHeight: 44,
+              borderRadius: 12,
+              padding: '0 14px',
+            }}
+            aria-label="Скопировать ссылку"
+          >
+            ⧉
+          </Button>
         </div>
       </div>
-      <Button variant="primary" onClick={handleCopy} style={{ width: '100%' }} disabled={!referralLink || isLoading}>
-        Скопировать
+      <Button
+        variant="primary"
+        onClick={handleCopy}
+        style={{ width: '100%', height: 44, borderRadius: 12, fontWeight: 'var(--font-weight-semibold)' }}
+        disabled={!referralLink || isLoading}
+      >
+        Скопировать ссылку
       </Button>
 
       <div style={{ marginTop: 'var(--sp-4)' }}>

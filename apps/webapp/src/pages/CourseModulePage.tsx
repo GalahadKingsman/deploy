@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton, useToast } from '../shared/ui/index.js';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton, useToast, ListItem } from '../shared/ui/index.js';
 import { useModuleLessons } from '../shared/queries/useModuleLessons.js';
 import { useCourseModules } from '../shared/queries/useCourseModules.js';
 
@@ -83,22 +83,26 @@ export function CourseModulePage() {
             const isDone = completed.has(l.id);
             if (isUnlocked) {
               return (
-                <Button
+                <ListItem
                   key={l.id}
-                  variant="secondary"
-                  asChild
-                  style={{ width: '100%', justifyContent: 'flex-start' }}
-                >
-                  <Link to={`/lesson/${l.id}`}>{isDone ? `✓ ${l.title}` : l.title}</Link>
-                </Button>
+                  title={l.title}
+                  subtitle={isDone ? 'Завершён' : 'Открыт'}
+                  as="a"
+                  href={`/lesson/${l.id}`}
+                  right={
+                    <span style={{ color: isDone ? 'var(--success)' : 'rgba(255,255,255,0.65)' }}>
+                      {isDone ? '✓' : '›'}
+                    </span>
+                  }
+                />
               );
             }
             return (
-              <Button
+              <ListItem
                 key={l.id}
-                variant="secondary"
-                disabled
-                style={{ width: '100%', justifyContent: 'flex-start', opacity: 0.7 }}
+                title={l.title}
+                subtitle="Закрыт до проверки ДЗ"
+                right={<span style={{ opacity: 0.6 }}>🔒</span>}
                 onClick={() => {
                   toast.show({
                     title: 'Урок закрыт',
@@ -106,9 +110,7 @@ export function CourseModulePage() {
                     variant: 'info',
                   });
                 }}
-              >
-                🔒 {l.title}
-              </Button>
+              />
             );
           })}
         </div>

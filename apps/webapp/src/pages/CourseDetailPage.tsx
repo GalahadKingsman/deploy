@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Skeleton } from '../shared/ui/index.js';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Skeleton, ListItem } from '../shared/ui/index.js';
 import { useCourse } from '../shared/queries/useCourse.js';
 import { useCourseModules } from '../shared/queries/useCourseModules.js';
 import { useCreateCourseCheckout } from '../shared/queries/useCheckout.js';
@@ -223,14 +223,13 @@ export function CourseDetailPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
               {modules.map((m) => (
-                <Button
+                <ListItem
                   key={m.id}
-                  variant="secondary"
-                  asChild
-                  style={{ width: '100%', justifyContent: 'flex-start' }}
-                >
-                  <Link to={`/course/${courseId}/modules/${m.id}`}>{m.title}</Link>
-                </Button>
+                  title={m.title}
+                  subtitle={hasAccess ? 'Открыть уроки модуля' : 'Доступ появится после зачисления'}
+                  right={<span style={{ opacity: 0.65 }}>›</span>}
+                  onClick={() => navigate(`/course/${courseId}/modules/${m.id}`)}
+                />
               ))}
             </div>
           )}

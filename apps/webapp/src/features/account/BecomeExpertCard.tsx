@@ -113,46 +113,138 @@ export function BecomeExpertCard({ state, subscription }: BecomeExpertCardProps)
 
   if (state === 'expired') {
     return (
-      <Card style={{ marginBottom: 'var(--sp-4)' }}>
-        <CardHeader>
-          <CardTitle>Подписка истекла</CardTitle>
-          <CardDescription>
-            Доступ к эксперт-функциям ограничен.
-            {periodEndFormatted && <> Статус: expired. До: {periodEndFormatted}</>}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <Card
+        style={{
+          marginBottom: 'var(--sp-4)',
+          padding: 'var(--sp-4)',
+          position: 'relative',
+          overflow: 'hidden',
+          borderRadius: 'var(--r-xl)',
+          border: '1px solid rgba(255,255,255,0.10)',
+          background:
+            'radial-gradient(120% 120% at 0% 0%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 55%, rgba(0,0,0,0) 100%)',
+        }}
+      >
+        <div style={{ display: 'flex', gap: 'var(--sp-3)', alignItems: 'flex-start' }}>
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              background: 'rgba(239,83,80,0.10)',
+              border: '1px solid rgba(239,83,80,0.22)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              overflow: 'hidden',
+              color: 'rgba(255,255,255,0.9)',
+              fontWeight: 700,
+            }}
+            aria-hidden
+          >
+            !
+          </div>
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: 'var(--text-md)',
+                fontWeight: 'var(--font-weight-semibold)',
+                color: 'var(--fg)',
+              }}
+            >
+              Подписка истекла
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)', marginTop: 2 }}>
+              Доступ к эксперт‑функциям ограничен{periodEndFormatted ? ` · до ${periodEndFormatted}` : ''}.
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 'var(--sp-3)' }}>
           <Button
             variant="primary"
             onClick={() => navigate('/creator/onboarding')}
-            style={{ width: '100%' }}
+            style={{
+              width: '100%',
+              borderRadius: 12,
+              height: 44,
+              fontWeight: 'var(--font-weight-semibold)',
+            }}
           >
             Продлить (0₽)
           </Button>
-        </CardContent>
+        </div>
       </Card>
     );
   }
 
   // state === 'active'
   return (
-    <Card style={{ marginBottom: 'var(--sp-4)' }}>
-      <CardHeader>
-        <CardTitle>Вы эксперт</CardTitle>
-        <CardDescription>
-          Подписка активна.
-          {periodEndFormatted && ` До ${periodEndFormatted}.`}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <Card
+      style={{
+        marginBottom: 'var(--sp-4)',
+        padding: 'var(--sp-4)',
+        position: 'relative',
+        overflow: 'hidden',
+        borderRadius: 'var(--r-xl)',
+        border: '1px solid rgba(255,255,255,0.10)',
+        background:
+          'radial-gradient(120% 120% at 0% 0%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 55%, rgba(0,0,0,0) 100%)',
+      }}
+    >
+      <div style={{ display: 'flex', gap: 'var(--sp-3)', alignItems: 'flex-start' }}>
+        <div
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 12,
+            background: 'rgba(61,220,151,0.10)',
+            border: '1px solid rgba(61,220,151,0.22)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            overflow: 'hidden',
+            color: 'rgba(255,255,255,0.9)',
+            fontWeight: 800,
+          }}
+          aria-hidden
+        >
+          ✓
+        </div>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: 'var(--text-md)',
+              fontWeight: 'var(--font-weight-semibold)',
+              color: 'var(--fg)',
+            }}
+          >
+            Вы эксперт
+          </div>
+          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)', marginTop: 2 }}>
+            Подписка активна{periodEndFormatted ? ` · до ${periodEndFormatted}` : ''}.
+          </div>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 'var(--sp-3)' }}>
         <Button
           variant="primary"
           onClick={() => navigate('/expert')}
-          style={{ width: '100%' }}
+          style={{
+            width: '100%',
+            borderRadius: 12,
+            height: 44,
+            fontWeight: 'var(--font-weight-semibold)',
+          }}
         >
-          Открыть кабинет
+          Открыть кабинет →
         </Button>
-      </CardContent>
+      </div>
     </Card>
   );
 }
