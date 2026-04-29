@@ -7,6 +7,7 @@ export interface MyCourseProgressV1 {
   doneLessons: number;
   totalLessons: number;
   progressPercent: number;
+  homeworkSubmittedCount: number;
 }
 
 export const MyCourseProgressV1Schema = z.object({
@@ -14,6 +15,7 @@ export const MyCourseProgressV1Schema = z.object({
   doneLessons: z.number().int().min(0),
   totalLessons: z.number().int().min(0),
   progressPercent: z.number().int().min(0).max(100),
+  homeworkSubmittedCount: z.number().int().min(0),
 });
 
 export interface MeCoursesResponseV1 {

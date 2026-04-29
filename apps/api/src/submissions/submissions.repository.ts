@@ -60,6 +60,36 @@ export class SubmissionsRepository {
     return { avgScore: clamped, gradedCount: cnt };
   }
 
+  /**
+   * Student: count distinct assignments with at least one submission in a course.
+   * (One assignment per lesson, but we count by assignment_id for safety.)
+   */
+  async countSubmittedAssignmentsByCourse(params: { studentUserId: string; courseId: string }): Promise<number> {
+    if (!this.pool) return 0;
+    const res = await this.pool.query<{ c: string }>(
+      `
+      SELECT COUNT(*)::text AS c
+      FROM (
+        SELECT DISTINCT ON (s.assignment_id)
+          s.assignment_id
+        FROM submissions s
+        INNER JOIN assignments a ON a.id = s.assignment_id
+        INNER JOIN lessons l ON l.id = a.lesson_id AND l.deleted_at IS NULL
+        INNER JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+        INNER JOIN courses c ON c.id = m.course_id AND c.deleted_at IS NULL
+        INNER JOIN enrollments e ON e.user_id = s.student_user_id AND e.course_id = c.id
+        WHERE s.student_user_id = $1
+          AND c.id = $2
+          AND e.revoked_at IS NULL
+          AND (e.access_end IS NULL OR e.access_end > NOW())
+        ORDER BY s.assignment_id, s.created_at DESC
+      ) x
+      `,
+      [params.studentUserId, params.courseId],
+    );
+    return Math.max(0, parseInt(res.rows[0]?.c ?? '0', 10) || 0);
+  }
+
   async listExpertHomeworkInbox(params: {
     expertId: string;
     reviewerUserId: string;

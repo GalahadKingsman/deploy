@@ -815,6 +815,7 @@ if (platformMount) {
       done: number;
       total: number;
       percent: number;
+      homeworkSubmittedCount?: number | null;
       color?: string;
     }): HTMLElement {
       const wrap = document.createElement('div');
@@ -886,7 +887,21 @@ if (platformMount) {
       title.style.whiteSpace = 'nowrap';
       title.textContent = params.title;
 
-      left.append(avatar, title);
+      const titleWrap = document.createElement('div');
+      titleWrap.style.minWidth = '0';
+      titleWrap.style.flex = '1';
+      titleWrap.appendChild(title);
+
+      const hwN = Math.max(0, Number(params.homeworkSubmittedCount ?? 0) || 0);
+      const hw = document.createElement('div');
+      hw.style.marginTop = '4px';
+      hw.style.fontSize = '10px';
+      hw.style.fontFamily = 'var(--fm)';
+      hw.style.color = 'var(--t3)';
+      hw.textContent = `${hwN} ДЗ сдано`;
+      titleWrap.appendChild(hw);
+
+      left.append(avatar, titleWrap);
       const right = document.createElement('span');
       right.style.fontFamily = 'var(--fm)';
       right.style.fontSize = '11px';
@@ -944,6 +959,7 @@ if (platformMount) {
         items.forEach((it, idx) => {
           const done = Math.max(0, Number((it as any).doneLessons ?? 0) || 0);
           const total = Math.max(0, Number((it as any).totalLessons ?? 0) || 0);
+          const hw = Math.max(0, Number((it as any).homeworkSubmittedCount ?? 0) || 0);
           doneTotal += done;
           const pct = total > 0 ? Math.round((done / total) * 100) : Math.round(Number(it.progressPercent ?? 0) || 0);
           const color = idx % 3 === 1 ? 'var(--purple)' : idx % 3 === 2 ? 'var(--ok)' : undefined;
@@ -954,6 +970,7 @@ if (platformMount) {
               done,
               total,
               percent: pct,
+              homeworkSubmittedCount: hw,
               color,
             }),
           );
@@ -2258,6 +2275,33 @@ if (platformMount) {
       btn.style.display = show ? 'inline-flex' : 'none';
     }
 
+    function canSeeReferralProgram(): boolean {
+      return expertWorkspaceMyRole === 'owner' || expertWorkspaceMyRole === 'manager';
+    }
+
+    function syncExpertReferralVisibility(root: ShadowRoot | null): void {
+      if (!root) return;
+      const referralBtn = root.querySelector('[data-ep-screen="e-referral"]') as HTMLElement | null;
+      const referralScreen = root.getElementById('screen-e-referral') as HTMLElement | null;
+      // Section header "Монетизация" (only contains referral right now)
+      const monetSection = Array.from(root.querySelectorAll('.sb-section')).find(
+        (el) => (el.textContent ?? '').trim() === 'Монетизация',
+      ) as HTMLElement | undefined;
+
+      const show = canSeeReferralProgram();
+      if (referralBtn) referralBtn.style.display = show ? '' : 'none';
+      if (monetSection) monetSection.style.display = show ? '' : 'none';
+      if (referralScreen) referralScreen.style.display = show ? '' : 'none';
+
+      if (!show) {
+        // If user somehow landed on referral screen, bounce to dashboard.
+        const active = root.querySelector('.screen.active') as HTMLElement | null;
+        if (active?.id === 'screen-e-referral') {
+          shell.showScreen('e-dashboard');
+        }
+      }
+    }
+
     async function hydrateTopbarUser(): Promise<void> {
       const token = getAccessToken();
       if (!token) {
@@ -2321,6 +2365,7 @@ if (platformMount) {
           activeExpertId = await fetchExpertWorkspaceId(token, u.id);
           inExpertTeam = !!activeExpertId;
           syncExpertTeamOwnerButton(shell.shadowRoot);
+          syncExpertReferralVisibility(shell.shadowRoot);
         } catch {
           inExpertTeam = false;
           activeExpertId = null;
@@ -2331,6 +2376,7 @@ if (platformMount) {
         }
         expertShellAccess.allowed = inExpertTeam;
         syncExpertTeamOwnerButton(root);
+        syncExpertReferralVisibility(root);
         void hydrateExpertHomeworkBadge(root);
         const name = displayName(u);
         nameEl.textContent = name;

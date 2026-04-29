@@ -6,6 +6,7 @@ import type { FastifyRequest } from 'fastify';
 import { EnrollmentsRepository } from './student_enrollments.repository.js';
 import { StudentCoursesRepository } from './student_courses.repository.js';
 import { ProgressRepository } from './student_progress.repository.js';
+import { SubmissionsRepository } from '../submissions/submissions.repository.js';
 
 @ApiTags('User')
 @Controller()
@@ -16,6 +17,7 @@ export class MeCoursesController {
     private readonly enrollmentsRepository: EnrollmentsRepository,
     private readonly coursesRepository: StudentCoursesRepository,
     private readonly progressRepository: ProgressRepository,
+    private readonly submissionsRepository: SubmissionsRepository,
   ) {}
 
   @Get('me/courses')
@@ -35,8 +37,9 @@ export class MeCoursesController {
       if (!course) continue;
       const total = await this.progressRepository.countLessonsInCourse(courseId);
       const done = await this.progressRepository.countCompletedByCourse({ userId, courseId });
+      const hw = await this.submissionsRepository.countSubmittedAssignmentsByCourse({ studentUserId: userId, courseId });
       const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-      items.push({ course, doneLessons: done, totalLessons: total, progressPercent: pct });
+      items.push({ course, doneLessons: done, totalLessons: total, progressPercent: pct, homeworkSubmittedCount: hw });
     }
 
     return { items };
