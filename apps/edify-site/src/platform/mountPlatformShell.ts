@@ -156,12 +156,15 @@ function onShadowClick(ev: MouseEvent, root: ShadowRoot, handlers: PlatformShell
 
   const modToggle = target.closest('[data-ep-mod-toggle]');
   if (modToggle) {
-    const arrow = modToggle.querySelector('.mod-arrow');
-    const lessons = modToggle.nextElementSibling;
-    arrow?.classList.toggle('open');
-    lessons?.classList.toggle('open');
-    emit(handlers, { type: 'module_toggle' }, ev);
-    return;
+    // Дерево модулей конструктора: раскрытие и выбор модуля делает platformPage.ts
+    if (!modToggle.closest('[data-ep-builder-mod-tree]')) {
+      const arrow = modToggle.querySelector('.mod-arrow');
+      const lessons = modToggle.nextElementSibling;
+      arrow?.classList.toggle('open');
+      lessons?.classList.toggle('open');
+      emit(handlers, { type: 'module_toggle' }, ev);
+      return;
+    }
   }
 
   const gradeBtn = target.closest('.grade-btn');

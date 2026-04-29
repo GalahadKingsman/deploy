@@ -2,6 +2,7 @@ import './edify.css';
 import { ACCESS_TOKEN_KEY, getAccessToken } from './authSession.js';
 import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
 import { refreshNavAuth } from './navAuthUi.js';
+import { hydrateLandingExpertCourses } from './platform/marketingExpertCoursesPreview.js';
 import { mountPlatformShell } from './platform/mountPlatformShell.js';
 import { maybeOpenResetPasswordUi } from './resetPasswordUi.js';
 
@@ -144,6 +145,9 @@ if (platformMount) {
     marketingPreview: true,
     onAction(action) {
       if (import.meta.env.DEV) console.debug('[edify-platform]', action);
+      if (action.type === 'navigate' && action.screenId === 'e-courses') {
+        hydrateLandingExpertCourses(action.shadowRoot);
+      }
     },
   });
 }

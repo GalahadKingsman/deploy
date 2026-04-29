@@ -4600,6 +4600,19 @@ if (platformMount) {
       await applyBuilderLessonToForm(root, eid, token);
     }
 
+    /** Выбор модуля в конструкторе (в т.ч. пустого — чтобы «+ Урок» создавался в нём). */
+    async function selectBuilderModule(root: ShadowRoot, moduleId: string): Promise<void> {
+      if (!builderModulesCache.some((m) => m.id === moduleId)) return;
+      builderSelectedModuleId = moduleId;
+      const lessons = builderLessonsByModule.get(moduleId) ?? [];
+      builderSelectedLessonId = lessons[0]?.id ?? null;
+      const token = getAccessToken();
+      const eid = await resolveBuilderExpertId();
+      if (!token || !eid) return;
+      renderBuilderModTree(root);
+      await applyBuilderLessonToForm(root, eid, token);
+    }
+
     async function openExpertBuilderNew(root: ShadowRoot): Promise<void> {
       const token = getAccessToken();
       const eid = await resolveActiveExpertId();
@@ -6393,6 +6406,14 @@ if (platformMount) {
             void openExpertBuilderEdit(shell.shadowRoot, ec);
           }
         }
+        return;
+      }
+
+      const bModHead = t?.closest('[data-ep-builder-mod-tree] [data-ep-mod-toggle]') as HTMLElement | null;
+      const pickMid = bModHead?.dataset.epBuilderModuleId;
+      if (bModHead && pickMid && !t?.closest('[data-ep-builder-module-menu]')) {
+        ev.preventDefault();
+        void selectBuilderModule(shell.shadowRoot, pickMid);
         return;
       }
 
