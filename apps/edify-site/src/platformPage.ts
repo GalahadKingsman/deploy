@@ -145,15 +145,6 @@ if (platformMount) {
 
     const myCourseIds = new Set<string>();
 
-    function formatPrice(course: CourseV1): string {
-      const cents = course.priceCents ?? 0;
-      if (!Number.isFinite(cents) || cents <= 0) return 'Бесплатно';
-      const amount = Math.round(cents / 100);
-      const cur = (course.currency ?? 'RUB').toUpperCase();
-      const suffix = cur === 'RUB' ? ' ₽' : ` ${cur}`;
-      return `${amount.toLocaleString('ru-RU')}${suffix}`;
-    }
-
     function initialsFromTitle(title: string): string {
       const t = (title || '').trim();
       if (!t) return 'ED';
@@ -222,12 +213,7 @@ if (platformMount) {
       author.className = 'cc-author';
       author.textContent = course.authorName ? course.authorName : 'EDIFY';
 
-      const price = document.createElement('div');
-      price.className = 'cc-price';
-      price.textContent = formatPrice(course);
-      if ((course.priceCents ?? 0) <= 0) price.classList.add('cc-price-free');
-
-      body.append(title, author, price);
+      body.append(title, author);
       card.append(thumb, scrim, body);
       return card;
     }
@@ -235,16 +221,6 @@ if (platformMount) {
     function renderMyCourseCard(item: { course: CourseV1; progressPercent: number }): HTMLElement {
       const card = renderCourseCard(item.course);
       const body = card.querySelector('.cc-body') as HTMLElement;
-
-      // вставим цену сразу после автора (чтобы сохранить требования: цена+автор+прогресс)
-      const price = body.querySelector('.cc-price');
-      if (price) price.remove();
-
-      const author = body.querySelector('.cc-author');
-      const price2 = document.createElement('div');
-      price2.className = 'cc-price';
-      price2.textContent = formatPrice(item.course);
-      if ((item.course.priceCents ?? 0) <= 0) price2.classList.add('cc-price-free');
 
       const pct = Math.max(0, Math.min(100, Math.round(item.progressPercent ?? 0)));
       const progWrap = document.createElement('div');
@@ -270,11 +246,6 @@ if (platformMount) {
       btn.dataset.epStopProp = '1';
       btn.dataset.epCourseId = item.course.id;
 
-      if (author?.nextSibling) {
-        body.insertBefore(price2, author.nextSibling);
-      } else {
-        body.appendChild(price2);
-      }
       body.append(progWrap, meta, btn);
 
       return card;
@@ -6226,7 +6197,6 @@ if (platformMount) {
       (screen.querySelector('[data-ep-course-preview-h1]') as HTMLElement | null)!.textContent = course.title;
       (screen.querySelector('[data-ep-course-preview-author]') as HTMLElement | null)!.textContent =
         course.authorName?.trim() ? course.authorName : 'EDIFY';
-      (screen.querySelector('[data-ep-course-preview-price]') as HTMLElement | null)!.textContent = formatPrice(course);
       setRichTextWithLinks(
         screen.querySelector('[data-ep-course-preview-desc]') as HTMLElement | null,
         (course.description ?? '').trim() || 'Описание курса появится здесь.',
