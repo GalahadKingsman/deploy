@@ -29,6 +29,8 @@ export interface ExpertCourseV1 {
    * open — all non-hidden lessons are unlocked for students.
    */
   lessonAccessMode: CourseLessonAccessModeV1;
+  /** Фамилия и имя автора курса для карточки и страницы курса (публично). */
+  authorDisplayName?: string | null;
   publishedAt?: IsoDateTime | null;
   deletedAt?: IsoDateTime | null;
   createdAt: IsoDateTime;
@@ -46,6 +48,7 @@ export const ExpertCourseV1Schema = z.object({
   status: CourseStatusV1Schema,
   visibility: CourseVisibilityV1Schema,
   lessonAccessMode: CourseLessonAccessModeV1Schema,
+  authorDisplayName: z.string().max(240).nullable().optional(),
   publishedAt: z.string().nullable().optional(),
   deletedAt: z.string().nullable().optional(),
   createdAt: z.string(),
@@ -115,6 +118,7 @@ export interface UpdateExpertCourseRequestV1 {
   currency?: string;
   visibility?: CourseVisibilityV1;
   lessonAccessMode?: CourseLessonAccessModeV1;
+  authorDisplayName?: string | null;
 }
 
 export const UpdateExpertCourseRequestV1Schema = z.object({
@@ -125,5 +129,6 @@ export const UpdateExpertCourseRequestV1Schema = z.object({
   currency: z.string().min(1).max(8).optional(),
   visibility: CourseVisibilityV1Schema.optional(),
   lessonAccessMode: CourseLessonAccessModeV1Schema.optional(),
+  authorDisplayName: z.string().max(240).nullable().optional(),
 });
 

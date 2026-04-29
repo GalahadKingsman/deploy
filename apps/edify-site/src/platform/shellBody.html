@@ -554,6 +554,11 @@
           <textarea class="form-input" data-ep-course-desc rows="4" style="resize:vertical;line-height:1.55;font-size:13px" placeholder="Коротко опишите курс"></textarea>
         </div>
         <div class="form-group">
+          <div class="form-label">Укажите фамилию и имя автора курса</div>
+          <input class="form-input" data-ep-course-author-display type="text" autocomplete="name" placeholder="Например: Иванов Иван"/>
+          <div style="font-size:10px;color:var(--t3);margin-top:6px;font-family:var(--fm)">Отображается на странице курса в каталоге как строка «Автор курса — …».</div>
+        </div>
+        <div class="form-group">
           <div class="form-label">Видимость</div>
           <select class="form-input" data-ep-course-visibility>
             <option value="private">Только по ссылке (private)</option>
@@ -919,22 +924,26 @@
       <div style="padding:18px 20px">
         <div>
           <div style="font-family:var(--fd);font-size:18px;font-weight:800;letter-spacing:-.02em;line-height:1.2" data-ep-course-preview-h1>Название курса</div>
-          <div style="margin-top:6px;color:var(--t3);font-size:12px" data-ep-course-preview-author>Автор</div>
         </div>
 
         <div style="margin-top:14px;color:var(--t2);font-size:13px;line-height:1.7" data-ep-course-preview-desc>
           Описание курса появится здесь.
         </div>
 
-        <div style="margin-top:12px;font-size:12px;color:var(--t3);line-height:1.55">
-          Доступ к материалам оформляется с автором курса; платформа не выступает платёжным посредником за курс.
-        </div>
-        <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-          <button class="btn btn-accent" style="flex:1;justify-content:center;min-width:220px" type="button" data-ep-course-preview-cta>
+        <div
+          data-ep-course-preview-author-line
+          style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-family:var(--fd);font-size:13px;font-weight:650;letter-spacing:.01em;color:var(--t1);line-height:1.45"
+          hidden
+        ></div>
+
+        <div style="margin-top:18px">
+          <button
+            class="btn btn-accent"
+            style="width:100%;display:flex;justify-content:center;align-items:center;box-sizing:border-box"
+            type="button"
+            data-ep-course-preview-cta
+          >
             Записаться
-          </button>
-          <button class="btn btn-outline" style="justify-content:center" type="button" data-ep-course-preview-open disabled>
-            Перейти к урокам
           </button>
         </div>
       </div>

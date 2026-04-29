@@ -12,6 +12,7 @@ interface CourseRow {
   title: string;
   description: string | null;
   cover_url: string | null;
+  author_display_name?: string | null;
   price_cents?: number | null;
   currency?: string | null;
   status: string;
@@ -23,6 +24,11 @@ interface CourseRow {
   updated_at: Date;
 }
 
+function trimAuthorDisplayName(raw: string | null | undefined): string | null {
+  const s = (raw ?? '').trim();
+  return s ? s.slice(0, 240) : null;
+}
+
 function mapRow(row: CourseRow): ContractsV1.ExpertCourseV1 {
   const mode = row.lesson_access_mode;
   return {
@@ -31,6 +37,7 @@ function mapRow(row: CourseRow): ContractsV1.ExpertCourseV1 {
     title: row.title,
     description: row.description ?? null,
     coverUrl: row.cover_url ?? null,
+    authorDisplayName: trimAuthorDisplayName(row.author_display_name ?? null),
     priceCents: row.price_cents ?? 0,
     currency: row.currency ?? 'RUB',
     status: row.status as CourseStatus,
@@ -452,6 +459,16 @@ export class CoursesRepository {
     if (!row) {
       throw new NotFoundException({ code: ErrorCodes.COURSE_NOT_FOUND, message: 'Course not found' });
     }
+
+    if (params.patch.authorDisplayName !== undefined) {
+      const next = trimAuthorDisplayName(params.patch.authorDisplayName ?? null);
+      await this.pool.query(
+        `UPDATE courses SET author_display_name = $3, updated_at = NOW() WHERE id = $1 AND expert_id = $2`,
+        [params.courseId, params.expertId, next],
+      );
+      return this.getById({ expertId: params.expertId, courseId: params.courseId });
+    }
+
     return mapRow(row);
   }
 

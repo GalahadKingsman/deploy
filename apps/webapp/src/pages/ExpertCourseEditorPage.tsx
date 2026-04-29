@@ -15,6 +15,7 @@ export function ExpertCourseEditorPage() {
   const [visibility, setVisibility] = React.useState<'private' | 'public'>('private');
   const [lessonAccessMode, setLessonAccessMode] = React.useState<'sequential' | 'open'>('sequential');
   const [coverUrl, setCoverUrl] = React.useState<string>('');
+  const [authorDisplayName, setAuthorDisplayName] = React.useState('');
   const [coverFile, setCoverFile] = React.useState<File | null>(null);
   const [coverUploading, setCoverUploading] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
@@ -56,6 +57,7 @@ export function ExpertCourseEditorPage() {
         setVisibility((c.visibility ?? 'private') === 'public' ? 'public' : 'private');
         setLessonAccessMode(c.lessonAccessMode === 'open' ? 'open' : 'sequential');
         setCoverUrl((c.coverUrl ?? '') || '');
+        setAuthorDisplayName((c.authorDisplayName ?? '').trim());
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -79,6 +81,7 @@ export function ExpertCourseEditorPage() {
           visibility,
           coverUrl: coverUrl.trim() ? coverUrl.trim() : null,
           lessonAccessMode,
+          authorDisplayName: authorDisplayName.trim() ? authorDisplayName.trim() : null,
         },
       });
       setCourse(updated);
@@ -191,6 +194,13 @@ export function ExpertCourseEditorPage() {
               }}
             />
           </div>
+          <Input
+            label="Укажите фамилию и имя автора курса"
+            value={authorDisplayName}
+            onChange={(e) => setAuthorDisplayName(e.target.value)}
+            placeholder="Например: Иванов Иван"
+            hint="Показывается ученикам на странице курса строкой «Автор курса — …»."
+          />
           <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div style={{ flex: '1 1 220px' }}>
               <Input

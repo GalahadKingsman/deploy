@@ -6,12 +6,18 @@ interface CourseRow {
   title: string;
   description: string | null;
   cover_url: string | null;
+  author_display_name?: string | null;
   price_cents?: number | null;
   currency?: string | null;
   updated_at: Date;
   status: string;
   visibility: string;
   lesson_access_mode?: string | null;
+}
+
+function mapStudentAuthorName(raw: string | null | undefined): string | null {
+  const s = (raw ?? '').trim();
+  return s ? s.slice(0, 240) : null;
 }
 
 interface LessonRow {
@@ -68,7 +74,7 @@ export class StudentCoursesRepository {
     }
     const res = await this.pool.query<CourseRow>(
       `
-      SELECT c.id, c.title, c.description, c.cover_url, c.price_cents, c.currency, c.updated_at, c.status, c.visibility
+      SELECT c.id, c.title, c.description, c.cover_url, c.author_display_name, c.price_cents, c.currency, c.updated_at, c.status, c.visibility
       FROM courses c
       WHERE ${where.join(' AND ')}
       ORDER BY c.updated_at DESC
@@ -81,7 +87,7 @@ export class StudentCoursesRepository {
       title: r.title,
       description: r.description ?? null,
       coverUrl: r.cover_url ?? null,
-      authorName: null,
+      authorName: mapStudentAuthorName(r.author_display_name ?? null),
       priceCents: r.price_cents ?? 0,
       currency: r.currency ?? 'RUB',
       lessonsCount: undefined,
@@ -97,7 +103,7 @@ export class StudentCoursesRepository {
     if (!this.pool) return null;
     const res = await this.pool.query<CourseRow>(
       `
-      SELECT id, title, description, cover_url, price_cents, currency, updated_at, status, visibility, lesson_access_mode
+      SELECT id, title, description, cover_url, author_display_name, price_cents, currency, updated_at, status, visibility, lesson_access_mode
       FROM courses
       WHERE id = $1 AND deleted_at IS NULL
       LIMIT 1
@@ -111,7 +117,7 @@ export class StudentCoursesRepository {
       title: r.title,
       description: r.description ?? null,
       coverUrl: r.cover_url ?? null,
-      authorName: null,
+      authorName: mapStudentAuthorName(r.author_display_name ?? null),
       priceCents: r.price_cents ?? 0,
       currency: r.currency ?? 'RUB',
       updatedAt: r.updated_at.toISOString(),

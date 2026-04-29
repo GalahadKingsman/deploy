@@ -112,6 +112,20 @@ export function CourseDetailPage() {
           </div>
         </CardHeader>
         <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
+          {(course.authorName ?? '').trim() ? (
+            <div
+              style={{
+                fontSize: 'var(--text-sm)',
+                fontWeight: 'var(--font-weight-medium)',
+                color: 'var(--fg)',
+                lineHeight: 1.45,
+                paddingTop: 'var(--sp-2)',
+                borderTop: '1px solid var(--border)',
+              }}
+            >
+              Автор курса — {(course.authorName ?? '').trim()}
+            </div>
+          ) : null}
           {hasAccess && (
             <Button variant="secondary" onClick={() => navigate('/learn')}>
               Доступ активен

@@ -489,6 +489,7 @@ if (platformMount) {
       description?: string | null;
       coverUrl?: string | null;
       lessonAccessMode?: 'sequential' | 'open';
+      authorDisplayName?: string | null;
     };
     let builderCourseDetail: BuilderCourseDetailV1 | null = null;
     type BuilderTopicV1 = { id: string; title: string };
@@ -5987,8 +5988,10 @@ if (platformMount) {
         const visSel = root.querySelector('[data-ep-course-visibility]') as HTMLSelectElement | null;
         const coverInp = root.querySelector('[data-ep-course-cover-url]') as HTMLInputElement | null;
         const lessonAccSel = root.querySelector('[data-ep-course-lesson-access]') as HTMLSelectElement | null;
+        const authorInp = root.querySelector('[data-ep-course-author-display]') as HTMLInputElement | null;
         if (titleInp) titleInp.value = course.title ?? '';
         if (descTa) descTa.value = (course.description ?? '').trim();
+        if (authorInp) authorInp.value = (course.authorDisplayName ?? '').trim();
         if (visSel) visSel.value = (course.visibility ?? 'private') === 'public' ? 'public' : 'private';
         if (coverInp) coverInp.value = (course.coverUrl ?? '').trim();
         if (lessonAccSel) {
@@ -6044,6 +6047,7 @@ if (platformMount) {
       const visSel = root.querySelector('[data-ep-course-visibility]') as HTMLSelectElement | null;
       const coverInp = root.querySelector('[data-ep-course-cover-url]') as HTMLInputElement | null;
       const lessonAccSel = root.querySelector('[data-ep-course-lesson-access]') as HTMLSelectElement | null;
+      const authorInp = root.querySelector('[data-ep-course-author-display]') as HTMLInputElement | null;
       const title = (titleInp?.value ?? '').trim();
       if (!title) {
         window.alert('Укажите название курса.');
@@ -6053,6 +6057,7 @@ if (platformMount) {
       const description = (descTa?.value ?? '').trim();
       const coverUrl = (coverInp?.value ?? '').trim();
       const lessonAccessMode = lessonAccSel?.value === 'open' ? 'open' : 'sequential';
+      const authorDisplayName = (authorInp?.value ?? '').trim();
       try {
         const updated = await patchJson<BuilderCourseDetailV1>(
           `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}`,
@@ -6062,6 +6067,7 @@ if (platformMount) {
             visibility,
             coverUrl: coverUrl ? coverUrl : null,
             lessonAccessMode,
+            authorDisplayName: authorDisplayName ? authorDisplayName : null,
           },
           token,
         );
@@ -6195,8 +6201,19 @@ if (platformMount) {
         document.createTextNode('Курс'),
       );
       (screen.querySelector('[data-ep-course-preview-h1]') as HTMLElement | null)!.textContent = course.title;
-      (screen.querySelector('[data-ep-course-preview-author]') as HTMLElement | null)!.textContent =
-        course.authorName?.trim() ? course.authorName : 'EDIFY';
+      const authorLine = screen.querySelector('[data-ep-course-preview-author-line]') as HTMLElement | null;
+      const authorName = (course.authorName ?? '').trim();
+      if (authorLine) {
+        if (authorName) {
+          authorLine.style.display = '';
+          authorLine.removeAttribute('hidden');
+          authorLine.textContent = `Автор курса — ${authorName}`;
+        } else {
+          authorLine.style.display = 'none';
+          authorLine.setAttribute('hidden', '');
+          authorLine.textContent = '';
+        }
+      }
       setRichTextWithLinks(
         screen.querySelector('[data-ep-course-preview-desc]') as HTMLElement | null,
         (course.description ?? '').trim() || 'Описание курса появится здесь.',
@@ -6240,9 +6257,6 @@ if (platformMount) {
           initials.textContent = initialsFromTitle(course.title);
         }
       }
-
-      const openBtn = screen.querySelector('[data-ep-course-preview-open]') as HTMLButtonElement | null;
-      if (openBtn) openBtn.disabled = true;
     }
 
     async function openCoursePreview(courseId: string): Promise<void> {
