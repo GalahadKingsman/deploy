@@ -19,6 +19,8 @@ export interface CourseV1 {
   priceCents?: number;
   currency?: string;
   lessonsCount?: number;
+  /** Число опубликованных модулей (для карточки курса / превью). */
+  modulesCount?: number;
   updatedAt: IsoDateTime;
   status?: 'draft' | 'published' | 'archived';
   visibility?: 'private' | 'public';
@@ -38,7 +40,8 @@ export const CourseV1Schema = z.object({
   enrollmentContactUrl: z.string().nullable().optional(),
   priceCents: z.number().int().min(0).optional(),
   currency: z.string().min(1).optional(),
-  lessonsCount: z.number().optional(),
+  lessonsCount: z.number().int().min(0).optional(),
+  modulesCount: z.number().int().min(0).optional(),
   updatedAt: z.string(),
   status: z.enum(['draft', 'published', 'archived']).optional(),
   visibility: z.enum(['private', 'public']).optional(),

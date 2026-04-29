@@ -111,6 +111,18 @@ export function CourseDetailPage() {
               <CardDescription>
                 {course.description ?? 'Описание отсутствует'}
               </CardDescription>
+              <div
+                style={{
+                  marginTop: 'var(--sp-2)',
+                  fontSize: 'var(--text-sm)',
+                  color: 'var(--muted-fg)',
+                  lineHeight: 1.5,
+                }}
+              >
+                <span aria-hidden="true">🧩</span> Модулей: {course.modulesCount ?? 0}
+                <span style={{ opacity: 0.5, margin: '0 6px' }}>·</span>
+                <span aria-hidden="true">📦</span> Уроков: {course.lessonsCount ?? 0}
+              </div>
             </div>
           </div>
         </CardHeader>

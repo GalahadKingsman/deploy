@@ -154,6 +154,7 @@ export class StudentCoursesRepository {
     );
     const r = res.rows[0];
     if (!r) return null;
+    const { modulesCount, lessonsCount } = await this.countPublishedStructure(courseId);
     return {
       id: r.id,
       title: r.title,
@@ -163,11 +164,41 @@ export class StudentCoursesRepository {
       enrollmentContactUrl: mapStudentEnrollmentContactUrl(r.enrollment_contact_url ?? null),
       priceCents: r.price_cents ?? 0,
       currency: r.currency ?? 'RUB',
+      modulesCount,
+      lessonsCount,
       updatedAt: r.updated_at.toISOString(),
       status: r.status as any,
       visibility: r.visibility as any,
       lessonAccessMode: r.lesson_access_mode === 'open' ? 'open' : 'sequential',
     };
+  }
+
+  /** Модули и уроки, видимые студенту (как в listLessonsByCourseId: не удалённые, урок не скрыт). */
+  async countPublishedStructure(courseId: string): Promise<{ modulesCount: number; lessonsCount: number }> {
+    if (!this.pool) return { modulesCount: 0, lessonsCount: 0 };
+    const res = await this.pool.query<{ m: string | number; l: string | number }>(
+      `
+      SELECT
+        COALESCE((
+          SELECT COUNT(*)::int
+          FROM course_modules m
+          WHERE m.course_id = $1 AND m.deleted_at IS NULL
+        ), 0) AS m,
+        COALESCE((
+          SELECT COUNT(*)::int
+          FROM lessons l
+          INNER JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+          WHERE m.course_id = $1
+            AND l.deleted_at IS NULL
+            AND l.hidden_from_students = false
+        ), 0) AS l
+      `,
+      [courseId],
+    );
+    const row = res.rows[0];
+    const m = typeof row?.m === 'number' ? row.m : parseInt(String(row?.m ?? '0'), 10) || 0;
+    const l = typeof row?.l === 'number' ? row.l : parseInt(String(row?.l ?? '0'), 10) || 0;
+    return { modulesCount: m, lessonsCount: l };
   }
 
   async listLessonsByCourseId(courseId: string): Promise<ContractsV1.LessonV1[]> {

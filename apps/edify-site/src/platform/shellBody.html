@@ -922,11 +922,14 @@
   </div>
 
   <div class="grid2">
-    <div class="card" style="overflow:hidden">
-      <div style="height:180px;background:var(--bg2);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden" data-ep-course-preview-cover>
+    <div class="card" style="overflow:hidden;padding:0;display:flex;flex-direction:column">
+      <div
+        style="width:100%;aspect-ratio:16/9;min-height:200px;max-height:320px;background:var(--bg2);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;flex-shrink:0"
+        data-ep-course-preview-cover
+      >
         <span style="font-family:var(--fd);font-size:48px;font-weight:900;color:rgba(10,168,200,.35)" data-ep-course-preview-initials>ED</span>
       </div>
-      <div style="padding:18px 20px">
+      <div style="padding:18px 20px;flex:1;min-width:0">
         <div>
           <div style="font-family:var(--fd);font-size:18px;font-weight:800;letter-spacing:-.02em;line-height:1.2" data-ep-course-preview-h1>Название курса</div>
         </div>
@@ -957,8 +960,11 @@
     <div>
       <div class="sec-title">Что внутри</div>
       <div class="card" style="padding:16px">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;color:var(--t2);font-size:12px">
+          <span aria-hidden="true">🧩</span><span data-ep-course-preview-modules>Модулей: —</span>
+        </div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;color:var(--t2);font-size:12px">
-          <span>📦</span><span data-ep-course-preview-lessons>Уроков: —</span>
+          <span aria-hidden="true">📦</span><span data-ep-course-preview-lessons>Уроков: —</span>
         </div>
         <div style="color:var(--t3);font-size:12px;line-height:1.7">
           После зачисления откроется первый урок. Следующие уроки будут открываться после проверки домашних заданий экспертом.

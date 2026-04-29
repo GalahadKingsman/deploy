@@ -99,6 +99,8 @@ if (platformMount) {
       coverUrl?: string | null;
       authorName?: string | null;
       enrollmentContactUrl?: string | null;
+      modulesCount?: number;
+      lessonsCount?: number;
       priceCents?: number;
       currency?: string;
     };
@@ -6252,10 +6254,13 @@ if (platformMount) {
     void hydrateStudentCatalog();
     void hydrateMyCourses();
 
-    function fillCoursePreview(course: CourseV1, lessonsCount: number): void {
+    function fillCoursePreview(course: CourseV1): void {
       const root = shell.shadowRoot;
       const screen = root.getElementById('screen-s-course');
       if (!screen) return;
+
+      const modulesCount = Math.max(0, Math.trunc(Number(course.modulesCount ?? 0)));
+      const lessonsCount = Math.max(0, Math.trunc(Number(course.lessonsCount ?? 0)));
 
       (screen.querySelector('[data-ep-course-preview-title]') as HTMLElement | null)?.replaceChildren(
         document.createTextNode('Курс'),
@@ -6278,10 +6283,25 @@ if (platformMount) {
         screen.querySelector('[data-ep-course-preview-desc]') as HTMLElement | null,
         (course.description ?? '').trim() || 'Описание курса появится здесь.',
       );
-      (screen.querySelector('[data-ep-course-preview-sub]') as HTMLElement | null)!.textContent =
-        lessonsCount > 0 ? `${lessonsCount} уроков` : 'Уроки появятся после публикации';
-      (screen.querySelector('[data-ep-course-preview-lessons]') as HTMLElement | null)!.textContent =
-        lessonsCount > 0 ? `Уроков: ${lessonsCount}` : 'Уроков: —';
+      const subEl = screen.querySelector('[data-ep-course-preview-sub]') as HTMLElement | null;
+      if (subEl) {
+        if (modulesCount === 0 && lessonsCount === 0) {
+          subEl.textContent = 'Пока нет опубликованных модулей и уроков';
+        } else {
+          const parts: string[] = [];
+          if (modulesCount > 0) {
+            parts.push(`${modulesCount} ${pluralRu(modulesCount, ['модуль', 'модуля', 'модулей'])}`);
+          }
+          if (lessonsCount > 0) {
+            parts.push(`${lessonsCount} ${pluralRu(lessonsCount, ['урок', 'урока', 'уроков'])}`);
+          }
+          subEl.textContent = parts.length > 0 ? parts.join(' · ') : 'Структура курса уточняется';
+        }
+      }
+      const modCountEl = screen.querySelector('[data-ep-course-preview-modules]') as HTMLElement | null;
+      if (modCountEl) modCountEl.textContent = `Модулей: ${modulesCount}`;
+      const lesCountEl = screen.querySelector('[data-ep-course-preview-lessons]') as HTMLElement | null;
+      if (lesCountEl) lesCountEl.textContent = `Уроков: ${lessonsCount}`;
 
       const coverHost = screen.querySelector('[data-ep-course-preview-cover]') as HTMLElement | null;
       const initials = screen.querySelector('[data-ep-course-preview-initials]') as HTMLElement | null;
@@ -6326,7 +6346,7 @@ if (platformMount) {
       shell.setRole('student', { screenId: 's-course' });
       const token = getAccessToken() ?? undefined;
       const res = await fetchJson<CourseDetailResponseV1>(`/courses/${encodeURIComponent(courseId)}`, token);
-      fillCoursePreview(res.course, (res.lessons ?? []).length);
+      fillCoursePreview(res.course);
     }
 
     // Reactions to UI actions (course / lesson)
