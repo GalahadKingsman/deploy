@@ -13,6 +13,7 @@ import {
 } from '../shared/queries/useAdminExperts.js';
 import { useAdminUsers, type AdminUserPick } from '../shared/queries/useAdminUsers.js';
 import { useAdminSetUserPlatformRole } from '../shared/queries/useAdminPlatformRole.js';
+import { fetchJson } from '../shared/api/index.js';
 
 const roles: ExpertMemberRole[] = ['owner', 'manager', 'reviewer', 'support'];
 
@@ -223,14 +224,26 @@ export function AdminExpertsPage() {
                   key={u.id}
                   variant={selectedUser?.id === u.id ? 'primary' : 'secondary'}
                   onClick={() => {
-                    setSelectedUser(u);
-                    setCreateOwnerUserId(u.id);
-                    setMemberUserId(u.id);
-                    setRoleUserId(u.id);
-                    setRemoveUserId(u.id);
-                    const ae = typeof u.activeExpertId === 'string' ? u.activeExpertId.trim() : '';
-                    if (ae) setExpertId(ae);
-                    toast.show({ title: 'Выбран пользователь', message: formatUserLabel(u), variant: 'info' });
+                    void (async () => {
+                      setSelectedUser(u);
+                      setCreateOwnerUserId(u.id);
+                      setMemberUserId(u.id);
+                      setRoleUserId(u.id);
+                      setRemoveUserId(u.id);
+                      let ae = typeof u.activeExpertId === 'string' ? u.activeExpertId.trim() : '';
+                      if (!ae) {
+                        try {
+                          const r = await fetchJson<{ activeExpertId: string | null }>({
+                            path: `/admin/users/${encodeURIComponent(u.id)}/active-expert-id`,
+                          });
+                          ae = (r.activeExpertId ?? '').trim();
+                        } catch {
+                          /* ignore */
+                        }
+                      }
+                      if (ae) setExpertId(ae);
+                      toast.show({ title: 'Выбран пользователь', message: formatUserLabel(u), variant: 'info' });
+                    })();
                   }}
                   style={{ justifyContent: 'flex-start' }}
                 >

@@ -525,7 +525,8 @@ export class UsersRepository {
    * (prefer subscription with status=active and current_period_end in the future; else latest end).
    */
   async adminListActiveExpertIdsByUserIds(userIds: string[]): Promise<Map<string, string | null>> {
-    const uniq = [...new Set(userIds.map((id) => (id ?? '').trim()).filter(Boolean))];
+    const normId = (raw: string): string => raw.trim().toLowerCase();
+    const uniq = [...new Set(userIds.map((id) => normId(id ?? '')).filter(Boolean))];
     const out = new Map<string, string | null>();
     for (const id of uniq) out.set(id, null);
     if (!this.pool || uniq.length === 0) return out;
@@ -551,17 +552,28 @@ export class UsersRepository {
       [uniq],
     );
 
+    const ts = (v: Date | null): number | null => {
+      if (v == null) return null;
+      if (v instanceof Date) {
+        const t = v.getTime();
+        return Number.isFinite(t) ? t : null;
+      }
+      const t = new Date(v as unknown as string).getTime();
+      return Number.isFinite(t) ? t : null;
+    };
+
     const byUser = new Map<string, typeof res.rows>();
     for (const r of res.rows) {
-      const arr = byUser.get(r.user_id) ?? [];
+      const k = normId(r.user_id);
+      const arr = byUser.get(k) ?? [];
       arr.push(r);
-      byUser.set(r.user_id, arr);
+      byUser.set(k, arr);
     }
 
     const nowMs = Date.now();
     const isActive = (status: string, end: Date | null): boolean => {
       if (status.trim() !== 'active') return false;
-      const endMs = end ? end.getTime() : null;
+      const endMs = ts(end);
       return endMs == null || endMs > nowMs;
     };
 
@@ -579,8 +591,8 @@ export class UsersRepository {
       const actives = picks.filter((p) => isActive(p.status, p.end));
       const pickFrom = actives.length > 0 ? actives : picks;
       pickFrom.sort((a, b) => {
-        const ae = a.end ? a.end.getTime() : Number.POSITIVE_INFINITY;
-        const be = b.end ? b.end.getTime() : Number.POSITIVE_INFINITY;
+        const ae = ts(a.end ?? null) ?? Number.POSITIVE_INFINITY;
+        const be = ts(b.end ?? null) ?? Number.POSITIVE_INFINITY;
         return be - ae;
       });
       const top = pickFrom[0]?.expertId ?? rows[0]?.expert_id ?? null;

@@ -65,9 +65,25 @@ export class AdminUsersController {
         platformRole: u.platformRole,
         createdAt: u.createdAt,
         updatedAt: u.updatedAt,
-        activeExpertId: activeByUser.get(u.id) ?? null,
+        activeExpertId: activeByUser.get(u.id.trim().toLowerCase()) ?? null,
       })),
     };
+  }
+
+  @Get(':userId/active-expert-id')
+  @RequirePlatformRole('admin')
+  @ApiOperation({
+    summary:
+      'Подсказка expert UUID для админ-форм (тот же расчёт, что и в списке пользователей)',
+  })
+  @ApiResponse({ status: 200, description: '{ activeExpertId }' })
+  async getActiveExpertIdForUser(@Param('userId') userId: string): Promise<{ activeExpertId: string | null }> {
+    const id = userId.trim();
+    if (!id) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'userId required' });
+    }
+    const map = await this.usersRepository.adminListActiveExpertIdsByUserIds([id]);
+    return { activeExpertId: map.get(id.toLowerCase()) ?? null };
   }
 
   @Post(':userId/password-reset')

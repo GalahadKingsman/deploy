@@ -5368,29 +5368,45 @@ if (platformMount) {
 
         row.append(title, pick);
         row.addEventListener('click', () => {
-          if (host === 'create-owner') {
-            const inp = root.querySelector('[data-ep-admin-create-expert-owner-search]') as HTMLInputElement | null;
-            if (inp) inp.value = formatUserTitle(u);
-            const idInp = root.querySelector('[data-ep-admin-create-expert-owner-id]') as HTMLInputElement | null;
-            if (idInp) idInp.value = u.id;
-            adminSelectedUserIdByField = { ...adminSelectedUserIdByField, createOwner: u.id };
-            applyAdminExpertIdFields(root, u.activeExpertId ?? null);
-          } else if (host === 'members-user') {
-            const inp = root.querySelector('[data-ep-admin-members-user-search]') as HTMLInputElement | null;
-            if (inp) inp.value = formatUserTitle(u);
-            const idInp = root.querySelector('[data-ep-admin-members-user-id]') as HTMLInputElement | null;
-            if (idInp) idInp.value = u.id;
-            adminSelectedUserIdByField = { ...adminSelectedUserIdByField, membersUser: u.id };
-            applyAdminExpertIdFields(root, u.activeExpertId ?? null);
-          } else {
-            const inp = root.querySelector('[data-ep-admin-platform-user-search]') as HTMLInputElement | null;
-            if (inp) inp.value = formatUserTitle(u);
-            const idInp = root.querySelector('[data-ep-admin-platform-user-id]') as HTMLInputElement | null;
-            if (idInp) idInp.value = u.id;
-            adminSelectedUserIdByField = { ...adminSelectedUserIdByField, platformUser: u.id };
-            applyAdminExpertIdFields(root, u.activeExpertId ?? null);
-          }
-          hostEl.style.display = 'none';
+          void (async () => {
+            if (host === 'create-owner') {
+              const inp = root.querySelector('[data-ep-admin-create-expert-owner-search]') as HTMLInputElement | null;
+              if (inp) inp.value = formatUserTitle(u);
+              const idInp = root.querySelector('[data-ep-admin-create-expert-owner-id]') as HTMLInputElement | null;
+              if (idInp) idInp.value = u.id;
+              adminSelectedUserIdByField = { ...adminSelectedUserIdByField, createOwner: u.id };
+            } else if (host === 'members-user') {
+              const inp = root.querySelector('[data-ep-admin-members-user-search]') as HTMLInputElement | null;
+              if (inp) inp.value = formatUserTitle(u);
+              const idInp = root.querySelector('[data-ep-admin-members-user-id]') as HTMLInputElement | null;
+              if (idInp) idInp.value = u.id;
+              adminSelectedUserIdByField = { ...adminSelectedUserIdByField, membersUser: u.id };
+            } else {
+              const inp = root.querySelector('[data-ep-admin-platform-user-search]') as HTMLInputElement | null;
+              if (inp) inp.value = formatUserTitle(u);
+              const idInp = root.querySelector('[data-ep-admin-platform-user-id]') as HTMLInputElement | null;
+              if (idInp) idInp.value = u.id;
+              adminSelectedUserIdByField = { ...adminSelectedUserIdByField, platformUser: u.id };
+            }
+
+            const token = getAccessToken();
+            let aid = u.activeExpertId ?? null;
+            const looksEmpty = aid == null || !String(aid).trim();
+            if (token && looksEmpty) {
+              try {
+                aid = (
+                  await fetchJson<{ activeExpertId: string | null }>(
+                    `/admin/users/${encodeURIComponent(u.id)}/active-expert-id`,
+                    token,
+                  )
+                ).activeExpertId;
+              } catch {
+                aid = null;
+              }
+            }
+            applyAdminExpertIdFields(root, aid);
+            hostEl.style.display = 'none';
+          })();
         });
         card.appendChild(row);
       });
