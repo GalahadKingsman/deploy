@@ -890,7 +890,17 @@ if (platformMount) {
       const titleWrap = document.createElement('div');
       titleWrap.style.minWidth = '0';
       titleWrap.style.flex = '1';
+      titleWrap.style.display = 'flex';
+      titleWrap.style.flexDirection = 'column';
+      titleWrap.style.gap = '6px';
       titleWrap.appendChild(title);
+
+      const badgesRow = document.createElement('div');
+      badgesRow.style.display = 'flex';
+      badgesRow.style.flexWrap = 'wrap';
+      badgesRow.style.alignItems = 'center';
+      badgesRow.style.gap = '6px';
+      badgesRow.style.minHeight = '16px';
 
       const hwN = Math.max(0, Number(params.homeworkSubmittedCount ?? 0) || 0);
       const hw = document.createElement('span');
@@ -898,16 +908,16 @@ if (platformMount) {
       hw.style.display = 'inline-flex';
       hw.style.alignItems = 'center';
       hw.style.gap = '6px';
-      hw.style.marginTop = '6px';
       hw.style.fontSize = '10px';
-      hw.style.padding = '4px 8px';
+      hw.style.padding = '3px 8px';
       hw.style.borderRadius = '999px';
-      hw.style.background = 'var(--bg2)';
+      hw.style.background = 'var(--surface)';
       hw.style.border = '1px solid var(--line)';
       hw.style.color = 'var(--t2)';
       hw.style.fontFamily = 'var(--fm)';
-      hw.innerHTML = `<span aria-hidden="true" style="opacity:.75">📝</span><span>${hwN} ДЗ сдано</span>`;
-      titleWrap.appendChild(hw);
+      hw.innerHTML = `<span aria-hidden="true" style="width:8px;height:8px;border-radius:99px;background:var(--a);opacity:.65;display:inline-block"></span><span>${hwN} ДЗ сдано</span>`;
+      badgesRow.appendChild(hw);
+      titleWrap.appendChild(badgesRow);
 
       left.append(avatar, titleWrap);
       const right = document.createElement('span');
