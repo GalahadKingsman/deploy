@@ -95,8 +95,10 @@ if (platformMount) {
     type CourseV1 = {
       id: string;
       title: string;
+      description?: string | null;
       coverUrl?: string | null;
       authorName?: string | null;
+      enrollmentContactUrl?: string | null;
       priceCents?: number;
       currency?: string;
     };
@@ -144,6 +146,21 @@ if (platformMount) {
     type ListExpertTeamResponseV1 = { items: ExpertTeamMemberRowV1[]; createdByUserId: string };
 
     const myCourseIds = new Set<string>();
+    /** Ссылка для кнопки «Записаться» на экране превью курса (из GET /courses/:id). */
+    let studentCoursePreviewEnrollmentUrl: string | null = null;
+
+    const ENROLLMENT_CONTACT_URL_MAX_LEN = 2048;
+    function isStudentEnrollmentContactUrl(raw: string): boolean {
+      const s = raw.trim();
+      if (!s || s.length > ENROLLMENT_CONTACT_URL_MAX_LEN) return false;
+      try {
+        const u = new URL(s);
+        const p = u.protocol.toLowerCase();
+        return p === 'http:' || p === 'https:' || p === 'tg:' || p === 'mailto:';
+      } catch {
+        return false;
+      }
+    }
 
     function initialsFromTitle(title: string): string {
       const t = (title || '').trim();
@@ -490,6 +507,7 @@ if (platformMount) {
       coverUrl?: string | null;
       lessonAccessMode?: 'sequential' | 'open';
       authorDisplayName?: string | null;
+      enrollmentContactUrl?: string | null;
     };
     let builderCourseDetail: BuilderCourseDetailV1 | null = null;
     type BuilderTopicV1 = { id: string; title: string };
@@ -6019,9 +6037,11 @@ if (platformMount) {
         const coverInp = root.querySelector('[data-ep-course-cover-url]') as HTMLInputElement | null;
         const lessonAccSel = root.querySelector('[data-ep-course-lesson-access]') as HTMLSelectElement | null;
         const authorInp = root.querySelector('[data-ep-course-author-display]') as HTMLInputElement | null;
+        const enrollUrlInp = root.querySelector('[data-ep-course-enrollment-url]') as HTMLInputElement | null;
         if (titleInp) titleInp.value = course.title ?? '';
         if (descTa) descTa.value = (course.description ?? '').trim();
         if (authorInp) authorInp.value = (course.authorDisplayName ?? '').trim();
+        if (enrollUrlInp) enrollUrlInp.value = (course.enrollmentContactUrl ?? '').trim();
         if (visSel) visSel.value = (course.visibility ?? 'private') === 'public' ? 'public' : 'private';
         if (coverInp) coverInp.value = (course.coverUrl ?? '').trim();
         if (lessonAccSel) {
@@ -6078,6 +6098,7 @@ if (platformMount) {
       const coverInp = root.querySelector('[data-ep-course-cover-url]') as HTMLInputElement | null;
       const lessonAccSel = root.querySelector('[data-ep-course-lesson-access]') as HTMLSelectElement | null;
       const authorInp = root.querySelector('[data-ep-course-author-display]') as HTMLInputElement | null;
+      const enrollUrlInp = root.querySelector('[data-ep-course-enrollment-url]') as HTMLInputElement | null;
       const title = (titleInp?.value ?? '').trim();
       if (!title) {
         window.alert('Укажите название курса.');
@@ -6088,6 +6109,14 @@ if (platformMount) {
       const coverUrl = (coverInp?.value ?? '').trim();
       const lessonAccessMode = lessonAccSel?.value === 'open' ? 'open' : 'sequential';
       const authorDisplayName = (authorInp?.value ?? '').trim();
+      const enrollmentContactUrlRaw = (enrollUrlInp?.value ?? '').trim();
+      if (enrollmentContactUrlRaw && !isStudentEnrollmentContactUrl(enrollmentContactUrlRaw)) {
+        window.alert(
+          'Проверьте ссылку для зачисления: нужен полный адрес (http://, https://, tg: или mailto:), не длиннее 2048 символов.',
+        );
+        return;
+      }
+      const enrollmentContactUrl = enrollmentContactUrlRaw ? enrollmentContactUrlRaw : null;
       try {
         const updated = await patchJson<BuilderCourseDetailV1>(
           `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}`,
@@ -6098,6 +6127,7 @@ if (platformMount) {
             coverUrl: coverUrl ? coverUrl : null,
             lessonAccessMode,
             authorDisplayName: authorDisplayName ? authorDisplayName : null,
+            enrollmentContactUrl,
           },
           token,
         );
@@ -6287,6 +6317,9 @@ if (platformMount) {
           initials.textContent = initialsFromTitle(course.title);
         }
       }
+
+      const enrollRaw = (course.enrollmentContactUrl ?? '').trim();
+      studentCoursePreviewEnrollmentUrl = enrollRaw && isStudentEnrollmentContactUrl(enrollRaw) ? enrollRaw : null;
     }
 
     async function openCoursePreview(courseId: string): Promise<void> {
@@ -6308,6 +6341,19 @@ if (platformMount) {
       if (eStF || eStI) {
         ev.preventDefault();
         window.alert('Скоро.');
+        return;
+      }
+
+      const enrollCta = t?.closest('[data-ep-course-preview-cta]') as HTMLElement | null;
+      if (enrollCta) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const u = (studentCoursePreviewEnrollmentUrl ?? '').trim();
+        if (u) {
+          window.open(u, '_blank', 'noopener,noreferrer');
+        } else {
+          window.alert('Автор курса ещё не указал ссылку для записи. Напишите ему другим способом или дождитесь обновления страницы курса.');
+        }
         return;
       }
 

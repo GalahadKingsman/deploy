@@ -2,7 +2,7 @@ import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, useToast } from '../shared/ui/index.js';
 import { fetchJson, fetchMultipart } from '../shared/api/index.js';
-import type { ContractsV1 } from '@tracked/shared';
+import { ContractsV1 } from '@tracked/shared';
 import { useTopics, useCourseTopics, useSetCourseTopics } from '../shared/queries/useTopics.js';
 import { ApiClientError } from '../shared/api/errors.js';
 
@@ -16,6 +16,7 @@ export function ExpertCourseEditorPage() {
   const [lessonAccessMode, setLessonAccessMode] = React.useState<'sequential' | 'open'>('sequential');
   const [coverUrl, setCoverUrl] = React.useState<string>('');
   const [authorDisplayName, setAuthorDisplayName] = React.useState('');
+  const [enrollmentContactUrl, setEnrollmentContactUrl] = React.useState('');
   const [coverFile, setCoverFile] = React.useState<File | null>(null);
   const [coverUploading, setCoverUploading] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
@@ -58,6 +59,7 @@ export function ExpertCourseEditorPage() {
         setLessonAccessMode(c.lessonAccessMode === 'open' ? 'open' : 'sequential');
         setCoverUrl((c.coverUrl ?? '') || '');
         setAuthorDisplayName((c.authorDisplayName ?? '').trim());
+        setEnrollmentContactUrl((c.enrollmentContactUrl ?? '').trim());
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -70,6 +72,15 @@ export function ExpertCourseEditorPage() {
 
   const save = async () => {
     if (!expertId || !courseId) return;
+    const encUrl = enrollmentContactUrl.trim();
+    if (encUrl && !ContractsV1.isEnrollmentContactUrlAllowed(encUrl)) {
+      toast.show({
+        title: 'Проверьте ссылку',
+        message: 'Нужен полный адрес: http(s), tg: или mailto:, не длиннее 2048 символов.',
+        variant: 'error',
+      });
+      return;
+    }
     setSaving(true);
     try {
       const updated = await fetchJson<ContractsV1.ExpertCourseV1>({
@@ -82,6 +93,7 @@ export function ExpertCourseEditorPage() {
           coverUrl: coverUrl.trim() ? coverUrl.trim() : null,
           lessonAccessMode,
           authorDisplayName: authorDisplayName.trim() ? authorDisplayName.trim() : null,
+          enrollmentContactUrl: encUrl ? encUrl : null,
         },
       });
       setCourse(updated);
@@ -200,6 +212,13 @@ export function ExpertCourseEditorPage() {
             onChange={(e) => setAuthorDisplayName(e.target.value)}
             placeholder="Например: Иванов Иван"
             hint="Показывается ученикам на странице курса строкой «Автор курса — …»."
+          />
+          <Input
+            label="Куда студенту написать для зачисления? (ссылка)"
+            value={enrollmentContactUrl}
+            onChange={(e) => setEnrollmentContactUrl(e.target.value)}
+            placeholder="https://t.me/… или tg:resolve?domain=…"
+            hint="Откроется по кнопке «Записаться» в карточке курса. Разрешены http(s), tg: и mailto:."
           />
           <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div style={{ flex: '1 1 220px' }}>

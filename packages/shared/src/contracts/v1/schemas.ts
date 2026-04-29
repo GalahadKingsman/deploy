@@ -47,6 +47,8 @@ export {
   ExpertCourseDashboardItemV1Schema,
   CreateExpertCourseRequestV1Schema,
   UpdateExpertCourseRequestV1Schema,
+  isEnrollmentContactUrlAllowed,
+  ENROLLMENT_CONTACT_URL_MAX_LEN,
 } from './expert-course.js';
 export {
   ExpertCourseModuleV1Schema,

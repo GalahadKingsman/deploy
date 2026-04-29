@@ -13,6 +13,7 @@ interface CourseRow {
   description: string | null;
   cover_url: string | null;
   author_display_name?: string | null;
+  enrollment_contact_url?: string | null;
   price_cents?: number | null;
   currency?: string | null;
   status: string;
@@ -29,6 +30,13 @@ function trimAuthorDisplayName(raw: string | null | undefined): string | null {
   return s ? s.slice(0, 240) : null;
 }
 
+function trimEnrollmentContactUrl(raw: string | null | undefined): string | null {
+  const s = (raw ?? '').trim();
+  if (!s) return null;
+  const t = s.slice(0, ContractsV1.ENROLLMENT_CONTACT_URL_MAX_LEN);
+  return ContractsV1.isEnrollmentContactUrlAllowed(t) ? t : null;
+}
+
 function mapRow(row: CourseRow): ContractsV1.ExpertCourseV1 {
   const mode = row.lesson_access_mode;
   return {
@@ -38,6 +46,7 @@ function mapRow(row: CourseRow): ContractsV1.ExpertCourseV1 {
     description: row.description ?? null,
     coverUrl: row.cover_url ?? null,
     authorDisplayName: trimAuthorDisplayName(row.author_display_name ?? null),
+    enrollmentContactUrl: trimEnrollmentContactUrl(row.enrollment_contact_url ?? null),
     priceCents: row.price_cents ?? 0,
     currency: row.currency ?? 'RUB',
     status: row.status as CourseStatus,
@@ -460,6 +469,7 @@ export class CoursesRepository {
       throw new NotFoundException({ code: ErrorCodes.COURSE_NOT_FOUND, message: 'Course not found' });
     }
 
+    let needRefetch = false;
     if (params.patch.authorDisplayName !== undefined) {
       const next = trimAuthorDisplayName(params.patch.authorDisplayName ?? null);
       try {
@@ -467,17 +477,29 @@ export class CoursesRepository {
           `UPDATE courses SET author_display_name = $3, updated_at = NOW() WHERE id = $1 AND expert_id = $2`,
           [params.courseId, params.expertId, next],
         );
-        return this.getById({ expertId: params.expertId, courseId: params.courseId });
+        needRefetch = true;
       } catch (e: unknown) {
         const code = typeof e === 'object' && e !== null && 'code' in e ? (e as { code?: string }).code : undefined;
-        if (code === '42703') {
-          return mapRow(row);
-        }
-        throw e;
+        if (code !== '42703') throw e;
+      }
+    }
+    if (params.patch.enrollmentContactUrl !== undefined) {
+      const next = trimEnrollmentContactUrl(params.patch.enrollmentContactUrl ?? null);
+      try {
+        await this.pool.query(
+          `UPDATE courses SET enrollment_contact_url = $3, updated_at = NOW() WHERE id = $1 AND expert_id = $2`,
+          [params.courseId, params.expertId, next],
+        );
+        needRefetch = true;
+      } catch (e: unknown) {
+        const code = typeof e === 'object' && e !== null && 'code' in e ? (e as { code?: string }).code : undefined;
+        if (code !== '42703') throw e;
       }
     }
 
-    return mapRow(row);
+    return needRefetch
+      ? this.getById({ expertId: params.expertId, courseId: params.courseId })
+      : mapRow(row);
   }
 
   async publish(params: { expertId: string; courseId: string }): Promise<ContractsV1.ExpertCourseV1> {

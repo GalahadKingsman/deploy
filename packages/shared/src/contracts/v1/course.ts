@@ -14,6 +14,8 @@ export interface CourseV1 {
   description?: string | null;
   coverUrl?: UrlString | null;
   authorName?: string | null;
+  /** Ссылка для записи на курс (кнопка «Записаться»). */
+  enrollmentContactUrl?: string | null;
   priceCents?: number;
   currency?: string;
   lessonsCount?: number;
@@ -33,6 +35,7 @@ export const CourseV1Schema = z.object({
   description: z.string().nullable().optional(),
   coverUrl: z.string().nullable().optional(),
   authorName: z.string().nullable().optional(),
+  enrollmentContactUrl: z.string().nullable().optional(),
   priceCents: z.number().int().min(0).optional(),
   currency: z.string().min(1).optional(),
   lessonsCount: z.number().optional(),

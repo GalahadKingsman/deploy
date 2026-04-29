@@ -5,6 +5,7 @@ import { useCourse } from '../shared/queries/useCourse.js';
 import { useCourseModules } from '../shared/queries/useCourseModules.js';
 import { useMyCourses } from '../shared/queries/useMyCourses.js';
 import { config as flagsConfig } from '../shared/config/flags.js';
+import { ContractsV1 } from '@tracked/shared';
 
 function resolveCoverUrl(raw: string | null | undefined): string | null {
   const u = (raw ?? '').trim();
@@ -76,6 +77,8 @@ export function CourseDetailPage() {
   const hasAccess = (myCourses?.items ?? []).some((x) => x.course.id === courseId);
   const modules = modulesData?.items ?? [];
   const cover = resolveCoverUrl(course.coverUrl);
+  const enrollUrl = (course.enrollmentContactUrl ?? '').trim();
+  const enrollOk = Boolean(enrollUrl && ContractsV1.isEnrollmentContactUrlAllowed(enrollUrl));
 
   return (
     <div style={{ padding: 'var(--sp-4)' }}>
@@ -131,6 +134,13 @@ export function CourseDetailPage() {
               Доступ активен
             </Button>
           )}
+          {!hasAccess && enrollOk ? (
+            <Button variant="primary" asChild>
+              <a href={enrollUrl} target="_blank" rel="noopener noreferrer">
+                Записаться
+              </a>
+            </Button>
+          ) : null}
           {!hasAccess && (
             <CardDescription style={{ margin: 0 }}>
               Доступ к урокам выдаёт автор курса. Оплата и договорённости — напрямую с экспертом; платформа не

@@ -3,6 +3,25 @@ import type { Id, IsoDateTime, UrlString } from './common.js';
 import type { CourseLessonAccessModeV1 } from './course.js';
 import { CourseLessonAccessModeV1Schema } from './course.js';
 
+/** Max length for enrollment contact URL stored on `courses.enrollment_contact_url`. */
+export const ENROLLMENT_CONTACT_URL_MAX_LEN = 2048;
+
+/**
+ * Allowed protocols for «ссылка для зачисления»: http(s), Telegram deep link, mailto.
+ */
+export function isEnrollmentContactUrlAllowed(raw: string | null | undefined): boolean {
+  const s = (raw ?? '').trim();
+  if (!s) return false;
+  if (s.length > ENROLLMENT_CONTACT_URL_MAX_LEN) return false;
+  try {
+    const u = new URL(s);
+    const p = u.protocol.toLowerCase();
+    return p === 'http:' || p === 'https:' || p === 'tg:' || p === 'mailto:';
+  } catch {
+    return false;
+  }
+}
+
 export type CourseStatusV1 = 'draft' | 'published' | 'archived';
 export const CourseStatusV1Schema = z.enum(['draft', 'published', 'archived']);
 
@@ -31,6 +50,8 @@ export interface ExpertCourseV1 {
   lessonAccessMode: CourseLessonAccessModeV1;
   /** Фамилия и имя автора курса для карточки и страницы курса (публично). */
   authorDisplayName?: string | null;
+  /** Ссылка для записи (кнопка «Записаться» в превью курса для студента). */
+  enrollmentContactUrl?: string | null;
   publishedAt?: IsoDateTime | null;
   deletedAt?: IsoDateTime | null;
   createdAt: IsoDateTime;
@@ -49,6 +70,7 @@ export const ExpertCourseV1Schema = z.object({
   visibility: CourseVisibilityV1Schema,
   lessonAccessMode: CourseLessonAccessModeV1Schema,
   authorDisplayName: z.string().max(240).nullable().optional(),
+  enrollmentContactUrl: z.string().max(ENROLLMENT_CONTACT_URL_MAX_LEN).nullable().optional(),
   publishedAt: z.string().nullable().optional(),
   deletedAt: z.string().nullable().optional(),
   createdAt: z.string(),
@@ -119,7 +141,33 @@ export interface UpdateExpertCourseRequestV1 {
   visibility?: CourseVisibilityV1;
   lessonAccessMode?: CourseLessonAccessModeV1;
   authorDisplayName?: string | null;
+  enrollmentContactUrl?: string | null;
 }
+
+const enrollmentContactUrlPatchSchema = z
+  .union([z.string(), z.null()])
+  .optional()
+  .superRefine((val, ctx) => {
+    if (val === undefined) return;
+    if (val === null) return;
+    const s = String(val).trim();
+    if (s === '') return;
+    if (s.length > ENROLLMENT_CONTACT_URL_MAX_LEN) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.too_big,
+        maximum: ENROLLMENT_CONTACT_URL_MAX_LEN,
+        inclusive: true,
+        type: 'string',
+      });
+      return;
+    }
+    if (!isEnrollmentContactUrlAllowed(s)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Некорректная ссылка. Разрешены http(s), tg: и mailto:',
+      });
+    }
+  });
 
 export const UpdateExpertCourseRequestV1Schema = z.object({
   title: z.string().min(1).optional(),
@@ -130,5 +178,6 @@ export const UpdateExpertCourseRequestV1Schema = z.object({
   visibility: CourseVisibilityV1Schema.optional(),
   lessonAccessMode: CourseLessonAccessModeV1Schema.optional(),
   authorDisplayName: z.string().max(240).nullable().optional(),
+  enrollmentContactUrl: enrollmentContactUrlPatchSchema,
 });
 

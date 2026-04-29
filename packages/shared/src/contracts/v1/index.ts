@@ -202,6 +202,8 @@ export {
   ExpertCourseDashboardItemV1Schema,
   CreateExpertCourseRequestV1Schema,
   UpdateExpertCourseRequestV1Schema,
+  isEnrollmentContactUrlAllowed,
+  ENROLLMENT_CONTACT_URL_MAX_LEN,
   ExpertCourseModuleV1Schema,
   ListExpertCourseModulesResponseV1Schema,
   CreateExpertCourseModuleRequestV1Schema,

@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import type { ContractsV1 } from '@tracked/shared';
+import { ContractsV1 } from '@tracked/shared';
 
 interface CourseRow {
   id: string;
@@ -7,6 +7,7 @@ interface CourseRow {
   description: string | null;
   cover_url: string | null;
   author_display_name?: string | null;
+  enrollment_contact_url?: string | null;
   price_cents?: number | null;
   currency?: string | null;
   updated_at: Date;
@@ -18,6 +19,13 @@ interface CourseRow {
 function mapStudentAuthorName(raw: string | null | undefined): string | null {
   const s = (raw ?? '').trim();
   return s ? s.slice(0, 240) : null;
+}
+
+function mapStudentEnrollmentContactUrl(raw: string | null | undefined): string | null {
+  const s = (raw ?? '').trim();
+  if (!s) return null;
+  const t = s.slice(0, ContractsV1.ENROLLMENT_CONTACT_URL_MAX_LEN);
+  return ContractsV1.isEnrollmentContactUrlAllowed(t) ? t : null;
 }
 
 interface LessonRow {
@@ -33,30 +41,33 @@ interface LessonRow {
 }
 
 export class StudentCoursesRepository {
-  /** When null, not yet probed. Lets API run before migration `031_course_author_display_name` is applied. */
-  private coursesAuthorDisplayColumnExists: boolean | null = null;
+  /** When null, not yet probed — до применения миграций с новыми колонками `courses`. */
+  private courseExtraColumns: { author: boolean; enrollment: boolean } | null = null;
 
   constructor(private readonly pool: Pool | null) {}
 
-  private async coursesHasAuthorDisplayColumn(): Promise<boolean> {
-    if (!this.pool) return false;
-    if (this.coursesAuthorDisplayColumnExists !== null) return this.coursesAuthorDisplayColumnExists;
+  private async resolveCourseExtraColumns(): Promise<{ author: boolean; enrollment: boolean }> {
+    if (!this.pool) return { author: false, enrollment: false };
+    if (this.courseExtraColumns) return this.courseExtraColumns;
     try {
-      const res = await this.pool.query<{ ok: number }>(
+      const res = await this.pool.query<{ column_name: string }>(
         `
-        SELECT 1 AS ok
+        SELECT column_name
         FROM information_schema.columns
         WHERE table_name = 'courses'
-          AND column_name = 'author_display_name'
+          AND column_name IN ('author_display_name', 'enrollment_contact_url')
           AND table_schema IN ('public', current_schema()::text)
-        LIMIT 1
         `,
       );
-      this.coursesAuthorDisplayColumnExists = res.rows.length > 0;
+      const set = new Set(res.rows.map((r) => r.column_name));
+      this.courseExtraColumns = {
+        author: set.has('author_display_name'),
+        enrollment: set.has('enrollment_contact_url'),
+      };
     } catch {
-      this.coursesAuthorDisplayColumnExists = false;
+      this.courseExtraColumns = { author: false, enrollment: false };
     }
-    return this.coursesAuthorDisplayColumnExists;
+    return this.courseExtraColumns;
   }
 
   async listLibrary(params?: {
@@ -96,12 +107,12 @@ export class StudentCoursesRepository {
         i += 1;
       }
     }
-    const authorCol = (await this.coursesHasAuthorDisplayColumn())
-      ? 'c.author_display_name'
-      : 'NULL::text AS author_display_name';
+    const cols = await this.resolveCourseExtraColumns();
+    const authorCol = cols.author ? 'c.author_display_name' : 'NULL::text AS author_display_name';
+    const enrollCol = cols.enrollment ? 'c.enrollment_contact_url' : 'NULL::text AS enrollment_contact_url';
     const res = await this.pool.query<CourseRow>(
       `
-      SELECT c.id, c.title, c.description, c.cover_url, ${authorCol}, c.price_cents, c.currency, c.updated_at, c.status, c.visibility
+      SELECT c.id, c.title, c.description, c.cover_url, ${authorCol}, ${enrollCol}, c.price_cents, c.currency, c.updated_at, c.status, c.visibility
       FROM courses c
       WHERE ${where.join(' AND ')}
       ORDER BY c.updated_at DESC
@@ -115,6 +126,7 @@ export class StudentCoursesRepository {
       description: r.description ?? null,
       coverUrl: r.cover_url ?? null,
       authorName: mapStudentAuthorName(r.author_display_name ?? null),
+      enrollmentContactUrl: mapStudentEnrollmentContactUrl(r.enrollment_contact_url ?? null),
       priceCents: r.price_cents ?? 0,
       currency: r.currency ?? 'RUB',
       lessonsCount: undefined,
@@ -128,12 +140,12 @@ export class StudentCoursesRepository {
 
   async getCourse(courseId: string): Promise<ContractsV1.CourseV1 | null> {
     if (!this.pool) return null;
-    const authorCol = (await this.coursesHasAuthorDisplayColumn())
-      ? 'author_display_name'
-      : 'NULL::text AS author_display_name';
+    const cols = await this.resolveCourseExtraColumns();
+    const authorCol = cols.author ? 'author_display_name' : 'NULL::text AS author_display_name';
+    const enrollCol = cols.enrollment ? 'enrollment_contact_url' : 'NULL::text AS enrollment_contact_url';
     const res = await this.pool.query<CourseRow>(
       `
-      SELECT id, title, description, cover_url, ${authorCol}, price_cents, currency, updated_at, status, visibility, lesson_access_mode
+      SELECT id, title, description, cover_url, ${authorCol}, ${enrollCol}, price_cents, currency, updated_at, status, visibility, lesson_access_mode
       FROM courses
       WHERE id = $1 AND deleted_at IS NULL
       LIMIT 1
@@ -148,6 +160,7 @@ export class StudentCoursesRepository {
       description: r.description ?? null,
       coverUrl: r.cover_url ?? null,
       authorName: mapStudentAuthorName(r.author_display_name ?? null),
+      enrollmentContactUrl: mapStudentEnrollmentContactUrl(r.enrollment_contact_url ?? null),
       priceCents: r.price_cents ?? 0,
       currency: r.currency ?? 'RUB',
       updatedAt: r.updated_at.toISOString(),
