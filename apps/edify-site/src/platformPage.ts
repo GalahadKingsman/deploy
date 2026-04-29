@@ -1,6 +1,6 @@
 import './edify.css';
 import { ACCESS_TOKEN_KEY, getAccessToken } from './authSession.js';
-import { getApiBaseUrl, getTelegramBotUsername } from './env.js';
+import { getApiBaseUrl, getReferralAppBaseUrl, getTelegramBotUsername } from './env.js';
 import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
 import { refreshNavAuth } from './navAuthUi.js';
 import { mountPlatformShell } from './platform/mountPlatformShell.js';
@@ -151,6 +151,8 @@ if (platformMount) {
     const myCourseIds = new Set<string>();
     /** Ссылка для кнопки «Записаться» на экране превью курса (из GET /courses/:id). */
     let studentCoursePreviewEnrollmentUrl: string | null = null;
+    /** Полная реферальная ссылка для копирования / шаринга (эксперт, раздел «Реферальная программа»). */
+    let expertReferralShareLink = '';
 
     const ENROLLMENT_CONTACT_URL_MAX_LEN = 2048;
     function isStudentEnrollmentContactUrl(raw: string): boolean {
@@ -679,6 +681,9 @@ if (platformMount) {
         if (action.type === 'navigate' && action.screenId === 'e-students') {
           void hydrateExpertStudents(action.shadowRoot);
         }
+        if (action.type === 'navigate' && action.screenId === 'e-referral') {
+          void hydrateExpertReferralScreen(action.shadowRoot);
+        }
         if (action.type === 'navigate' && action.screenId === 'e-builder') {
           if (suppressBuilderNavigateHydrate) return;
           const src = action.sourceElement ?? null;
@@ -732,6 +737,9 @@ if (platformMount) {
     }
     if (initialScreenId === 'e-students' && initialRole === 'expert') {
       void hydrateExpertStudents(shell.shadowRoot);
+    }
+    if (initialScreenId === 'e-referral' && initialRole === 'expert') {
+      void hydrateExpertReferralScreen(shell.shadowRoot);
     }
 
     type ModuleV1 = { id: string; title: string; position?: number };
@@ -1022,6 +1030,57 @@ if (platformMount) {
             textContent: 'Не удалось загрузить прогресс. Попробуйте обновить страницу.',
           }),
         );
+      }
+    }
+
+    async function hydrateExpertReferralScreen(root: ShadowRoot): Promise<void> {
+      const token = getAccessToken();
+      const codeEl = root.querySelector('[data-ep-referral-code]') as HTMLElement | null;
+      const linkEl = root.querySelector('[data-ep-referral-link-text]') as HTMLElement | null;
+      const invitedEl = root.querySelector('[data-ep-referral-stat-invited]') as HTMLElement | null;
+      const paidEl = root.querySelector('[data-ep-referral-stat-paid]') as HTMLElement | null;
+      const accruedEl = root.querySelector('[data-ep-referral-stat-accrued]') as HTMLElement | null;
+      expertReferralShareLink = '';
+      const setErr = (msg: string) => {
+        if (codeEl) codeEl.textContent = '—';
+        if (linkEl) {
+          linkEl.textContent = msg;
+          linkEl.removeAttribute('title');
+        }
+        if (invitedEl) invitedEl.textContent = '—';
+        if (paidEl) paidEl.textContent = '—';
+        if (accruedEl) accruedEl.textContent = '—';
+      };
+      if (!token) {
+        setErr('Войдите, чтобы увидеть реферальную ссылку');
+        return;
+      }
+      try {
+        const stats = await fetchJson<{
+          code: string;
+          enrollmentsCount: number;
+          ordersCount: number;
+          paidOrdersCount: number;
+          commissionTotalCents: number;
+        }>('/me/referral/stats', token);
+        const base = getReferralAppBaseUrl();
+        const link = `${base}/?ref=${encodeURIComponent(stats.code)}`;
+        expertReferralShareLink = link;
+        if (codeEl) codeEl.textContent = (stats.code ?? '').trim() || '—';
+        if (linkEl) {
+          linkEl.textContent = link;
+          linkEl.setAttribute('title', link);
+        }
+        const inv = Math.max(0, Math.trunc(Number(stats.enrollmentsCount ?? 0)) || 0);
+        const paid = Math.max(0, Math.trunc(Number(stats.paidOrdersCount ?? 0)) || 0);
+        const cents = Math.max(0, Math.trunc(Number(stats.commissionTotalCents ?? 0)) || 0);
+        if (invitedEl) invitedEl.textContent = String(inv);
+        if (paidEl) paidEl.textContent = String(paid);
+        if (accruedEl) {
+          accruedEl.textContent = `${Math.round(cents / 100).toLocaleString('ru-RU')}\u00a0₽`;
+        }
+      } catch {
+        setErr('Не удалось загрузить данные. Обновите страницу.');
       }
     }
 
@@ -6393,6 +6452,61 @@ if (platformMount) {
     // Since we already have `onAction` above, we handle actions via ShadowRoot click hooks:
     shell.shadowRoot.addEventListener('click', (ev) => {
       const t = ev.target as HTMLElement | null;
+
+      const refCopy = t?.closest('[data-ep-referral-copy]') as HTMLElement | null;
+      if (refCopy) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const link = expertReferralShareLink.trim();
+        if (!link) {
+          window.alert('Ссылка ещё не загружена. Откройте раздел «Реферальная программа» снова.');
+          return;
+        }
+        void (async () => {
+          const ok = await copyText(link);
+          window.alert(ok ? 'Ссылка скопирована.' : 'Не удалось скопировать.');
+        })();
+        return;
+      }
+      const refShare = t?.closest('[data-ep-referral-share]') as HTMLElement | null;
+      if (refShare) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const link = expertReferralShareLink.trim();
+        if (!link) {
+          window.alert('Ссылка ещё не загружена.');
+          return;
+        }
+        const title = 'Реферальная программа EDIFY';
+        const text = 'Регистрируйтесь по моей ссылке';
+        if (typeof navigator.share === 'function') {
+          void navigator
+            .share({ title, text, url: link })
+            .catch(async () => {
+              const ok = await copyText(link);
+              window.alert(ok ? 'Ссылка скопирована.' : 'Не удалось поделиться или скопировать.');
+            });
+        } else {
+          void (async () => {
+            const ok = await copyText(link);
+            window.alert(ok ? 'Ссылка скопирована — вставьте в мессенджер или почту.' : 'Не удалось скопировать.');
+          })();
+        }
+        return;
+      }
+      const refQr = t?.closest('[data-ep-referral-qr]') as HTMLElement | null;
+      if (refQr) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const link = expertReferralShareLink.trim();
+        if (!link) {
+          window.alert('Ссылка ещё не загружена.');
+          return;
+        }
+        const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(link)}`;
+        window.open(qrImg, '_blank', 'noopener,noreferrer');
+        return;
+      }
 
       const eStF = t?.closest?.('[data-ep-e-students-filter]') as HTMLElement | null;
       const eStI = t?.closest?.('[data-ep-e-students-invite]') as HTMLElement | null;

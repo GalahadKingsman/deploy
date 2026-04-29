@@ -19,3 +19,17 @@ export function getTelegramBotUsername(): string {
   }
   return '';
 }
+
+/**
+ * Базовый URL веб-приложения / мини-аппа, где в `main.tsx` сохраняется `?ref=` (реферальная ссылка).
+ * Переопределение: `VITE_REFERRAL_APP_BASE_URL` или `<meta name="edify-referral-app-base" content="https://…">`.
+ */
+export function getReferralAppBaseUrl(): string {
+  const fromEnv = import.meta.env.VITE_REFERRAL_APP_BASE_URL;
+  if (typeof fromEnv === 'string' && fromEnv.trim()) return fromEnv.trim().replace(/\/$/, '');
+  if (typeof document !== 'undefined') {
+    const m = document.querySelector('meta[name="edify-referral-app-base"]')?.getAttribute('content');
+    if (typeof m === 'string' && m.trim()) return m.trim().replace(/\/$/, '');
+  }
+  return 'https://app.edify.su';
+}

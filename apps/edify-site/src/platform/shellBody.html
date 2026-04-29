@@ -782,20 +782,25 @@
       <div class="sec-title">Ваша реферальная ссылка</div>
       <div class="card" style="padding:20px">
         <div style="font-family:var(--fm);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:6px">Ваш код</div>
-        <div style="font-family:var(--fm);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:12px;letter-spacing:.04em">REF-L29NICIN</div>
-        <div style="background:var(--bg);border:1px solid var(--al);border-radius:8px;padding:10px 14px;font-family:var(--fm);font-size:11px;color:var(--a);display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <span>https://app.edify.su/?ref=REF-L29NICIN</span>
-          <button class="btn btn-ghost btn-sm" style="color:var(--a)">Копировать</button>
+        <div
+          data-ep-referral-code
+          style="font-family:var(--fm);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:12px;letter-spacing:.04em"
+        >
+          …
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--al);border-radius:8px;padding:10px 14px;font-family:var(--fm);font-size:11px;color:var(--a);display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
+          <span data-ep-referral-link-text style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="">…</span>
+          <button type="button" class="btn btn-ghost btn-sm" style="color:var(--a);flex-shrink:0" data-ep-referral-copy>Копировать</button>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-primary btn-sm" style="flex:1;justify-content:center">Поделиться</button>
-          <button class="btn btn-outline btn-sm">QR-код</button>
+          <button type="button" class="btn btn-primary btn-sm" style="flex:1;justify-content:center" data-ep-referral-share>Поделиться</button>
+          <button type="button" class="btn btn-outline btn-sm" data-ep-referral-qr>QR-код</button>
         </div>
       </div>
       <div class="stats-row stats-3" style="margin-top:16px">
-        <div class="stat-card"><div class="num a">3</div><div class="lbl">Приглашено</div></div>
-        <div class="stat-card"><div class="num ok">1</div><div class="lbl">Оплатили</div></div>
-        <div class="stat-card"><div class="num">490 ₽</div><div class="lbl">Начислено</div></div>
+        <div class="stat-card"><div class="num a" data-ep-referral-stat-invited>—</div><div class="lbl">Приглашено</div></div>
+        <div class="stat-card"><div class="num ok" data-ep-referral-stat-paid>—</div><div class="lbl">Оплатили</div></div>
+        <div class="stat-card"><div class="num" data-ep-referral-stat-accrued>—</div><div class="lbl">Начислено</div></div>
       </div>
     </div>
     <div>
@@ -985,7 +990,7 @@
           ></div>
         </div>
         <div style="color:var(--t3);font-size:12px;line-height:1.7">
-          После зачисления откроется первый урок. Следующие уроки будут открываться после проверки домашних заданий экспертом.
+          После зачисления курс появится в разделе "Мои курсы" и вы сможете начать его изучение.
         </div>
       </div>
     </div>
