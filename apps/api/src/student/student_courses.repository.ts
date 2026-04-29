@@ -46,9 +46,9 @@ export class StudentCoursesRepository {
         `
         SELECT 1 AS ok
         FROM information_schema.columns
-        WHERE table_schema = current_schema()::text
-          AND table_name = 'courses'
+        WHERE table_name = 'courses'
           AND column_name = 'author_display_name'
+          AND table_schema IN ('public', current_schema()::text)
         LIMIT 1
         `,
       );
