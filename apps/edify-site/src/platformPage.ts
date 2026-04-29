@@ -2356,6 +2356,11 @@ if (platformMount) {
       const myCoursesBadge = root.querySelector('[data-ep-student-badge-mycourses]') as HTMLElement | null;
       const hwBadge = root.querySelector('[data-ep-student-badge-homework]') as HTMLElement | null;
 
+      const setActiveCoursesCount = (count: number): void => {
+        const profileNum = root.querySelector('[data-ep-profile-active-courses]') as HTMLElement | null;
+        if (profileNum) profileNum.textContent = String(count);
+      };
+
       try {
         const data = await fetchJson<MyCoursesResponseV1>('/me/courses', token);
         const n = (data.items ?? []).length;
@@ -2368,6 +2373,7 @@ if (platformMount) {
             myCoursesBadge.style.display = 'none';
           }
         }
+        setActiveCoursesCount(n);
       } catch {
         /* ignore */
       }
@@ -2562,6 +2568,9 @@ if (platformMount) {
 
       const sub = screen?.querySelector('.page-sub');
       if (sub) sub.textContent = `${items.length} активных курса`;
+
+      const profileNum = root.querySelector('[data-ep-profile-active-courses]') as HTMLElement | null;
+      if (profileNum) profileNum.textContent = String((data.items ?? []).length);
     }
 
     function pluralRu(n: number, forms: readonly [string, string, string]): string {
