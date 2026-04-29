@@ -92,10 +92,33 @@ function mapDashboardRow(row: CourseDashboardSqlRow): ContractsV1.ExpertCourseDa
 }
 
 export class CoursesRepository {
+  private coursesAuthorDisplayColumnExists: boolean | null = null;
+
   constructor(
     private readonly pool: Pool | null,
     private readonly expertsRepository: ExpertsRepository,
   ) {}
+
+  private async coursesHasAuthorDisplayColumn(): Promise<boolean> {
+    if (!this.pool) return false;
+    if (this.coursesAuthorDisplayColumnExists !== null) return this.coursesAuthorDisplayColumnExists;
+    try {
+      const res = await this.pool.query<{ ok: number }>(
+        `
+        SELECT 1 AS ok
+        FROM information_schema.columns
+        WHERE table_schema = current_schema()::text
+          AND table_name = 'courses'
+          AND column_name = 'author_display_name'
+        LIMIT 1
+        `,
+      );
+      this.coursesAuthorDisplayColumnExists = res.rows.length > 0;
+    } catch {
+      this.coursesAuthorDisplayColumnExists = false;
+    }
+    return this.coursesAuthorDisplayColumnExists;
+  }
 
   async assertModuleBelongsToExpert(params: {
     expertId: string;
@@ -460,7 +483,7 @@ export class CoursesRepository {
       throw new NotFoundException({ code: ErrorCodes.COURSE_NOT_FOUND, message: 'Course not found' });
     }
 
-    if (params.patch.authorDisplayName !== undefined) {
+    if (params.patch.authorDisplayName !== undefined && (await this.coursesHasAuthorDisplayColumn())) {
       const next = trimAuthorDisplayName(params.patch.authorDisplayName ?? null);
       await this.pool.query(
         `UPDATE courses SET author_display_name = $3, updated_at = NOW() WHERE id = $1 AND expert_id = $2`,

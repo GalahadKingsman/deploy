@@ -2560,7 +2560,6 @@ if (platformMount) {
       const screen = root.getElementById('screen-s-catalog');
       const grid = screen?.querySelector('.grid3');
       if (!grid) return;
-      grid.replaceChildren();
 
       const q = (params?.q ?? '').trim();
       const topic = (params?.topic ?? null) || null;
@@ -2568,8 +2567,24 @@ if (platformMount) {
       if (q) qs.set('q', q);
       if (topic) qs.set('topic', topic);
       const path = qs.toString() ? `/library?${qs.toString()}` : '/library';
-      const data = await fetchJson<LibraryResponseV1>(path);
+      let data: LibraryResponseV1;
+      try {
+        data = await fetchJson<LibraryResponseV1>(path);
+      } catch {
+        grid.replaceChildren();
+        const err = document.createElement('div');
+        err.className = 'card';
+        err.style.padding = '18px';
+        err.style.color = 'var(--t3)';
+        err.style.fontSize = '13px';
+        err.style.lineHeight = '1.55';
+        err.textContent = 'Не удалось загрузить каталог. Обновите страницу или попробуйте позже.';
+        grid.appendChild(err);
+        return;
+      }
+
       const courses = (data.courses ?? []).slice(0, 12);
+      grid.replaceChildren();
       if (courses.length === 0) {
         const empty = document.createElement('div');
         empty.className = 'card';
@@ -2593,17 +2608,32 @@ if (platformMount) {
       const screen = root.getElementById('screen-s-mycourses');
       const grid = screen?.querySelector('.grid3');
       if (!grid) return;
-      grid.replaceChildren();
 
       const token = getAccessToken();
-      const data = await fetchJson<MyCoursesResponseV1>('/me/courses', token ?? undefined);
+      let data: MyCoursesResponseV1;
+      try {
+        data = await fetchJson<MyCoursesResponseV1>('/me/courses', token ?? undefined);
+      } catch {
+        grid.replaceChildren();
+        const err = document.createElement('div');
+        err.className = 'card';
+        err.style.padding = '18px';
+        err.style.color = 'var(--t3)';
+        err.style.fontSize = '13px';
+        err.style.lineHeight = '1.55';
+        err.textContent = 'Не удалось загрузить «Мои курсы». Обновите страницу или попробуйте позже.';
+        grid.appendChild(err);
+        return;
+      }
+
       const items = (data.items ?? []).slice(0, 12);
       myCourseIds.clear();
       (data.items ?? []).forEach((it) => myCourseIds.add(it.course.id));
+      grid.replaceChildren();
       items.forEach((it) => grid.appendChild(renderMyCourseCard(it)));
 
       const sub = screen?.querySelector('.page-sub');
-      if (sub) sub.textContent = `${items.length} активных курса`;
+      if (sub) sub.textContent = `${pluralRu(items.length, ['активный курс', 'активных курса', 'активных курсов'])}`;
 
       const profileNum = root.querySelector('[data-ep-profile-active-courses]') as HTMLElement | null;
       if (profileNum) profileNum.textContent = String((data.items ?? []).length);

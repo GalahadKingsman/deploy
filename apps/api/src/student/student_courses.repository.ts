@@ -33,7 +33,31 @@ interface LessonRow {
 }
 
 export class StudentCoursesRepository {
+  /** When null, not yet probed. Lets API run before migration `031_course_author_display_name` is applied. */
+  private coursesAuthorDisplayColumnExists: boolean | null = null;
+
   constructor(private readonly pool: Pool | null) {}
+
+  private async coursesHasAuthorDisplayColumn(): Promise<boolean> {
+    if (!this.pool) return false;
+    if (this.coursesAuthorDisplayColumnExists !== null) return this.coursesAuthorDisplayColumnExists;
+    try {
+      const res = await this.pool.query<{ ok: number }>(
+        `
+        SELECT 1 AS ok
+        FROM information_schema.columns
+        WHERE table_schema = current_schema()::text
+          AND table_name = 'courses'
+          AND column_name = 'author_display_name'
+        LIMIT 1
+        `,
+      );
+      this.coursesAuthorDisplayColumnExists = res.rows.length > 0;
+    } catch {
+      this.coursesAuthorDisplayColumnExists = false;
+    }
+    return this.coursesAuthorDisplayColumnExists;
+  }
 
   async listLibrary(params?: {
     q?: string;
@@ -72,9 +96,12 @@ export class StudentCoursesRepository {
         i += 1;
       }
     }
+    const authorCol = (await this.coursesHasAuthorDisplayColumn())
+      ? 'c.author_display_name'
+      : 'NULL::text AS author_display_name';
     const res = await this.pool.query<CourseRow>(
       `
-      SELECT c.id, c.title, c.description, c.cover_url, c.author_display_name, c.price_cents, c.currency, c.updated_at, c.status, c.visibility
+      SELECT c.id, c.title, c.description, c.cover_url, ${authorCol}, c.price_cents, c.currency, c.updated_at, c.status, c.visibility
       FROM courses c
       WHERE ${where.join(' AND ')}
       ORDER BY c.updated_at DESC
@@ -101,9 +128,12 @@ export class StudentCoursesRepository {
 
   async getCourse(courseId: string): Promise<ContractsV1.CourseV1 | null> {
     if (!this.pool) return null;
+    const authorCol = (await this.coursesHasAuthorDisplayColumn())
+      ? 'author_display_name'
+      : 'NULL::text AS author_display_name';
     const res = await this.pool.query<CourseRow>(
       `
-      SELECT id, title, description, cover_url, author_display_name, price_cents, currency, updated_at, status, visibility, lesson_access_mode
+      SELECT id, title, description, cover_url, ${authorCol}, price_cents, currency, updated_at, status, visibility, lesson_access_mode
       FROM courses
       WHERE id = $1 AND deleted_at IS NULL
       LIMIT 1
