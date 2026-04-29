@@ -40,6 +40,7 @@ const MIGRATION_LIST = [
   '028_lesson_access_and_hidden',
   '029_lesson_presentation',
   '030_lesson_material_files',
+  '031_course_author_display_name',
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {
