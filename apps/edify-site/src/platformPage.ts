@@ -4924,6 +4924,77 @@ if (platformMount) {
       if (pr) pr.style.display = 'none';
       const iframe = root.querySelector('[data-ep-lesson-preview-video-iframe]') as HTMLIFrameElement | null;
       if (iframe) iframe.src = 'about:blank';
+      const matsCard = root.querySelector('[data-ep-lesson-preview-materials]') as HTMLElement | null;
+      const matsList = root.querySelector('[data-ep-lesson-preview-materials-list]') as HTMLElement | null;
+      if (matsCard) matsCard.style.display = 'none';
+      if (matsList) matsList.replaceChildren();
+    }
+
+    async function hydratePreviewLessonMaterials(root: ShadowRoot, lessonId: string): Promise<void> {
+      const card = root.querySelector('[data-ep-lesson-preview-materials]') as HTMLElement | null;
+      const list = root.querySelector('[data-ep-lesson-preview-materials-list]') as HTMLElement | null;
+      if (!card || !list) return;
+      list.replaceChildren();
+      const token = getAccessToken();
+      const eid = await resolveBuilderExpertId();
+      if (!token || !eid) {
+        card.style.display = 'none';
+        return;
+      }
+      try {
+        const m = await fetchJson<{ items?: any[] }>(
+          `/experts/${encodeURIComponent(eid)}/lessons/${encodeURIComponent(lessonId)}/materials`,
+          token,
+        );
+        const items = (Array.isArray(m.items) ? m.items : [])
+          .map((x) => ({
+            fileKey: String(x?.fileKey ?? '').trim(),
+            filename: String(x?.filename ?? '').trim(),
+            sizeBytes: typeof x?.sizeBytes === 'number' ? x.sizeBytes : x?.sizeBytes == null ? null : Number(x.sizeBytes),
+          }))
+          .filter((x) => x.fileKey && x.filename);
+        if (!items.length) {
+          card.style.display = 'none';
+          return;
+        }
+        card.style.display = '';
+        for (const f of items) {
+          const row = document.createElement('div');
+          row.className = 'material-row';
+          row.style.cursor = 'pointer';
+          row.dataset.epLessonMaterialOpen = '1';
+          row.dataset.epLessonMaterialKey = f.fileKey;
+          row.dataset.epLessonMaterialName = encodeURIComponent(f.filename);
+
+          const ico = document.createElement('div');
+          ico.className = 'mat-ico';
+          ico.style.background = 'rgba(10,168,200,.08)';
+          ico.textContent = '📎';
+
+          const body = document.createElement('div');
+          body.style.flex = '1';
+          const nameEl = document.createElement('div');
+          nameEl.className = 'mat-name';
+          nameEl.textContent = f.filename;
+          const metaEl = document.createElement('div');
+          metaEl.className = 'mat-meta';
+          metaEl.textContent = f.sizeBytes ? `${Math.round(f.sizeBytes / 1024)} КБ` : 'Файл';
+          body.append(nameEl, metaEl);
+
+          const btn = document.createElement('button');
+          btn.className = 'btn btn-outline btn-sm';
+          btn.type = 'button';
+          btn.textContent = '⬇ Скачать';
+          btn.dataset.epLessonMaterialDownload = '1';
+          btn.dataset.epLessonMaterialKey = f.fileKey;
+          btn.dataset.epLessonMaterialName = encodeURIComponent(f.filename);
+
+          row.append(ico, body, btn);
+          list.appendChild(row);
+        }
+      } catch {
+        card.style.display = 'none';
+      }
     }
 
     function setPreviewFiles(root: ShadowRoot, files: { filename: string }[]): void {
@@ -4996,6 +5067,8 @@ if (platformMount) {
       const hwBody = root.querySelector('[data-ep-lesson-preview-hw-body]') as HTMLElement | null;
       const hwEmpty = root.querySelector('[data-ep-lesson-preview-hw-empty]') as HTMLElement | null;
       const hwTag = root.querySelector('[data-ep-lesson-preview-hw-tag]') as HTMLElement | null;
+      const matsPrevCard = root.querySelector('[data-ep-lesson-preview-materials]') as HTMLElement | null;
+      const matsPrevList = root.querySelector('[data-ep-lesson-preview-materials-list]') as HTMLElement | null;
 
       const titleInp = root.querySelector('[data-ep-builder-lesson-title]') as HTMLInputElement | null;
       const rutubeInp = root.querySelector('[data-ep-builder-rutube]') as HTMLInputElement | null;
@@ -5013,6 +5086,8 @@ if (platformMount) {
         if (hwEmpty) hwEmpty.style.display = '';
         if (hwTag) hwTag.textContent = 'не заполнено';
         setPreviewFiles(root, []);
+        if (matsPrevCard) matsPrevCard.style.display = 'none';
+        if (matsPrevList) matsPrevList.replaceChildren();
         return;
       }
       if (empty) empty.style.display = 'none';
@@ -5131,6 +5206,8 @@ if (platformMount) {
           setPreviewFiles(root, []);
         }
       }
+
+      await hydratePreviewLessonMaterials(root, builderSelectedLessonId);
     }
 
     function sliderImageSrc(key: string): string {
