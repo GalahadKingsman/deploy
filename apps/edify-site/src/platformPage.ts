@@ -893,12 +893,20 @@ if (platformMount) {
       titleWrap.appendChild(title);
 
       const hwN = Math.max(0, Number(params.homeworkSubmittedCount ?? 0) || 0);
-      const hw = document.createElement('div');
-      hw.style.marginTop = '4px';
+      const hw = document.createElement('span');
+      hw.className = 'tag';
+      hw.style.display = 'inline-flex';
+      hw.style.alignItems = 'center';
+      hw.style.gap = '6px';
+      hw.style.marginTop = '6px';
       hw.style.fontSize = '10px';
+      hw.style.padding = '4px 8px';
+      hw.style.borderRadius = '999px';
+      hw.style.background = 'var(--bg2)';
+      hw.style.border = '1px solid var(--line)';
+      hw.style.color = 'var(--t2)';
       hw.style.fontFamily = 'var(--fm)';
-      hw.style.color = 'var(--t3)';
-      hw.textContent = `${hwN} ДЗ сдано`;
+      hw.innerHTML = `<span aria-hidden="true" style="opacity:.75">📝</span><span>${hwN} ДЗ сдано</span>`;
       titleWrap.appendChild(hw);
 
       left.append(avatar, titleWrap);
