@@ -99,6 +99,7 @@ if (platformMount) {
       coverUrl?: string | null;
       authorName?: string | null;
       enrollmentContactUrl?: string | null;
+      estimatedCompletionHours?: number | null;
       modulesCount?: number;
       lessonsCount?: number;
       priceCents?: number;
@@ -162,6 +163,24 @@ if (platformMount) {
       } catch {
         return false;
       }
+    }
+
+    function parseEstimatedCompletionHoursInput(
+      raw: string,
+    ): { ok: true; value: number | null } | { ok: false; message: string } {
+      const s = raw.trim();
+      if (!s) return { ok: true, value: null };
+      if (!/^\d+$/.test(s)) {
+        return { ok: false, message: 'Время прохождения: только целые цифры, без пробелов и букв.' };
+      }
+      if (s.length > 1 && s.startsWith('0')) {
+        return { ok: false, message: 'Время прохождения: число не должно начинаться с 0.' };
+      }
+      const n = parseInt(s, 10);
+      if (!Number.isFinite(n) || n < 1 || n > 8760) {
+        return { ok: false, message: 'Время прохождения: укажите от 1 до 8760 часов.' };
+      }
+      return { ok: true, value: n };
     }
 
     function initialsFromTitle(title: string): string {
@@ -510,6 +529,7 @@ if (platformMount) {
       lessonAccessMode?: 'sequential' | 'open';
       authorDisplayName?: string | null;
       enrollmentContactUrl?: string | null;
+      estimatedCompletionHours?: number | null;
     };
     let builderCourseDetail: BuilderCourseDetailV1 | null = null;
     type BuilderTopicV1 = { id: string; title: string };
@@ -6040,10 +6060,16 @@ if (platformMount) {
         const lessonAccSel = root.querySelector('[data-ep-course-lesson-access]') as HTMLSelectElement | null;
         const authorInp = root.querySelector('[data-ep-course-author-display]') as HTMLInputElement | null;
         const enrollUrlInp = root.querySelector('[data-ep-course-enrollment-url]') as HTMLInputElement | null;
+        const completionHoursInp = root.querySelector('[data-ep-course-completion-hours]') as HTMLInputElement | null;
         if (titleInp) titleInp.value = course.title ?? '';
         if (descTa) descTa.value = (course.description ?? '').trim();
         if (authorInp) authorInp.value = (course.authorDisplayName ?? '').trim();
         if (enrollUrlInp) enrollUrlInp.value = (course.enrollmentContactUrl ?? '').trim();
+        if (completionHoursInp) {
+          const h = course.estimatedCompletionHours;
+          completionHoursInp.value =
+            typeof h === 'number' && Number.isFinite(h) && h >= 1 ? String(Math.trunc(h)) : '';
+        }
         if (visSel) visSel.value = (course.visibility ?? 'private') === 'public' ? 'public' : 'private';
         if (coverInp) coverInp.value = (course.coverUrl ?? '').trim();
         if (lessonAccSel) {
@@ -6101,6 +6127,7 @@ if (platformMount) {
       const lessonAccSel = root.querySelector('[data-ep-course-lesson-access]') as HTMLSelectElement | null;
       const authorInp = root.querySelector('[data-ep-course-author-display]') as HTMLInputElement | null;
       const enrollUrlInp = root.querySelector('[data-ep-course-enrollment-url]') as HTMLInputElement | null;
+      const completionHoursInp = root.querySelector('[data-ep-course-completion-hours]') as HTMLInputElement | null;
       const title = (titleInp?.value ?? '').trim();
       if (!title) {
         window.alert('Укажите название курса.');
@@ -6119,6 +6146,11 @@ if (platformMount) {
         return;
       }
       const enrollmentContactUrl = enrollmentContactUrlRaw ? enrollmentContactUrlRaw : null;
+      const hoursParsed = parseEstimatedCompletionHoursInput(completionHoursInp?.value ?? '');
+      if (!hoursParsed.ok) {
+        window.alert(hoursParsed.message);
+        return;
+      }
       try {
         const updated = await patchJson<BuilderCourseDetailV1>(
           `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}`,
@@ -6130,6 +6162,7 @@ if (platformMount) {
             lessonAccessMode,
             authorDisplayName: authorDisplayName ? authorDisplayName : null,
             enrollmentContactUrl,
+            estimatedCompletionHours: hoursParsed.value,
           },
           token,
         );
@@ -6298,10 +6331,15 @@ if (platformMount) {
           subEl.textContent = parts.length > 0 ? parts.join(' · ') : 'Структура курса уточняется';
         }
       }
-      const modCountEl = screen.querySelector('[data-ep-course-preview-modules]') as HTMLElement | null;
-      if (modCountEl) modCountEl.textContent = `Модулей: ${modulesCount}`;
-      const lesCountEl = screen.querySelector('[data-ep-course-preview-lessons]') as HTMLElement | null;
-      if (lesCountEl) lesCountEl.textContent = `Уроков: ${lessonsCount}`;
+      const lesStat = screen.querySelector('[data-ep-course-preview-stat-lessons]') as HTMLElement | null;
+      if (lesStat) lesStat.textContent = String(lessonsCount);
+      const modStat = screen.querySelector('[data-ep-course-preview-stat-modules]') as HTMLElement | null;
+      if (modStat) modStat.textContent = String(modulesCount);
+      const hrsRaw = course.estimatedCompletionHours;
+      const hNum =
+        typeof hrsRaw === 'number' && Number.isFinite(hrsRaw) && hrsRaw >= 1 ? Math.min(8760, Math.trunc(hrsRaw)) : null;
+      const hrsEl = screen.querySelector('[data-ep-course-preview-stat-hours]') as HTMLElement | null;
+      if (hrsEl) hrsEl.textContent = hNum != null ? `${hNum}\u00a0ч` : '—';
 
       const coverHost = screen.querySelector('[data-ep-course-preview-cover]') as HTMLElement | null;
       const initials = screen.querySelector('[data-ep-course-preview-initials]') as HTMLElement | null;

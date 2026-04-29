@@ -52,6 +52,8 @@ export interface ExpertCourseV1 {
   authorDisplayName?: string | null;
   /** Ссылка для записи (кнопка «Записаться» в превью курса для студента). */
   enrollmentContactUrl?: string | null;
+  /** Время прохождения курса в часах (для превью). */
+  estimatedCompletionHours?: number | null;
   publishedAt?: IsoDateTime | null;
   deletedAt?: IsoDateTime | null;
   createdAt: IsoDateTime;
@@ -71,6 +73,7 @@ export const ExpertCourseV1Schema = z.object({
   lessonAccessMode: CourseLessonAccessModeV1Schema,
   authorDisplayName: z.string().max(240).nullable().optional(),
   enrollmentContactUrl: z.string().max(ENROLLMENT_CONTACT_URL_MAX_LEN).nullable().optional(),
+  estimatedCompletionHours: z.number().int().min(1).max(8760).nullable().optional(),
   publishedAt: z.string().nullable().optional(),
   deletedAt: z.string().nullable().optional(),
   createdAt: z.string(),
@@ -142,7 +145,30 @@ export interface UpdateExpertCourseRequestV1 {
   lessonAccessMode?: CourseLessonAccessModeV1;
   authorDisplayName?: string | null;
   enrollmentContactUrl?: string | null;
+  estimatedCompletionHours?: number | null;
 }
+
+const estimatedCompletionHoursPatchSchema = z
+  .union([z.number(), z.null()])
+  .optional()
+  .superRefine((val, ctx) => {
+    if (val === undefined) return;
+    if (val === null) return;
+    if (typeof val === 'number' && !Number.isInteger(val)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Укажите целое число часов от 1 до 8760',
+      });
+      return;
+    }
+    const n = typeof val === 'number' && Number.isFinite(val) ? Math.trunc(val) : NaN;
+    if (!Number.isFinite(n) || n < 1 || n > 8760) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Укажите целое число часов от 1 до 8760 без ведущего нуля',
+      });
+    }
+  });
 
 const enrollmentContactUrlPatchSchema = z
   .union([z.string(), z.null()])
@@ -179,5 +205,6 @@ export const UpdateExpertCourseRequestV1Schema = z.object({
   lessonAccessMode: CourseLessonAccessModeV1Schema.optional(),
   authorDisplayName: z.string().max(240).nullable().optional(),
   enrollmentContactUrl: enrollmentContactUrlPatchSchema,
+  estimatedCompletionHours: estimatedCompletionHoursPatchSchema,
 });
 

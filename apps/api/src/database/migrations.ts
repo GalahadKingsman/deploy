@@ -42,6 +42,7 @@ const MIGRATION_LIST = [
   '030_lesson_material_files',
   '031_course_author_display_name',
   '032_course_enrollment_contact_url',
+  '033_course_estimated_completion_hours',
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

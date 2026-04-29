@@ -6,6 +6,24 @@ import { ContractsV1 } from '@tracked/shared';
 import { useTopics, useCourseTopics, useSetCourseTopics } from '../shared/queries/useTopics.js';
 import { ApiClientError } from '../shared/api/errors.js';
 
+function parseEstimatedCompletionHoursInput(
+  raw: string,
+): { ok: true; value: number | null } | { ok: false; message: string } {
+  const s = raw.trim();
+  if (!s) return { ok: true, value: null };
+  if (!/^\d+$/.test(s)) {
+    return { ok: false, message: 'Только целые цифры, без пробелов и букв.' };
+  }
+  if (s.length > 1 && s.startsWith('0')) {
+    return { ok: false, message: 'Число не должно начинаться с 0.' };
+  }
+  const n = parseInt(s, 10);
+  if (!Number.isFinite(n) || n < 1 || n > 8760) {
+    return { ok: false, message: 'Укажите от 1 до 8760 часов.' };
+  }
+  return { ok: true, value: n };
+}
+
 export function ExpertCourseEditorPage() {
   const toast = useToast();
   const navigate = useNavigate();
@@ -17,6 +35,7 @@ export function ExpertCourseEditorPage() {
   const [coverUrl, setCoverUrl] = React.useState<string>('');
   const [authorDisplayName, setAuthorDisplayName] = React.useState('');
   const [enrollmentContactUrl, setEnrollmentContactUrl] = React.useState('');
+  const [estimatedCompletionHours, setEstimatedCompletionHours] = React.useState('');
   const [coverFile, setCoverFile] = React.useState<File | null>(null);
   const [coverUploading, setCoverUploading] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
@@ -60,6 +79,10 @@ export function ExpertCourseEditorPage() {
         setCoverUrl((c.coverUrl ?? '') || '');
         setAuthorDisplayName((c.authorDisplayName ?? '').trim());
         setEnrollmentContactUrl((c.enrollmentContactUrl ?? '').trim());
+        const h = c.estimatedCompletionHours;
+        setEstimatedCompletionHours(
+          typeof h === 'number' && Number.isFinite(h) && h >= 1 ? String(Math.trunc(h)) : '',
+        );
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -81,6 +104,15 @@ export function ExpertCourseEditorPage() {
       });
       return;
     }
+    const hoursParsed = parseEstimatedCompletionHoursInput(estimatedCompletionHours);
+    if (!hoursParsed.ok) {
+      toast.show({
+        title: 'Время прохождения',
+        message: hoursParsed.message,
+        variant: 'error',
+      });
+      return;
+    }
     setSaving(true);
     try {
       const updated = await fetchJson<ContractsV1.ExpertCourseV1>({
@@ -94,6 +126,7 @@ export function ExpertCourseEditorPage() {
           lessonAccessMode,
           authorDisplayName: authorDisplayName.trim() ? authorDisplayName.trim() : null,
           enrollmentContactUrl: encUrl ? encUrl : null,
+          estimatedCompletionHours: hoursParsed.value,
         },
       });
       setCourse(updated);
@@ -219,6 +252,14 @@ export function ExpertCourseEditorPage() {
             onChange={(e) => setEnrollmentContactUrl(e.target.value)}
             placeholder="https://t.me/… или tg:resolve?domain=…"
             hint="Откроется по кнопке «Записаться» в карточке курса. Разрешены http(s), tg: и mailto:."
+          />
+          <Input
+            label="Укажите время прохождения курса в часах"
+            value={estimatedCompletionHours}
+            onChange={(e) => setEstimatedCompletionHours(e.target.value)}
+            placeholder="Например: 12"
+            inputMode="numeric"
+            hint="Только целое число от 1 до 8760, без ведущего нуля. В превью отобразится как «12 ч»."
           />
           <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div style={{ flex: '1 1 220px' }}>

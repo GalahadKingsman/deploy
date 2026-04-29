@@ -21,6 +21,8 @@ export interface CourseV1 {
   lessonsCount?: number;
   /** Число опубликованных модулей (для карточки курса / превью). */
   modulesCount?: number;
+  /** Оценка времени прохождения курса (часы), задаётся экспертом. */
+  estimatedCompletionHours?: number | null;
   updatedAt: IsoDateTime;
   status?: 'draft' | 'published' | 'archived';
   visibility?: 'private' | 'public';
@@ -42,6 +44,7 @@ export const CourseV1Schema = z.object({
   currency: z.string().min(1).optional(),
   lessonsCount: z.number().int().min(0).optional(),
   modulesCount: z.number().int().min(0).optional(),
+  estimatedCompletionHours: z.number().int().min(1).max(8760).nullable().optional(),
   updatedAt: z.string(),
   status: z.enum(['draft', 'published', 'archived']).optional(),
   visibility: z.enum(['private', 'public']).optional(),

@@ -8,6 +8,7 @@ interface CourseRow {
   cover_url: string | null;
   author_display_name?: string | null;
   enrollment_contact_url?: string | null;
+  estimated_completion_hours?: number | null;
   price_cents?: number | null;
   currency?: string | null;
   updated_at: Date;
@@ -28,6 +29,13 @@ function mapStudentEnrollmentContactUrl(raw: string | null | undefined): string 
   return ContractsV1.isEnrollmentContactUrlAllowed(t) ? t : null;
 }
 
+function hoursFromDbStudent(v: unknown): number | null {
+  if (v == null) return null;
+  const n = typeof v === 'number' ? Math.trunc(v) : parseInt(String(v), 10);
+  if (!Number.isFinite(n) || n < 1) return null;
+  return Math.min(n, 8760);
+}
+
 interface LessonRow {
   id: string;
   course_id: string;
@@ -42,12 +50,12 @@ interface LessonRow {
 
 export class StudentCoursesRepository {
   /** When null, not yet probed — до применения миграций с новыми колонками `courses`. */
-  private courseExtraColumns: { author: boolean; enrollment: boolean } | null = null;
+  private courseExtraColumns: { author: boolean; enrollment: boolean; duration: boolean } | null = null;
 
   constructor(private readonly pool: Pool | null) {}
 
-  private async resolveCourseExtraColumns(): Promise<{ author: boolean; enrollment: boolean }> {
-    if (!this.pool) return { author: false, enrollment: false };
+  private async resolveCourseExtraColumns(): Promise<{ author: boolean; enrollment: boolean; duration: boolean }> {
+    if (!this.pool) return { author: false, enrollment: false, duration: false };
     if (this.courseExtraColumns) return this.courseExtraColumns;
     try {
       const res = await this.pool.query<{ column_name: string }>(
@@ -55,7 +63,7 @@ export class StudentCoursesRepository {
         SELECT column_name
         FROM information_schema.columns
         WHERE table_name = 'courses'
-          AND column_name IN ('author_display_name', 'enrollment_contact_url')
+          AND column_name IN ('author_display_name', 'enrollment_contact_url', 'estimated_completion_hours')
           AND table_schema IN ('public', current_schema()::text)
         `,
       );
@@ -63,9 +71,10 @@ export class StudentCoursesRepository {
       this.courseExtraColumns = {
         author: set.has('author_display_name'),
         enrollment: set.has('enrollment_contact_url'),
+        duration: set.has('estimated_completion_hours'),
       };
     } catch {
-      this.courseExtraColumns = { author: false, enrollment: false };
+      this.courseExtraColumns = { author: false, enrollment: false, duration: false };
     }
     return this.courseExtraColumns;
   }
@@ -143,9 +152,10 @@ export class StudentCoursesRepository {
     const cols = await this.resolveCourseExtraColumns();
     const authorCol = cols.author ? 'author_display_name' : 'NULL::text AS author_display_name';
     const enrollCol = cols.enrollment ? 'enrollment_contact_url' : 'NULL::text AS enrollment_contact_url';
+    const hoursCol = cols.duration ? 'estimated_completion_hours' : 'NULL::int AS estimated_completion_hours';
     const res = await this.pool.query<CourseRow>(
       `
-      SELECT id, title, description, cover_url, ${authorCol}, ${enrollCol}, price_cents, currency, updated_at, status, visibility, lesson_access_mode
+      SELECT id, title, description, cover_url, ${authorCol}, ${enrollCol}, ${hoursCol}, price_cents, currency, updated_at, status, visibility, lesson_access_mode
       FROM courses
       WHERE id = $1 AND deleted_at IS NULL
       LIMIT 1
@@ -162,6 +172,7 @@ export class StudentCoursesRepository {
       coverUrl: r.cover_url ?? null,
       authorName: mapStudentAuthorName(r.author_display_name ?? null),
       enrollmentContactUrl: mapStudentEnrollmentContactUrl(r.enrollment_contact_url ?? null),
+      estimatedCompletionHours: hoursFromDbStudent(r.estimated_completion_hours ?? null),
       priceCents: r.price_cents ?? 0,
       currency: r.currency ?? 'RUB',
       modulesCount,

@@ -258,6 +258,7 @@
 
 /* Stat cards row */
 .stats-row{display:grid;gap:12px;margin-bottom:20px}
+.stats-row.stats-2x2{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:12px}
 .stats-4{grid-template-columns:repeat(4,1fr)}
 .stats-3{grid-template-columns:repeat(3,1fr)}
 .stat-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:16px 18px;box-shadow:var(--sh)}

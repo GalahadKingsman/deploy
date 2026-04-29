@@ -14,6 +14,7 @@ interface CourseRow {
   cover_url: string | null;
   author_display_name?: string | null;
   enrollment_contact_url?: string | null;
+  estimated_completion_hours?: number | null;
   price_cents?: number | null;
   currency?: string | null;
   status: string;
@@ -37,6 +38,13 @@ function trimEnrollmentContactUrl(raw: string | null | undefined): string | null
   return ContractsV1.isEnrollmentContactUrlAllowed(t) ? t : null;
 }
 
+function hoursFromDb(v: unknown): number | null {
+  if (v == null) return null;
+  const n = typeof v === 'number' ? Math.trunc(v) : parseInt(String(v), 10);
+  if (!Number.isFinite(n) || n < 1) return null;
+  return Math.min(n, 8760);
+}
+
 function mapRow(row: CourseRow): ContractsV1.ExpertCourseV1 {
   const mode = row.lesson_access_mode;
   return {
@@ -47,6 +55,7 @@ function mapRow(row: CourseRow): ContractsV1.ExpertCourseV1 {
     coverUrl: row.cover_url ?? null,
     authorDisplayName: trimAuthorDisplayName(row.author_display_name ?? null),
     enrollmentContactUrl: trimEnrollmentContactUrl(row.enrollment_contact_url ?? null),
+    estimatedCompletionHours: hoursFromDb(row.estimated_completion_hours ?? null),
     priceCents: row.price_cents ?? 0,
     currency: row.currency ?? 'RUB',
     status: row.status as CourseStatus,
@@ -488,6 +497,22 @@ export class CoursesRepository {
       try {
         await this.pool.query(
           `UPDATE courses SET enrollment_contact_url = $3, updated_at = NOW() WHERE id = $1 AND expert_id = $2`,
+          [params.courseId, params.expertId, next],
+        );
+        needRefetch = true;
+      } catch (e: unknown) {
+        const code = typeof e === 'object' && e !== null && 'code' in e ? (e as { code?: string }).code : undefined;
+        if (code !== '42703') throw e;
+      }
+    }
+    if (params.patch.estimatedCompletionHours !== undefined) {
+      const next =
+        params.patch.estimatedCompletionHours === null
+          ? null
+          : Math.trunc(Number(params.patch.estimatedCompletionHours));
+      try {
+        await this.pool.query(
+          `UPDATE courses SET estimated_completion_hours = $3, updated_at = NOW() WHERE id = $1 AND expert_id = $2`,
           [params.courseId, params.expertId, next],
         );
         needRefetch = true;
