@@ -43,12 +43,15 @@ services:
     command: server /data --console-address ':9001'
     volumes:
       - minio_data:/data
+    ports:
+      - '${MINIO_PORT:-9000}:9000'
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
       interval: 5s
       timeout: 3s
       retries: 20
     restart: unless-stopped
+
   minio-init:
     image: minio/mc:latest
     depends_on:
@@ -64,7 +67,9 @@ services:
       - |
         mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" &&
         mc mb -p local/$$MINIO_BUCKET || true &&
-        mc anonymous set download local/$$MINIO_BUCKET || true
+        mc anonymous set download local/$$MINIO_BUCKET || true &&
+        printf '%s\n' '{"CORSRules":[{"AllowedOrigins":["*"],"AllowedMethods":["GET","PUT","POST","DELETE","HEAD"],"AllowedHeaders":["*"],"ExposeHeaders":["ETag","x-amz-request-id"],"MaxAgeSeconds":3600}]}' > /tmp/cors.json &&
+        mc cors set-json local/$$MINIO_BUCKET /tmp/cors.json || true
     restart: 'no'
 
   api:
@@ -74,7 +79,7 @@ services:
     environment:
       NODE_ENV: production
       API_PORT: ${API_PORT:-3001}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-tracked}:${POSTGRES_PASSWORD:-tracked_password}@postgres:5432/${POSTG>
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tracked}:${POSTGRES_PASSWORD:-tracked_password}@postgres:5432/${POSTGRES_DB:-tracked_lms}
       REDIS_URL: redis://redis:6379
       MIGRATIONS_DIR: /app/infra/migrations
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
@@ -96,6 +101,7 @@ services:
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-120}
       RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
       S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minio}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minio_password}
       S3_REGION: ${S3_REGION:-us-east-1}
