@@ -50,12 +50,12 @@ interface LessonRow {
 
 export class StudentCoursesRepository {
   /** When null, not yet probed — до применения миграций с новыми колонками `courses`. */
-  private courseExtraColumns: { author: boolean; enrollment: boolean; duration: boolean } | null = null;
+  private courseExtraColumns: { author: boolean; enrollment: boolean; duration: boolean; difficulty: boolean } | null = null;
 
   constructor(private readonly pool: Pool | null) {}
 
-  private async resolveCourseExtraColumns(): Promise<{ author: boolean; enrollment: boolean; duration: boolean }> {
-    if (!this.pool) return { author: false, enrollment: false, duration: false };
+  private async resolveCourseExtraColumns(): Promise<{ author: boolean; enrollment: boolean; duration: boolean; difficulty: boolean }> {
+    if (!this.pool) return { author: false, enrollment: false, duration: false, difficulty: false };
     if (this.courseExtraColumns) return this.courseExtraColumns;
     try {
       const res = await this.pool.query<{ column_name: string }>(
@@ -63,7 +63,7 @@ export class StudentCoursesRepository {
         SELECT column_name
         FROM information_schema.columns
         WHERE table_name = 'courses'
-          AND column_name IN ('author_display_name', 'enrollment_contact_url', 'estimated_completion_hours')
+          AND column_name IN ('author_display_name', 'enrollment_contact_url', 'estimated_completion_hours', 'difficulty_level')
           AND table_schema IN ('public', current_schema()::text)
         `,
       );
@@ -72,9 +72,10 @@ export class StudentCoursesRepository {
         author: set.has('author_display_name'),
         enrollment: set.has('enrollment_contact_url'),
         duration: set.has('estimated_completion_hours'),
+        difficulty: set.has('difficulty_level'),
       };
     } catch {
-      this.courseExtraColumns = { author: false, enrollment: false, duration: false };
+      this.courseExtraColumns = { author: false, enrollment: false, duration: false, difficulty: false };
     }
     return this.courseExtraColumns;
   }
@@ -119,9 +120,10 @@ export class StudentCoursesRepository {
     const cols = await this.resolveCourseExtraColumns();
     const authorCol = cols.author ? 'c.author_display_name' : 'NULL::text AS author_display_name';
     const enrollCol = cols.enrollment ? 'c.enrollment_contact_url' : 'NULL::text AS enrollment_contact_url';
+    const diffCol = cols.difficulty ? 'c.difficulty_level' : 'NULL::text AS difficulty_level';
     const res = await this.pool.query<CourseRow>(
       `
-      SELECT c.id, c.title, c.description, c.cover_url, ${authorCol}, ${enrollCol}, c.price_cents, c.currency, c.updated_at, c.status, c.visibility
+      SELECT c.id, c.title, c.description, c.cover_url, ${authorCol}, ${enrollCol}, ${diffCol}, c.price_cents, c.currency, c.updated_at, c.status, c.visibility
       FROM courses c
       WHERE ${where.join(' AND ')}
       ORDER BY c.updated_at DESC
@@ -136,6 +138,7 @@ export class StudentCoursesRepository {
       coverUrl: r.cover_url ?? null,
       authorName: mapStudentAuthorName(r.author_display_name ?? null),
       enrollmentContactUrl: mapStudentEnrollmentContactUrl(r.enrollment_contact_url ?? null),
+      difficultyLevel: (r as any).difficulty_level ?? null,
       priceCents: r.price_cents ?? 0,
       currency: r.currency ?? 'RUB',
       lessonsCount: undefined,
@@ -153,9 +156,10 @@ export class StudentCoursesRepository {
     const authorCol = cols.author ? 'author_display_name' : 'NULL::text AS author_display_name';
     const enrollCol = cols.enrollment ? 'enrollment_contact_url' : 'NULL::text AS enrollment_contact_url';
     const hoursCol = cols.duration ? 'estimated_completion_hours' : 'NULL::int AS estimated_completion_hours';
+    const diffCol = cols.difficulty ? 'difficulty_level' : 'NULL::text AS difficulty_level';
     const res = await this.pool.query<CourseRow>(
       `
-      SELECT id, title, description, cover_url, ${authorCol}, ${enrollCol}, ${hoursCol}, price_cents, currency, updated_at, status, visibility, lesson_access_mode
+      SELECT id, title, description, cover_url, ${authorCol}, ${enrollCol}, ${hoursCol}, ${diffCol}, price_cents, currency, updated_at, status, visibility, lesson_access_mode
       FROM courses
       WHERE id = $1 AND deleted_at IS NULL
       LIMIT 1
@@ -173,6 +177,7 @@ export class StudentCoursesRepository {
       authorName: mapStudentAuthorName(r.author_display_name ?? null),
       enrollmentContactUrl: mapStudentEnrollmentContactUrl(r.enrollment_contact_url ?? null),
       estimatedCompletionHours: hoursFromDbStudent(r.estimated_completion_hours ?? null),
+      difficultyLevel: (r as any).difficulty_level ?? null,
       priceCents: r.price_cents ?? 0,
       currency: r.currency ?? 'RUB',
       modulesCount,

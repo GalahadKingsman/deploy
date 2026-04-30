@@ -110,6 +110,7 @@ if (platformMount) {
       authorName?: string | null;
       enrollmentContactUrl?: string | null;
       estimatedCompletionHours?: number | null;
+      difficultyLevel?: 'easy' | 'medium' | 'hard' | null;
       modulesCount?: number;
       lessonsCount?: number;
       priceCents?: number;
@@ -596,6 +597,7 @@ if (platformMount) {
       authorDisplayName?: string | null;
       enrollmentContactUrl?: string | null;
       estimatedCompletionHours?: number | null;
+      difficultyLevel?: 'easy' | 'medium' | 'hard' | null;
     };
     let builderCourseDetail: BuilderCourseDetailV1 | null = null;
     type BuilderTopicV1 = { id: string; title: string };
@@ -6854,6 +6856,7 @@ if (platformMount) {
         const authorInp = root.querySelector('[data-ep-course-author-display]') as HTMLInputElement | null;
         const enrollUrlInp = root.querySelector('[data-ep-course-enrollment-url]') as HTMLInputElement | null;
         const completionHoursInp = root.querySelector('[data-ep-course-completion-hours]') as HTMLInputElement | null;
+        const diffSel = root.querySelector('[data-ep-course-difficulty]') as HTMLSelectElement | null;
         if (titleInp) titleInp.value = course.title ?? '';
         if (descTa) descTa.value = (course.description ?? '').trim();
         if (authorInp) authorInp.value = (course.authorDisplayName ?? '').trim();
@@ -6862,6 +6865,10 @@ if (platformMount) {
           const h = course.estimatedCompletionHours;
           completionHoursInp.value =
             typeof h === 'number' && Number.isFinite(h) && h >= 1 ? String(Math.trunc(h)) : '';
+        }
+        if (diffSel) {
+          const d = (course.difficultyLevel ?? '').trim() as any;
+          diffSel.value = d === 'easy' || d === 'medium' || d === 'hard' ? d : '';
         }
         if (visSel) visSel.value = (course.visibility ?? 'private') === 'public' ? 'public' : 'private';
         if (coverInp) coverInp.value = (course.coverUrl ?? '').trim();
@@ -6921,6 +6928,7 @@ if (platformMount) {
       const authorInp = root.querySelector('[data-ep-course-author-display]') as HTMLInputElement | null;
       const enrollUrlInp = root.querySelector('[data-ep-course-enrollment-url]') as HTMLInputElement | null;
       const completionHoursInp = root.querySelector('[data-ep-course-completion-hours]') as HTMLInputElement | null;
+      const diffSel = root.querySelector('[data-ep-course-difficulty]') as HTMLSelectElement | null;
       const title = (titleInp?.value ?? '').trim();
       if (!title) {
         window.alert('Укажите название курса.');
@@ -6944,6 +6952,9 @@ if (platformMount) {
         window.alert(hoursParsed.message);
         return;
       }
+      const diffRaw = (diffSel?.value ?? '').trim();
+      const difficultyLevel =
+        diffRaw === '' ? null : diffRaw === 'easy' || diffRaw === 'medium' || diffRaw === 'hard' ? diffRaw : null;
       try {
         const updated = await patchJson<BuilderCourseDetailV1>(
           `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}`,
@@ -6956,6 +6967,7 @@ if (platformMount) {
             authorDisplayName: authorDisplayName ? authorDisplayName : null,
             enrollmentContactUrl,
             estimatedCompletionHours: hoursParsed.value,
+            difficultyLevel,
           },
           token,
         );
@@ -7139,6 +7151,12 @@ if (platformMount) {
         typeof hrsRaw === 'number' && Number.isFinite(hrsRaw) && hrsRaw >= 1 ? Math.min(8760, Math.trunc(hrsRaw)) : null;
       const hrsEl = screen.querySelector('[data-ep-course-preview-stat-hours]') as HTMLElement | null;
       if (hrsEl) hrsEl.textContent = hNum != null ? `${hNum}\u00a0ч` : '—';
+
+      const diffEl = screen.querySelector('[data-ep-course-preview-stat-difficulty]') as HTMLElement | null;
+      if (diffEl) {
+        const d = (course.difficultyLevel ?? null) as any;
+        diffEl.textContent = d === 'easy' ? 'Легкий' : d === 'medium' ? 'Средний' : d === 'hard' ? 'Сложный' : '—';
+      }
 
       const coverHost = screen.querySelector('[data-ep-course-preview-cover]') as HTMLElement | null;
       const initials = screen.querySelector('[data-ep-course-preview-initials]') as HTMLElement | null;

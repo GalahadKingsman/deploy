@@ -526,6 +526,15 @@
           <div style="font-size:10px;color:var(--t3);margin-top:6px;font-family:var(--fm)">Только целое число от 1 до 8760, без ведущего нуля (например не «012»). В превью курса отобразится как «12 ч».</div>
         </div>
         <div class="form-group">
+          <div class="form-label">Укажите уровень сложности</div>
+          <select class="form-input" data-ep-course-difficulty>
+            <option value="">—</option>
+            <option value="easy">Легкий</option>
+            <option value="medium">Средний</option>
+            <option value="hard">Сложный</option>
+          </select>
+        </div>
+        <div class="form-group">
           <div class="form-label">Видимость</div>
           <select class="form-input" data-ep-course-visibility>
             <option value="private">Только по ссылке (private)</option>
@@ -949,11 +958,10 @@
             <div class="num warn" data-ep-course-preview-stat-hours>—</div>
             <div class="lbl">Время прохождения</div>
           </div>
-          <div
-            class="stat-card"
-            style="text-align:center;padding:14px 12px;border-style:dashed;opacity:0.55;box-shadow:none;background:transparent;min-height:72px"
-            aria-hidden="true"
-          ></div>
+          <div class="stat-card" style="text-align:center;padding:14px 12px">
+            <div class="num" data-ep-course-preview-stat-difficulty>—</div>
+            <div class="lbl">Уровень сложности</div>
+          </div>
         </div>
         <div style="color:var(--t3);font-size:12px;line-height:1.7">
           После зачисления курс появится в разделе "Мои курсы" и вы сможете начать его изучение.

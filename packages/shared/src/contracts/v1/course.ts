@@ -5,6 +5,9 @@ import type { Id, IsoDateTime, UrlString } from './common.js';
 export type CourseLessonAccessModeV1 = 'sequential' | 'open';
 export const CourseLessonAccessModeV1Schema = z.enum(['sequential', 'open']);
 
+export type CourseDifficultyLevelV1 = 'easy' | 'medium' | 'hard';
+export const CourseDifficultyLevelV1Schema = z.enum(['easy', 'medium', 'hard']);
+
 /**
  * Course entity V1
  */
@@ -23,6 +26,8 @@ export interface CourseV1 {
   modulesCount?: number;
   /** Оценка времени прохождения курса (часы), задаётся экспертом. */
   estimatedCompletionHours?: number | null;
+  /** Уровень сложности курса (для карточки/превью). */
+  difficultyLevel?: CourseDifficultyLevelV1 | null;
   updatedAt: IsoDateTime;
   status?: 'draft' | 'published' | 'archived';
   visibility?: 'private' | 'public';
@@ -45,6 +50,7 @@ export const CourseV1Schema = z.object({
   lessonsCount: z.number().int().min(0).optional(),
   modulesCount: z.number().int().min(0).optional(),
   estimatedCompletionHours: z.number().int().min(1).max(8760).nullable().optional(),
+  difficultyLevel: CourseDifficultyLevelV1Schema.nullable().optional(),
   updatedAt: z.string(),
   status: z.enum(['draft', 'published', 'archived']).optional(),
   visibility: z.enum(['private', 'public']).optional(),

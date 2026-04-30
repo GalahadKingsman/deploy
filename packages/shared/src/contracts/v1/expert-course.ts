@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Id, IsoDateTime, UrlString } from './common.js';
-import type { CourseLessonAccessModeV1 } from './course.js';
-import { CourseLessonAccessModeV1Schema } from './course.js';
+import type { CourseLessonAccessModeV1, CourseDifficultyLevelV1 } from './course.js';
+import { CourseLessonAccessModeV1Schema, CourseDifficultyLevelV1Schema } from './course.js';
 
 /** Max length for enrollment contact URL stored on `courses.enrollment_contact_url`. */
 export const ENROLLMENT_CONTACT_URL_MAX_LEN = 2048;
@@ -54,6 +54,8 @@ export interface ExpertCourseV1 {
   enrollmentContactUrl?: string | null;
   /** Время прохождения курса в часах (для превью). */
   estimatedCompletionHours?: number | null;
+  /** Уровень сложности курса (для карточки/превью). */
+  difficultyLevel?: CourseDifficultyLevelV1 | null;
   publishedAt?: IsoDateTime | null;
   deletedAt?: IsoDateTime | null;
   createdAt: IsoDateTime;
@@ -74,6 +76,7 @@ export const ExpertCourseV1Schema = z.object({
   authorDisplayName: z.string().max(240).nullable().optional(),
   enrollmentContactUrl: z.string().max(ENROLLMENT_CONTACT_URL_MAX_LEN).nullable().optional(),
   estimatedCompletionHours: z.number().int().min(1).max(8760).nullable().optional(),
+  difficultyLevel: CourseDifficultyLevelV1Schema.nullable().optional(),
   publishedAt: z.string().nullable().optional(),
   deletedAt: z.string().nullable().optional(),
   createdAt: z.string(),
@@ -146,6 +149,7 @@ export interface UpdateExpertCourseRequestV1 {
   authorDisplayName?: string | null;
   enrollmentContactUrl?: string | null;
   estimatedCompletionHours?: number | null;
+  difficultyLevel?: CourseDifficultyLevelV1 | null;
 }
 
 const estimatedCompletionHoursPatchSchema = z
@@ -206,5 +210,6 @@ export const UpdateExpertCourseRequestV1Schema = z.object({
   authorDisplayName: z.string().max(240).nullable().optional(),
   enrollmentContactUrl: enrollmentContactUrlPatchSchema,
   estimatedCompletionHours: estimatedCompletionHoursPatchSchema,
+  difficultyLevel: CourseDifficultyLevelV1Schema.nullable().optional(),
 });
 

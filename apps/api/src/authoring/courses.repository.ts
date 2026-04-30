@@ -15,6 +15,7 @@ interface CourseRow {
   author_display_name?: string | null;
   enrollment_contact_url?: string | null;
   estimated_completion_hours?: number | null;
+  difficulty_level?: string | null;
   price_cents?: number | null;
   currency?: string | null;
   status: string;
@@ -47,6 +48,9 @@ function hoursFromDb(v: unknown): number | null {
 
 function mapRow(row: CourseRow): ContractsV1.ExpertCourseV1 {
   const mode = row.lesson_access_mode;
+  const rawDiff = (row.difficulty_level ?? null) as any;
+  const diff =
+    rawDiff === 'easy' || rawDiff === 'medium' || rawDiff === 'hard' ? (rawDiff as any) : null;
   return {
     id: row.id,
     expertId: row.expert_id,
@@ -56,6 +60,7 @@ function mapRow(row: CourseRow): ContractsV1.ExpertCourseV1 {
     authorDisplayName: trimAuthorDisplayName(row.author_display_name ?? null),
     enrollmentContactUrl: trimEnrollmentContactUrl(row.enrollment_contact_url ?? null),
     estimatedCompletionHours: hoursFromDb(row.estimated_completion_hours ?? null),
+    difficultyLevel: diff,
     priceCents: row.price_cents ?? 0,
     currency: row.currency ?? 'RUB',
     status: row.status as CourseStatus,
@@ -513,6 +518,26 @@ export class CoursesRepository {
       try {
         await this.pool.query(
           `UPDATE courses SET estimated_completion_hours = $3, updated_at = NOW() WHERE id = $1 AND expert_id = $2`,
+          [params.courseId, params.expertId, next],
+        );
+        needRefetch = true;
+      } catch (e: unknown) {
+        const code = typeof e === 'object' && e !== null && 'code' in e ? (e as { code?: string }).code : undefined;
+        if (code !== '42703') throw e;
+      }
+    }
+
+    if (params.patch.difficultyLevel !== undefined) {
+      const nextRaw = params.patch.difficultyLevel;
+      const next =
+        nextRaw === null
+          ? null
+          : nextRaw === 'easy' || nextRaw === 'medium' || nextRaw === 'hard'
+            ? nextRaw
+            : null;
+      try {
+        await this.pool.query(
+          `UPDATE courses SET difficulty_level = $3, updated_at = NOW() WHERE id = $1 AND expert_id = $2`,
           [params.courseId, params.expertId, next],
         );
         needRefetch = true;
