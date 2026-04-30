@@ -18,6 +18,16 @@ function displayNameSql(alias: string): string {
   )`;
 }
 
+/** node-pg may return timestamptz as Date or string depending on config. */
+function rowTimestampToIso(v: Date | string | null | undefined): string {
+  if (v instanceof Date) return v.toISOString();
+  if (typeof v === 'string') {
+    const d = new Date(v);
+    return Number.isFinite(d.getTime()) ? d.toISOString() : new Date(0).toISOString();
+  }
+  return new Date(0).toISOString();
+}
+
 export class ExpertDashboardRepository {
   constructor(
     @Optional() @Inject(Pool) private readonly pool: Pool | null,
@@ -256,7 +266,7 @@ export class ExpertDashboardRepository {
         lessonId: r.lesson_id,
         assignmentId: r.assignment_id,
         studentId: r.student_user_id,
-        createdAt: r.created_at.toISOString(),
+        createdAt: rowTimestampToIso(r.created_at),
         studentFirstName: r.student_first_name,
         studentLastName: r.student_last_name,
         studentUsername: r.student_username,
@@ -282,7 +292,7 @@ export class ExpertDashboardRepository {
           s.created_at AS occurred_at,
           ${dn} AS actor_display,
           ${ini} AS actor_initials,
-          ('Сдано ДЗ: «' || COALESCE(l.title, '') || '»') AS description,
+          ('Сдано ДЗ: «' || COALESCE(l.title, '') || '»')::text AS description,
           'ДЗ'::text AS badge_text,
           'new'::text AS badge_variant
         FROM submissions s
@@ -302,13 +312,14 @@ export class ExpertDashboardRepository {
           e.created_at,
           ${dn},
           ${ini},
-          ('Запись на курс «' || COALESCE(c.title, '') || '»'),
-          '+1',
-          'live'
+          ('Запись на курс «' || COALESCE(c.title, '') || '»')::text,
+          '+1'::text,
+          'live'::text
         FROM enrollments e
         JOIN courses c ON c.id = e.course_id AND c.deleted_at IS NULL
         JOIN users u ON u.id = e.user_id
         WHERE c.expert_id = $1
+          AND e.revoked_at IS NULL
           AND e.created_at >= $2 AND e.created_at < $3
           ${hasRestrict ? 'AND c.id = ANY($4::uuid[])' : ''}
 
@@ -319,9 +330,9 @@ export class ExpertDashboardRepository {
           lp.completed_at,
           ${dn},
           ${ini},
-          ('Урок завершён: «' || COALESCE(l.title, '') || '»'),
-          COALESCE(NULLIF(TRIM(SUBSTRING(l.title FROM 1 FOR 18)), ''), 'Урок'),
-          'muted'
+          ('Урок завершён: «' || COALESCE(l.title, '') || '»')::text,
+          COALESCE(NULLIF(TRIM(SUBSTRING(l.title FROM 1 FOR 18)), ''), 'Урок')::text,
+          'muted'::text
         FROM lesson_progress lp
         JOIN lessons l ON l.id = lp.lesson_id AND l.deleted_at IS NULL
         JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
@@ -347,7 +358,7 @@ export class ExpertDashboardRepository {
 
     const activityItems: ContractsV1.ExpertDashboardActivityItemV1[] = actRes.rows.map((r) => ({
       kind: r.kind as ContractsV1.ExpertDashboardActivityKindV1,
-      occurredAt: r.occurred_at.toISOString(),
+      occurredAt: rowTimestampToIso(r.occurred_at),
       actorDisplayName: r.actor_display,
       actorInitials: (r.actor_initials ?? '').trim() || '—',
       description: r.description,
