@@ -232,6 +232,14 @@ body.platform-gate{background:var(--bg);color:var(--t1)}
   min-height:18px;
   margin-top:2px;
 }
+.edify-auth__msg--error{
+  color:var(--err);
+  font-weight:600;
+}
+.edify-auth__msg--ok{
+  color:var(--ok);
+  font-weight:600;
+}
 .edify-auth__submit{
   margin-top:6px;
   width:100%;

@@ -79,8 +79,10 @@ type AuthMode = 'login' | 'register' | 'forgot';
 async function readApiErrorMessage(res: Response): Promise<string> {
   const text = await res.text().catch(() => '');
   try {
-    const j = JSON.parse(text) as { message?: string };
-    if (j?.message && typeof j.message === 'string') return j.message;
+    const j = JSON.parse(text) as { message?: unknown };
+    const m = j?.message;
+    if (typeof m === 'string' && m.trim()) return m.trim();
+    if (Array.isArray(m) && m.length && typeof m[0] === 'string') return m.filter((x) => typeof x === 'string').join(' ').slice(0, 400);
   } catch {
     /* not JSON */
   }
@@ -95,6 +97,10 @@ function parseApiSuccessMessage(text: string, fallback: string): string {
     /* ignore */
   }
   return fallback;
+}
+
+function isValidEmailShape(s: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 }
 
 function openAuthModal(mode: AuthMode): void {
@@ -166,7 +172,7 @@ function openAuthModal(mode: AuthMode): void {
       submit.textContent = mode === 'register' ? 'Создать аккаунт' : 'Войти';
       forgotToLogin.textContent = 'Забыли пароль?';
     }
-    msg.textContent = '';
+    setMsg('', 'neutral');
     password.autocomplete = mode === 'register' ? 'new-password' : 'current-password';
   };
   tLogin.addEventListener('click', () => setModeUi('login'));
@@ -205,6 +211,8 @@ function openAuthModal(mode: AuthMode): void {
 
   const msg = document.createElement('div');
   msg.className = 'edify-auth__msg';
+  msg.setAttribute('role', 'status');
+  msg.setAttribute('aria-live', 'polite');
 
   const submit = document.createElement('button');
   submit.type = 'submit';
@@ -212,20 +220,33 @@ function openAuthModal(mode: AuthMode): void {
   submit.textContent = mode === 'register' ? 'Создать аккаунт' : 'Войти';
 
   form.append(regFields, email, password, msg, submit);
+  form.noValidate = true;
+
+  const setMsg = (text: string, kind: 'neutral' | 'error' | 'ok' = 'neutral') => {
+    msg.textContent = text;
+    msg.classList.remove('edify-auth__msg--error', 'edify-auth__msg--ok');
+    if (kind === 'error') msg.classList.add('edify-auth__msg--error');
+    if (kind === 'ok') msg.classList.add('edify-auth__msg--ok');
+  };
 
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
-    msg.textContent = '…';
+    setMsg('Отправка…', 'neutral');
     const api = getApiBaseUrl();
     if (!api) {
-      msg.textContent = 'Не задан API base url.';
+      setMsg('Не задан API base url.', 'error');
       return;
     }
+    submit.disabled = true;
     try {
       if (mode === 'forgot') {
         const em = email.value.trim();
         if (!em) {
-          msg.textContent = 'Введите email.';
+          setMsg('Введите email.', 'error');
+          return;
+        }
+        if (!isValidEmailShape(em)) {
+          setMsg('Укажите корректный email (например name@mail.ru).', 'error');
           return;
         }
         const res = await fetch(`${api}/auth/password/reset/request`, {
@@ -234,11 +255,11 @@ function openAuthModal(mode: AuthMode): void {
           body: JSON.stringify({ email: em }),
         });
         if (!res.ok) {
-          msg.textContent = await readApiErrorMessage(res);
+          setMsg(await readApiErrorMessage(res), 'error');
           return;
         }
         const okText = await res.text();
-        msg.textContent = parseApiSuccessMessage(okText, 'Письмо отправлено.');
+        setMsg(parseApiSuccessMessage(okText, 'Письмо отправлено. Проверьте папку «Спам», если письма нет во входящих.'), 'ok');
         return;
       }
 
@@ -258,19 +279,21 @@ function openAuthModal(mode: AuthMode): void {
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        msg.textContent = await readApiErrorMessage(res);
+        setMsg(await readApiErrorMessage(res), 'error');
         return;
       }
       const data = (await res.json()) as { accessToken?: string };
       if (!data.accessToken) {
-        msg.textContent = 'Не удалось получить токен.';
+        setMsg('Не удалось получить токен.', 'error');
         return;
       }
       setAccessToken(data.accessToken);
       backdrop.remove();
       await refreshNavAuth();
     } catch {
-      msg.textContent = 'Не удалось выполнить запрос. Проверьте сеть.';
+      setMsg('Не удалось выполнить запрос (сеть или блокировка CORS). Откройте вкладку «Сеть» в инструментах разработчика и проверьте запрос POST.', 'error');
+    } finally {
+      submit.disabled = false;
     }
   });
 

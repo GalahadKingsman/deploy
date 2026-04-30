@@ -6,6 +6,8 @@
 # Без этого presigned-ссылки будут с хостом minio:9000 и загрузка из Mini App не сработает.
 #
 # Запуск из корня репозитория:
+#   docker compose --env-file .env up -d --build
+# (файл по умолчанию — docker-compose.yml, ссылка на этот compose)
 #   docker compose -f docker-compose.prod.yml --env-file .env up -d --build
 #
 # Подставь домены/секреты в .env; для BOT_API_BASE_URL внутри сети compose:
@@ -92,6 +94,16 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       BOT_INTERNAL_TOKEN: ${BOT_INTERNAL_TOKEN:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
+      # Письма сброса пароля (nodemailer): без этих переменных POST /auth/password/reset/request вернёт 503.
+      PUBLIC_WEB_ORIGIN: ${PUBLIC_WEB_ORIGIN:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      PASSWORD_RESET_MAX_PER_EMAIL: ${PASSWORD_RESET_MAX_PER_EMAIL:-5}
+      PASSWORD_RESET_WINDOW_MS: ${PASSWORD_RESET_WINDOW_MS:-3600000}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-0}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-120}
       RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
