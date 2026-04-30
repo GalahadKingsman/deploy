@@ -543,7 +543,14 @@ export class CoursesRepository {
         needRefetch = true;
       } catch (e: unknown) {
         const code = typeof e === 'object' && e !== null && 'code' in e ? (e as { code?: string }).code : undefined;
-        if (code !== '42703') throw e;
+        if (code === '42703') {
+          // Column missing => migrations not applied on this environment.
+          throw new BadRequestException({
+            code: ErrorCodes.VALIDATION_ERROR,
+            message: 'Course difficulty level is not supported on this server yet (apply migrations).',
+          });
+        }
+        throw e;
       }
     }
 

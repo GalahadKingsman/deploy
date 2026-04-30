@@ -403,7 +403,10 @@ if (platformMount) {
         },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status} ${path}`);
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        throw new Error(detail ? `HTTP ${res.status}: ${detail.slice(0, 200)}` : `HTTP ${res.status} ${path}`);
+      }
       return (await res.json()) as T;
     }
 
