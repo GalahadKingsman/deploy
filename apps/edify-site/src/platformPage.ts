@@ -3238,9 +3238,6 @@ if (platformMount) {
         }
       }
       const greet = firstName || 'эксперт';
-      if (sub) {
-        sub.textContent = `Добро пожаловать, ${greet} · ${formatDashMonthTitle(expertDashboardYear, expertDashboardMonth)}`;
-      }
 
       if (tbody) {
         tbody.replaceChildren();
@@ -3273,19 +3270,44 @@ if (platformMount) {
       const y = expertDashboardYear;
       const m = expertDashboardMonth;
       const q = `year=${encodeURIComponent(String(y))}&month=${encodeURIComponent(String(m))}`;
+      const monthTitle = formatDashMonthTitle(y, m);
 
+      let dash: ExpertDashboardResponseV1 | null = null;
+      let dashLoadErr: string | null = null;
       try {
-        const [dash, coursesRes] = await Promise.all([
-          fetchJson<ExpertDashboardResponseV1>(
-            `/experts/${encodeURIComponent(eid)}/dashboard?${q}`,
-            token,
-          ),
-          fetchJson<ListExpertCoursesDashboardResponseV1>(
-            `/experts/${encodeURIComponent(eid)}/courses/dashboard?limit=100`,
-            token,
-          ),
-        ]);
+        dash = await fetchJson<ExpertDashboardResponseV1>(
+          `/experts/${encodeURIComponent(eid)}/dashboard?${q}`,
+          token,
+        );
+      } catch (e) {
+        dashLoadErr = e instanceof Error ? e.message : String(e);
+      }
 
+      let coursesRes: ListExpertCoursesDashboardResponseV1 = { items: [] };
+      let coursesLoadErr: string | null = null;
+      try {
+        coursesRes = await fetchJson<ListExpertCoursesDashboardResponseV1>(
+          `/experts/${encodeURIComponent(eid)}/courses/dashboard?limit=100`,
+          token,
+        );
+      } catch (e) {
+        coursesLoadErr = e instanceof Error ? e.message : String(e);
+      }
+
+      if (sub) {
+        const base = `Добро пожаловать, ${greet} · ${monthTitle}`;
+        if (dashLoadErr && coursesLoadErr) {
+          sub.textContent = `${base} — курсы: ${coursesLoadErr}; сводка: ${dashLoadErr}`;
+        } else if (dashLoadErr) {
+          sub.textContent = `${base} — сводка за месяц: ${dashLoadErr}`;
+        } else {
+          sub.textContent = base;
+        }
+      }
+
+      const canHw = canReviewHomework();
+
+      if (dash) {
         if (stStudents) stStudents.textContent = formatRubDash(dash.students.totalUnique);
         if (stStudentsDelta) {
           const n = dash.students.newEnrollmentsInMonth ?? 0;
@@ -3321,7 +3343,6 @@ if (platformMount) {
           stDrafts.style.color = 'var(--t3)';
         }
 
-        const canHw = canReviewHomework();
         if (stHwPend) {
           if (canHw) {
             stHwPend.textContent = formatRubDash(dash.homework.pendingInMonth);
@@ -3349,9 +3370,55 @@ if (platformMount) {
         }
 
         if (hwCard) hwCard.style.display = '';
+      } else {
+        const itemsFB = coursesRes.items ?? [];
+        const pubN = itemsFB.filter((it) => it.status === 'published').length;
+        const drN = itemsFB.filter((it) => it.status === 'draft').length;
+        if (stStudents) stStudents.textContent = '—';
+        if (stStudentsDelta) {
+          stStudentsDelta.textContent = '—';
+          stStudentsDelta.className = 'delta';
+          stStudentsDelta.style.color = 'var(--t3)';
+        }
+        if (stRefLbl) stRefLbl.textContent = formatDashReferralLbl(y, m);
+        if (stRefRub) stRefRub.textContent = '—';
+        if (stRefDelta) {
+          stRefDelta.textContent = '—';
+          stRefDelta.className = 'delta';
+          stRefDelta.style.color = 'var(--t3)';
+        }
+        if (stPub) stPub.textContent = String(pubN);
+        if (stDrafts) {
+          stDrafts.textContent = `${drN} ${pluralRu(drN, ['черновик', 'черновика', 'черновиков'])}`;
+          stDrafts.style.color = 'var(--t3)';
+        }
+        if (stHwPend) stHwPend.textContent = '—';
+        if (stHwNew) {
+          if (!canHw) {
+            stHwNew.textContent = 'Нужна роль «Куратор» или выше';
+            stHwNew.className = 'delta';
+            stHwNew.style.color = 'var(--t3)';
+          } else {
+            stHwNew.textContent = 'Сводка за месяц недоступна';
+            stHwNew.className = 'delta';
+            stHwNew.style.color = 'var(--t3)';
+          }
+        }
+        if (hwCard) hwCard.style.display = '';
+      }
 
-        if (tbody) {
-          tbody.replaceChildren();
+      if (tbody) {
+        tbody.replaceChildren();
+        if (coursesLoadErr) {
+          const tr = document.createElement('tr');
+          const td = document.createElement('td');
+          td.colSpan = 4;
+          td.style.color = 'var(--err)';
+          td.style.fontSize = '13px';
+          td.textContent = `Не удалось загрузить курсы (${coursesLoadErr}).`;
+          tr.appendChild(td);
+          tbody.appendChild(tr);
+        } else {
           const items = coursesRes.items ?? [];
           if (items.length === 0) {
             const tr = document.createElement('tr');
@@ -3405,7 +3472,9 @@ if (platformMount) {
             }
           }
         }
+      }
 
+      if (dash) {
         if (hwHost) {
           hwHost.replaceChildren();
           if (!canHw) {
@@ -3522,32 +3591,30 @@ if (platformMount) {
             }
           }
         }
-      } catch {
-        if (sub) sub.textContent = 'Не удалось загрузить дашборд. Обновите страницу.';
-        if (tbody) {
-          tbody.replaceChildren();
-          const tr = document.createElement('tr');
-          const td = document.createElement('td');
-          td.colSpan = 4;
-          td.style.color = 'var(--err)';
-          td.textContent = 'Ошибка загрузки.';
-          tr.appendChild(td);
-          tbody.appendChild(tr);
-        }
+      } else {
+        const msg = dashLoadErr ?? 'нет ответа';
         if (hwHost) {
           hwHost.replaceChildren();
-          const p = document.createElement('div');
-          p.style.color = 'var(--err)';
-          p.style.fontSize = '12px';
-          p.textContent = 'Не удалось загрузить блок.';
-          hwHost.appendChild(p);
+          if (!canHw) {
+            const p = document.createElement('div');
+            p.style.color = 'var(--t3)';
+            p.style.fontSize = '12px';
+            p.textContent = 'Блок доступен ролям «Куратор», «Менеджер» и «Владелец».';
+            hwHost.appendChild(p);
+          } else {
+            const p = document.createElement('div');
+            p.style.color = 'var(--err)';
+            p.style.fontSize = '12px';
+            p.textContent = `Превью за месяц недоступно (${msg}).`;
+            hwHost.appendChild(p);
+          }
         }
         if (actHost) {
           actHost.replaceChildren();
           const p = document.createElement('div');
           p.style.color = 'var(--err)';
           p.style.fontSize = '12px';
-          p.textContent = 'Не удалось загрузить ленту.';
+          p.textContent = `Лента за месяц недоступна (${msg}).`;
           actHost.appendChild(p);
         }
       }

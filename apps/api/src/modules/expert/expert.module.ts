@@ -25,7 +25,6 @@ import { ExpertHomeworkController } from './expert-homework.controller.js';
 import { ExpertStudentsController } from './expert-students.controller.js';
 import { ExpertStudentsRepository } from './expert-students.repository.js';
 import { CommissionsRepository } from '../../payments/commissions.repository.js';
-import { ExpertDashboardController } from './expert-dashboard.controller.js';
 import { ExpertDashboardRepository } from './expert-dashboard.repository.js';
 import { IntegrationsModule } from '../../integrations/integrations.module.js';
 import { StorageModule } from '../../storage/storage.module.js';
@@ -59,7 +58,6 @@ import { ExpertCourseAccessService } from './expert-course-access.service.js';
     ExpertTeamController,
     ExpertCourseTopicsController,
     ExpertStudentsController,
-    ExpertDashboardController,
   ],
   providers: [
     JwtAuthGuard,
