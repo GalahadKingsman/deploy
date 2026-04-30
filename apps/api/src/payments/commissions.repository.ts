@@ -31,6 +31,25 @@ export class CommissionsRepository {
     return { id };
   }
 
+  async sumAmountCentsByReferralCodeBetween(params: {
+    referralCode: string;
+    startInclusive: Date;
+    endExclusive: Date;
+  }): Promise<number> {
+    if (!this.pool) return 0;
+    const res = await this.pool.query<{ s: string }>(
+      `
+      SELECT COALESCE(SUM(amount_cents), 0)::text AS s
+      FROM commissions
+      WHERE referral_code = $1
+        AND created_at >= $2
+        AND created_at < $3
+      `,
+      [params.referralCode, params.startInclusive, params.endExclusive],
+    );
+    return Math.max(0, parseInt(res.rows[0]?.s ?? '0', 10) || 0);
+  }
+
   async list(params: { limit: number; referralCode?: string }): Promise<{ items: CommissionRow[] }> {
     if (!this.pool) return { items: [] };
     const limit = Math.min(Math.max(1, params.limit), 200);

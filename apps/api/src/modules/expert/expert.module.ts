@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { Pool } from 'pg';
 import { JwtModule } from '../../auth/session/jwt.module.js';
 import { ExpertRbacModule } from '../../auth/expert-rbac/expert-rbac.module.js';
 import { UsersModule } from '../../users/users.module.js';
@@ -23,6 +24,9 @@ import { ExpertCourseTopicsController } from './expert-course-topics.controller.
 import { ExpertHomeworkController } from './expert-homework.controller.js';
 import { ExpertStudentsController } from './expert-students.controller.js';
 import { ExpertStudentsRepository } from './expert-students.repository.js';
+import { CommissionsRepository } from '../../payments/commissions.repository.js';
+import { ExpertDashboardController } from './expert-dashboard.controller.js';
+import { ExpertDashboardRepository } from './expert-dashboard.repository.js';
 import { IntegrationsModule } from '../../integrations/integrations.module.js';
 import { StorageModule } from '../../storage/storage.module.js';
 import { ExpertCourseAccessService } from './expert-course-access.service.js';
@@ -55,7 +59,23 @@ import { ExpertCourseAccessService } from './expert-course-access.service.js';
     ExpertTeamController,
     ExpertCourseTopicsController,
     ExpertStudentsController,
+    ExpertDashboardController,
   ],
-  providers: [JwtAuthGuard, ExpertCourseAccessService, ExpertStudentsRepository],
+  providers: [
+    JwtAuthGuard,
+    ExpertCourseAccessService,
+    ExpertStudentsRepository,
+    {
+      provide: CommissionsRepository,
+      useFactory: (pool: Pool) => new CommissionsRepository(pool),
+      inject: [Pool],
+    },
+    {
+      provide: ExpertDashboardRepository,
+      useFactory: (pool: Pool, commissions: CommissionsRepository) =>
+        new ExpertDashboardRepository(pool, commissions),
+      inject: [Pool, CommissionsRepository],
+    },
+  ],
 })
 export class ExpertModule {}

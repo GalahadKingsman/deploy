@@ -272,6 +272,12 @@
 .delta-up{color:var(--ok)}
 .delta-dn{color:var(--err)}
 
+/* Expert dashboard: month picker overlay */
+.ep-dash-month-pop{position:fixed;inset:0;z-index:500;display:none;align-items:center;justify-content:center;padding:18px}
+.ep-dash-month-pop.ep-dash-month-pop--open{display:flex}
+.ep-dash-month-pop__backdrop{position:absolute;inset:0;background:rgba(15,23,42,.38)}
+.ep-dash-month-pop__panel{margin:auto;position:relative;z-index:1;max-height:90vh;overflow-y:auto}
+
 /* Table */
 .tbl-wrap{overflow-x:auto}
 table.tbl{width:100%;border-collapse:collapse}

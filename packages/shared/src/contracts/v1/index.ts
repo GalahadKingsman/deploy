@@ -143,6 +143,17 @@ export type { MeCoursesResponseV1, MyCourseProgressV1 } from './me-courses.js';
 export type { ExpertTeamMemberV1, ListExpertTeamResponseV1 } from './expert-team.js';
 export type { ExpertStudentRowV1, ListExpertStudentsResponseV1 } from './expert-students.js';
 export type {
+  ExpertDashboardResponseV1,
+  ExpertDashboardPeriodV1,
+  ExpertDashboardStudentsV1,
+  ExpertDashboardCoursesSummaryV1,
+  ExpertDashboardReferralV1,
+  ExpertDashboardHomeworkV1,
+  ExpertDashboardHomeworkPreviewItemV1,
+  ExpertDashboardActivityItemV1,
+  ExpertDashboardActivityKindV1,
+} from './expert-dashboard.js';
+export type {
   PaymentRefundRequestV1,
   ListPaymentRefundRequestsResponseV1,
 } from './refund.js';
@@ -257,6 +268,7 @@ export {
   ListExpertTeamResponseV1Schema,
   ExpertStudentRowV1Schema,
   ListExpertStudentsResponseV1Schema,
+  ExpertDashboardResponseV1Schema,
   PaymentRefundRequestV1Schema,
   ListPaymentRefundRequestsResponseV1Schema,
   PartnerPayoutRequestV1Schema,

@@ -132,6 +132,48 @@ if (platformMount) {
     };
     type ListExpertCoursesDashboardResponseV1 = { items: ExpertCourseDashboardItemV1[] };
 
+    type ExpertDashboardActivityKindV1 = 'homework_submitted' | 'enrollment' | 'lesson_completed';
+    type ExpertDashboardActivityItemV1 = {
+      kind: ExpertDashboardActivityKindV1;
+      occurredAt: string;
+      actorDisplayName: string;
+      actorInitials: string;
+      description: string;
+      badgeText: string;
+      badgeVariant: 'new' | 'live' | 'draft' | 'muted';
+    };
+    type ExpertDashboardHomeworkPreviewItemV1 = {
+      submissionId: string;
+      lessonId: string;
+      assignmentId: string;
+      studentId: string;
+      createdAt: string;
+      studentFirstName: string | null;
+      studentLastName: string | null;
+      studentUsername: string | null;
+      studentEmail: string | null;
+      studentAvatarUrl: string | null;
+      courseTitle: string;
+      moduleTitle: string;
+      lessonTitle: string;
+      answerPreview: string;
+      submissionStatus: string;
+      isOpened: boolean;
+      uiStatus: 'new' | 'unchecked' | 'checked';
+    };
+    type ExpertDashboardResponseV1 = {
+      period: { year: number; month: number; startIso: string; endExclusiveIso: string };
+      students: { totalUnique: number; newEnrollmentsInMonth: number };
+      courses: { publishedCount: number; draftCount: number };
+      referral: { totalRubInMonth: number; deltaRubVsPreviousMonth: number };
+      homework: {
+        pendingInMonth: number;
+        newTodayUtc: number;
+        previewItems: ExpertDashboardHomeworkPreviewItemV1[];
+      };
+      activity: { items: ExpertDashboardActivityItemV1[] };
+    };
+
     type ExpertTeamMemberRowV1 = {
       userId: string;
       role: string;
@@ -520,6 +562,17 @@ if (platformMount) {
     let expertCoursesSearchTimer: ReturnType<typeof setTimeout> | undefined;
     /** Последний курс, открытый в конструкторе (для пункта меню «Конструктор»). */
     let expertBuilderCourseId: string | null = null;
+
+    function utcDashboardNow(): { year: number; month: number } {
+      const d = new Date();
+      return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1 };
+    }
+    const _utcDashInit = utcDashboardNow();
+    let expertDashboardYear = _utcDashInit.year;
+    let expertDashboardMonth = _utcDashInit.month;
+    let expertDashboardDraftYear = expertDashboardYear;
+    let expertDashboardDraftMonth = expertDashboardMonth;
+
     type BuilderCourseDetailV1 = {
       id: string;
       expertId?: string;
@@ -683,6 +736,9 @@ if (platformMount) {
         }
         if (action.type === 'navigate' && action.screenId === 'e-referral') {
           void hydrateExpertReferralScreen(action.shadowRoot);
+        }
+        if (action.type === 'navigate' && action.screenId === 'e-dashboard') {
+          void hydrateExpertDashboard(action.shadowRoot);
         }
         if (action.type === 'navigate' && action.screenId === 'e-builder') {
           if (suppressBuilderNavigateHydrate) return;
@@ -2402,7 +2458,7 @@ if (platformMount) {
         expertTeamSoleMemberIsMe = false;
         currentMe = null;
         currentPlatformRole = null;
-        syncExpertTeamOwnerButton(root);
+        syncExpertTeamOwnerButton(shell.shadowRoot);
         void hydrateExpertHomeworkBadge(shell.shadowRoot);
         return;
       }
@@ -3010,6 +3066,490 @@ if (platformMount) {
         err.textContent = 'Не удалось загрузить курсы.';
         grid.appendChild(err);
         sub.textContent = '—';
+      }
+    }
+
+    const DASH_RU_MONTHS = [
+      'Январь',
+      'Февраль',
+      'Март',
+      'Апрель',
+      'Май',
+      'Июнь',
+      'Июль',
+      'Август',
+      'Сентябрь',
+      'Октябрь',
+      'Ноябрь',
+      'Декабрь',
+    ] as const;
+    const DASH_RU_MONTHS_SHORT = [
+      'Янв',
+      'Фев',
+      'Мар',
+      'Апр',
+      'Май',
+      'Июн',
+      'Июл',
+      'Авг',
+      'Сен',
+      'Окт',
+      'Ноя',
+      'Дек',
+    ] as const;
+    const DASH_RU_MONTHS_GEN = [
+      'января',
+      'февраля',
+      'марта',
+      'апреля',
+      'мая',
+      'июня',
+      'июля',
+      'августа',
+      'сентября',
+      'октября',
+      'ноября',
+      'декабря',
+    ] as const;
+
+    function formatDashMonthTitle(y: number, m: number): string {
+      const mo = Math.max(1, Math.min(12, m));
+      return `${DASH_RU_MONTHS[mo - 1] ?? '—'} ${y}`;
+    }
+
+    function formatDashReferralLbl(y: number, m: number): string {
+      const mo = Math.max(1, Math.min(12, m));
+      return `Реферальные выплаты (${DASH_RU_MONTHS_GEN[mo - 1] ?? '—'} ${y})`;
+    }
+
+    function formatRubDash(n: number): string {
+      return new Intl.NumberFormat('ru-RU').format(Math.max(0, Math.round(n)));
+    }
+
+    function dashboardActivityBadgeClass(variant: ExpertDashboardActivityItemV1['badgeVariant']): string {
+      if (variant === 'new') return 'tag tag-new';
+      if (variant === 'live') return 'tag tag-live';
+      if (variant === 'draft') return 'tag tag-draft';
+      return 'tag';
+    }
+
+    function closeExpertDashboardMonthPop(root: ShadowRoot): void {
+      const pop = root.querySelector('[data-ep-e-dashboard-month-pop]') as HTMLElement | null;
+      if (pop) {
+        pop.classList.remove('ep-dash-month-pop--open');
+        pop.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    function renderExpertDashboardMonthPop(root: ShadowRoot): void {
+      const yearEl = root.querySelector('[data-ep-e-dashboard-month-pop-year]') as HTMLElement | null;
+      const grid = root.querySelector('[data-ep-e-dashboard-month-grid]') as HTMLElement | null;
+      if (yearEl) yearEl.textContent = String(expertDashboardDraftYear);
+      if (!grid) return;
+      grid.replaceChildren();
+      for (let mo = 1; mo <= 12; mo++) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className =
+          mo === expertDashboardDraftMonth ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm';
+        b.style.minHeight = '36px';
+        b.textContent = DASH_RU_MONTHS_SHORT[mo - 1] ?? String(mo);
+        b.dataset.epEDashboardMonthPick = String(mo);
+        grid.appendChild(b);
+      }
+    }
+
+    function openExpertDashboardMonthPop(root: ShadowRoot): void {
+      expertDashboardDraftYear = expertDashboardYear;
+      expertDashboardDraftMonth = expertDashboardMonth;
+      renderExpertDashboardMonthPop(root);
+      const pop = root.querySelector('[data-ep-e-dashboard-month-pop]') as HTMLElement | null;
+      if (pop) {
+        pop.classList.add('ep-dash-month-pop--open');
+        pop.setAttribute('aria-hidden', 'false');
+      }
+    }
+
+    function expertDashboardCourseStatusUi(
+      status: ExpertCourseStatusV1,
+    ): { label: string; cls: string } {
+      if (status === 'published') return { label: 'Опубликован', cls: 'tag tag-live' };
+      if (status === 'draft') return { label: 'Черновик', cls: 'tag tag-draft' };
+      return { label: 'Архив', cls: 'tag' };
+    }
+
+    async function hydrateExpertDashboard(root: ShadowRoot | null | undefined): Promise<void> {
+      if (!root) return;
+      const screen = root.getElementById('screen-e-dashboard');
+      if (!screen) return;
+
+      const sub = screen.querySelector('[data-ep-e-dashboard-sub]') as HTMLElement | null;
+      const monthBtn = screen.querySelector('[data-ep-e-dashboard-month-btn]') as HTMLButtonElement | null;
+      const stStudents = screen.querySelector('[data-ep-e-dashboard-stat-students]') as HTMLElement | null;
+      const stStudentsDelta = screen.querySelector(
+        '[data-ep-e-dashboard-stat-students-delta]',
+      ) as HTMLElement | null;
+      const stRefRub = screen.querySelector('[data-ep-e-dashboard-stat-referral-rub]') as HTMLElement | null;
+      const stRefLbl = screen.querySelector('[data-ep-e-dashboard-stat-referral-lbl]') as HTMLElement | null;
+      const stRefDelta = screen.querySelector('[data-ep-e-dashboard-stat-referral-delta]') as HTMLElement | null;
+      const stPub = screen.querySelector('[data-ep-e-dashboard-stat-published]') as HTMLElement | null;
+      const stDrafts = screen.querySelector('[data-ep-e-dashboard-stat-drafts]') as HTMLElement | null;
+      const stHwPend = screen.querySelector('[data-ep-e-dashboard-stat-hw-pending]') as HTMLElement | null;
+      const stHwNew = screen.querySelector('[data-ep-e-dashboard-stat-hw-new]') as HTMLElement | null;
+      const tbody = screen.querySelector('[data-ep-e-dashboard-courses-tbody]') as HTMLElement | null;
+      const hwHost = screen.querySelector('[data-ep-e-dashboard-hw-host]') as HTMLElement | null;
+      const actHost = screen.querySelector('[data-ep-e-dashboard-activity-host]') as HTMLElement | null;
+      const hwCard = screen.querySelector('[data-ep-e-dashboard-hw-card]') as HTMLElement | null;
+
+      if (monthBtn) monthBtn.textContent = formatDashMonthTitle(expertDashboardYear, expertDashboardMonth);
+
+      const token = getAccessToken();
+      if (!token) {
+        if (sub) sub.textContent = 'Войдите, чтобы видеть дашборд.';
+        if (tbody) tbody.replaceChildren();
+        if (hwHost) hwHost.replaceChildren();
+        if (actHost) actHost.replaceChildren();
+        return;
+      }
+      if (!expertShellAccess.allowed) {
+        if (sub) sub.textContent = 'Нет доступа к команде эксперта.';
+        if (tbody) tbody.replaceChildren();
+        if (hwHost) hwHost.replaceChildren();
+        if (actHost) actHost.replaceChildren();
+        return;
+      }
+
+      const eid = await resolveActiveExpertId();
+      if (!eid) {
+        if (sub) sub.textContent = 'Нет доступа к команде эксперта.';
+        if (tbody) tbody.replaceChildren();
+        if (hwHost) hwHost.replaceChildren();
+        if (actHost) actHost.replaceChildren();
+        return;
+      }
+
+      let firstName = (currentMe?.firstName ?? '').trim();
+      if (!firstName) {
+        try {
+          const me = await fetchJson<{ user?: MeUserV1 }>('/me', token);
+          firstName = (me.user?.firstName ?? '').trim();
+        } catch {
+          /* ignore */
+        }
+      }
+      const greet = firstName || 'эксперт';
+      if (sub) {
+        sub.textContent = `Добро пожаловать, ${greet} · ${formatDashMonthTitle(expertDashboardYear, expertDashboardMonth)}`;
+      }
+
+      if (tbody) {
+        tbody.replaceChildren();
+        const trLoad = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 4;
+        td.style.color = 'var(--t3)';
+        td.style.fontSize = '13px';
+        td.textContent = 'Загрузка курсов…';
+        trLoad.appendChild(td);
+        tbody.appendChild(trLoad);
+      }
+      if (hwHost) {
+        hwHost.replaceChildren();
+        const p = document.createElement('div');
+        p.style.color = 'var(--t3)';
+        p.style.fontSize = '12px';
+        p.textContent = 'Загрузка…';
+        hwHost.appendChild(p);
+      }
+      if (actHost) {
+        actHost.replaceChildren();
+        const p = document.createElement('div');
+        p.style.color = 'var(--t3)';
+        p.style.fontSize = '12px';
+        p.textContent = 'Загрузка…';
+        actHost.appendChild(p);
+      }
+
+      const y = expertDashboardYear;
+      const m = expertDashboardMonth;
+      const q = `year=${encodeURIComponent(String(y))}&month=${encodeURIComponent(String(m))}`;
+
+      try {
+        const [dash, coursesRes] = await Promise.all([
+          fetchJson<ExpertDashboardResponseV1>(
+            `/experts/${encodeURIComponent(eid)}/dashboard?${q}`,
+            token,
+          ),
+          fetchJson<ListExpertCoursesDashboardResponseV1>(
+            `/experts/${encodeURIComponent(eid)}/courses/dashboard?limit=100`,
+            token,
+          ),
+        ]);
+
+        if (stStudents) stStudents.textContent = formatRubDash(dash.students.totalUnique);
+        if (stStudentsDelta) {
+          const n = dash.students.newEnrollmentsInMonth ?? 0;
+          stStudentsDelta.textContent = `↑ +${n} за месяц`;
+          stStudentsDelta.className = 'delta delta-up';
+        }
+
+        if (stRefLbl) stRefLbl.textContent = formatDashReferralLbl(y, m);
+        if (stRefRub) stRefRub.textContent = `${formatRubDash(dash.referral.totalRubInMonth)}\u00a0₽`;
+        if (stRefDelta) {
+          const dRub = dash.referral.deltaRubVsPreviousMonth ?? 0;
+          const abs = Math.abs(Math.round(dRub));
+          const fmt = formatRubDash(abs);
+          if (dRub > 0) {
+            stRefDelta.textContent = `↑ +${fmt}\u00a0₽`;
+            stRefDelta.className = 'delta delta-up';
+            stRefDelta.style.color = '';
+          } else if (dRub < 0) {
+            stRefDelta.textContent = `↓ −${fmt}\u00a0₽`;
+            stRefDelta.className = 'delta delta-dn';
+            stRefDelta.style.color = '';
+          } else {
+            stRefDelta.textContent = `0\u00a0₽`;
+            stRefDelta.className = 'delta';
+            stRefDelta.style.color = 'var(--t3)';
+          }
+        }
+
+        if (stPub) stPub.textContent = formatRubDash(dash.courses.publishedCount);
+        if (stDrafts) {
+          const dr = dash.courses.draftCount ?? 0;
+          stDrafts.textContent = `${dr} ${pluralRu(dr, ['черновик', 'черновика', 'черновиков'])}`;
+          stDrafts.style.color = 'var(--t3)';
+        }
+
+        const canHw = canReviewHomework();
+        if (stHwPend) {
+          if (canHw) {
+            stHwPend.textContent = formatRubDash(dash.homework.pendingInMonth);
+          } else {
+            stHwPend.textContent = '—';
+          }
+        }
+        if (stHwNew) {
+          if (!canHw) {
+            stHwNew.textContent = 'Нужна роль «Куратор» или выше';
+            stHwNew.className = 'delta';
+            stHwNew.style.color = 'var(--t3)';
+          } else {
+            stHwNew.style.color = '';
+            const nt = dash.homework.newTodayUtc ?? 0;
+            if (nt > 0) {
+              stHwNew.textContent = `↑ ${nt} ${pluralRu(nt, ['новое', 'новых', 'новых'])} сегодня (UTC)`;
+              stHwNew.className = 'delta delta-up';
+            } else {
+              stHwNew.textContent = 'Нет новых сегодня (UTC)';
+              stHwNew.className = 'delta';
+              stHwNew.style.color = 'var(--t3)';
+            }
+          }
+        }
+
+        if (hwCard) hwCard.style.display = '';
+
+        if (tbody) {
+          tbody.replaceChildren();
+          const items = coursesRes.items ?? [];
+          if (items.length === 0) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 4;
+            td.style.color = 'var(--t3)';
+            td.style.fontSize = '13px';
+            td.textContent = 'У вас пока нет курсов.';
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+          } else {
+            for (const it of items) {
+              const tr = document.createElement('tr');
+              const tdTitle = document.createElement('td');
+              tdTitle.textContent = (it.title || '—').trim() || '—';
+              const tdStud = document.createElement('td');
+              tdStud.textContent = String(it.activeStudentsCount ?? 0);
+              const tdSt = document.createElement('td');
+              const st = expertDashboardCourseStatusUi(it.status);
+              const tag = document.createElement('span');
+              tag.className = st.cls;
+              tag.textContent = st.label;
+              tdSt.appendChild(tag);
+              const tdAct = document.createElement('td');
+              tdAct.className = 'tbl-col-center';
+              const wrap = document.createElement('div');
+              wrap.style.display = 'inline-flex';
+              wrap.style.gap = '4px';
+              const bEdit = document.createElement('button');
+              bEdit.type = 'button';
+              bEdit.className = 'btn btn-ghost btn-sm btn-icon';
+              bEdit.textContent = '✏️';
+              bEdit.setAttribute('aria-label', 'Редактировать');
+              bEdit.dataset.epEDashboardCourseEdit = '1';
+              bEdit.dataset.epExpertEditorCourseId = it.id;
+              bEdit.dataset.epExpertEditorExpertId = it.expertId;
+              wrap.appendChild(bEdit);
+              if (it.status === 'published') {
+                const bEye = document.createElement('button');
+                bEye.type = 'button';
+                bEye.className = 'btn btn-ghost btn-sm btn-icon';
+                bEye.textContent = '👁';
+                bEye.setAttribute('aria-label', 'Предпросмотр');
+                bEye.dataset.epEDashboardCoursePreview = '1';
+                bEye.dataset.epExpertEditorCourseId = it.id;
+                wrap.appendChild(bEye);
+              }
+              tdAct.appendChild(wrap);
+              tr.append(tdTitle, tdStud, tdSt, tdAct);
+              tbody.appendChild(tr);
+            }
+          }
+        }
+
+        if (hwHost) {
+          hwHost.replaceChildren();
+          if (!canHw) {
+            const p = document.createElement('div');
+            p.style.color = 'var(--t3)';
+            p.style.fontSize = '12px';
+            p.textContent = 'Блок доступен ролям «Куратор», «Менеджер» и «Владелец».';
+            hwHost.appendChild(p);
+          } else {
+            const previews = dash.homework.previewItems ?? [];
+            if (previews.length === 0) {
+              const p = document.createElement('div');
+              p.style.color = 'var(--t3)';
+              p.style.fontSize = '12px';
+              p.textContent = 'Нет заданий за выбранный месяц.';
+              hwHost.appendChild(p);
+            } else {
+              for (const it of previews) {
+                const card = document.createElement('div');
+                card.className = 'hw-card';
+                card.style.cursor = 'pointer';
+                card.dataset.epEDashboardHwPick = it.submissionId;
+
+                const av = document.createElement('div');
+                av.className = 'avatar av-sm';
+                av.style.overflow = 'hidden';
+                const disp = homeworkDisplayName({
+                  firstName: it.studentFirstName,
+                  lastName: it.studentLastName,
+                  username: it.studentUsername,
+                });
+                applyUserAvatarToElement(av, it.studentAvatarUrl, initialsFromName(disp));
+
+                const body = document.createElement('div');
+                body.className = 'hw-card-body';
+                const top = document.createElement('div');
+                top.className = 'hw-card-top';
+                const nm = document.createElement('span');
+                nm.className = 'hw-card-name';
+                nm.textContent = disp;
+                const tg = document.createElement('span');
+                const tu = homeworkUiTag(it.uiStatus);
+                tg.className = tu.cls;
+                tg.textContent = tu.label;
+                const time = document.createElement('span');
+                time.className = 'hw-card-time';
+                time.textContent = formatRelativeTime(it.createdAt);
+                top.append(nm, tg, time);
+                const lesson = document.createElement('div');
+                lesson.className = 'hw-card-lesson';
+                lesson.textContent = `${(it.courseTitle || '—').trim() || '—'} · ${(it.moduleTitle || '—').trim() || '—'} · ${(it.lessonTitle || '—').trim() || '—'}`;
+                const prev = document.createElement('div');
+                prev.className = 'hw-card-preview';
+                prev.textContent = (it.answerPreview ?? '').trim() || '—';
+                body.append(top, lesson, prev);
+                card.append(av, body);
+                hwHost.appendChild(card);
+              }
+            }
+          }
+        }
+
+        if (actHost) {
+          actHost.replaceChildren();
+          const items = dash.activity.items ?? [];
+          if (items.length === 0) {
+            const p = document.createElement('div');
+            p.style.color = 'var(--t3)';
+            p.style.fontSize = '12px';
+            p.textContent = 'Нет событий за выбранный месяц.';
+            actHost.appendChild(p);
+          } else {
+            for (const it of items) {
+              const row = document.createElement('div');
+              row.style.display = 'flex';
+              row.style.gap = '10px';
+              row.style.padding = '10px 0';
+              row.style.borderBottom = '1px solid var(--line)';
+              const av = document.createElement('div');
+              av.className = 'avatar av-sm';
+              av.style.overflow = 'hidden';
+              applyUserAvatarToElement(av, null, (it.actorInitials || '—').slice(0, 2));
+              const body = document.createElement('div');
+              body.style.flex = '1';
+              body.style.minWidth = '0';
+              const top = document.createElement('div');
+              top.style.display = 'flex';
+              top.style.alignItems = 'center';
+              top.style.gap = '6px';
+              top.style.flexWrap = 'wrap';
+              const name = document.createElement('span');
+              name.style.fontSize = '12px';
+              name.style.fontWeight = '600';
+              name.style.color = 'var(--t1)';
+              name.textContent = it.actorDisplayName;
+              const badge = document.createElement('span');
+              badge.className = dashboardActivityBadgeClass(it.badgeVariant);
+              badge.textContent = it.badgeText;
+              const tm = document.createElement('span');
+              tm.style.fontFamily = 'var(--fm)';
+              tm.style.fontSize = '9px';
+              tm.style.color = 'var(--t3)';
+              tm.style.marginLeft = 'auto';
+              tm.textContent = formatRelativeTime(it.occurredAt);
+              top.append(name, badge, tm);
+              const desc = document.createElement('div');
+              desc.style.fontSize = '12px';
+              desc.style.color = 'var(--t2)';
+              desc.style.marginTop = '2px';
+              desc.textContent = it.description;
+              body.append(top, desc);
+              row.append(av, body);
+              actHost.appendChild(row);
+            }
+          }
+        }
+      } catch {
+        if (sub) sub.textContent = 'Не удалось загрузить дашборд. Обновите страницу.';
+        if (tbody) {
+          tbody.replaceChildren();
+          const tr = document.createElement('tr');
+          const td = document.createElement('td');
+          td.colSpan = 4;
+          td.style.color = 'var(--err)';
+          td.textContent = 'Ошибка загрузки.';
+          tr.appendChild(td);
+          tbody.appendChild(tr);
+        }
+        if (hwHost) {
+          hwHost.replaceChildren();
+          const p = document.createElement('div');
+          p.style.color = 'var(--err)';
+          p.style.fontSize = '12px';
+          p.textContent = 'Не удалось загрузить блок.';
+          hwHost.appendChild(p);
+        }
+        if (actHost) {
+          actHost.replaceChildren();
+          const p = document.createElement('div');
+          p.style.color = 'var(--err)';
+          p.style.fontSize = '12px';
+          p.textContent = 'Не удалось загрузить ленту.';
+          actHost.appendChild(p);
+        }
       }
     }
 
@@ -5245,8 +5785,8 @@ if (platformMount) {
           if (presDlPdf) presDlPdf.removeAttribute('disabled');
           if (presDlPptx) presDlPptx.removeAttribute('disabled');
           void (async () => {
-            const pdfUrl = await getSignedFileUrl(pres.pdfKey);
-            const pptxUrl = await getSignedFileUrl(pres.pptxKey);
+            const pdfUrl = pres.pdfKey ? await getSignedFileUrl(pres.pdfKey) : null;
+            const pptxUrl = pres.pptxKey ? await getSignedFileUrl(pres.pptxKey) : null;
             if (!pdfUrl) return;
             const iframe = document.createElement('iframe');
             iframe.className = 'ep-lesson-pres__frame';
@@ -6342,6 +6882,12 @@ if (platformMount) {
     // Подгружаем данные на старте
     void hydrateTopbarUser().then(() => {
       if (shouldOpenAdminOnLoad) void openAdminDrawer(shell.shadowRoot);
+      const r = shell.shadowRoot;
+      const isExpertTab = r.getElementById('tab-expert')?.classList.contains('active');
+      const dash = r.getElementById('screen-e-dashboard');
+      if (expertShellAccess.allowed && isExpertTab && dash?.classList.contains('active')) {
+        void hydrateExpertDashboard(r);
+      }
     });
     void hydrateStudentCatalog();
     void hydrateMyCourses();
@@ -6505,6 +7051,92 @@ if (platformMount) {
         }
         const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(link)}`;
         window.open(qrImg, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      const dashMonthBtn = t?.closest('[data-ep-e-dashboard-month-btn]') as HTMLElement | null;
+      if (dashMonthBtn) {
+        ev.preventDefault();
+        openExpertDashboardMonthPop(shell.shadowRoot);
+        return;
+      }
+      const dashMonthBackdrop = t?.closest('[data-ep-e-dashboard-month-backdrop]') as HTMLElement | null;
+      const dashMonthCancel = t?.closest('[data-ep-e-dashboard-month-cancel]') as HTMLElement | null;
+      if (dashMonthBackdrop || dashMonthCancel) {
+        ev.preventDefault();
+        closeExpertDashboardMonthPop(shell.shadowRoot);
+        return;
+      }
+      const dashMonthApply = t?.closest('[data-ep-e-dashboard-month-apply]') as HTMLElement | null;
+      if (dashMonthApply) {
+        ev.preventDefault();
+        expertDashboardYear = expertDashboardDraftYear;
+        expertDashboardMonth = expertDashboardDraftMonth;
+        closeExpertDashboardMonthPop(shell.shadowRoot);
+        void hydrateExpertDashboard(shell.shadowRoot);
+        return;
+      }
+      const dashPrevYear = t?.closest('[data-ep-e-dashboard-month-prev-year]') as HTMLElement | null;
+      if (dashPrevYear) {
+        ev.preventDefault();
+        expertDashboardDraftYear -= 1;
+        renderExpertDashboardMonthPop(shell.shadowRoot);
+        return;
+      }
+      const dashNextYear = t?.closest('[data-ep-e-dashboard-month-next-year]') as HTMLElement | null;
+      if (dashNextYear) {
+        ev.preventDefault();
+        expertDashboardDraftYear += 1;
+        renderExpertDashboardMonthPop(shell.shadowRoot);
+        return;
+      }
+      const dashMonthPick = t?.closest('[data-ep-e-dashboard-month-pick]') as HTMLElement | null;
+      if (dashMonthPick) {
+        ev.preventDefault();
+        const mo = parseInt((dashMonthPick as HTMLElement).dataset.epEDashboardMonthPick ?? '0', 10);
+        if (mo >= 1 && mo <= 12) {
+          expertDashboardDraftMonth = mo;
+          renderExpertDashboardMonthPop(shell.shadowRoot);
+        }
+        return;
+      }
+
+      const dashHwPick = t?.closest('[data-ep-e-dashboard-hw-pick]') as HTMLElement | null;
+      if (dashHwPick && canReviewHomework()) {
+        ev.preventDefault();
+        const sid = (dashHwPick as HTMLElement).dataset.epEDashboardHwPick?.trim();
+        if (sid) {
+          expertHomeworkSelectedSubmissionId = sid;
+          shell.showScreen('e-homework');
+          void hydrateExpertHomework(shell.shadowRoot);
+          void hydrateExpertHomeworkBadge(shell.shadowRoot);
+          void openExpertHomeworkDetail(shell.shadowRoot, sid);
+        }
+        return;
+      }
+
+      const dashCourseEdit = t?.closest('[data-ep-e-dashboard-course-edit]') as HTMLElement | null;
+      if (dashCourseEdit) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const cid = dashCourseEdit.dataset.epExpertEditorCourseId?.trim();
+        const xe = dashCourseEdit.dataset.epExpertEditorExpertId?.trim();
+        if (cid) {
+          expertBuilderExpertId = xe && xe.length > 0 ? xe : null;
+          expertBuilderCourseId = cid;
+          suppressBuilderNavigateHydrate = true;
+          shell.showScreen('e-builder');
+          suppressBuilderNavigateHydrate = false;
+          void openExpertBuilderEdit(shell.shadowRoot, cid);
+        }
+        return;
+      }
+      const dashCoursePreview = t?.closest('[data-ep-e-dashboard-course-preview]') as HTMLElement | null;
+      if (dashCoursePreview) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const cid = dashCoursePreview.dataset.epExpertEditorCourseId?.trim();
+        if (cid) void openCoursePreview(cid);
         return;
       }
 
@@ -7039,17 +7671,17 @@ if (platformMount) {
         const getIndex = (host as any).__epSliderIndex as (() => number) | undefined;
         const keys = (host as any).__epSliderKeys as string[] | undefined;
         if (!set || !getIndex || !Array.isArray(keys) || keys.length === 0) return;
-        if (t.closest('[data-ep-lesson-slider-prev]')) {
+        if (t?.closest('[data-ep-lesson-slider-prev]')) {
           ev.preventDefault();
           set(getIndex() - 1);
           return;
         }
-        if (t.closest('[data-ep-lesson-slider-next]')) {
+        if (t?.closest('[data-ep-lesson-slider-next]')) {
           ev.preventDefault();
           set(getIndex() + 1);
           return;
         }
-        if (t.closest('[data-ep-lesson-slider-fs]')) {
+        if (t?.closest('[data-ep-lesson-slider-fs]')) {
           ev.preventDefault();
           openKeyViewer(shell.shadowRoot, keys, getIndex());
           return;
@@ -7893,7 +8525,7 @@ if (platformMount) {
         ev.preventDefault();
         void (async () => {
           const token = getAccessToken();
-          const lessonId = (root as any).__epHomework?.lessonId as string | undefined;
+          const lessonId = (shell.shadowRoot as any).__epHomework?.lessonId as string | undefined;
           const courseId = currentCourseId;
           if (!token || !lessonId || !courseId) return;
           try {
@@ -8242,6 +8874,14 @@ if (platformMount) {
 
     window.addEventListener('keydown', (ev: KeyboardEvent) => {
       if (ev.key !== 'Escape') return;
+      const monthPop = shell.shadowRoot.querySelector(
+        '[data-ep-e-dashboard-month-pop].ep-dash-month-pop--open',
+      ) as HTMLElement | null;
+      if (monthPop) {
+        ev.preventDefault();
+        closeExpertDashboardMonthPop(shell.shadowRoot);
+        return;
+      }
       const vw = shell.shadowRoot.querySelector('[data-ep-slider-viewer]') as HTMLElement | null;
       if (!vw || vw.style.display === 'none') return;
       ev.preventDefault();
