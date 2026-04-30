@@ -80,6 +80,12 @@ export class ApiExceptionFilter implements ExceptionFilter {
         case HttpStatus.CONFLICT:
           code = customCode ?? ErrorCodes.CONFLICT;
           break;
+        case HttpStatus.TOO_MANY_REQUESTS:
+          code = customCode ?? ErrorCodes.RATE_LIMITED;
+          break;
+        case HttpStatus.SERVICE_UNAVAILABLE:
+          code = customCode ?? ErrorCodes.INTERNAL_ERROR;
+          break;
         default:
           code = ErrorCodes.INTERNAL_ERROR;
       }

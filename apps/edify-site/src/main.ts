@@ -108,7 +108,7 @@ document.addEventListener('click', (ev) => {
   const el = t?.closest('[data-edify-auth-open]') as HTMLElement | null;
   if (!el) return;
   const mode = (el.getAttribute('data-edify-auth-open') || '').trim();
-  if (mode !== 'login' && mode !== 'register') return;
+  if (mode !== 'login' && mode !== 'register' && mode !== 'forgot') return;
   ev.preventDefault();
   window.closeMobileNav?.();
   window.edifyOpenAuthModal?.(mode);

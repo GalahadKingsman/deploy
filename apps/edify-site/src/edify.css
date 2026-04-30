@@ -174,10 +174,17 @@ body.platform-gate{background:var(--bg);color:var(--t1)}
   transition:all .15s;
 }
 .edify-auth__close:hover{border-color:var(--a-border);color:var(--t1);transform:translateY(-1px)}
+.edify-auth__tabs-bar{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap;
+}
 .edify-auth__tabs{
   display:flex;gap:10px;
-  margin-bottom:14px;
 }
+.edify-auth__forgot-link{
+  border:none;background:none;padding:0;font:inherit;font-size:12px;font-weight:600;color:#0AA8C8;
+  cursor:pointer;text-decoration:underline;text-underline-offset:2px;white-space:nowrap;
+}
+.edify-auth__forgot-link:hover{opacity:.88}
 .edify-auth__tab{
   border-radius:14px;
   padding:12px 18px;

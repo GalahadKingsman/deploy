@@ -139,3 +139,22 @@ export const AuthPasswordResetPreviewResponseV1Schema = z.object({
   email: z.string().email().max(320),
   expiresAt: z.string(),
 });
+
+/** POST /auth/password/reset/request — письмо со ссылкой на смену пароля (лендинг). */
+export interface AuthPasswordResetRequestRequestV1 {
+  email: string;
+}
+
+export const AuthPasswordResetRequestRequestV1Schema = z.object({
+  email: z.string().email().max(320),
+});
+
+export interface AuthPasswordResetRequestResponseV1 {
+  ok: true;
+  message: string;
+}
+
+export const AuthPasswordResetRequestResponseV1Schema = z.object({
+  ok: z.literal(true),
+  message: z.string().min(1),
+});

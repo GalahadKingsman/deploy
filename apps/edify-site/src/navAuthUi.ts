@@ -5,7 +5,7 @@ import { clearAccessToken, getAccessToken, setAccessToken } from './authSession.
 declare global {
   interface Window {
     closeMobileNav?: () => void;
-    edifyOpenAuthModal?: (mode: 'login' | 'register') => void;
+    edifyOpenAuthModal?: (mode: 'login' | 'register' | 'forgot') => void;
   }
 }
 
@@ -74,7 +74,28 @@ function wireGuestLink(a: HTMLAnchorElement): void {
   });
 }
 
-type AuthMode = 'login' | 'register';
+type AuthMode = 'login' | 'register' | 'forgot';
+
+async function readApiErrorMessage(res: Response): Promise<string> {
+  const text = await res.text().catch(() => '');
+  try {
+    const j = JSON.parse(text) as { message?: string };
+    if (j?.message && typeof j.message === 'string') return j.message;
+  } catch {
+    /* not JSON */
+  }
+  return text.trim() ? text.slice(0, 220) : `Ошибка (HTTP ${res.status})`;
+}
+
+function parseApiSuccessMessage(text: string, fallback: string): string {
+  try {
+    const j = JSON.parse(text) as { message?: string };
+    if (j?.message && typeof j.message === 'string') return j.message.trim();
+  } catch {
+    /* ignore */
+  }
+  return fallback;
+}
 
 function openAuthModal(mode: AuthMode): void {
   const existing = document.getElementById('edify-auth-modal');
@@ -91,13 +112,17 @@ function openAuthModal(mode: AuthMode): void {
   head.className = 'edify-auth__head';
   const title = document.createElement('div');
   title.className = 'edify-auth__title';
-  title.textContent = mode === 'register' ? 'Регистрация' : 'Вход';
+  title.textContent =
+    mode === 'register' ? 'Регистрация' : mode === 'forgot' ? 'Восстановление пароля' : 'Вход';
   const close = document.createElement('button');
   close.type = 'button';
   close.className = 'edify-auth__close';
   close.innerHTML = '&times;';
   close.addEventListener('click', () => backdrop.remove());
   head.append(title, close);
+
+  const tabsBar = document.createElement('div');
+  tabsBar.className = 'edify-auth__tabs-bar';
 
   const tabs = document.createElement('div');
   tabs.className = 'edify-auth__tabs';
@@ -109,18 +134,47 @@ function openAuthModal(mode: AuthMode): void {
   tReg.type = 'button';
   tReg.className = 'edify-auth__tab';
   tReg.textContent = 'Регистрация';
+  tabs.append(tLogin, tReg);
+
+  const forgotToLogin = document.createElement('button');
+  forgotToLogin.type = 'button';
+  forgotToLogin.className = 'edify-auth__forgot-link';
+  forgotToLogin.textContent = 'Забыли пароль?';
+
+  tabsBar.append(tabs, forgotToLogin);
+
   const setModeUi = (m: AuthMode) => {
     mode = m;
-    title.textContent = mode === 'register' ? 'Регистрация' : 'Вход';
-    tLogin.classList.toggle('is-active', mode === 'login');
-    tReg.classList.toggle('is-active', mode === 'register');
-    regFields.style.display = mode === 'register' ? '' : 'none';
-    submit.textContent = mode === 'register' ? 'Создать аккаунт' : 'Войти';
+    if (mode === 'forgot') {
+      title.textContent = 'Восстановление пароля';
+      tabsBar.style.display = '';
+      tabs.style.display = 'none';
+      tLogin.classList.remove('is-active');
+      tReg.classList.remove('is-active');
+      regFields.style.display = 'none';
+      password.style.display = 'none';
+      submit.textContent = 'Отправить письмо для восстановления';
+      forgotToLogin.textContent = 'Назад ко входу';
+    } else {
+      tabsBar.style.display = '';
+      tabs.style.display = '';
+      title.textContent = mode === 'register' ? 'Регистрация' : 'Вход';
+      tLogin.classList.toggle('is-active', mode === 'login');
+      tReg.classList.toggle('is-active', mode === 'register');
+      regFields.style.display = mode === 'register' ? '' : 'none';
+      password.style.display = '';
+      submit.textContent = mode === 'register' ? 'Создать аккаунт' : 'Войти';
+      forgotToLogin.textContent = 'Забыли пароль?';
+    }
     msg.textContent = '';
+    password.autocomplete = mode === 'register' ? 'new-password' : 'current-password';
   };
   tLogin.addEventListener('click', () => setModeUi('login'));
   tReg.addEventListener('click', () => setModeUi('register'));
-  tabs.append(tLogin, tReg);
+  forgotToLogin.addEventListener('click', () => {
+    if (mode === 'forgot') setModeUi('login');
+    else setModeUi('forgot');
+  });
 
   const form = document.createElement('form');
   form.className = 'edify-auth__form';
@@ -168,6 +222,26 @@ function openAuthModal(mode: AuthMode): void {
       return;
     }
     try {
+      if (mode === 'forgot') {
+        const em = email.value.trim();
+        if (!em) {
+          msg.textContent = 'Введите email.';
+          return;
+        }
+        const res = await fetch(`${api}/auth/password/reset/request`, {
+          method: 'POST',
+          headers: { accept: 'application/json', 'content-type': 'application/json' },
+          body: JSON.stringify({ email: em }),
+        });
+        if (!res.ok) {
+          msg.textContent = await readApiErrorMessage(res);
+          return;
+        }
+        const okText = await res.text();
+        msg.textContent = parseApiSuccessMessage(okText, 'Письмо отправлено.');
+        return;
+      }
+
       const path = mode === 'register' ? '/auth/register' : '/auth/login';
       const body =
         mode === 'register'
@@ -184,8 +258,7 @@ function openAuthModal(mode: AuthMode): void {
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        msg.textContent = text ? `Ошибка: ${text.slice(0, 160)}` : `Ошибка входа (HTTP ${res.status})`;
+        msg.textContent = await readApiErrorMessage(res);
         return;
       }
       const data = (await res.json()) as { accessToken?: string };
@@ -201,7 +274,7 @@ function openAuthModal(mode: AuthMode): void {
     }
   });
 
-  card.append(head, tabs, form);
+  card.append(head, tabsBar, form);
   backdrop.appendChild(card);
   backdrop.addEventListener('click', (e) => {
     if (e.target === backdrop) backdrop.remove();

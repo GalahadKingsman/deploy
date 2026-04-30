@@ -122,6 +122,8 @@ export {
   AuthPasswordResetConfirmRequestV1Schema,
   AuthPasswordResetConfirmResponseV1Schema,
   AuthPasswordResetPreviewResponseV1Schema,
+  AuthPasswordResetRequestRequestV1Schema,
+  AuthPasswordResetRequestResponseV1Schema,
   AdminCreatePasswordResetRequestV1Schema,
   AdminCreatePasswordResetResponseV1Schema,
 } from './auth.js';

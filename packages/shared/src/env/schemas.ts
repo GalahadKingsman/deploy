@@ -58,6 +58,25 @@ export const ApiEnvSchema = z.object({
   JWT_ACCESS_SECRET: z.string().min(16, 'JWT_ACCESS_SECRET must be at least 16 characters'),
   // Access token TTL (seconds). Production default is 14 days.
   JWT_ACCESS_TTL_SECONDS: z.coerce.number().default(14 * 24 * 60 * 60),
+  /** Публичный origin сайта (лендинг), без завершающего слэша. Ссылки в письмах сброса пароля: https://edify.su */
+  PUBLIC_WEB_ORIGIN: z.preprocess(emptyToUndefined, z.string().url().optional()),
+  SMTP_HOST: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+  SMTP_PORT: z.coerce.number().int().positive().optional(),
+  /** true для порта 465 (SSL), false для 587 STARTTLS */
+  SMTP_SECURE: z
+    .preprocess((v) => {
+      if (v === undefined || v === null || v === '') return undefined;
+      if (typeof v === 'boolean') return v;
+      const s = String(v).toLowerCase().trim();
+      return s === '1' || s === 'true' || s === 'yes';
+    }, z.boolean().optional()),
+  SMTP_USER: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+  SMTP_PASS: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+  /** From: для писем, например EDIFY <noreply@edify.su> */
+  MAIL_FROM: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+  /** Лимит запросов сброса пароля на один email за окно (антиспам). */
+  PASSWORD_RESET_MAX_PER_EMAIL: z.coerce.number().int().min(1).max(50).default(5),
+  PASSWORD_RESET_WINDOW_MS: z.coerce.number().int().min(60_000).max(86_400_000).default(3_600_000),
   SWAGGER_ENABLED: z
     .preprocess((val) => {
       if (val === undefined || val === null || val === '') return false;
