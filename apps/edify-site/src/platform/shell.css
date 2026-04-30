@@ -272,6 +272,9 @@
 .delta-up{color:var(--ok)}
 .delta-dn{color:var(--err)}
 
+/* Course preview: difficulty stat */
+.ep-course-preview-difficulty{color:var(--t2)}
+
 /* Expert dashboard: month picker overlay */
 .ep-dash-month-pop{position:fixed;inset:0;z-index:500;display:none;align-items:center;justify-content:center;padding:18px}
 .ep-dash-month-pop.ep-dash-month-pop--open{display:flex}
