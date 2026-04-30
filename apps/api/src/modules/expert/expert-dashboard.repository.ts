@@ -302,6 +302,7 @@ export class ExpertDashboardRepository {
           s.created_at AS occurred_at,
           ${dn} AS actor_display,
           ${ini} AS actor_initials,
+          u.avatar_url AS actor_avatar_url,
           ('Сдано ДЗ: «' || COALESCE(l.title, '') || '»')::text AS description,
           'ДЗ'::text AS badge_text,
           'new'::text AS badge_variant
@@ -322,6 +323,7 @@ export class ExpertDashboardRepository {
           e.created_at,
           ${dn},
           ${ini},
+          u.avatar_url,
           ('Запись на курс «' || COALESCE(c.title, '') || '»')::text,
           '+1'::text,
           'live'::text
@@ -340,6 +342,7 @@ export class ExpertDashboardRepository {
           lp.completed_at,
           ${dn},
           ${ini},
+          u.avatar_url,
           ('Урок завершён: «' || COALESCE(l.title, '') || '»')::text,
           COALESCE(NULLIF(TRIM(SUBSTRING(l.title FROM 1 FOR 18)), ''), 'Урок')::text,
           'muted'::text
@@ -361,6 +364,7 @@ export class ExpertDashboardRepository {
       occurred_at: Date;
       actor_display: string;
       actor_initials: string;
+      actor_avatar_url: string | null;
       description: string;
       badge_text: string;
       badge_variant: string;
@@ -371,6 +375,7 @@ export class ExpertDashboardRepository {
       occurredAt: rowTimestampToIso(r.occurred_at),
       actorDisplayName: r.actor_display,
       actorInitials: (r.actor_initials ?? '').trim() || '—',
+      actorAvatarUrl: r.actor_avatar_url,
       description: r.description,
       badgeText: r.badge_text,
       badgeVariant: r.badge_variant as 'new' | 'live' | 'draft' | 'muted',

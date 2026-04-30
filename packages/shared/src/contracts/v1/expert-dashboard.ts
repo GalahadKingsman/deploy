@@ -35,6 +35,7 @@ export interface ExpertDashboardActivityItemV1 {
   occurredAt: IsoDateTime;
   actorDisplayName: string;
   actorInitials: string;
+  actorAvatarUrl: string | null;
   description: string;
   badgeText: string;
   badgeVariant: 'new' | 'live' | 'draft' | 'muted';
@@ -106,6 +107,7 @@ export const ExpertDashboardActivityItemV1Schema = z.object({
   occurredAt: z.string(),
   actorDisplayName: z.string(),
   actorInitials: z.string(),
+  actorAvatarUrl: z.string().nullable(),
   description: z.string(),
   badgeText: z.string(),
   badgeVariant: z.enum(['new', 'live', 'draft', 'muted']),

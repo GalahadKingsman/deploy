@@ -4,6 +4,8 @@ import { getApiBaseUrl, getReferralAppBaseUrl, getTelegramBotUsername } from './
 import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
 import { refreshNavAuth } from './navAuthUi.js';
 import { mountPlatformShell } from './platform/mountPlatformShell.js';
+import { hydrateLandingExpertDashboard } from './platform/marketingExpertDashboardPreview.js';
+import { hydrateLandingExpertCourses } from './platform/marketingExpertCoursesPreview.js';
 import { normalizeRutubeEmbedUrl } from './util/rutubeEmbed.js';
 import { downloadAuthenticatedFile, previewAuthenticatedFile } from './downloadAuthenticatedFile.js';
 import { setRichTextWithLinks } from './renderTextWithLinksDom.js';
@@ -90,7 +92,15 @@ document.addEventListener('visibilitychange', () => {
 const platformMount = document.getElementById('edify-platform-mount');
 if (platformMount) {
   if (!getAccessToken()) {
-    renderAuthGate();
+    // Standalone preview page (/platform): show template UI without auth.
+    if (document.body.classList.contains('platform-standalone')) {
+      const shell = mountPlatformShell(platformMount, { initialRole: 'expert', initialScreenId: 'e-dashboard' });
+      // Demo-fill dashboard + courses list for marketing preview.
+      hydrateLandingExpertDashboard(shell.shadowRoot);
+      hydrateLandingExpertCourses(shell.shadowRoot);
+    } else {
+      renderAuthGate();
+    }
   } else {
     type CourseV1 = {
       id: string;
@@ -138,6 +148,7 @@ if (platformMount) {
       occurredAt: string;
       actorDisplayName: string;
       actorInitials: string;
+      actorAvatarUrl: string | null;
       description: string;
       badgeText: string;
       badgeVariant: 'new' | 'live' | 'draft' | 'muted';
@@ -3556,7 +3567,7 @@ if (platformMount) {
               const av = document.createElement('div');
               av.className = 'avatar av-sm';
               av.style.overflow = 'hidden';
-              applyUserAvatarToElement(av, null, (it.actorInitials || '—').slice(0, 2));
+              applyUserAvatarToElement(av, it.actorAvatarUrl, (it.actorInitials || '—').slice(0, 2));
               const body = document.createElement('div');
               body.style.flex = '1';
               body.style.minWidth = '0';
@@ -3878,7 +3889,7 @@ if (platformMount) {
         const av = document.createElement('div');
         av.className = 'avatar av-sm';
         av.style.overflow = 'hidden';
-        applyUserAvatarToElement(av, null, (it.actorInitials || '—').slice(0, 2));
+        applyUserAvatarToElement(av, it.actorAvatarUrl, (it.actorInitials || '—').slice(0, 2));
         const body = document.createElement('div');
         body.style.flex = '1';
         body.style.minWidth = '0';
