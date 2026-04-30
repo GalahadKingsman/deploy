@@ -4,6 +4,7 @@ import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
 import { refreshNavAuth } from './navAuthUi.js';
 import { hydrateLandingExpertCourses } from './platform/marketingExpertCoursesPreview.js';
 import { hydrateLandingExpertDashboard } from './platform/marketingExpertDashboardPreview.js';
+import { hydrateLandingStudentScreens } from './platform/marketingStudentScreensPreview.js';
 import { mountPlatformShell } from './platform/mountPlatformShell.js';
 import { maybeOpenResetPasswordUi } from './resetPasswordUi.js';
 
@@ -152,8 +153,12 @@ if (platformMount) {
       if (action.type === 'navigate' && action.screenId === 'e-courses') {
         hydrateLandingExpertCourses(action.shadowRoot);
       }
+      if (action.type === 'navigate' && (action.screenId === 's-catalog' || action.screenId === 's-mycourses')) {
+        hydrateLandingStudentScreens(action.shadowRoot);
+      }
     },
   });
   // Initial template state (dashboard).
   hydrateLandingExpertDashboard(shell.shadowRoot);
+  hydrateLandingStudentScreens(shell.shadowRoot);
 }

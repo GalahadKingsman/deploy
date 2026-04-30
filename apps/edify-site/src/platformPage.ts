@@ -6,6 +6,7 @@ import { refreshNavAuth } from './navAuthUi.js';
 import { mountPlatformShell } from './platform/mountPlatformShell.js';
 import { hydrateLandingExpertDashboard } from './platform/marketingExpertDashboardPreview.js';
 import { hydrateLandingExpertCourses } from './platform/marketingExpertCoursesPreview.js';
+import { hydrateLandingStudentScreens } from './platform/marketingStudentScreensPreview.js';
 import { normalizeRutubeEmbedUrl } from './util/rutubeEmbed.js';
 import { downloadAuthenticatedFile, previewAuthenticatedFile } from './downloadAuthenticatedFile.js';
 import { setRichTextWithLinks } from './renderTextWithLinksDom.js';
@@ -98,6 +99,7 @@ if (platformMount) {
       // Demo-fill dashboard + courses list for marketing preview.
       hydrateLandingExpertDashboard(shell.shadowRoot);
       hydrateLandingExpertCourses(shell.shadowRoot);
+      hydrateLandingStudentScreens(shell.shadowRoot);
     } else {
       renderAuthGate();
     }
@@ -2726,10 +2728,38 @@ if (platformMount) {
       });
     }
 
+    function appendStudentCoursesGridPlaceholder(grid: HTMLElement, message: string): void {
+      grid.replaceChildren();
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.style.padding = '18px';
+      el.style.color = 'var(--t3)';
+      el.style.fontSize = '13px';
+      el.style.lineHeight = '1.55';
+      el.textContent = message;
+      grid.appendChild(el);
+    }
+
+    function primeStudentCatalogLoading(root: ShadowRoot): void {
+      const screen = root.getElementById('screen-s-catalog');
+      const grid = screen?.querySelector('[data-ep-student-catalog-grid]') as HTMLElement | null;
+      if (!grid) return;
+      appendStudentCoursesGridPlaceholder(grid, 'Загрузка каталога…');
+    }
+
+    function primeStudentMyCoursesLoading(root: ShadowRoot): void {
+      const screen = root.getElementById('screen-s-mycourses');
+      const grid = screen?.querySelector('[data-ep-student-mycourses-grid]') as HTMLElement | null;
+      if (!grid) return;
+      appendStudentCoursesGridPlaceholder(grid, 'Загрузка ваших курсов…');
+      const sub = screen?.querySelector('[data-ep-student-mycourses-sub]');
+      if (sub) sub.textContent = 'Загрузка…';
+    }
+
     async function hydrateStudentCatalog(params?: { q?: string; topic?: string | null }): Promise<void> {
       const root = shell.shadowRoot;
       const screen = root.getElementById('screen-s-catalog');
-      const grid = screen?.querySelector('.grid3');
+      const grid = screen?.querySelector('[data-ep-student-catalog-grid]') as HTMLElement | null;
       if (!grid) return;
 
       const q = (params?.q ?? '').trim();
@@ -2777,7 +2807,7 @@ if (platformMount) {
     async function hydrateMyCourses(): Promise<void> {
       const root = shell.shadowRoot;
       const screen = root.getElementById('screen-s-mycourses');
-      const grid = screen?.querySelector('.grid3');
+      const grid = screen?.querySelector('[data-ep-student-mycourses-grid]') as HTMLElement | null;
       if (!grid) return;
 
       const token = getAccessToken();
@@ -2803,7 +2833,7 @@ if (platformMount) {
       grid.replaceChildren();
       items.forEach((it) => grid.appendChild(renderMyCourseCard(it)));
 
-      const sub = screen?.querySelector('.page-sub');
+      const sub = screen?.querySelector('[data-ep-student-mycourses-sub]');
       if (sub) sub.textContent = `${pluralRu(items.length, ['активный курс', 'активных курса', 'активных курсов'])}`;
 
       const profileNum = root.querySelector('[data-ep-profile-active-courses]') as HTMLElement | null;
@@ -7098,6 +7128,10 @@ if (platformMount) {
         void hydrateExpertDashboard(r);
       }
     });
+    if (isShellStudentMode(shell.shadowRoot)) {
+      primeStudentCatalogLoading(shell.shadowRoot);
+      primeStudentMyCoursesLoading(shell.shadowRoot);
+    }
     void hydrateStudentCatalog();
     void hydrateMyCourses();
 
