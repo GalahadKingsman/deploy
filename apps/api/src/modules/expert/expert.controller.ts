@@ -96,8 +96,13 @@ export class ExpertController {
     @Param('expertId') expertId: string,
     @Query('year') yearStr: string,
     @Query('month') monthStr: string,
+    @Query('limit') limitStr: string | undefined,
     @Req() req: FastifyRequest & { user?: { userId: string } },
   ): Promise<ContractsV1.ExpertDashboardResponseV1> {
+    const limitRaw = limitStr ? parseInt(String(limitStr), 10) : undefined;
+    const activityLimit =
+      limitRaw == null || !Number.isFinite(limitRaw) ? undefined : Math.max(1, Math.min(200, limitRaw));
+
     const year = parseInt(String(yearStr ?? ''), 10);
     const month = parseInt(String(monthStr ?? ''), 10);
     if (!Number.isFinite(year) || year < 2000 || year > 2100) {
@@ -155,6 +160,7 @@ export class ExpertController {
       restrictToCourseIds: restrict,
       referralCode,
       isCurrentUtcMonth,
+      activityLimit,
     });
   }
 }

@@ -3276,7 +3276,7 @@ if (platformMount) {
       let dashLoadErr: string | null = null;
       try {
         dash = await fetchJson<ExpertDashboardResponseV1>(
-          `/experts/${encodeURIComponent(eid)}/dashboard?${q}`,
+          `/experts/${encodeURIComponent(eid)}/dashboard?${q}&limit=5`,
           token,
         );
       } catch (e) {
@@ -3697,6 +3697,8 @@ if (platformMount) {
       globalAvgHomeworkScore: number | null;
     };
     let expertStudentsData: ExpertStudentsResponseV1 | null = null;
+    let expertStudentsView: 'table' | 'activity' = 'table';
+    let expertStudentsActivityLoading = false;
     let expertStudentsSearchTimer: ReturnType<typeof setTimeout> | null = null;
     function expertStudentsDisplayName(s: {
       firstName: string | null;
@@ -3844,8 +3846,121 @@ if (platformMount) {
         tbody.appendChild(tr);
       }
     }
+
+    function setExpertStudentsView(root: ShadowRoot, view: 'table' | 'activity'): void {
+      expertStudentsView = view;
+      const tblCard = root.querySelector('[data-ep-e-students-table-card]') as HTMLElement | null;
+      const actCard = root.querySelector('[data-ep-e-students-activity-card]') as HTMLElement | null;
+      const btn = root.querySelector('[data-ep-e-students-activity-toggle]') as HTMLButtonElement | null;
+      if (tblCard) tblCard.style.display = view === 'table' ? '' : 'none';
+      if (actCard) actCard.style.display = view === 'activity' ? '' : 'none';
+      if (btn) btn.textContent = view === 'activity' ? 'Таблица студентов' : 'Активность студентов';
+    }
+
+    function renderExpertStudentsActivity(root: ShadowRoot, items: ExpertDashboardActivityItemV1[]): void {
+      const host = root.querySelector('[data-ep-e-students-activity-host]') as HTMLElement | null;
+      if (!host) return;
+      host.replaceChildren();
+      if (items.length === 0) {
+        const p = document.createElement('div');
+        p.style.color = 'var(--t3)';
+        p.style.fontSize = '12px';
+        p.textContent = 'Нет событий за выбранный месяц.';
+        host.appendChild(p);
+        return;
+      }
+      for (const it of items) {
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.gap = '10px';
+        row.style.padding = '10px 0';
+        row.style.borderBottom = '1px solid var(--line)';
+        const av = document.createElement('div');
+        av.className = 'avatar av-sm';
+        av.style.overflow = 'hidden';
+        applyUserAvatarToElement(av, null, (it.actorInitials || '—').slice(0, 2));
+        const body = document.createElement('div');
+        body.style.flex = '1';
+        body.style.minWidth = '0';
+        const top = document.createElement('div');
+        top.style.display = 'flex';
+        top.style.alignItems = 'center';
+        top.style.gap = '6px';
+        top.style.flexWrap = 'wrap';
+        const name = document.createElement('span');
+        name.style.fontSize = '12px';
+        name.style.fontWeight = '600';
+        name.style.color = 'var(--t1)';
+        name.textContent = it.actorDisplayName;
+        const badge = document.createElement('span');
+        badge.className = dashboardActivityBadgeClass(it.badgeVariant);
+        badge.textContent = it.badgeText;
+        const tm = document.createElement('span');
+        tm.style.fontFamily = 'var(--fm)';
+        tm.style.fontSize = '9px';
+        tm.style.color = 'var(--t3)';
+        tm.style.marginLeft = 'auto';
+        tm.textContent = formatRelativeTime(it.occurredAt);
+        top.append(name, badge, tm);
+        const desc = document.createElement('div');
+        desc.style.fontSize = '12px';
+        desc.style.color = 'var(--t2)';
+        desc.style.marginTop = '2px';
+        desc.textContent = it.description;
+        body.append(top, desc);
+        row.append(av, body);
+        host.appendChild(row);
+      }
+    }
+
+    async function hydrateExpertStudentsActivity(root: ShadowRoot | null): Promise<void> {
+      if (!root) return;
+      const host = root.querySelector('[data-ep-e-students-activity-host]') as HTMLElement | null;
+      const token = getAccessToken();
+      if (!host) return;
+      if (!token) {
+        host.replaceChildren();
+        const p = document.createElement('div');
+        p.style.color = 'var(--t3)';
+        p.style.fontSize = '12px';
+        p.textContent = 'Войдите, чтобы видеть активность.';
+        host.appendChild(p);
+        return;
+      }
+      if (expertStudentsActivityLoading) return;
+      expertStudentsActivityLoading = true;
+      try {
+        host.replaceChildren();
+        const p = document.createElement('div');
+        p.style.color = 'var(--t3)';
+        p.style.fontSize = '12px';
+        p.textContent = 'Загрузка…';
+        host.appendChild(p);
+
+        const eid = await resolveActiveExpertId();
+        if (!eid) throw new Error('нет доступа');
+        const y = expertDashboardYear;
+        const m = expertDashboardMonth;
+        const q = `year=${encodeURIComponent(String(y))}&month=${encodeURIComponent(String(m))}&limit=200`;
+        const dash = await fetchJson<ExpertDashboardResponseV1>(
+          `/experts/${encodeURIComponent(eid)}/dashboard?${q}`,
+          token,
+        );
+        renderExpertStudentsActivity(root, dash.activity.items ?? []);
+      } catch (e) {
+        host.replaceChildren();
+        const p = document.createElement('div');
+        p.style.color = 'var(--err)';
+        p.style.fontSize = '12px';
+        p.textContent = `Не удалось загрузить активность (${e instanceof Error ? e.message : String(e)}).`;
+        host.appendChild(p);
+      } finally {
+        expertStudentsActivityLoading = false;
+      }
+    }
     async function hydrateExpertStudents(root: ShadowRoot | null): Promise<void> {
       if (!root) return;
+      setExpertStudentsView(root, expertStudentsView);
       const sub = root.querySelector('[data-ep-e-students-sub]') as HTMLElement | null;
       const stTotal = root.querySelector('[data-ep-e-students-stat-total]') as HTMLElement | null;
       const stAct = root.querySelector('[data-ep-e-students-stat-active]') as HTMLElement | null;
@@ -3928,6 +4043,7 @@ if (platformMount) {
           }
         }
         renderEStudentsTbodyFromCache(root);
+        if (expertStudentsView === 'activity') void hydrateExpertStudentsActivity(root);
       } catch {
         expertStudentsData = null;
         if (sub) sub.textContent = 'Не удалось загрузить список.';
@@ -7118,6 +7234,31 @@ if (platformMount) {
         }
         const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(link)}`;
         window.open(qrImg, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      const dashActAll = t?.closest('[data-ep-e-dashboard-activity-all]') as HTMLElement | null;
+      if (dashActAll) {
+        ev.preventDefault();
+        expertStudentsView = 'activity';
+        shell.showScreen('e-students');
+        void hydrateExpertStudents(shell.shadowRoot);
+        void hydrateExpertStudentsActivity(shell.shadowRoot);
+        return;
+      }
+
+      const eStudActToggle = t?.closest('[data-ep-e-students-activity-toggle]') as HTMLElement | null;
+      if (eStudActToggle) {
+        ev.preventDefault();
+        const next = expertStudentsView === 'activity' ? 'table' : 'activity';
+        setExpertStudentsView(shell.shadowRoot, next);
+        if (next === 'activity') void hydrateExpertStudentsActivity(shell.shadowRoot);
+        return;
+      }
+      const eStudActBack = t?.closest('[data-ep-e-students-activity-back]') as HTMLElement | null;
+      if (eStudActBack) {
+        ev.preventDefault();
+        setExpertStudentsView(shell.shadowRoot, 'table');
         return;
       }
 

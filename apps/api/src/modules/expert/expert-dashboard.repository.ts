@@ -42,6 +42,8 @@ export class ExpertDashboardRepository {
     restrictToCourseIds?: string[];
     referralCode: string;
     isCurrentUtcMonth: boolean;
+    /** Max activity items to return. Default 30, max 200. */
+    activityLimit?: number;
   }): Promise<ContractsV1.ExpertDashboardResponseV1> {
     const empty = (): ContractsV1.ExpertDashboardResponseV1 => {
       const start = new Date(Date.UTC(params.year, params.month - 1, 1, 0, 0, 0, 0));
@@ -290,6 +292,9 @@ export class ExpertDashboardRepository {
     const ini = initialsSql('u');
     const dn = displayNameSql('u');
 
+    const actLimitRaw = Math.floor(Number(params.activityLimit ?? 30));
+    const actLimit = Math.max(1, Math.min(200, Number.isFinite(actLimitRaw) ? actLimitRaw : 30));
+
     const activitySql = `
       SELECT * FROM (
         SELECT
@@ -348,7 +353,7 @@ export class ExpertDashboardRepository {
           ${hasRestrict ? 'AND c.id = ANY($4::uuid[])' : ''}
       ) x
       ORDER BY x.occurred_at DESC
-      LIMIT 30
+      LIMIT ${actLimit}
     `;
 
     const actRes = await this.pool.query<{

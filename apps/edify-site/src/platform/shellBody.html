@@ -592,6 +592,7 @@
     </div>
     <div class="actions-row">
       <div class="search-input"><span>🔍</span><input placeholder="Поиск студентов..." data-ep-e-students-search/></div>
+      <button type="button" class="btn btn-outline btn-sm" data-ep-e-students-activity-toggle>Активность студентов</button>
       <button type="button" class="btn btn-outline btn-sm" data-ep-e-students-filter>Фильтр ▾</button>
       <button type="button" class="btn btn-primary btn-sm" data-ep-e-students-invite>Пригласить</button>
     </div>
@@ -602,7 +603,7 @@
     <div class="stat-card"><div class="num" data-ep-e-students-stat-avg>—</div><div class="lbl">Среднее завершение</div></div>
     <div class="stat-card"><div class="num warn" data-ep-e-students-stat-hw>—</div><div class="lbl">Средний балл за дз</div></div>
   </div>
-  <div class="card" style="overflow:hidden">
+  <div class="card" style="overflow:hidden" data-ep-e-students-table-card>
     <table class="tbl">
       <thead>
         <tr>
@@ -621,6 +622,14 @@
         </tr>
       </tbody>
     </table>
+  </div>
+
+  <div class="card" style="padding:16px;display:none" data-ep-e-students-activity-card>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+      <div style="font-family:var(--fd);font-size:13px;font-weight:800;color:var(--t1)">Активность студентов</div>
+      <button type="button" class="btn btn-ghost btn-sm" data-ep-e-students-activity-back>← К таблице</button>
+    </div>
+    <div data-ep-e-students-activity-host style="display:flex;flex-direction:column;gap:0"></div>
   </div>
 </div>
 
