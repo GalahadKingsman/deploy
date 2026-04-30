@@ -3,6 +3,7 @@ import { ACCESS_TOKEN_KEY, getAccessToken } from './authSession.js';
 import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
 import { refreshNavAuth } from './navAuthUi.js';
 import { hydrateLandingExpertCourses } from './platform/marketingExpertCoursesPreview.js';
+import { hydrateLandingExpertDashboard } from './platform/marketingExpertDashboardPreview.js';
 import { mountPlatformShell } from './platform/mountPlatformShell.js';
 import { maybeOpenResetPasswordUi } from './resetPasswordUi.js';
 
@@ -141,13 +142,18 @@ document.addEventListener('click', (ev) => {
 
 const platformMount = document.getElementById('edify-platform-mount');
 if (platformMount) {
-  mountPlatformShell(platformMount, {
+  const shell = mountPlatformShell(platformMount, {
     marketingPreview: true,
     onAction(action) {
       if (import.meta.env.DEV) console.debug('[edify-platform]', action);
+      if (action.type === 'navigate' && action.screenId === 'e-dashboard') {
+        hydrateLandingExpertDashboard(action.shadowRoot);
+      }
       if (action.type === 'navigate' && action.screenId === 'e-courses') {
         hydrateLandingExpertCourses(action.shadowRoot);
       }
     },
   });
+  // Initial template state (dashboard).
+  hydrateLandingExpertDashboard(shell.shadowRoot);
 }

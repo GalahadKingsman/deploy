@@ -22,64 +22,45 @@ export function hydrateLandingExpertDashboard(shadowRoot: ShadowRoot): void {
   const hwHost = screen.querySelector('[data-ep-e-dashboard-hw-host]') as HTMLElement | null;
   const actHost = screen.querySelector('[data-ep-e-dashboard-activity-host]') as HTMLElement | null;
 
-  if (sub) sub.textContent = 'Добро пожаловать, Алина · Апрель 2026';
-  if (monthBtn) monthBtn.textContent = 'Апрель 2026';
+  // Match landing “template” screenshot: placeholders + “Загрузка…”.
+  if (sub) sub.textContent = 'Загрузка…';
+  if (monthBtn) monthBtn.textContent = '—';
 
-  if (stStudents) stStudents.textContent = '38';
-  if (stStudentsDelta) stStudentsDelta.textContent = '↑ +3 за месяц';
+  if (stStudents) stStudents.textContent = '—';
+  if (stStudentsDelta) stStudentsDelta.textContent = '↑ +0 за месяц';
 
-  if (stRefLbl) stRefLbl.textContent = 'Реферальные выплаты (апрель 2026)';
-  if (stRefRub) stRefRub.textContent = '14\u00a0200\u00a0₽';
-  if (stRefDelta) stRefDelta.textContent = '↑ +2\u00a0100\u00a0₽';
+  if (stRefLbl) stRefLbl.textContent = 'Реферальные выплаты';
+  if (stRefRub) stRefRub.textContent = '—';
+  if (stRefDelta) stRefDelta.textContent = '↑ +0 ₽';
 
-  if (stPub) stPub.textContent = '3';
-  if (stDrafts) stDrafts.textContent = '1 черновик';
+  if (stPub) stPub.textContent = '—';
+  if (stDrafts) stDrafts.textContent = '—';
 
-  if (stHwPend) stHwPend.textContent = '12';
-  if (stHwNew) stHwNew.textContent = '↑ 4 новых сегодня';
+  if (stHwPend) stHwPend.textContent = '—';
+  if (stHwNew) stHwNew.textContent = '↑ 0 новых сегодня';
 
   if (tbody) {
     tbody.replaceChildren();
-    const rows = [
-      { title: 'Маркетинг в интернете 2025', students: 22, status: 'Активен', statusCls: 'tag tag-live' },
-      { title: 'Продажи без скриптов', students: 10, status: 'Активен', statusCls: 'tag tag-live' },
-      { title: 'Финансовая грамотность', students: 0, status: 'Черновик', statusCls: 'tag tag-draft' },
-    ] as const;
-    for (const r of rows) {
-      const tr = document.createElement('tr');
-      const td1 = document.createElement('td');
-      td1.textContent = r.title;
-      const td2 = document.createElement('td');
-      td2.textContent = String(r.students);
-      const td3 = document.createElement('td');
-      const tag = document.createElement('span');
-      tag.className = r.statusCls;
-      tag.textContent = r.status;
-      td3.appendChild(tag);
-      const td4 = document.createElement('td');
-      td4.className = 'tbl-col-center';
-      td4.innerHTML = '<span style="opacity:.5">✏️</span> <span style="opacity:.5">👁</span>';
-      tr.append(td1, td2, td3, td4);
-      tbody.appendChild(tr);
-    }
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 4;
+    td.style.textAlign = 'center';
+    td.style.color = 'var(--t3)';
+    td.style.fontSize = '12px';
+    td.style.padding = '20px 12px';
+    td.textContent = 'Загрузка…';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
   }
 
   if (hwHost) {
     hwHost.replaceChildren();
-    const p = document.createElement('div');
-    p.style.color = 'var(--t3)';
-    p.style.fontSize = '12px';
-    p.textContent = 'Войдите, чтобы видеть задания за месяц.';
-    hwHost.appendChild(p);
+    // Leave empty: matches template (only CTA button below).
   }
 
   if (actHost) {
     actHost.replaceChildren();
-    const p = document.createElement('div');
-    p.style.color = 'var(--t3)';
-    p.style.fontSize = '12px';
-    p.textContent = 'Войдите, чтобы видеть активность студентов.';
-    actHost.appendChild(p);
+    // Leave empty: matches template (only “Вся активность” CTA below).
   }
 }
 
