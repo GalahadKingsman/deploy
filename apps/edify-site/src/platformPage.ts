@@ -7158,7 +7158,15 @@ if (platformMount) {
       const diffEl = screen.querySelector('[data-ep-course-preview-stat-difficulty]') as HTMLElement | null;
       if (diffEl) {
         const d = (course.difficultyLevel ?? null) as any;
+        diffEl.classList.remove(
+          'ep-course-preview-difficulty--easy',
+          'ep-course-preview-difficulty--medium',
+          'ep-course-preview-difficulty--hard',
+        );
         diffEl.textContent = d === 'easy' ? 'Легкий' : d === 'medium' ? 'Средний' : d === 'hard' ? 'Сложный' : '—';
+        if (d === 'easy') diffEl.classList.add('ep-course-preview-difficulty--easy');
+        else if (d === 'medium') diffEl.classList.add('ep-course-preview-difficulty--medium');
+        else if (d === 'hard') diffEl.classList.add('ep-course-preview-difficulty--hard');
       }
 
       const coverHost = screen.querySelector('[data-ep-course-preview-cover]') as HTMLElement | null;

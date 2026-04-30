@@ -272,8 +272,12 @@
 .delta-up{color:var(--ok)}
 .delta-dn{color:var(--err)}
 
-/* Course preview: difficulty stat */
-.ep-course-preview-difficulty{color:var(--t2)}
+/* Course preview: completion hours (purple value; label stays .lbl / --t3) */
+.stat-card .num.ep-course-preview-stat-hours{color:var(--purple)}
+/* Course preview: difficulty value colors (label .lbl unchanged) */
+.stat-card .num.ep-course-preview-difficulty--easy{color:#EAB308}
+.stat-card .num.ep-course-preview-difficulty--medium{color:var(--warn)}
+.stat-card .num.ep-course-preview-difficulty--hard{color:var(--err)}
 
 /* Expert dashboard: month picker overlay */
 .ep-dash-month-pop{position:fixed;inset:0;z-index:500;display:none;align-items:center;justify-content:center;padding:18px}
