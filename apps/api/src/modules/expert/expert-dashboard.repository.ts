@@ -70,9 +70,14 @@ export class ExpertDashboardRepository {
 
     const restrict = params.restrictToCourseIds;
     const hasRestrict = restrict !== undefined && restrict.length > 0;
-    const courseFilter = hasRestrict ? 'AND c.id = ANY($4::uuid[])' : '';
+    // IMPORTANT: do not use $4 without $2/$3 in Postgres — it forces typing for missing params.
+    // Keep query args aligned to the actually referenced parameter numbers.
+    const dateWindowCourseFilter = hasRestrict ? 'AND c.id = ANY($4::uuid[])' : '';
     const baseArgs: unknown[] = [params.expertId, start, endExclusive];
     if (hasRestrict) baseArgs.push(restrict);
+
+    const courseFilter2 = hasRestrict ? 'AND c.id = ANY($2::uuid[])' : '';
+    const argsExpertOnly: unknown[] = hasRestrict ? [params.expertId, restrict] : [params.expertId];
 
     const totalUniqueRes = await this.pool.query<{ c: string }>(
       `
@@ -82,9 +87,9 @@ export class ExpertDashboardRepository {
       WHERE c.expert_id = $1
         AND e.revoked_at IS NULL
         AND (e.access_end IS NULL OR e.access_end > NOW())
-        ${courseFilter}
+        ${courseFilter2}
       `,
-      baseArgs,
+      argsExpertOnly,
     );
     const totalUnique = Math.max(0, parseInt(totalUniqueRes.rows[0]?.c ?? '0', 10) || 0);
 
@@ -97,7 +102,7 @@ export class ExpertDashboardRepository {
         AND e.revoked_at IS NULL
         AND (e.access_end IS NULL OR e.access_end > NOW())
         AND e.created_at >= $2 AND e.created_at < $3
-        ${courseFilter}
+        ${dateWindowCourseFilter}
       `,
       baseArgs,
     );
