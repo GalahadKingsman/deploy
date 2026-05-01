@@ -48,6 +48,10 @@ function hoursFromDb(v: unknown): number | null {
   return Math.min(n, 8760);
 }
 
+function isPgUndefinedColumnError(e: unknown): boolean {
+  return typeof e === 'object' && e !== null && 'code' in e && (e as { code?: string }).code === '42703';
+}
+
 function mapRow(row: CourseRow): ContractsV1.ExpertCourseV1 {
   const mode = row.lesson_access_mode;
   const rawDiff = (row.difficulty_level ?? null) as any;
@@ -613,20 +617,31 @@ export class CoursesRepository {
       throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
     }
     await this.getById(params);
-    const res = await this.pool.query<{
-      certificate_pdf_key: string | null;
-      certificate_original_filename: string | null;
-    }>(
-      `SELECT certificate_pdf_key, certificate_original_filename
-       FROM courses
-       WHERE id = $1 AND expert_id = $2`,
-      [params.courseId, params.expertId],
-    );
-    const row = res.rows[0];
-    return {
-      pdfKey: row?.certificate_pdf_key ?? null,
-      originalFilename: row?.certificate_original_filename ?? null,
-    };
+    try {
+      const res = await this.pool.query<{
+        certificate_pdf_key: string | null;
+        certificate_original_filename: string | null;
+      }>(
+        `SELECT certificate_pdf_key, certificate_original_filename
+         FROM courses
+         WHERE id = $1 AND expert_id = $2`,
+        [params.courseId, params.expertId],
+      );
+      const row = res.rows[0];
+      return {
+        pdfKey: row?.certificate_pdf_key ?? null,
+        originalFilename: row?.certificate_original_filename ?? null,
+      };
+    } catch (e) {
+      if (isPgUndefinedColumnError(e)) {
+        throw new BadRequestException({
+          code: ErrorCodes.VALIDATION_ERROR,
+          message:
+            'Колонки сертификата в БД ещё не созданы. Примените миграцию 035_course_certificate_pdf.sql на сервере и перезапустите API.',
+        });
+      }
+      throw e;
+    }
   }
 
   async setCertificate(params: {
@@ -639,23 +654,34 @@ export class CoursesRepository {
       throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
     }
     await this.getById(params);
-    const res = await this.pool.query<CourseRow>(
-      `
-      UPDATE courses
-      SET certificate_pdf_key = $3,
-          certificate_original_filename = $4,
-          certificate_uploaded_at = NOW(),
-          updated_at = NOW()
-      WHERE id = $1 AND expert_id = $2
-      RETURNING *
-      `,
-      [params.courseId, params.expertId, params.pdfKey, params.originalFilename],
-    );
-    const row = res.rows[0];
-    if (!row) {
-      throw new NotFoundException({ code: ErrorCodes.COURSE_NOT_FOUND, message: 'Course not found' });
+    try {
+      const res = await this.pool.query<CourseRow>(
+        `
+        UPDATE courses
+        SET certificate_pdf_key = $3,
+            certificate_original_filename = $4,
+            certificate_uploaded_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $1 AND expert_id = $2
+        RETURNING *
+        `,
+        [params.courseId, params.expertId, params.pdfKey, params.originalFilename],
+      );
+      const row = res.rows[0];
+      if (!row) {
+        throw new NotFoundException({ code: ErrorCodes.COURSE_NOT_FOUND, message: 'Course not found' });
+      }
+      return mapRow(row);
+    } catch (e) {
+      if (isPgUndefinedColumnError(e)) {
+        throw new BadRequestException({
+          code: ErrorCodes.VALIDATION_ERROR,
+          message:
+            'Колонки сертификата в БД ещё не созданы. Примените миграцию 035_course_certificate_pdf.sql на сервере и перезапустите API.',
+        });
+      }
+      throw e;
     }
-    return mapRow(row);
   }
 
   async clearCertificate(params: {
@@ -666,23 +692,34 @@ export class CoursesRepository {
       throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
     }
     await this.getById(params);
-    const res = await this.pool.query<CourseRow>(
-      `
-      UPDATE courses
-      SET certificate_pdf_key = NULL,
-          certificate_original_filename = NULL,
-          certificate_uploaded_at = NULL,
-          updated_at = NOW()
-      WHERE id = $1 AND expert_id = $2
-      RETURNING *
-      `,
-      [params.courseId, params.expertId],
-    );
-    const row = res.rows[0];
-    if (!row) {
-      throw new NotFoundException({ code: ErrorCodes.COURSE_NOT_FOUND, message: 'Course not found' });
+    try {
+      const res = await this.pool.query<CourseRow>(
+        `
+        UPDATE courses
+        SET certificate_pdf_key = NULL,
+            certificate_original_filename = NULL,
+            certificate_uploaded_at = NULL,
+            updated_at = NOW()
+        WHERE id = $1 AND expert_id = $2
+        RETURNING *
+        `,
+        [params.courseId, params.expertId],
+      );
+      const row = res.rows[0];
+      if (!row) {
+        throw new NotFoundException({ code: ErrorCodes.COURSE_NOT_FOUND, message: 'Course not found' });
+      }
+      return mapRow(row);
+    } catch (e) {
+      if (isPgUndefinedColumnError(e)) {
+        throw new BadRequestException({
+          code: ErrorCodes.VALIDATION_ERROR,
+          message:
+            'Колонки сертификата в БД ещё не созданы. Примените миграцию 035_course_certificate_pdf.sql на сервере и перезапустите API.',
+        });
+      }
+      throw e;
     }
-    return mapRow(row);
   }
 
   async softDelete(params: { expertId: string; courseId: string }): Promise<void> {

@@ -310,19 +310,31 @@ export class ExpertCoursesController {
     const original = typeof file.filename === 'string' && file.filename.trim() ? file.filename.trim() : 'certificate.pdf';
     const safeName = original.replace(/[^\w.\-]+/g, '_').slice(0, 120);
     const key = `course-certificates/${courseId}/${Date.now()}-${safeName}`;
+    // Сначала БД (миграция / старый ключ), потом S3 — чтобы не оставлять «висящий» файл при ошибке SQL.
+    const prev = await this.coursesRepository.getCertificate({ expertId, courseId });
+
     await this.storage.putObject({
       key,
       body: new Uint8Array(buf),
       contentType: 'application/pdf',
     });
 
-    const prev = await this.coursesRepository.getCertificate({ expertId, courseId });
-    const updated = await this.coursesRepository.setCertificate({
-      expertId,
-      courseId,
-      pdfKey: key,
-      originalFilename: original,
-    });
+    let updated: ContractsV1.ExpertCourseV1;
+    try {
+      updated = await this.coursesRepository.setCertificate({
+        expertId,
+        courseId,
+        pdfKey: key,
+        originalFilename: original,
+      });
+    } catch (e) {
+      try {
+        await this.storage.deleteObject({ key });
+      } catch {
+        // best-effort rollback
+      }
+      throw e;
+    }
     if (prev.pdfKey && prev.pdfKey !== key) {
       try {
         await this.storage.deleteObject({ key: prev.pdfKey });

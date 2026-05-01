@@ -5200,7 +5200,7 @@ if (platformMount) {
       const uploaded = builderCourseDetail?.certificateUploaded === true;
       btn.textContent = uploaded ? 'Сертификат загружен' : 'Загрузить сертификат';
       btn.classList.toggle('btn-outline', !uploaded);
-      btn.classList.toggle('btn-primary', uploaded);
+      btn.classList.toggle('ep-builder-cert-btn--uploaded', uploaded);
       btn.title = uploaded
         ? 'Нажмите, чтобы заменить или удалить PDF сертификата'
         : 'Загрузить PDF сертификата для этого курса';

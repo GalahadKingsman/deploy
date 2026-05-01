@@ -143,6 +143,17 @@
 .btn-primary:hover{opacity:.87;transform:translateY(-1px)}
 .btn-accent{background:var(--a);color:#fff}
 .btn-accent:hover{opacity:.9}
+/* Сертификат курса загружен (конструктор, правый бар) */
+.ep-builder-cert-btn--uploaded{
+  background:var(--ok);
+  color:#fff;
+  border:1px solid rgba(22,163,74,0.45);
+}
+.ep-builder-cert-btn--uploaded:hover{
+  opacity:0.92;
+  transform:translateY(-1px);
+  filter:brightness(1.02);
+}
 .btn-outline{background:transparent;border:1px solid var(--line2);color:var(--t2)}
 .btn-outline:hover{border-color:var(--t1);color:var(--t1)}
 .btn-ghost{background:transparent;color:var(--t3)}
