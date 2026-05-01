@@ -37,10 +37,16 @@ export class MailerService {
       host: env.SMTP_HOST!,
       port,
       secure,
+      // Mailtrap и др.: TLS обязателен; на 2525/587 — STARTTLS до AUTH.
+      ...(secure ? {} : { requireTLS: true }),
       auth: {
         user: env.SMTP_USER!,
         pass: env.SMTP_PASS!,
       },
+      // Иначе при недоступном SMTP запрос висит до таймаута nginx (504) и браузер показывает «CORS».
+      connectionTimeout: 12_000,
+      greetingTimeout: 12_000,
+      socketTimeout: 25_000,
     });
 
     const expiresRu = new Date(params.expiresAtIso).toLocaleString('ru-RU', {

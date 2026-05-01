@@ -77,6 +77,9 @@ function wireGuestLink(a: HTMLAnchorElement): void {
 type AuthMode = 'login' | 'register' | 'forgot';
 
 async function readApiErrorMessage(res: Response): Promise<string> {
+  if (res.status === 504 || res.status === 502) {
+    return 'Шлюз не дождался ответа API (502/504). Обычно API долго подключается к SMTP: проверьте SMTP_HOST, порт 465/587, исходящий фаервол и proxy_read_timeout в nginx перед API.';
+  }
   const text = await res.text().catch(() => '');
   try {
     const j = JSON.parse(text) as { message?: unknown };
@@ -291,7 +294,10 @@ function openAuthModal(mode: AuthMode): void {
       backdrop.remove();
       await refreshNavAuth();
     } catch {
-      setMsg('Не удалось выполнить запрос (сеть или блокировка CORS). Откройте вкладку «Сеть» в инструментах разработчика и проверьте запрос POST.', 'error');
+      setMsg(
+        'Запрос не удался (часто из‑за 504 от nginx: HTML без CORS, или обрыв сети). В «Сеть» посмотрите статус POST; если 504 — увеличьте proxy_read_timeout у прокси на API и проверьте доступность SMTP с сервера (порт 465).',
+        'error',
+      );
     } finally {
       submit.disabled = false;
     }

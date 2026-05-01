@@ -90,7 +90,14 @@ export class PasswordResetController {
       if (e instanceof HttpException && e.getStatus() === HttpStatus.TOO_MANY_REQUESTS) {
         throw e;
       }
-      this.logger.warn(`Password reset mail failed for ${email}: ${e instanceof Error ? e.message : String(e)}`);
+      const err = e instanceof Error ? e : new Error(String(e));
+      const smtp =
+        typeof (err as { response?: unknown }).response === 'string'
+          ? (err as { response: string }).response.trim()
+          : '';
+      this.logger.warn(
+        `Password reset mail failed for ${email}: ${err.message}${smtp ? ` | SMTP: ${smtp}` : ''}`,
+      );
       throw new ServiceUnavailableException({
         code: ErrorCodes.INTERNAL_ERROR,
         message: 'Не удалось отправить письмо. Попробуйте позже или обратитесь в поддержку.',
