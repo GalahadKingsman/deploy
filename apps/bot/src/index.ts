@@ -17,6 +17,16 @@ if (parsed.protocol !== 'https:') {
 }
 const WEBAPP_URL = trimmed.replace(/\/+$/, '');
 
+const SUPPORT_GROUP_ID_RAW = (env.TELEGRAM_SUPPORT_GROUP_ID ?? '').trim();
+const SUPPORT_GROUP_ID = SUPPORT_GROUP_ID_RAW ? Number(SUPPORT_GROUP_ID_RAW) : Number.NaN;
+const supportEnabled = Number.isFinite(SUPPORT_GROUP_ID) && SUPPORT_GROUP_ID !== 0;
+if (!supportEnabled && SUPPORT_GROUP_ID_RAW) {
+  console.warn(`TELEGRAM_SUPPORT_GROUP_ID is not a valid number: "${SUPPORT_GROUP_ID_RAW}"`);
+}
+if (!supportEnabled) {
+  console.warn('TELEGRAM_SUPPORT_GROUP_ID is not set — "Чат с поддержкой" disabled');
+}
+
 const bot = new Bot(env.BOT_TOKEN);
 
 // Ensure long polling works even if a webhook was previously configured for this bot token.
@@ -32,6 +42,8 @@ const openWebAppKb = new InlineKeyboard().webApp('Open WebApp', WEBAPP_URL);
 
 const pendingSubmissions = new Map<string, { lessonId: string }>();
 const pendingContacts = new Map<string, { step: 'await_contact' | 'await_email' }>();
+/** Telegram user IDs (private chats with the bot) that are currently in the support chat mode. */
+const supportActive = new Set<string>();
 
 function isInviteCode(s: string): boolean {
   // Our invite codes are hex strings produced by randomBytes(12).toString('hex') => 24 chars.
@@ -95,6 +107,11 @@ bot.command('start', async (ctx) => {
     await ctx.reply('Нажмите кнопку, чтобы завершить вход на сайте:', { reply_markup: kb });
     return;
   }
+  // Поддержка с сайта: t.me/bot?start=support → inline кнопка «Чат с поддержкой»
+  if (payloadRaw.toLowerCase() === 'support') {
+    await replyWithSupportEntry(ctx);
+    return;
+  }
   await ctx.reply(
     'Open the app:',
     {
@@ -102,6 +119,103 @@ bot.command('start', async (ctx) => {
     },
   );
 });
+
+type ReplyCtx = { reply: (text: string, other?: { reply_markup?: InlineKeyboard }) => Promise<unknown> };
+
+async function replyWithSupportEntry(ctx: ReplyCtx) {
+  if (!supportEnabled) {
+    await ctx.reply(
+      'Поддержка временно недоступна. Напишите на hello@edify.su — мы ответим как можно скорее.',
+    );
+    return;
+  }
+  const kb = new InlineKeyboard().text('Чат с поддержкой', 'support_open');
+  await ctx.reply(
+    'Привет! Это служба поддержки EDIFY.\n\nНажмите кнопку, чтобы начать диалог — мы получим ваше сообщение и ответим в этом же чате.',
+    { reply_markup: kb },
+  );
+}
+
+bot.command('support', async (ctx) => {
+  await replyWithSupportEntry(ctx);
+});
+
+bot.command('support_end', async (ctx) => {
+  const tgId = String(ctx.from?.id ?? '');
+  if (tgId) supportActive.delete(tgId);
+  await ctx.reply('Диалог с поддержкой завершён. Чтобы открыть его снова — /support.');
+});
+
+bot.callbackQuery('support_open', async (ctx) => {
+  const tgId = String(ctx.from?.id ?? '');
+  if (!tgId) {
+    await ctx.answerCallbackQuery();
+    return;
+  }
+  if (!supportEnabled) {
+    await ctx.answerCallbackQuery();
+    await ctx.reply('Поддержка временно недоступна.');
+    return;
+  }
+  supportActive.add(tgId);
+  await ctx.answerCallbackQuery({ text: 'Чат открыт' });
+  const endKb = new InlineKeyboard().text('Завершить диалог', 'support_end');
+  await ctx.reply(
+    'Напишите ваш вопрос текстом — я передам его команде поддержки и пришлю ответ сюда же.',
+    { reply_markup: endKb },
+  );
+});
+
+bot.callbackQuery('support_end', async (ctx) => {
+  const tgId = String(ctx.from?.id ?? '');
+  if (tgId) supportActive.delete(tgId);
+  await ctx.answerCallbackQuery({ text: 'Диалог завершён' });
+  await ctx.reply('Диалог с поддержкой завершён. Чтобы открыть его снова — /support.');
+});
+
+async function persistSupportRouting(params: {
+  outboundMessageId: number;
+  customerTelegramId: number;
+}) {
+  const shared = (env.TELEGRAM_BOT_TOKEN ?? env.BOT_TOKEN).trim();
+  const res = await fetch(
+    `${env.BOT_API_BASE_URL.replace(/\/+$/, '')}/bot/support/routing`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-telegram-bot-token': shared },
+      body: JSON.stringify(params),
+    },
+  );
+  if (!res.ok) {
+    const payload = await res.text();
+    throw new Error(`API error: ${res.status} ${payload}`);
+  }
+}
+
+async function fetchSupportRouting(outboundMessageId: number): Promise<string | null> {
+  const shared = (env.TELEGRAM_BOT_TOKEN ?? env.BOT_TOKEN).trim();
+  const res = await fetch(
+    `${env.BOT_API_BASE_URL.replace(/\/+$/, '')}/bot/support/routing/${encodeURIComponent(String(outboundMessageId))}`,
+    { method: 'GET', headers: { 'x-telegram-bot-token': shared } },
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const payload = await res.text();
+    throw new Error(`API error: ${res.status} ${payload}`);
+  }
+  const json = (await res.json()) as { customerTelegramId?: string };
+  return json.customerTelegramId ? String(json.customerTelegramId) : null;
+}
+
+function formatSupportHeader(ctx: {
+  from?: { first_name?: string; last_name?: string; username?: string; id?: number } | undefined;
+}): string {
+  const u = ctx.from;
+  const name = [u?.first_name, u?.last_name].filter(Boolean).join(' ').trim() || '—';
+  const handle = u?.username ? ` (@${u.username})` : '';
+  const id = String(u?.id ?? '');
+  return `Сообщение в поддержку\nОт: ${name}${handle}\nTelegram ID: ${id}`;
+}
 
 bot.command('submit', async (ctx) => {
   const text = ctx.message?.text ?? '';
@@ -192,9 +306,32 @@ async function createSubmission(params: {
 
 bot.on('message:text', async (ctx) => {
   const tgId = String(ctx.from?.id ?? '');
+  const text = ctx.message.text ?? '';
+
+  // Поддержка: ответ админа в супергруппе → пересылка пользователю
+  if (supportEnabled && ctx.chat?.id === SUPPORT_GROUP_ID) {
+    const reply = ctx.message.reply_to_message;
+    if (!reply || !reply.from?.is_bot) return;
+    try {
+      const customerId = await fetchSupportRouting(reply.message_id);
+      if (!customerId) {
+        await ctx.api.sendMessage(
+          ctx.chat.id,
+          'Не удалось найти получателя для этого ответа (старое сообщение или сбой маршрутизации).',
+          { reply_parameters: { message_id: ctx.message.message_id } },
+        );
+        return;
+      }
+      await ctx.api.sendMessage(Number(customerId), `Поддержка: ${text}`);
+    } catch (e) {
+      console.warn('support relay (group→user) failed:', e);
+    }
+    return;
+  }
+
   const pendingContact = pendingContacts.get(tgId);
   if (pendingContact?.step === 'await_email') {
-    const email = (ctx.message.text ?? '').trim();
+    const email = text.trim();
     if (!email) return;
     pendingContacts.delete(tgId);
     try {
@@ -208,18 +345,43 @@ bot.on('message:text', async (ctx) => {
   }
 
   const pending = pendingSubmissions.get(tgId);
-  if (!pending) return;
-  pendingSubmissions.delete(tgId);
-  try {
-    await createSubmission({
-      telegramUserId: tgId,
-      lessonId: pending.lessonId,
-      text: ctx.message.text,
-    });
-    await ctx.reply('Submitted.');
-  } catch (e) {
-    await ctx.reply('Failed to submit. Try again later.');
-    throw e;
+  if (pending) {
+    pendingSubmissions.delete(tgId);
+    try {
+      await createSubmission({
+        telegramUserId: tgId,
+        lessonId: pending.lessonId,
+        text,
+      });
+      await ctx.reply('Submitted.');
+    } catch (e) {
+      await ctx.reply('Failed to submit. Try again later.');
+      throw e;
+    }
+    return;
+  }
+
+  // Поддержка: сообщение пользователя в личке → пост в группу + сохранить маршрут
+  if (supportEnabled && supportActive.has(tgId) && ctx.chat?.type === 'private') {
+    try {
+      const header = formatSupportHeader({ from: ctx.from ?? undefined });
+      const sent = await ctx.api.sendMessage(SUPPORT_GROUP_ID, `${header}\n\n${text}`);
+      try {
+        await persistSupportRouting({
+          outboundMessageId: sent.message_id,
+          customerTelegramId: Number(tgId),
+        });
+      } catch (e) {
+        console.warn('persistSupportRouting failed:', e);
+        await ctx.reply('Сообщение отправлено, но ответы могут не дойти автоматически. Мы проверим.');
+        return;
+      }
+      await ctx.reply('Принято — ответ придёт в этот чат.');
+    } catch (e) {
+      console.warn('support relay (user→group) failed:', e);
+      await ctx.reply('Не удалось отправить сообщение в поддержку. Попробуйте ещё раз позже.');
+    }
+    return;
   }
 });
 

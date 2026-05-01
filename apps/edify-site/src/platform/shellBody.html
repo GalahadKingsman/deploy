@@ -37,7 +37,7 @@
   <button class="sb-item" data-ep-screen="e-referral"><span class="sb-icon">🔗</span>Реферальная программа</button>
   <div class="sb-footer">
     <div class="sb-footer-link">📖 Документация</div>
-    <div class="sb-footer-link">💬 Поддержка</div>
+    <button type="button" class="sb-footer-link" data-ep-support-tg>💬 Поддержка</button>
   </div>
 </nav>
 
@@ -53,7 +53,7 @@
   <div class="sb-section">Другое</div>
   <button class="sb-item" data-ep-screen="s-certificates"><span class="sb-icon">🎓</span>Сертификаты</button>
   <div class="sb-footer">
-    <div class="sb-footer-link">💬 Поддержка</div>
+    <button type="button" class="sb-footer-link" data-ep-support-tg>💬 Поддержка</button>
   </div>
 </nav>
 
@@ -296,6 +296,20 @@
       <div style="font-size:11px;color:var(--t3);line-height:1.55">Модули и уроки создаются через API, как в Telegram-кабинете эксперта.</div>
     </div>
 
+  </div>
+
+  <!-- Действия с PDF-сертификатом курса (заменить / удалить) -->
+  <div class="ep-builder-cert-menu-backdrop" data-ep-builder-cert-menu-backdrop style="display:none" aria-hidden="true"></div>
+  <div class="ep-builder-cert-menu" data-ep-builder-cert-menu style="display:none" role="dialog" aria-modal="true" aria-labelledby="ep-builder-cert-menu-title">
+    <div class="ep-builder-cert-menu__card card">
+      <div id="ep-builder-cert-menu-title" style="font-family:var(--fd);font-size:15px;font-weight:700;color:var(--t1);margin-bottom:8px">Сертификат загружен</div>
+      <p style="font-size:13px;color:var(--t2);line-height:1.55;margin:0 0 16px">Что сделать с файлом сертификата?</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button type="button" class="btn btn-outline btn-sm" style="width:100%;justify-content:center" data-ep-builder-cert-menu-replace>Заменить файл</button>
+        <button type="button" class="btn btn-outline btn-sm ep-builder-cert-menu__del" style="width:100%;justify-content:center" data-ep-builder-cert-menu-delete>Удалить сертификат</button>
+        <button type="button" class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" data-ep-builder-cert-menu-cancel>Отмена</button>
+      </div>
+    </div>
   </div>
 
   <!-- Настройки курса (оверлей в стиле сайта) -->

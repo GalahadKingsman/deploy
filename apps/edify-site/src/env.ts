@@ -20,6 +20,13 @@ export function getTelegramBotUsername(): string {
   return '';
 }
 
+/** Ссылка на бота в режиме «поддержка»: t.me/<bot>?start=support; пустая, если бот не настроен. */
+export function getTelegramSupportUrl(): string {
+  const bot = getTelegramBotUsername();
+  if (!bot) return '';
+  return `https://t.me/${bot}?start=support`;
+}
+
 /**
  * Базовый URL веб-приложения / мини-аппа, где в `main.tsx` сохраняется `?ref=` (реферальная ссылка).
  * Переопределение: `VITE_REFERRAL_APP_BASE_URL` или `<meta name="edify-referral-app-base" content="https://…">`.

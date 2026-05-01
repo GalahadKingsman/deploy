@@ -2,6 +2,7 @@ import './edify.css';
 import { ACCESS_TOKEN_KEY, getAccessToken } from './authSession.js';
 import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
 import { refreshNavAuth } from './navAuthUi.js';
+import { getTelegramSupportUrl } from './env.js';
 import { hydrateLandingExpertCourses } from './platform/marketingExpertCoursesPreview.js';
 import { hydrateLandingExpertDashboard } from './platform/marketingExpertDashboardPreview.js';
 import { hydrateLandingStudentScreens } from './platform/marketingStudentScreensPreview.js';
@@ -126,6 +127,21 @@ const revealObserver = new IntersectionObserver(
   { threshold: 0.1 },
 );
 document.querySelectorAll('.reveal').forEach((el) => revealObserver.observe(el));
+
+/**
+ * Перенаправляем «Поддержку» на Telegram-бот (?start=support), если бот настроен.
+ * HTML по умолчанию указывает mailto:hello@edify.su — fallback для пустой переменной/окружения без JS.
+ */
+function upgradeSupportLinksToTelegram(): void {
+  const url = getTelegramSupportUrl();
+  if (!url) return;
+  document.querySelectorAll<HTMLAnchorElement>('a[data-edify-support-tg]').forEach((a) => {
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+  });
+}
+upgradeSupportLinksToTelegram();
 
 // Ограничиваем доступ на /platform/ только авторизованным
 document.addEventListener('click', (ev) => {

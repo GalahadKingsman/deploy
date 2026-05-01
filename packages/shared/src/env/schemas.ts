@@ -27,6 +27,12 @@ export const ApiEnvSchema = z.object({
   S3_FORCE_PATH_STYLE: z.string().optional(),
   TELEGRAM_BOT_TOKEN: z.string().default(''),
   BOT_INTERNAL_TOKEN: z.string().optional(),
+  /**
+   * Telegram chat ID of the support supergroup (usually a negative number, e.g. -1001234567890).
+   * When set, the bot relays user messages from "Чат с поддержкой" into this group, and admin
+   * replies (Reply on the bot's post) are forwarded back to the user. Empty disables the feature.
+   */
+  TELEGRAM_SUPPORT_GROUP_ID: z.preprocess(emptyToUndefined, z.string().optional()),
   RATE_LIMIT_MAX: z.coerce.number().optional(),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().optional(),
   PAYMENTS_ENABLED: z
@@ -99,6 +105,11 @@ export const BotEnvSchema = z.object({
   BOT_API_BASE_URL: z.string().default('http://localhost:3001'),
   TELEGRAM_BOT_TOKEN: z.string().optional(),
   BOT_INTERNAL_TOKEN: z.string().optional(),
+  /**
+   * Telegram chat ID of the support supergroup. When set, "Чат с поддержкой" messages are relayed
+   * here and admin replies (Reply on the bot's post) are forwarded back to the user.
+   */
+  TELEGRAM_SUPPORT_GROUP_ID: z.string().optional(),
 });
 
 export const WebappEnvSchema = z.object({

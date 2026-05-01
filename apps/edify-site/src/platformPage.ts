@@ -1,6 +1,6 @@
 import './edify.css';
 import { ACCESS_TOKEN_KEY, getAccessToken } from './authSession.js';
-import { getApiBaseUrl, getReferralAppBaseUrl, getTelegramBotUsername } from './env.js';
+import { getApiBaseUrl, getReferralAppBaseUrl, getTelegramBotUsername, getTelegramSupportUrl } from './env.js';
 import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
 import { refreshNavAuth } from './navAuthUi.js';
 import { mountPlatformShell } from './platform/mountPlatformShell.js';
@@ -5193,6 +5193,26 @@ if (platformMount) {
       await applyBuilderLessonToForm(root, eid, token);
     }
 
+    function openBuilderCertificateActionMenu(root: ShadowRoot): void {
+      const bd = root.querySelector('[data-ep-builder-cert-menu-backdrop]') as HTMLElement | null;
+      const box = root.querySelector('[data-ep-builder-cert-menu]') as HTMLElement | null;
+      if (bd) {
+        bd.style.display = 'block';
+        bd.setAttribute('aria-hidden', 'false');
+      }
+      if (box) box.style.display = 'flex';
+    }
+
+    function closeBuilderCertificateActionMenu(root: ShadowRoot): void {
+      const bd = root.querySelector('[data-ep-builder-cert-menu-backdrop]') as HTMLElement | null;
+      const box = root.querySelector('[data-ep-builder-cert-menu]') as HTMLElement | null;
+      if (bd) {
+        bd.style.display = 'none';
+        bd.setAttribute('aria-hidden', 'true');
+      }
+      if (box) box.style.display = 'none';
+    }
+
     function renderBuilderCertificateButton(root: ShadowRoot): void {
       const btn = root.querySelector('[data-ep-builder-course-certificate]') as HTMLButtonElement | null;
       const status = root.querySelector('[data-ep-builder-course-certificate-status]') as HTMLElement | null;
@@ -7524,6 +7544,20 @@ if (platformMount) {
     shell.shadowRoot.addEventListener('click', (ev) => {
       const t = ev.target as HTMLElement | null;
 
+      const supportTg = t?.closest('[data-ep-support-tg]') as HTMLElement | null;
+      if (supportTg) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const url = getTelegramSupportUrl();
+        if (!url) {
+          window.alert('Поддержка через Telegram пока не настроена. Напишите на hello@edify.su.');
+          return;
+        }
+        const opened = window.open(url, '_blank', 'noopener,noreferrer');
+        if (!opened) window.location.href = url;
+        return;
+      }
+
       const refCopy = t?.closest('[data-ep-referral-copy]') as HTMLElement | null;
       if (refCopy) {
         ev.preventDefault();
@@ -8252,27 +8286,36 @@ if (platformMount) {
         void openBuilderCourseAccessDrawer(shell.shadowRoot);
         return;
       }
+      if (t?.closest('[data-ep-builder-cert-menu-backdrop]') || t?.closest('[data-ep-builder-cert-menu-cancel]')) {
+        ev.preventDefault();
+        closeBuilderCertificateActionMenu(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-builder-cert-menu-replace]')) {
+        ev.preventDefault();
+        closeBuilderCertificateActionMenu(shell.shadowRoot);
+        const inp = shell.shadowRoot.querySelector('input[data-ep-builder-course-certificate-input]') as HTMLInputElement | null;
+        if (inp) {
+          inp.value = '';
+          inp.click();
+        }
+        return;
+      }
+      if (t?.closest('[data-ep-builder-cert-menu-delete]')) {
+        ev.preventDefault();
+        closeBuilderCertificateActionMenu(shell.shadowRoot);
+        if (window.confirm('Удалить загруженный сертификат курса?')) {
+          void deleteBuilderCertificate(shell.shadowRoot);
+        }
+        return;
+      }
       if (t?.closest('[data-ep-builder-course-certificate]')) {
         ev.preventDefault();
         const inp = shell.shadowRoot.querySelector('input[data-ep-builder-course-certificate-input]') as HTMLInputElement | null;
         if (!builderCourseDetail) return;
         const uploaded = builderCourseDetail.certificateUploaded === true;
         if (uploaded) {
-          const choice = window.prompt(
-            'Сертификат уже загружен. Введите «replace», чтобы заменить файл, или «delete», чтобы удалить. Оставьте пустым для отмены.',
-            '',
-          );
-          const cmd = (choice ?? '').trim().toLowerCase();
-          if (cmd === 'replace' || cmd === 'r' || cmd === 'заменить') {
-            if (inp) {
-              inp.value = '';
-              inp.click();
-            }
-          } else if (cmd === 'delete' || cmd === 'd' || cmd === 'удалить') {
-            if (window.confirm('Удалить загруженный сертификат курса?')) {
-              void deleteBuilderCertificate(shell.shadowRoot);
-            }
-          }
+          openBuilderCertificateActionMenu(shell.shadowRoot);
         } else if (inp) {
           inp.value = '';
           inp.click();
