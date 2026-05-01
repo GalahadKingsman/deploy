@@ -75,7 +75,7 @@ export class PasswordResetService {
    * Самообслуживание: пользователь по email с паролем в БД.
    * Бросает NotFound / BadRequest с текстами для UI (по требованию продукта).
    */
-  async createSelfServiceResetToken(emailRaw: string, ttlSeconds = 900): Promise<{
+  async createSelfServiceResetToken(emailRaw: string, ttlSeconds = 3600): Promise<{
     token: string;
     expiresAt: string;
     resetUrl: string;

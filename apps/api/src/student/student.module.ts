@@ -5,6 +5,7 @@ import { CoursesController } from './student_courses.controller.js';
 import { LessonsController } from './student_lessons.controller.js';
 import { LearnController } from './student_learn.controller.js';
 import { MeCoursesController } from './student_me_courses.controller.js';
+import { MeCertificatesController } from './student_me_certificates.controller.js';
 import { AccessController } from './student_access.controller.js';
 import { StudentAssignmentsController } from './student_assignments.controller.js';
 import { StudentSubmissionsController } from './student_submissions.controller.js';
@@ -42,6 +43,7 @@ import { StudentLessonMaterialsController } from './student_lesson_materials.con
     StudentLessonMaterialsController,
     LearnController,
     MeCoursesController,
+    MeCertificatesController,
     AccessController,
     StudentAssignmentsController,
     StudentSubmissionsController,

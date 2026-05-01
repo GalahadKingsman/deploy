@@ -261,6 +261,122 @@ export class ExpertCoursesController {
     });
   }
 
+  @Post(':courseId/certificate/upload')
+  @RequireExpertRole('manager')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Upload course certificate PDF (multipart, manager+)' })
+  @ApiResponse({ status: 201, description: 'Certificate uploaded' })
+  async uploadCertificate(
+    @Param('expertId') expertId: string,
+    @Param('courseId') courseId: string,
+    @Req()
+    req: FastifyRequest & {
+      user?: { userId: string };
+      file?: (opts?: any) => Promise<any>;
+    },
+  ): Promise<ContractsV1.ExpertCourseV1> {
+    await this.coursesRepository.getById({ expertId, courseId });
+    await this.expertCourseAccessService.assertCanAccessCourse({
+      expertId,
+      userId: req.user!.userId,
+      courseId,
+    });
+
+    const file = await (req as any).file?.();
+    if (!file) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'file is required' });
+    }
+    const buf: Buffer = await file.toBuffer();
+    if (!buf || buf.length === 0) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Empty file' });
+    }
+    const maxBytes = 50 * 1024 * 1024;
+    if (buf.length > maxBytes) {
+      throw new BadRequestException({
+        code: ErrorCodes.VALIDATION_ERROR,
+        message: 'PDF слишком большой (максимум 50 МБ).',
+      });
+    }
+    const isPdfMagic = buf.length >= 5 && buf.slice(0, 5).toString('ascii') === '%PDF-';
+    const mime = (typeof file.mimetype === 'string' ? file.mimetype : '').toLowerCase();
+    const isPdfMime = mime === 'application/pdf' || mime === 'application/x-pdf';
+    if (!isPdfMagic && !isPdfMime) {
+      throw new BadRequestException({
+        code: ErrorCodes.VALIDATION_ERROR,
+        message: 'Допускается только PDF.',
+      });
+    }
+
+    const original = typeof file.filename === 'string' && file.filename.trim() ? file.filename.trim() : 'certificate.pdf';
+    const safeName = original.replace(/[^\w.\-]+/g, '_').slice(0, 120);
+    const key = `course-certificates/${courseId}/${Date.now()}-${safeName}`;
+    await this.storage.putObject({
+      key,
+      body: new Uint8Array(buf),
+      contentType: 'application/pdf',
+    });
+
+    const prev = await this.coursesRepository.getCertificate({ expertId, courseId });
+    const updated = await this.coursesRepository.setCertificate({
+      expertId,
+      courseId,
+      pdfKey: key,
+      originalFilename: original,
+    });
+    if (prev.pdfKey && prev.pdfKey !== key) {
+      try {
+        await this.storage.deleteObject({ key: prev.pdfKey });
+      } catch {
+        // best-effort; don't fail upload because of cleanup
+      }
+    }
+    await this.auditService.write({
+      actorUserId: req.user?.userId ?? null,
+      action: 'expert.course.certificate.upload',
+      entityType: 'course',
+      entityId: courseId,
+      meta: { expertId, filename: original },
+      traceId: getTraceId(req),
+    });
+    return updated;
+  }
+
+  @Post(':courseId/certificate/delete')
+  @RequireExpertRole('manager')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Remove course certificate PDF (manager+)' })
+  @ApiResponse({ status: 200, description: 'Certificate removed' })
+  async deleteCertificate(
+    @Param('expertId') expertId: string,
+    @Param('courseId') courseId: string,
+    @Req() req: FastifyRequest & { user?: { userId: string }; traceId?: string },
+  ): Promise<ContractsV1.ExpertCourseV1> {
+    await this.coursesRepository.getById({ expertId, courseId });
+    await this.expertCourseAccessService.assertCanAccessCourse({
+      expertId,
+      userId: req.user!.userId,
+      courseId,
+    });
+    const prev = await this.coursesRepository.getCertificate({ expertId, courseId });
+    const updated = await this.coursesRepository.clearCertificate({ expertId, courseId });
+    if (prev.pdfKey) {
+      try {
+        await this.storage.deleteObject({ key: prev.pdfKey });
+      } catch {
+        // best-effort
+      }
+    }
+    await this.auditService.write({
+      actorUserId: req.user?.userId ?? null,
+      action: 'expert.course.certificate.delete',
+      entityType: 'course',
+      entityId: courseId,
+      meta: { expertId },
+      traceId: getTraceId(req),
+    });
+    return updated;
+  }
+
   @Get(':courseId')
   @RequireExpertRole('support')
   @ApiOperation({ summary: 'Get course (support+)' })

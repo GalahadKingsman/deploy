@@ -603,6 +603,8 @@ if (platformMount) {
       enrollmentContactUrl?: string | null;
       estimatedCompletionHours?: number | null;
       difficultyLevel?: 'easy' | 'medium' | 'hard' | null;
+      certificateUploaded?: boolean;
+      certificateFilename?: string | null;
     };
     let builderCourseDetail: BuilderCourseDetailV1 | null = null;
     type BuilderTopicV1 = { id: string; title: string };
@@ -737,6 +739,9 @@ if (platformMount) {
         }
         if (action.type === 'navigate' && action.screenId === 's-progress') {
           void hydrateProgressScreen(action.shadowRoot);
+        }
+        if (action.type === 'navigate' && action.screenId === 's-certificates') {
+          void hydrateStudentCertificates(action.shadowRoot);
         }
         if (action.type === 'navigate' && action.screenId === 'e-courses') {
           expertBuilderExpertId = null;
@@ -1104,6 +1109,176 @@ if (platformMount) {
             textContent: 'Не удалось загрузить прогресс. Попробуйте обновить страницу.',
           }),
         );
+      }
+    }
+
+    type StudentCertificateV1 = {
+      courseId: string;
+      courseTitle: string;
+      coverUrl?: string | null;
+      authorDisplayName?: string | null;
+      pdfKey: string;
+      pdfFilename?: string | null;
+      uploadedAt?: string | null;
+      completedAt?: string | null;
+    };
+
+    function escapeCertText(s: string): string {
+      return s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function buildCertCardCaption(item: StudentCertificateV1): string {
+      const titleSafe = escapeCertText((item.courseTitle ?? '').trim() || 'курса');
+      const authorRaw = (item.authorDisplayName ?? '').trim();
+      const authorSafe = escapeCertText(authorRaw || 'автора курса');
+      return `Сертификат за прохождение курса <b>${titleSafe}</b> от <b>${authorSafe}</b>`;
+    }
+
+    function renderStudentCertificateCard(item: StudentCertificateV1): HTMLElement {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'ep-cert-card';
+      card.dataset.epCertCard = '1';
+      card.dataset.epCertCourseId = item.courseId;
+      card.dataset.epCertKey = item.pdfKey;
+      card.dataset.epCertCourseTitle = item.courseTitle ?? '';
+      if (item.pdfFilename) card.dataset.epCertFilename = item.pdfFilename;
+
+      const media = document.createElement('div');
+      media.className = 'ep-cert-card__media';
+      const cover = (item.coverUrl ?? '').trim();
+      if (cover) {
+        const img = document.createElement('img');
+        img.className = 'ep-cert-card__cover';
+        img.src = resolvePublicUrl(cover);
+        img.alt = '';
+        img.loading = 'lazy';
+        img.referrerPolicy = 'no-referrer';
+        media.appendChild(img);
+      }
+      const overlay = document.createElement('div');
+      overlay.className = 'ep-cert-card__overlay';
+      media.appendChild(overlay);
+      const caption = document.createElement('div');
+      caption.className = 'ep-cert-card__caption';
+      caption.innerHTML = buildCertCardCaption(item);
+      media.appendChild(caption);
+      card.appendChild(media);
+
+      const foot = document.createElement('div');
+      foot.className = 'ep-cert-card__foot';
+      const left = document.createElement('div');
+      left.innerHTML = '<strong>PDF</strong> · одной кнопкой';
+      const right = document.createElement('div');
+      const completedAt = item.completedAt ? new Date(item.completedAt) : null;
+      if (completedAt && Number.isFinite(completedAt.getTime())) {
+        right.textContent = completedAt.toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' });
+      } else {
+        right.textContent = '';
+      }
+      foot.appendChild(left);
+      foot.appendChild(right);
+      card.appendChild(foot);
+
+      return card;
+    }
+
+    async function hydrateStudentCertificates(root: ShadowRoot): Promise<void> {
+      const screen = root.getElementById('screen-s-certificates') as HTMLElement | null;
+      if (!screen) return;
+      const loadingEl = screen.querySelector('[data-ep-certificates-loading]') as HTMLElement | null;
+      const emptyEl = screen.querySelector('[data-ep-certificates-empty]') as HTMLElement | null;
+      const grid = screen.querySelector('[data-ep-certificates-grid]') as HTMLElement | null;
+      if (!grid || !emptyEl) return;
+      const token = getAccessToken();
+      if (!token) {
+        if (loadingEl) loadingEl.style.display = 'none';
+        emptyEl.style.display = '';
+        grid.style.display = 'none';
+        return;
+      }
+      if (loadingEl) loadingEl.style.display = '';
+      emptyEl.style.display = 'none';
+      grid.style.display = 'none';
+      grid.replaceChildren();
+      try {
+        const data = await fetchJson<{ items: StudentCertificateV1[] }>('/me/certificates', token);
+        const items = Array.isArray(data?.items) ? data.items : [];
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (items.length === 0) {
+          emptyEl.style.display = '';
+          grid.style.display = 'none';
+          return;
+        }
+        for (const it of items) {
+          grid.appendChild(renderStudentCertificateCard(it));
+        }
+        grid.style.display = '';
+      } catch {
+        if (loadingEl) loadingEl.style.display = 'none';
+        emptyEl.style.display = '';
+        grid.style.display = 'none';
+      }
+    }
+
+    async function openStudentCertificatePreview(
+      root: ShadowRoot,
+      params: { courseId: string; key: string; courseTitle: string; pdfFilename?: string | null },
+    ): Promise<void> {
+      const bd = root.querySelector('[data-ep-cert-preview-backdrop]') as HTMLElement | null;
+      const pr = root.querySelector('[data-ep-cert-preview]') as HTMLElement | null;
+      const titleEl = root.querySelector('[data-ep-cert-preview-title]') as HTMLElement | null;
+      const frame = root.querySelector('[data-ep-cert-preview-frame]') as HTMLIFrameElement | null;
+      const dlBtn = root.querySelector('[data-ep-cert-preview-download]') as HTMLButtonElement | null;
+      if (!bd || !pr || !frame) return;
+      const titleText = (params.courseTitle ?? '').trim() || 'Сертификат';
+      if (titleEl) titleEl.textContent = `Сертификат курса «${titleText}»`;
+      bd.style.display = '';
+      pr.style.display = '';
+      frame.src = 'about:blank';
+      if (dlBtn) {
+        dlBtn.dataset.epCertKey = params.key;
+        dlBtn.dataset.epCertFilename = params.pdfFilename ?? '';
+        dlBtn.dataset.epCertCourseTitle = titleText;
+      }
+      try {
+        const url = await getSignedFileUrl(params.key);
+        if (!url) throw new Error('no url');
+        frame.src = url;
+      } catch {
+        window.alert('Не удалось открыть сертификат. Попробуйте позже.');
+        closeStudentCertificatePreview(root);
+      }
+    }
+
+    function closeStudentCertificatePreview(root: ShadowRoot): void {
+      const bd = root.querySelector('[data-ep-cert-preview-backdrop]') as HTMLElement | null;
+      const pr = root.querySelector('[data-ep-cert-preview]') as HTMLElement | null;
+      const frame = root.querySelector('[data-ep-cert-preview-frame]') as HTMLIFrameElement | null;
+      if (frame) frame.src = 'about:blank';
+      if (bd) bd.style.display = 'none';
+      if (pr) pr.style.display = 'none';
+    }
+
+    async function downloadStudentCertificate(
+      key: string,
+      filename: string | null,
+      courseTitle: string,
+    ): Promise<void> {
+      try {
+        const url = await getSignedFileUrl(key);
+        if (!url) throw new Error('no url');
+        const dlUrl = url + (url.includes('?') ? '&' : '?') + 'dl=1';
+        const fallbackBase = (filename ?? '').trim() || `Сертификат — ${courseTitle || 'курс'}.pdf`;
+        const fallbackFilename = /\.pdf$/i.test(fallbackBase) ? fallbackBase : `${fallbackBase}.pdf`;
+        await downloadAuthenticatedFile({ url: dlUrl, fallbackFilename });
+      } catch {
+        window.alert('Не удалось скачать сертификат.');
       }
     }
 
@@ -4993,6 +5168,7 @@ if (platformMount) {
         const vis = (course.visibility ?? 'private').trim() || 'private';
         statusHost.textContent = `${course.status} · ${vis}`;
       }
+      renderBuilderCertificateButton(root);
 
       let best: { mid: string; lid: string; t: number } | null = null;
       for (const m of builderModulesCache) {
@@ -5015,6 +5191,98 @@ if (platformMount) {
 
       renderBuilderModTree(root);
       await applyBuilderLessonToForm(root, eid, token);
+    }
+
+    function renderBuilderCertificateButton(root: ShadowRoot): void {
+      const btn = root.querySelector('[data-ep-builder-course-certificate]') as HTMLButtonElement | null;
+      const status = root.querySelector('[data-ep-builder-course-certificate-status]') as HTMLElement | null;
+      if (!btn) return;
+      const uploaded = builderCourseDetail?.certificateUploaded === true;
+      btn.textContent = uploaded ? 'Сертификат загружен' : 'Загрузить сертификат';
+      btn.classList.toggle('btn-outline', !uploaded);
+      btn.classList.toggle('btn-primary', uploaded);
+      btn.title = uploaded
+        ? 'Нажмите, чтобы заменить или удалить PDF сертификата'
+        : 'Загрузить PDF сертификата для этого курса';
+      if (status) {
+        const fname = (builderCourseDetail?.certificateFilename ?? '').trim();
+        if (uploaded && fname) {
+          status.style.display = '';
+          status.textContent = fname;
+        } else {
+          status.style.display = 'none';
+          status.textContent = '';
+        }
+      }
+    }
+
+    async function uploadBuilderCertificate(root: ShadowRoot, file: File): Promise<void> {
+      const btn = root.querySelector('[data-ep-builder-course-certificate]') as HTMLButtonElement | null;
+      const status = root.querySelector('[data-ep-builder-course-certificate-status]') as HTMLElement | null;
+      const tok = getAccessToken();
+      const eid = await resolveBuilderExpertId();
+      const cid = expertBuilderCourseId;
+      if (!tok || !eid || !cid) {
+        window.alert('Сначала откройте курс в конструкторе.');
+        return;
+      }
+      const isPdfMime = (file.type || '').toLowerCase() === 'application/pdf';
+      const isPdfExt = /\.pdf$/i.test(file.name || '');
+      if (!isPdfMime && !isPdfExt) {
+        window.alert('Можно загрузить только PDF.');
+        return;
+      }
+      const maxBytes = 50 * 1024 * 1024;
+      if (file.size > maxBytes) {
+        window.alert('PDF слишком большой (максимум 50 МБ).');
+        return;
+      }
+      if (btn) {
+        btn.disabled = true;
+      }
+      if (status) {
+        status.style.display = '';
+        status.textContent = 'Загружаем…';
+      }
+      try {
+        const form = new FormData();
+        form.append('file', file, file.name || 'certificate.pdf');
+        const updated = await fetchMultipartJson<BuilderCourseDetailV1>(
+          `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/certificate/upload`,
+          form,
+          tok,
+        );
+        builderCourseDetail = { ...updated, id: cid };
+        renderBuilderCertificateButton(root);
+      } catch (e) {
+        const msg = e instanceof Error && e.message ? e.message : 'Не удалось загрузить сертификат.';
+        window.alert(msg);
+        renderBuilderCertificateButton(root);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    async function deleteBuilderCertificate(root: ShadowRoot): Promise<void> {
+      const tok = getAccessToken();
+      const eid = await resolveBuilderExpertId();
+      const cid = expertBuilderCourseId;
+      if (!tok || !eid || !cid) return;
+      const btn = root.querySelector('[data-ep-builder-course-certificate]') as HTMLButtonElement | null;
+      if (btn) btn.disabled = true;
+      try {
+        const updated = await postJson<BuilderCourseDetailV1>(
+          `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/certificate/delete`,
+          {},
+          tok,
+        );
+        builderCourseDetail = { ...updated, id: cid };
+        renderBuilderCertificateButton(root);
+      } catch {
+        window.alert('Не удалось удалить сертификат.');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
     }
 
     function renderBuilderModTree(root: ShadowRoot): void {
@@ -7984,6 +8252,33 @@ if (platformMount) {
         void openBuilderCourseAccessDrawer(shell.shadowRoot);
         return;
       }
+      if (t?.closest('[data-ep-builder-course-certificate]')) {
+        ev.preventDefault();
+        const inp = shell.shadowRoot.querySelector('input[data-ep-builder-course-certificate-input]') as HTMLInputElement | null;
+        if (!builderCourseDetail) return;
+        const uploaded = builderCourseDetail.certificateUploaded === true;
+        if (uploaded) {
+          const choice = window.prompt(
+            'Сертификат уже загружен. Введите «replace», чтобы заменить файл, или «delete», чтобы удалить. Оставьте пустым для отмены.',
+            '',
+          );
+          const cmd = (choice ?? '').trim().toLowerCase();
+          if (cmd === 'replace' || cmd === 'r' || cmd === 'заменить') {
+            if (inp) {
+              inp.value = '';
+              inp.click();
+            }
+          } else if (cmd === 'delete' || cmd === 'd' || cmd === 'удалить') {
+            if (window.confirm('Удалить загруженный сертификат курса?')) {
+              void deleteBuilderCertificate(shell.shadowRoot);
+            }
+          }
+        } else if (inp) {
+          inp.value = '';
+          inp.click();
+        }
+        return;
+      }
       if (t?.closest('[data-ep-admin-drawer-backdrop]') || t?.closest('[data-ep-admin-drawer-close]')) {
         ev.preventDefault();
         closeAdminDrawer(shell.shadowRoot);
@@ -8430,6 +8725,32 @@ if (platformMount) {
         closeBuilderLessonPreview(shell.shadowRoot);
         return;
       }
+      const certCard = t?.closest('[data-ep-cert-card]') as HTMLElement | null;
+      if (certCard) {
+        ev.preventDefault();
+        const courseId = certCard.dataset.epCertCourseId ?? '';
+        const key = certCard.dataset.epCertKey ?? '';
+        const courseTitle = certCard.dataset.epCertCourseTitle ?? '';
+        const pdfFilename = certCard.dataset.epCertFilename ?? null;
+        if (!courseId || !key) return;
+        void openStudentCertificatePreview(shell.shadowRoot, { courseId, key, courseTitle, pdfFilename });
+        return;
+      }
+      const certDl = t?.closest('[data-ep-cert-preview-download]') as HTMLElement | null;
+      if (certDl) {
+        ev.preventDefault();
+        const key = certDl.dataset.epCertKey ?? '';
+        const filename = certDl.dataset.epCertFilename ?? null;
+        const courseTitle = certDl.dataset.epCertCourseTitle ?? '';
+        if (!key) return;
+        void downloadStudentCertificate(key, filename, courseTitle);
+        return;
+      }
+      if (t?.closest('[data-ep-cert-preview-backdrop]') || t?.closest('[data-ep-cert-preview-close]')) {
+        ev.preventDefault();
+        closeStudentCertificatePreview(shell.shadowRoot);
+        return;
+      }
       if (t?.closest('[data-ep-access-enroll-by-username]')) {
         ev.preventDefault();
         void (async () => {
@@ -8871,6 +9192,14 @@ if (platformMount) {
         void builderUploadHwFiles(shell.shadowRoot, inp.files).finally(() => {
           inp.value = '';
         });
+        return;
+      }
+      if (t?.matches('input[data-ep-builder-course-certificate-input]')) {
+        const inp = t as HTMLInputElement;
+        const f = inp.files && inp.files[0];
+        inp.value = '';
+        if (!f) return;
+        void uploadBuilderCertificate(shell.shadowRoot, f);
         return;
       }
       if (t?.matches('input[data-ep-builder-materials-file-input]')) {

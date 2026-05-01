@@ -16,6 +16,8 @@ interface CourseRow {
   enrollment_contact_url?: string | null;
   estimated_completion_hours?: number | null;
   difficulty_level?: string | null;
+  certificate_pdf_key?: string | null;
+  certificate_original_filename?: string | null;
   price_cents?: number | null;
   currency?: string | null;
   status: string;
@@ -51,6 +53,7 @@ function mapRow(row: CourseRow): ContractsV1.ExpertCourseV1 {
   const rawDiff = (row.difficulty_level ?? null) as any;
   const diff =
     rawDiff === 'easy' || rawDiff === 'medium' || rawDiff === 'hard' ? (rawDiff as any) : null;
+  const certKey = (row.certificate_pdf_key ?? '').trim();
   return {
     id: row.id,
     expertId: row.expert_id,
@@ -61,6 +64,8 @@ function mapRow(row: CourseRow): ContractsV1.ExpertCourseV1 {
     enrollmentContactUrl: trimEnrollmentContactUrl(row.enrollment_contact_url ?? null),
     estimatedCompletionHours: hoursFromDb(row.estimated_completion_hours ?? null),
     difficultyLevel: diff,
+    certificateUploaded: certKey.length > 0,
+    certificateFilename: row.certificate_original_filename ?? null,
     priceCents: row.price_cents ?? 0,
     currency: row.currency ?? 'RUB',
     status: row.status as CourseStatus,
@@ -595,6 +600,89 @@ export class CoursesRepository {
       [params.courseId, params.expertId],
     );
     return mapRow(result.rows[0]);
+  }
+
+  /**
+   * Чтение текущего PDF-сертификата курса (для замены/удаления старого объекта в S3).
+   */
+  async getCertificate(params: {
+    expertId: string;
+    courseId: string;
+  }): Promise<{ pdfKey: string | null; originalFilename: string | null }> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    await this.getById(params);
+    const res = await this.pool.query<{
+      certificate_pdf_key: string | null;
+      certificate_original_filename: string | null;
+    }>(
+      `SELECT certificate_pdf_key, certificate_original_filename
+       FROM courses
+       WHERE id = $1 AND expert_id = $2`,
+      [params.courseId, params.expertId],
+    );
+    const row = res.rows[0];
+    return {
+      pdfKey: row?.certificate_pdf_key ?? null,
+      originalFilename: row?.certificate_original_filename ?? null,
+    };
+  }
+
+  async setCertificate(params: {
+    expertId: string;
+    courseId: string;
+    pdfKey: string;
+    originalFilename: string;
+  }): Promise<ContractsV1.ExpertCourseV1> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    await this.getById(params);
+    const res = await this.pool.query<CourseRow>(
+      `
+      UPDATE courses
+      SET certificate_pdf_key = $3,
+          certificate_original_filename = $4,
+          certificate_uploaded_at = NOW(),
+          updated_at = NOW()
+      WHERE id = $1 AND expert_id = $2
+      RETURNING *
+      `,
+      [params.courseId, params.expertId, params.pdfKey, params.originalFilename],
+    );
+    const row = res.rows[0];
+    if (!row) {
+      throw new NotFoundException({ code: ErrorCodes.COURSE_NOT_FOUND, message: 'Course not found' });
+    }
+    return mapRow(row);
+  }
+
+  async clearCertificate(params: {
+    expertId: string;
+    courseId: string;
+  }): Promise<ContractsV1.ExpertCourseV1> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    await this.getById(params);
+    const res = await this.pool.query<CourseRow>(
+      `
+      UPDATE courses
+      SET certificate_pdf_key = NULL,
+          certificate_original_filename = NULL,
+          certificate_uploaded_at = NULL,
+          updated_at = NOW()
+      WHERE id = $1 AND expert_id = $2
+      RETURNING *
+      `,
+      [params.courseId, params.expertId],
+    );
+    const row = res.rows[0];
+    if (!row) {
+      throw new NotFoundException({ code: ErrorCodes.COURSE_NOT_FOUND, message: 'Course not found' });
+    }
+    return mapRow(row);
   }
 
   async softDelete(params: { expertId: string; courseId: string }): Promise<void> {

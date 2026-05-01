@@ -106,7 +106,8 @@ export class FilesController {
     const isAvatar = cleanKey.startsWith(`avatars/${userId}/`);
     const isLessonPresentation = cleanKey.startsWith('lesson-presentations/');
     const isLessonMaterials = cleanKey.startsWith('lesson-materials/');
-    if (!isSubmission && !isAvatar && !isLessonPresentation && !isLessonMaterials) {
+    const isCourseCertificate = cleanKey.startsWith('course-certificates/');
+    if (!isSubmission && !isAvatar && !isLessonPresentation && !isLessonMaterials && !isCourseCertificate) {
       throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'File not found' });
     }
     if (isSubmission) {
@@ -182,6 +183,105 @@ export class FilesController {
         throw new ForbiddenException({ code: ErrorCodes.FORBIDDEN, message: 'Forbidden' });
       }
     }
+    if (isCourseCertificate) {
+      if (!this.pool) {
+        throw new NotFoundException({ code: ErrorCodes.INTERNAL_ERROR, message: 'Database is disabled' });
+      }
+      const parts = cleanKey.split('/');
+      const courseId = parts.length >= 2 ? parts[1] : '';
+      if (!courseId) throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'File not found' });
+
+      const meta = await this.pool.query<{ expert_id: string; certificate_pdf_key: string | null }>(
+        `
+        SELECT c.expert_id AS expert_id, c.certificate_pdf_key AS certificate_pdf_key
+        FROM courses c
+        WHERE c.id = $1 AND c.deleted_at IS NULL
+        LIMIT 1
+        `,
+        [courseId],
+      );
+      const row = meta.rows[0];
+      if (!row) throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'File not found' });
+      if (row.certificate_pdf_key !== cleanKey) {
+        throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'File not found' });
+      }
+
+      const enr = await this.pool.query(
+        `
+        SELECT 1
+        FROM enrollments
+        WHERE user_id = $1 AND course_id = $2
+          AND revoked_at IS NULL
+          AND (access_end IS NULL OR access_end > NOW())
+        LIMIT 1
+        `,
+        [userId, courseId],
+      );
+      if (enr.rows.length > 0) {
+        const eligible = await this.pool.query<{ total: string | number; done: string | number }>(
+          `
+          WITH visible AS (
+            SELECT l.id AS lesson_id
+            FROM lessons l
+            JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+            WHERE m.course_id = $2 AND l.deleted_at IS NULL AND l.hidden_from_students = false
+          ),
+          completed AS (
+            SELECT p.lesson_id
+            FROM lesson_progress p
+            JOIN lessons l ON l.id = p.lesson_id AND l.deleted_at IS NULL AND l.hidden_from_students = false
+            JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+            WHERE p.user_id = $1 AND m.course_id = $2
+            UNION
+            SELECT a.lesson_id
+            FROM submissions s
+            JOIN assignments a ON a.id = s.assignment_id
+            JOIN lessons l ON l.id = a.lesson_id AND l.deleted_at IS NULL AND l.hidden_from_students = false
+            JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
+            WHERE s.student_user_id = $1 AND m.course_id = $2 AND s.score IS NOT NULL
+          )
+          SELECT
+            (SELECT COUNT(*)::int FROM visible) AS total,
+            (SELECT COUNT(DISTINCT lesson_id)::int FROM completed) AS done
+          `,
+          [userId, courseId],
+        );
+        const er = eligible.rows[0];
+        const total = typeof er?.total === 'number' ? er.total : parseInt(String(er?.total ?? '0'), 10) || 0;
+        const done = typeof er?.done === 'number' ? er.done : parseInt(String(er?.done ?? '0'), 10) || 0;
+        if (total > 0 && done >= total) {
+          const t = this.jwtService.signFileToken({ userId, key: cleanKey, ttlSeconds: 120 });
+          return { url: `/files/public?t=${encodeURIComponent(t)}` };
+        }
+        throw new ForbiddenException({ code: ErrorCodes.FORBIDDEN, message: 'Course not completed yet' });
+      }
+
+      const member = await this.pool.query<{ role: string }>(
+        `SELECT role FROM expert_members WHERE expert_id = $1 AND user_id = $2 LIMIT 1`,
+        [row.expert_id, userId],
+      );
+      const role = member.rows[0]?.role ?? null;
+      if (role) {
+        if (role === 'owner') {
+          const t = this.jwtService.signFileToken({ userId, key: cleanKey, ttlSeconds: 120 });
+          return { url: `/files/public?t=${encodeURIComponent(t)}` };
+        }
+        const access = await this.pool.query(
+          `
+          SELECT 1
+          FROM expert_member_course_access
+          WHERE expert_id = $1 AND user_id = $2 AND course_id = $3
+          LIMIT 1
+          `,
+          [row.expert_id, userId, courseId],
+        );
+        if (access.rows.length > 0) {
+          const t = this.jwtService.signFileToken({ userId, key: cleanKey, ttlSeconds: 120 });
+          return { url: `/files/public?t=${encodeURIComponent(t)}` };
+        }
+      }
+      throw new ForbiddenException({ code: ErrorCodes.FORBIDDEN, message: 'Forbidden' });
+    }
     const t = this.jwtService.signFileToken({ userId, key: cleanKey, ttlSeconds: 120 });
     return { url: `/files/public?t=${encodeURIComponent(t)}` };
   }
@@ -206,7 +306,8 @@ export class FilesController {
     const isAvatar = key.startsWith(`avatars/${userId}/`);
     const isLessonPresentation = key.startsWith('lesson-presentations/');
     const isLessonMaterials = key.startsWith('lesson-materials/');
-    if (!isSubmission && !isAvatar && !isLessonPresentation && !isLessonMaterials) {
+    const isCourseCertificate = key.startsWith('course-certificates/');
+    if (!isSubmission && !isAvatar && !isLessonPresentation && !isLessonMaterials && !isCourseCertificate) {
       throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'File not found' });
     }
 

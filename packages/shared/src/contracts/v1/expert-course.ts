@@ -56,6 +56,10 @@ export interface ExpertCourseV1 {
   estimatedCompletionHours?: number | null;
   /** Уровень сложности курса (для карточки/превью). */
   difficultyLevel?: CourseDifficultyLevelV1 | null;
+  /** PDF сертификата загружен экспертом для этого курса. */
+  certificateUploaded?: boolean;
+  /** Имя загруженного PDF (для подписи кнопки в кабинете эксперта). */
+  certificateFilename?: string | null;
   publishedAt?: IsoDateTime | null;
   deletedAt?: IsoDateTime | null;
   createdAt: IsoDateTime;
@@ -77,6 +81,8 @@ export const ExpertCourseV1Schema = z.object({
   enrollmentContactUrl: z.string().max(ENROLLMENT_CONTACT_URL_MAX_LEN).nullable().optional(),
   estimatedCompletionHours: z.number().int().min(1).max(8760).nullable().optional(),
   difficultyLevel: CourseDifficultyLevelV1Schema.nullable().optional(),
+  certificateUploaded: z.boolean().optional(),
+  certificateFilename: z.string().nullable().optional(),
   publishedAt: z.string().nullable().optional(),
   deletedAt: z.string().nullable().optional(),
   createdAt: z.string(),

@@ -288,6 +288,9 @@
       </div>
       <button type="button" class="btn btn-outline btn-sm" style="width:100%;justify-content:center;margin-bottom:8px" data-ep-builder-open-course-settings>Настройки курса</button>
       <button type="button" class="btn btn-outline btn-sm" style="width:100%;justify-content:center;margin-bottom:8px" data-ep-builder-open-course-access>Доступ к курсу</button>
+      <button type="button" class="btn btn-outline btn-sm" style="width:100%;justify-content:center;margin-bottom:8px" data-ep-builder-course-certificate>Загрузить сертификат</button>
+      <input type="file" accept="application/pdf,.pdf" data-ep-builder-course-certificate-input style="display:none" />
+      <div data-ep-builder-course-certificate-status style="margin-top:-4px;margin-bottom:8px;font-size:11px;color:var(--t3);line-height:1.5;display:none"></div>
       <div class="div"></div>
       <div class="sec-title">Подсказка</div>
       <div style="font-size:11px;color:var(--t3);line-height:1.55">Модули и уроки создаются через API, как в Telegram-кабинете эксперта.</div>
@@ -1167,11 +1170,30 @@
 <!-- S-CERTIFICATES -->
 <div class="screen" id="screen-s-certificates">
   <div class="page-header"><div><div class="page-title">Сертификаты</div><div class="page-sub">Документы о прохождении курсов</div></div></div>
-  <div class="empty">
+  <div data-ep-certificates-loading style="font-size:13px;color:var(--t3);padding:12px 0;display:none">Загрузка…</div>
+  <div data-ep-certificates-empty class="empty" style="display:none">
     <div class="empty-ico">🎓</div>
     <div class="empty-title">Пока нет сертификатов</div>
     <div class="empty-sub">Завершите курс полностью, чтобы получить сертификат</div>
   </div>
+  <div data-ep-certificates-grid class="ep-cert-grid" style="display:none"></div>
+
+  <div class="ep-cert-preview-backdrop" data-ep-cert-preview-backdrop style="display:none" aria-hidden="true"></div>
+  <aside class="ep-cert-preview" data-ep-cert-preview style="display:none" aria-label="Предпросмотр сертификата">
+    <div class="ep-cert-preview__head">
+      <div>
+        <div class="ep-cert-preview__kicker">Предпросмотр</div>
+        <div class="ep-cert-preview__title" data-ep-cert-preview-title>Сертификат</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button type="button" class="btn btn-outline btn-sm" data-ep-cert-preview-download>Скачать</button>
+        <button type="button" class="btn btn-ghost btn-sm ep-cert-preview__close" data-ep-cert-preview-close aria-label="Закрыть">✕</button>
+      </div>
+    </div>
+    <div class="ep-cert-preview__body">
+      <iframe class="ep-cert-preview__frame" data-ep-cert-preview-frame title="Сертификат" referrerpolicy="no-referrer"></iframe>
+    </div>
+  </aside>
 </div>
 
 <!-- Admin panel drawer (platform role: admin/owner) -->

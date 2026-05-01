@@ -144,6 +144,7 @@ export type { ExpertApplicationV1, ExpertApplicationStatusV1 } from './expert-ap
 export type { MeExpertApplicationResponseV1 } from './me-expert-application.js';
 export type { MeExpertMembershipsResponseV1 } from './me-expert-memberships.js';
 export type { MeCoursesResponseV1, MyCourseProgressV1 } from './me-courses.js';
+export type { MyCertificateV1, MyCertificatesResponseV1 } from './certificate.js';
 export type { ExpertTeamMemberV1, ListExpertTeamResponseV1 } from './expert-team.js';
 export type { ExpertStudentRowV1, ListExpertStudentsResponseV1 } from './expert-students.js';
 export type {
@@ -268,6 +269,8 @@ export {
   MeExpertMembershipsResponseV1Schema,
   MeCoursesResponseV1Schema,
   MyCourseProgressV1Schema,
+  MyCertificateV1Schema,
+  MyCertificatesResponseV1Schema,
   ExpertTeamMemberV1Schema,
   ListExpertTeamResponseV1Schema,
   ExpertStudentRowV1Schema,

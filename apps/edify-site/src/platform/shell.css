@@ -832,6 +832,79 @@ textarea.form-input{resize:vertical;min-height:80px}
   display:block;
 }
 
+/* Certificates: cards grid */
+.ep-cert-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;
+  padding:4px 0 24px;
+}
+.ep-cert-card{
+  position:relative;display:flex;flex-direction:column;align-items:stretch;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);
+  overflow:hidden;cursor:pointer;text-align:left;padding:0;
+  transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.ep-cert-card:hover{transform:translateY(-1px);box-shadow:var(--sh2);border-color:var(--a)}
+.ep-cert-card__media{
+  position:relative;width:100%;aspect-ratio:1/1;
+  background:linear-gradient(135deg,#0D1220,#1a2035);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+.ep-cert-card__cover{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  filter:saturate(0.95);
+}
+.ep-cert-card__overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(180deg, rgba(12,18,32,0.18) 0%, rgba(12,18,32,0.62) 70%, rgba(12,18,32,0.78) 100%);
+}
+.ep-cert-card__caption{
+  position:absolute;left:14px;right:14px;bottom:14px;
+  color:#fff;font-family:var(--fd);font-weight:700;letter-spacing:-.01em;
+  font-size:14px;line-height:1.35;
+  text-shadow:0 1px 2px rgba(0,0,0,0.35);
+}
+.ep-cert-card__caption b{font-weight:700}
+.ep-cert-card__foot{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:12px 14px;border-top:1px solid var(--line);background:var(--surface2);
+  font-size:12px;color:var(--t3);
+}
+.ep-cert-card__foot strong{color:var(--t2);font-weight:600}
+
+/* Certificate slide-over preview (PDF) */
+#screen-s-certificates .ep-cert-preview-backdrop{
+  position:fixed;inset:0;z-index:60;
+  background:rgba(12,18,32,0.45);
+  backdrop-filter:blur(2px);
+}
+#screen-s-certificates .ep-cert-preview{
+  position:fixed;top:0;right:0;bottom:0;width:min(960px,100vw);z-index:61;
+  display:flex;flex-direction:column;
+  background:var(--bg);border-left:1px solid var(--line);
+  box-shadow:var(--sh2);
+}
+.ep-cert-preview__head{
+  flex-shrink:0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  padding:14px 18px 12px;border-bottom:1px solid var(--line);background:var(--surface);
+}
+.ep-cert-preview__kicker{
+  font-family:var(--fm);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);
+  margin-bottom:2px;
+}
+.ep-cert-preview__title{
+  font-family:var(--fd);font-size:17px;font-weight:700;letter-spacing:-.02em;color:var(--t1);
+  max-width:560px;
+}
+.ep-cert-preview__close{font-size:16px;line-height:1;min-width:36px}
+.ep-cert-preview__body{
+  flex:1;display:flex;
+  background:var(--bg2);
+}
+.ep-cert-preview__frame{
+  flex:1;width:100%;height:100%;border:0;background:#fff;
+}
+
 /* Lesson slider editor modal */
 #screen-e-builder .ep-slider-backdrop{
   position:absolute;inset:0;z-index:46;

@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { ApiEnv } from '@tracked/shared';
 import { validateOrThrow, ApiEnvSchema } from '@tracked/shared';
@@ -81,6 +81,12 @@ export class S3StorageService {
       contentLength: typeof res.ContentLength === 'number' ? res.ContentLength : null,
       body: res.Body as unknown,
     };
+  }
+
+  async deleteObject(params: { key: string }): Promise<void> {
+    await this.client.send(
+      new DeleteObjectCommand({ Bucket: this.bucket, Key: params.key }),
+    );
   }
 
   async getSignedGetUrl(params: { key: string; expiresSeconds?: number }): Promise<{ url: string }> {
