@@ -91,10 +91,8 @@ export class PasswordResetController {
         throw e;
       }
       const err = e instanceof Error ? e : new Error(String(e));
-      const smtp =
-        typeof (err as { response?: unknown }).response === 'string'
-          ? (err as { response: string }).response.trim()
-          : '';
+      const smtpRaw = (err as unknown as { response?: unknown }).response;
+      const smtp = typeof smtpRaw === 'string' ? smtpRaw.trim() : '';
       this.logger.warn(
         `Password reset mail failed for ${email}: ${err.message}${smtp ? ` | SMTP: ${smtp}` : ''}`,
       );
