@@ -45,6 +45,35 @@ const pendingContacts = new Map<string, { step: 'await_contact' | 'await_email' 
 /** Telegram user IDs (private chats with the bot) that are currently in the support chat mode. */
 const supportActive = new Set<string>();
 
+/** Команды в меню «/» в личке с ботом (русский по умолчанию + английские подписи для en-клиентов). */
+async function syncSlashCommandMenu(): Promise<void> {
+  const scopePrivate = { type: 'all_private_chats' as const };
+  const ru = [
+    { command: 'start', description: 'Главное меню и приложение' },
+    { command: 'support', description: 'Написать в поддержку' },
+    { command: 'support_end', description: 'Завершить чат с поддержкой' },
+    { command: 'contact', description: 'Контакт: телефон и email' },
+    { command: 'submit', description: 'Отправить домашнее задание' },
+    { command: 'cancel', description: 'Отменить текущее действие' },
+    { command: 'inv', description: 'Перейти по инвайт-коду' },
+  ];
+  const en = [
+    { command: 'start', description: 'Home and Mini App' },
+    { command: 'support', description: 'Contact support' },
+    { command: 'support_end', description: 'End support chat' },
+    { command: 'contact', description: 'Save phone and email' },
+    { command: 'submit', description: 'Submit homework for a lesson' },
+    { command: 'cancel', description: 'Cancel current action' },
+    { command: 'inv', description: 'Open invite by code' },
+  ];
+  try {
+    await bot.api.setMyCommands(ru, { scope: scopePrivate });
+    await bot.api.setMyCommands(en, { scope: scopePrivate, language_code: 'en' });
+  } catch (e) {
+    console.warn('setMyCommands failed (меню «/» может быть устаревшим):', e);
+  }
+}
+
 function isInviteCode(s: string): boolean {
   // Our invite codes are hex strings produced by randomBytes(12).toString('hex') => 24 chars.
   return /^[a-f0-9]{8,64}$/i.test(s);
@@ -426,7 +455,8 @@ bot.catch((err) => {
 
 // Старт бота
 bot.start({
-  onStart: (botInfo) => {
+  onStart: async (botInfo) => {
     console.log(`Bot @${botInfo.username} started`);
+    await syncSlashCommandMenu();
   },
 });
