@@ -5761,7 +5761,8 @@ if (platformMount) {
 
         const box = document.createElement('div');
         box.className = `mod-lessons${isOpen ? ' open' : ''}`;
-        for (const l of lessons) {
+        for (let li = 0; li < lessons.length; li++) {
+          const l = lessons[li]!;
           const row = document.createElement('div');
           row.className = 'lesson-row';
           if (builderSelectedLessonId === l.id && builderEditorMode === 'lesson') row.classList.add('active');
@@ -5769,6 +5770,25 @@ if (platformMount) {
           row.dataset.epBuilderModuleId = m.id;
           row.draggable = true;
           attachBuilderLessonDnd(root, row, m.id);
+          const reorderWrap = document.createElement('div');
+          reorderWrap.className = 'lesson-row__reorder';
+          const upBtn = document.createElement('button');
+          upBtn.type = 'button';
+          upBtn.textContent = '▲';
+          upBtn.title = 'Выше';
+          upBtn.dataset.epBuilderLessonMoveUp = '1';
+          upBtn.dataset.epBuilderModuleId = m.id;
+          upBtn.dataset.epBuilderLessonId = l.id;
+          if (li === 0) upBtn.disabled = true;
+          const downBtn = document.createElement('button');
+          downBtn.type = 'button';
+          downBtn.textContent = '▼';
+          downBtn.title = 'Ниже';
+          downBtn.dataset.epBuilderLessonMoveDown = '1';
+          downBtn.dataset.epBuilderModuleId = m.id;
+          downBtn.dataset.epBuilderLessonId = l.id;
+          if (li >= lessons.length - 1) downBtn.disabled = true;
+          reorderWrap.append(upBtn, downBtn);
           const ico = document.createElement('span');
           ico.className = 'lesson-ico';
           ico.textContent = '▶';
@@ -5795,7 +5815,7 @@ if (platformMount) {
             ev.stopPropagation();
             void builderDeleteLesson(root, m.id, l.id);
           });
-          row.append(ico, nm, dots);
+          row.append(reorderWrap, ico, nm, dots);
           box.appendChild(row);
         }
         for (const a of builderAttestationsCache.filter((x) => x.moduleId === m.id)) {
@@ -5852,6 +5872,21 @@ if (platformMount) {
       return row;
     }
 
+    async function builderMoveLessonStep(
+      root: ShadowRoot,
+      moduleId: string,
+      lessonId: string,
+      delta: -1 | 1,
+    ): Promise<void> {
+      const list = builderLessonsByModule.get(moduleId) ?? [];
+      const idx = list.findIndex((x) => x.id === lessonId);
+      if (idx < 0) return;
+      const ni = idx + delta;
+      if (ni < 0 || ni >= list.length) return;
+      const dstLid = list[ni]!.id;
+      await builderReorderLessons(root, moduleId, lessonId, dstLid);
+    }
+
     /** Drag-and-drop reorder for lessons inside the same module (HTML5 DnD). */
     function attachBuilderLessonDnd(root: ShadowRoot, row: HTMLElement, moduleId: string): void {
       row.addEventListener('dragstart', (ev) => {
@@ -5869,10 +5904,20 @@ if (platformMount) {
         row.classList.remove('lesson-row--dragging');
         row.classList.remove('lesson-row--drop-target');
       });
-      row.addEventListener('dragover', (ev) => {
-        const data = ev.dataTransfer?.types || [];
-        if (!Array.from(data).includes('application/x-ep-lesson')) return;
+      const allowDrop = (ev: DragEvent): boolean => {
+        const dt = ev.dataTransfer;
+        if (!dt) return false;
+        const types = dt.types ? Array.from(dt.types as unknown as string[]) : [];
+        return types.includes('application/x-ep-lesson');
+      };
+      row.addEventListener('dragenter', (ev) => {
+        if (!allowDrop(ev)) return;
         ev.preventDefault();
+      });
+      row.addEventListener('dragover', (ev) => {
+        if (!allowDrop(ev)) return;
+        ev.preventDefault();
+        if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move';
         row.classList.add('lesson-row--drop-target');
       });
       row.addEventListener('dragleave', () => {
@@ -8797,6 +8842,20 @@ if (platformMount) {
       if (bModHead && pickMid && !t?.closest('[data-ep-builder-module-menu]')) {
         ev.preventDefault();
         void selectBuilderModule(shell.shadowRoot, pickMid);
+        return;
+      }
+
+      const mvUpEl = t?.closest('[data-ep-builder-lesson-move-up]') as HTMLElement | null;
+      const mvDownEl = t?.closest('[data-ep-builder-lesson-move-down]') as HTMLElement | null;
+      const mvEl = mvUpEl ?? mvDownEl;
+      if (mvEl) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const mid = mvEl.dataset.epBuilderModuleId;
+        const lid = mvEl.dataset.epBuilderLessonId;
+        if (mid && lid) {
+          void builderMoveLessonStep(shell.shadowRoot, mid, lid, mvUpEl ? -1 : 1);
+        }
         return;
       }
 

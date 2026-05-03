@@ -454,6 +454,10 @@ textarea.form-input{resize:vertical;min-height:80px}
 .mod-cnt{font-family:var(--fm);font-size:9px;color:var(--t3)}
 .mod-lessons{padding-left:16px;display:none}
 .mod-lessons.open{display:block}
+[data-ep-builder-mod-tree] .lesson-row{
+  user-select:none;
+  -webkit-user-select:none;
+}
 .lesson-row{
   display:flex;align-items:center;gap:6px;
   padding:5px 10px 5px 8px;border-radius:6px;cursor:pointer;
@@ -465,6 +469,42 @@ textarea.form-input{resize:vertical;min-height:80px}
 .lesson-row[draggable="true"]{cursor:grab}
 .lesson-row.lesson-row--dragging{opacity:.55;cursor:grabbing}
 .lesson-row.lesson-row--drop-target{box-shadow:inset 0 2px 0 0 var(--a)}
+.lesson-row__reorder{
+  display:flex;flex-direction:column;gap:0;flex-shrink:0;margin-right:2px;
+}
+.lesson-row__reorder button{
+  font-size:9px;line-height:1;padding:0 4px;min-height:14px;border-radius:4px;
+  color:var(--t3);background:transparent;border:none;cursor:pointer;
+  font-family:var(--fm);
+}
+.lesson-row__reorder button:hover:not(:disabled){color:var(--a);background:var(--al)}
+.lesson-row__reorder button:disabled{opacity:.35;cursor:default}
+/* Конструктор: нижняя панель дерева — две основные кнопки, аттестация отдельной строкой */
+.ep-builder-sidebar-footer{
+  flex-shrink:0;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:6px 12px 18px;
+  border-top:1px solid var(--line);
+  background:var(--surface2);
+}
+.ep-builder-sidebar-footer__top{
+  display:flex;
+  gap:6px;
+  align-items:stretch;
+}
+.ep-builder-sidebar-footer__top .btn{
+  flex:1 1 0;
+  min-width:0;
+  justify-content:center;
+  font-size:11px;
+}
+.ep-builder-sidebar-footer > .btn[data-ep-builder-add-attestation]{
+  width:100%;
+  justify-content:center;
+  font-size:11px;
+}
 .lesson-ico{font-size:11px;flex-shrink:0}
 .lesson-name{flex:1;line-height:1.3}
 .lesson-tag{font-family:var(--fm);font-size:8px}
@@ -1457,6 +1497,10 @@ textarea.form-input{resize:vertical;min-height:80px}
   .ep-split-screen>div:nth-child(1){
     max-height:min(38vh,320px);
     flex:0 0 auto;
+  }
+  /* Конструктор: дерево + панель кнопок — выше, чтобы двухстрочный футер не обрезался */
+  #screen-e-builder .ep-builder-shell>div:nth-child(1){
+    max-height:min(48vh,440px);
   }
   .ep-builder-shell>div:nth-child(2),
   .ep-split-screen>div:nth-child(2){
