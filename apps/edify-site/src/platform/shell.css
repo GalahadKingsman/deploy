@@ -22,6 +22,20 @@
   --err-bg:rgba(220,38,38,0.08);
   --purple:#7C3AED;
   --purple-bg:rgba(124,58,237,0.08);
+  --att:#7C3AED;
+  --att-bg:rgba(124,58,237,0.10);
+  --att-border:rgba(124,58,237,0.22);
+  --att-course:#0F766E;
+  --att-course-bg:rgba(15,118,110,0.10);
+  --att-course-border:rgba(15,118,110,0.22);
+  --score-low:#DC2626;
+  --score-low-bg:rgba(220,38,38,0.10);
+  --score-mid:#D97706;
+  --score-mid-bg:rgba(217,119,6,0.12);
+  --score-good:#65A30D;
+  --score-good-bg:rgba(101,163,13,0.12);
+  --score-best:#15803D;
+  --score-best-bg:rgba(21,128,61,0.14);
   --fd:'Unbounded',sans-serif;
   --fb:'Manrope',sans-serif;
   --fm:'IBM Plex Mono',monospace;
@@ -448,9 +462,85 @@ textarea.form-input{resize:vertical;min-height:80px}
 }
 .lesson-row:hover{background:var(--bg2);color:var(--t1)}
 .lesson-row.active{background:var(--al);color:var(--a)}
+.lesson-row[draggable="true"]{cursor:grab}
+.lesson-row.lesson-row--dragging{opacity:.55;cursor:grabbing}
+.lesson-row.lesson-row--drop-target{box-shadow:inset 0 2px 0 0 var(--a)}
 .lesson-ico{font-size:11px;flex-shrink:0}
 .lesson-name{flex:1;line-height:1.3}
 .lesson-tag{font-family:var(--fm);font-size:8px}
+
+/* Attestations in module tree */
+.attestation-row{
+  display:flex;align-items:center;gap:6px;
+  padding:6px 10px 6px 8px;border-radius:6px;cursor:pointer;
+  font-size:12px;color:var(--att);
+  background:var(--att-bg);border:1px solid var(--att-border);
+  margin:2px 0;transition:background .12s;
+}
+.attestation-row:hover{background:rgba(124,58,237,0.16)}
+.attestation-row.active{background:rgba(124,58,237,0.20);font-weight:600}
+.attestation-row .lesson-ico{color:var(--att)}
+.attestation-row .lesson-name{flex:1;line-height:1.3;color:inherit}
+.attestation-row__score{font-family:var(--fm);font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px;flex-shrink:0}
+.attestation-row--course{
+  display:flex;align-items:center;gap:6px;
+  padding:7px 10px;border-radius:7px;cursor:pointer;
+  margin:2px 0;font-size:12px;font-weight:600;
+  color:var(--att-course);background:var(--att-course-bg);
+  border:1px solid var(--att-course-border);
+}
+.attestation-row--course:hover{background:rgba(15,118,110,0.18)}
+.attestation-row--course.active{background:rgba(15,118,110,0.22)}
+.attestation-row--course .lesson-ico{color:var(--att-course);font-size:11px;flex-shrink:0}
+.attestation-row--course .lesson-name{flex:1;line-height:1.3}
+.attestation-score--low{background:var(--score-low-bg);color:var(--score-low)}
+.attestation-score--mid{background:var(--score-mid-bg);color:var(--score-mid)}
+.attestation-score--good{background:var(--score-good-bg);color:var(--score-good)}
+.attestation-score--best{background:var(--score-best-bg);color:var(--score-best)}
+
+/* Attestation editor */
+.att-q-card{
+  border:1px solid var(--line);border-radius:var(--r2);
+  background:var(--surface);padding:14px 16px;
+  display:flex;flex-direction:column;gap:10px;
+}
+.att-q-head{display:flex;align-items:center;gap:8px}
+.att-q-head .att-q-num{font-family:var(--fm);font-size:11px;color:var(--t3);min-width:24px}
+.att-q-options{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.att-q-option{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;border:1px solid var(--line);border-radius:8px;
+  background:var(--surface2);
+}
+.att-q-option input[type="text"]{flex:1;border:none;background:transparent;outline:none;font-size:13px;color:var(--t1)}
+.att-q-option input[type="radio"]{accent-color:var(--ok);width:16px;height:16px;flex-shrink:0}
+.att-q-option .att-q-option-correct{font-size:11px;color:var(--t3);font-family:var(--fm)}
+.att-q-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+
+/* Student-side attestation panel */
+.s-att-panel{display:flex;flex-direction:column;gap:14px}
+.s-att-panel .s-att-q{
+  border:1px solid var(--line);border-radius:var(--r2);
+  background:var(--surface);padding:14px 16px;
+}
+.s-att-panel .s-att-q__prompt{font-family:var(--fd);font-size:14px;font-weight:600;color:var(--t1);margin-bottom:10px;line-height:1.45}
+.s-att-panel .s-att-q__opts{display:flex;flex-direction:column;gap:6px}
+.s-att-panel .s-att-opt{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border:1px solid var(--line);border-radius:8px;
+  background:var(--surface2);cursor:pointer;font-size:13px;color:var(--t1);
+  transition:background .12s,border-color .12s;
+}
+.s-att-panel .s-att-opt:hover{background:var(--bg)}
+.s-att-panel .s-att-opt input[type="radio"]{accent-color:var(--a);width:16px;height:16px;flex-shrink:0}
+.s-att-panel .s-att-opt--correct{border-color:rgba(22,163,74,0.4);background:var(--ok-bg);color:var(--ok)}
+.s-att-panel .s-att-opt--wrong{border-color:rgba(220,38,38,0.4);background:var(--err-bg);color:var(--err)}
+.s-att-panel .s-att-summary{
+  padding:14px 16px;border-radius:var(--r2);
+  background:var(--surface2);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.s-att-panel .s-att-summary__score{font-family:var(--fd);font-weight:800;font-size:18px;color:var(--t1)}
 
 /* Video player */
 .video-player{

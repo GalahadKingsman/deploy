@@ -56,6 +56,19 @@ export class ExpertsRepository {
     return this.mapRow(result.rows[0]);
   }
 
+  /** Workspace, созданный этим пользователем (владелец кабинета эксперта). */
+  async findByCreatedByUserId(userId: string): Promise<ContractsV1.ExpertV1 | null> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    const result = await this.pool.query<ExpertDbRow>(
+      'SELECT * FROM experts WHERE created_by_user_id = $1 ORDER BY created_at ASC LIMIT 1',
+      [userId],
+    );
+    if (result.rows.length === 0) return null;
+    return this.mapRow(result.rows[0]);
+  }
+
   private mapRow(row: ExpertDbRow): ContractsV1.ExpertV1 {
     return {
       id: row.id,

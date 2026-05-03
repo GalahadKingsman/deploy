@@ -29,6 +29,7 @@ import { ExpertDashboardRepository } from './expert-dashboard.repository.js';
 import { IntegrationsModule } from '../../integrations/integrations.module.js';
 import { StorageModule } from '../../storage/storage.module.js';
 import { ExpertCourseAccessService } from './expert-course-access.service.js';
+import { ExpertAttestationsController } from './expert-attestations.controller.js';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { ExpertCourseAccessService } from './expert-course-access.service.js';
     ExpertTeamController,
     ExpertCourseTopicsController,
     ExpertStudentsController,
+    ExpertAttestationsController,
   ],
   providers: [
     JwtAuthGuard,

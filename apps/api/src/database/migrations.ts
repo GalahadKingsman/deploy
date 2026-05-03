@@ -46,6 +46,7 @@ const MIGRATION_LIST = [
   '034_course_difficulty_level',
   '035_course_certificate_pdf',
   '036_support_message_routing',
+  '037_orders_expert_subscription_kind',
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

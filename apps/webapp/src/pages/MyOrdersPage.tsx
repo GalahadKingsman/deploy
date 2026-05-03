@@ -101,7 +101,19 @@ export function MyOrdersPage() {
               <CardDescription>
                 orderId: {o.id}
                 <br />
-                courseId: {o.courseId}
+                тип: {o.orderKind === 'expert_subscription' ? 'Подписка эксперта' : 'Курс (legacy)'}
+                {o.expertId ? (
+                  <>
+                    <br />
+                    expertId: {o.expertId}
+                  </>
+                ) : null}
+                {o.courseId ? (
+                  <>
+                    <br />
+                    courseId: {o.courseId}
+                  </>
+                ) : null}
               </CardDescription>
             </CardHeader>
             <CardContent style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>

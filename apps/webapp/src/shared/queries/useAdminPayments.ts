@@ -33,9 +33,13 @@ export function useAdminOrders(filters?: { status?: string; userId?: string; cou
 }
 
 export function useAdminMarkOrderPaid() {
-  return useMutation<{ ok: true; orderId: string; enrollment: ContractsV1.EnrollmentV1 }, Error, { orderId: string }>({
+  return useMutation<
+    { ok: true; orderId: string; enrollment: ContractsV1.EnrollmentV1 | null },
+    Error,
+    { orderId: string }
+  >({
     mutationFn: async ({ orderId }) => {
-      return await fetchJson<{ ok: true; orderId: string; enrollment: ContractsV1.EnrollmentV1 }>({
+      return await fetchJson<{ ok: true; orderId: string; enrollment: ContractsV1.EnrollmentV1 | null }>({
         path: `/admin/payments/orders/${orderId}/mark-paid`,
         method: 'POST',
       });

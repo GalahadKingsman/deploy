@@ -653,6 +653,31 @@ if (platformMount) {
     const builderLessonsByModule = new Map<string, BuilderLessonV1[]>();
     let builderModulesCache: BuilderModuleV1[] = [];
 
+    type BuilderAttestationOptionV1 = { id: string; position: number; label: string; isCorrect: boolean };
+    type BuilderAttestationQuestionV1 = {
+      id: string;
+      position: number;
+      prompt: string;
+      options: BuilderAttestationOptionV1[];
+    };
+    type BuilderAttestationV1 = {
+      id: string;
+      courseId: string;
+      moduleId: string | null;
+      scope: 'module' | 'course';
+      position: number;
+      displayTitle: string;
+      questions: BuilderAttestationQuestionV1[];
+      createdAt: string;
+      updatedAt: string;
+    };
+    let builderAttestationsCache: BuilderAttestationV1[] = [];
+    /** Editor-mode draft for the currently-selected attestation (questions/options). */
+    let builderAttestationDraft: BuilderAttestationV1 | null = null;
+    let builderSelectedAttestationId: string | null = null;
+    /** lesson | attestation — controls which workspace is shown in the right pane. */
+    let builderEditorMode: 'lesson' | 'attestation' = 'lesson';
+
     const urlParams = (() => {
       try {
         return new URL(window.location.href).searchParams;
@@ -841,6 +866,62 @@ if (platformMount) {
     const unlockedLessonIds = new Set<string>();
     /** Lesson ids per module (API order) — for «previous lesson» within the same module only */
     let modulesOrderedLessonIds: string[][] = [];
+
+    type StudentAttestationTreeRowV1 = {
+      id: string;
+      scope: 'module' | 'course';
+      moduleId: string | null;
+      displayTitle: string;
+      position: number;
+      questionCount: number;
+      latestAttempt: {
+        attemptId: string;
+        correctCount: number;
+        questionCount: number;
+        percent: number;
+        submittedAt: string;
+      } | null;
+    };
+    /** Аттестация, открытая в правой колонке экрана урока (не блокирует уроки). */
+    let studentActiveAttestationId: string | null = null;
+    /** true — показать разбор последней попытки; false — форма новой попытки. */
+    let studentAttestationShowReview = false;
+
+    let studentTreeSnapshot: {
+      courseTitle: string;
+      modules: Array<{
+        id: string;
+        title: string;
+        lessons: LessonV1[];
+        unlocked: Set<string>;
+        completed: Set<string>;
+        attestations: StudentAttestationTreeRowV1[];
+      }>;
+      courseLevelAttestations: StudentAttestationTreeRowV1[];
+      activeLessonId: string | null;
+    } | null = null;
+
+    function rerenderStudentLessonTree(root: ShadowRoot): void {
+      const s = studentTreeSnapshot;
+      if (!s) return;
+      renderLessonTree({
+        root,
+        courseTitle: s.courseTitle,
+        modules: s.modules,
+        courseLevelAttestations: s.courseLevelAttestations,
+        activeLessonId: s.activeLessonId,
+      });
+    }
+
+    function findStudentAttestationMeta(attestationId: string): StudentAttestationTreeRowV1 | null {
+      const s = studentTreeSnapshot;
+      if (!s) return null;
+      for (const m of s.modules) {
+        const row = m.attestations.find((x) => x.id === attestationId);
+        if (row) return row;
+      }
+      return s.courseLevelAttestations.find((x) => x.id === attestationId) ?? null;
+    }
 
     function profileDisplayName(u: { firstName?: string; lastName?: string; username?: string }): string {
       const n = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
@@ -1580,12 +1661,47 @@ if (platformMount) {
       items: LessonV1[];
       unlockedLessonIds: string[];
       completedLessonIds: string[];
+      attestations?: StudentAttestationTreeRowV1[];
     }> {
       const token = getAccessToken() ?? undefined;
       return await fetchJson(
         `/courses/${encodeURIComponent(courseId)}/modules/${encodeURIComponent(moduleId)}/lessons`,
         token,
       );
+    }
+
+    async function fetchCourseLevelAttestations(courseId: string): Promise<StudentAttestationTreeRowV1[]> {
+      const token = getAccessToken() ?? undefined;
+      try {
+        const res = await fetchJson<{ items?: StudentAttestationTreeRowV1[] }>(
+          `/courses/${encodeURIComponent(courseId)}/attestations/course-level`,
+          token,
+        );
+        return (res.items ?? []).slice().sort((a, b) => a.position - b.position);
+      } catch {
+        return [];
+      }
+    }
+
+    function attestationScoreClass(percent: number): string {
+      if (percent <= 30) return 'attestation-score--low';
+      if (percent <= 60) return 'attestation-score--mid';
+      if (percent <= 80) return 'attestation-score--good';
+      return 'attestation-score--best';
+    }
+
+    function showStudentLessonWorkspace(root: ShadowRoot): void {
+      const lessonWs = root.querySelector('[data-ep-student-lesson-workspace]') as HTMLElement | null;
+      const attWs = root.querySelector('[data-ep-student-attestation-workspace]') as HTMLElement | null;
+      if (lessonWs) lessonWs.style.display = '';
+      if (attWs) attWs.style.display = 'none';
+    }
+
+    function showStudentAttestationWorkspace(root: ShadowRoot): void {
+      const lessonWs = root.querySelector('[data-ep-student-lesson-workspace]') as HTMLElement | null;
+      const attWs = root.querySelector('[data-ep-student-attestation-workspace]') as HTMLElement | null;
+      if (lessonWs) lessonWs.style.display = 'none';
+      if (attWs) attWs.style.display = '';
     }
 
     function setProgress(root: ShadowRoot, completedCount: number, totalCount: number): void {
@@ -1613,7 +1729,9 @@ if (platformMount) {
         lessons: LessonV1[];
         unlocked: Set<string>;
         completed: Set<string>;
+        attestations?: StudentAttestationTreeRowV1[];
       }>;
+      courseLevelAttestations?: StudentAttestationTreeRowV1[];
       activeLessonId: string | null;
     }): void {
       const screen = params.root.getElementById('screen-s-lesson');
@@ -1625,6 +1743,8 @@ if (platformMount) {
 
       const titleEl = screen.querySelector('[data-ep-course-title]') as HTMLElement | null;
       if (titleEl) titleEl.textContent = params.courseTitle;
+
+      const effectiveLessonActive = studentActiveAttestationId ? null : params.activeLessonId;
 
       for (const m of params.modules) {
         const modItem = document.createElement('div');
@@ -1654,7 +1774,7 @@ if (platformMount) {
 
           const isDone = m.completed.has(l.id);
           const isUnlocked = m.unlocked.has(l.id);
-          const isActive = params.activeLessonId === l.id;
+          const isActive = effectiveLessonActive === l.id;
 
           const ico = document.createElement('span');
           ico.className = 'lesson-ico';
@@ -1678,8 +1798,52 @@ if (platformMount) {
           lessonsWrap.appendChild(row);
         }
 
+        for (const a of m.attestations ?? []) {
+          const row = document.createElement('div');
+          row.className = 'attestation-row';
+          row.dataset.epAttestationId = a.id;
+          if (studentActiveAttestationId === a.id) row.classList.add('active');
+          const ico = document.createElement('span');
+          ico.className = 'lesson-ico';
+          ico.textContent = '📝';
+          const lname = document.createElement('span');
+          lname.className = 'lesson-name';
+          lname.textContent = a.displayTitle;
+          row.append(ico, lname);
+          const att = a.latestAttempt;
+          if (att && att.questionCount > 0) {
+            const sc = document.createElement('span');
+            sc.className = `attestation-row__score ${attestationScoreClass(att.percent)}`;
+            sc.textContent = `${att.correctCount}/${att.questionCount}`;
+            row.appendChild(sc);
+          }
+          lessonsWrap.appendChild(row);
+        }
+
         modItem.append(head, lessonsWrap);
         treeHost.appendChild(modItem);
+      }
+
+      for (const a of params.courseLevelAttestations ?? []) {
+        const row = document.createElement('div');
+        row.className = 'attestation-row attestation-row--course';
+        row.dataset.epAttestationId = a.id;
+        if (studentActiveAttestationId === a.id) row.classList.add('active');
+        const ico = document.createElement('span');
+        ico.className = 'lesson-ico';
+        ico.textContent = '🏁';
+        const lname = document.createElement('span');
+        lname.className = 'lesson-name';
+        lname.textContent = a.displayTitle;
+        row.append(ico, lname);
+        const att = a.latestAttempt;
+        if (att && att.questionCount > 0) {
+          const sc = document.createElement('span');
+          sc.className = `attestation-row__score ${attestationScoreClass(att.percent)}`;
+          sc.textContent = `${att.correctCount}/${att.questionCount}`;
+          row.appendChild(sc);
+        }
+        treeHost.appendChild(row);
       }
     }
 
@@ -1699,6 +1863,12 @@ if (platformMount) {
 
     function setActiveLessonRow(root: ShadowRoot, lessonId: string): void {
       root.querySelectorAll('#screen-s-lesson .lesson-row').forEach((el) => el.classList.remove('active'));
+      root.querySelectorAll('#screen-s-lesson .attestation-row, #screen-s-lesson .attestation-row--course').forEach((el) => {
+        el.classList.remove('active');
+      });
+      studentActiveAttestationId = null;
+      studentAttestationShowReview = false;
+      if (studentTreeSnapshot) studentTreeSnapshot.activeLessonId = lessonId;
       (root.querySelector(`#screen-s-lesson .lesson-row[data-ep-lesson-id="${CSS.escape(lessonId)}"]`) as
         | HTMLElement
         | null)?.classList.add('active');
@@ -1993,6 +2163,7 @@ if (platformMount) {
         return;
       }
       const root = shell.shadowRoot;
+      showStudentLessonWorkspace(root);
       setActiveLessonRow(root, lessonId);
       const token = getAccessToken() ?? undefined;
       const meta = lessonMetaById.get(lessonId);
@@ -2378,6 +2549,203 @@ if (platformMount) {
       await openCourse(pick);
     }
 
+    async function openStudentAttestation(root: ShadowRoot, attestationId: string, opts?: { reviewOnly?: boolean }): Promise<void> {
+      if (!currentCourseId) return;
+      const token = getAccessToken() ?? undefined;
+      studentActiveAttestationId = attestationId;
+      studentAttestationShowReview = Boolean(opts?.reviewOnly);
+      rerenderStudentLessonTree(root);
+      showStudentAttestationWorkspace(root);
+
+      const titleEl = root.querySelector('[data-ep-student-attestation-title]') as HTMLElement | null;
+      const bodyEl = root.querySelector('[data-ep-student-attestation-body]') as HTMLElement | null;
+      const submitBtn = root.querySelector('[data-ep-student-attestation-submit]') as HTMLButtonElement | null;
+      const retakeBtn = root.querySelector('[data-ep-student-attestation-retake]') as HTMLButtonElement | null;
+      if (!bodyEl) return;
+      bodyEl.replaceChildren();
+      if (submitBtn) {
+        submitBtn.style.display = 'none';
+        submitBtn.disabled = true;
+      }
+      if (retakeBtn) retakeBtn.style.display = 'none';
+
+      if (studentAttestationShowReview) {
+        try {
+          const rev = await fetchJson<{
+            displayTitle: string;
+            attempt: {
+              attemptId: string;
+              correctCount: number;
+              questionCount: number;
+              percent: number;
+              submittedAt: string;
+            } | null;
+            questions: Array<{
+              questionId: string;
+              prompt: string;
+              chosenOptionId: string | null;
+              correctOptionId: string;
+              options: { id: string; position?: number; label: string }[];
+            }>;
+          }>(
+            `/courses/${encodeURIComponent(currentCourseId)}/attestations/${encodeURIComponent(attestationId)}/review`,
+            token,
+          );
+          if (titleEl) titleEl.textContent = rev.displayTitle;
+          if (rev.attempt && rev.attempt.questionCount > 0) {
+            const sum = document.createElement('div');
+            sum.className = 's-att-summary';
+            const left = document.createElement('div');
+            const k = document.createElement('div');
+            k.style.fontSize = '12px';
+            k.style.color = 'var(--t3)';
+            k.textContent = 'Результат последней попытки';
+            left.appendChild(k);
+            const sc = document.createElement('div');
+            sc.className = 's-att-summary__score';
+            sc.textContent = `${rev.attempt.correctCount} / ${rev.attempt.questionCount}`;
+            sum.append(left, sc);
+            bodyEl.appendChild(sum);
+          }
+          for (const q of rev.questions) {
+            const wrap = document.createElement('div');
+            wrap.className = 's-att-q';
+            const pr = document.createElement('div');
+            pr.className = 's-att-q__prompt';
+            pr.textContent = q.prompt;
+            const opts = document.createElement('div');
+            opts.className = 's-att-q__opts';
+            const sorted = [...q.options].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+            for (const o of sorted) {
+              const row = document.createElement('div');
+              row.className = 's-att-opt';
+              if (o.id === q.correctOptionId) row.classList.add('s-att-opt--correct');
+              else if (q.chosenOptionId && o.id === q.chosenOptionId) row.classList.add('s-att-opt--wrong');
+              row.textContent = o.label;
+              opts.appendChild(row);
+            }
+            wrap.append(pr, opts);
+            bodyEl.appendChild(wrap);
+          }
+          if (retakeBtn && rev.attempt) {
+            retakeBtn.style.display = '';
+            retakeBtn.onclick = () => {
+              void openStudentAttestation(root, attestationId, { reviewOnly: false });
+            };
+          }
+        } catch {
+          if (titleEl) titleEl.textContent = 'Аттестация';
+          bodyEl.textContent = 'Не удалось загрузить результат.';
+        }
+        return;
+      }
+
+      try {
+        const data = await fetchJson<{
+          displayTitle: string;
+          questions: Array<{ id: string; prompt: string; options: { id: string; label: string }[] }>;
+        }>(
+          `/courses/${encodeURIComponent(currentCourseId)}/attestations/${encodeURIComponent(attestationId)}/for-attempt`,
+          token,
+        );
+        if (titleEl) titleEl.textContent = data.displayTitle;
+        const answers: Record<string, string> = {};
+        const questions = data.questions ?? [];
+        if (questions.length === 0) {
+          bodyEl.textContent = 'В этой аттестации пока нет вопросов.';
+          return;
+        }
+        const syncSubmit = (): void => {
+          if (!submitBtn) return;
+          const ok = questions.every((q) => typeof answers[q.id] === 'string' && answers[q.id].length > 0);
+          submitBtn.disabled = !ok;
+        };
+        for (const q of questions) {
+          const wrap = document.createElement('div');
+          wrap.className = 's-att-q';
+          const pr = document.createElement('div');
+          pr.className = 's-att-q__prompt';
+          pr.textContent = q.prompt;
+          const opts = document.createElement('div');
+          opts.className = 's-att-q__opts';
+          const gname = `att-${attestationId}-${q.id}`;
+          for (const o of q.options) {
+            const lab = document.createElement('label');
+            lab.className = 's-att-opt';
+            const inp = document.createElement('input');
+            inp.type = 'radio';
+            inp.name = gname;
+            inp.value = o.id;
+            inp.addEventListener('change', () => {
+              answers[q.id] = o.id;
+              syncSubmit();
+            });
+            const span = document.createElement('span');
+            span.textContent = o.label;
+            lab.append(inp, span);
+            opts.appendChild(lab);
+          }
+          wrap.append(pr, opts);
+          bodyEl.appendChild(wrap);
+        }
+        if (submitBtn) {
+          submitBtn.style.display = '';
+          submitBtn.textContent = 'Отправить';
+          submitBtn.disabled = true;
+          submitBtn.onclick = () => {
+            void (async () => {
+              submitBtn.disabled = true;
+              submitBtn.textContent = 'Отправка…';
+              try {
+                const res = await postJson<{
+                  attempt: {
+                    attemptId: string;
+                    correctCount: number;
+                    questionCount: number;
+                    percent: number;
+                    submittedAt: string;
+                  };
+                }>(
+                  `/courses/${encodeURIComponent(currentCourseId)}/attestations/${encodeURIComponent(attestationId)}/attempts`,
+                  { answers },
+                  token,
+                );
+                const att = res.attempt;
+                if (studentTreeSnapshot) {
+                  const bump = (rows: StudentAttestationTreeRowV1[]) => {
+                    const row = rows.find((x) => x.id === attestationId);
+                    if (row && att) {
+                      row.latestAttempt = {
+                        attemptId: att.attemptId,
+                        correctCount: att.correctCount,
+                        questionCount: att.questionCount,
+                        percent: att.percent,
+                        submittedAt: att.submittedAt,
+                      };
+                    }
+                  };
+                  for (const m of studentTreeSnapshot.modules) bump(m.attestations);
+                  bump(studentTreeSnapshot.courseLevelAttestations);
+                }
+                studentAttestationShowReview = true;
+                rerenderStudentLessonTree(root);
+                await openStudentAttestation(root, attestationId, { reviewOnly: true });
+                window.alert(`Результат: ${att.correctCount} из ${att.questionCount} верно.`);
+              } catch (e) {
+                window.alert(e instanceof Error ? e.message : 'Не удалось отправить ответы.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Отправить';
+              }
+            })();
+          };
+        }
+        syncSubmit();
+      } catch {
+        if (titleEl) titleEl.textContent = 'Аттестация';
+        bodyEl.textContent = 'Не удалось загрузить аттестацию. Войдите в аккаунт и убедитесь, что у вас есть доступ к курсу.';
+      }
+    }
+
     async function openCourse(courseId: string): Promise<void> {
       shell.setRole('student', { screenId: 's-lesson' });
 
@@ -2387,6 +2755,10 @@ if (platformMount) {
       lessonMetaById.clear();
       unlockedLessonIds.clear();
       modulesOrderedLessonIds = [];
+      studentActiveAttestationId = null;
+      studentAttestationShowReview = false;
+      studentTreeSnapshot = null;
+      showStudentLessonWorkspace(root);
 
       const token = getAccessToken() ?? undefined;
       const myCourses = await fetchJson<MyCoursesResponseV1>('/me/courses', token);
@@ -2428,12 +2800,15 @@ if (platformMount) {
       setGoHomeworkButtonVisible(goHwBtn0, false);
 
       const modules = await fetchModules(courseId);
-      const moduleLessons = await Promise.all(
-        modules.map(async (m) => {
-          const res = await fetchModuleLessons(courseId, m.id);
-          return { module: m, res };
-        }),
-      );
+      const [moduleLessons, courseLevelAttestations] = await Promise.all([
+        Promise.all(
+          modules.map(async (m) => {
+            const res = await fetchModuleLessons(courseId, m.id);
+            return { module: m, res };
+          }),
+        ),
+        fetchCourseLevelAttestations(courseId),
+      ]);
 
       modulesOrderedLessonIds = moduleLessons.map(({ res }) => (res.items ?? []).map((x) => x.id));
 
@@ -2461,8 +2836,7 @@ if (platformMount) {
         }
       }
 
-      renderLessonTree({
-        root,
+      studentTreeSnapshot = {
         courseTitle: knownTitle,
         modules: moduleLessons.map(({ module, res }) => ({
           id: module.id,
@@ -2470,7 +2844,16 @@ if (platformMount) {
           lessons: res.items ?? [],
           unlocked: new Set(res.unlockedLessonIds ?? []),
           completed: new Set(res.completedLessonIds ?? []),
+          attestations: (res.attestations ?? []).slice().sort((a, b) => a.position - b.position),
         })),
+        courseLevelAttestations: courseLevelAttestations.slice().sort((a, b) => a.position - b.position),
+        activeLessonId,
+      };
+      renderLessonTree({
+        root,
+        courseTitle: knownTitle,
+        modules: studentTreeSnapshot.modules,
+        courseLevelAttestations: studentTreeSnapshot.courseLevelAttestations,
         activeLessonId,
       });
 
@@ -5141,6 +5524,22 @@ if (platformMount) {
       return (res.items ?? []).slice().sort((a, b) => a.position - b.position);
     }
 
+    async function builderFetchAttestations(eid: string, cid: string, token: string): Promise<BuilderAttestationV1[]> {
+      try {
+        const res = await fetchJson<{ items?: BuilderAttestationV1[] }>(
+          `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/attestations`,
+          token,
+        );
+        return (res.items ?? []).slice().sort((a, b) => {
+          if (a.scope !== b.scope) return a.scope === 'module' ? -1 : 1;
+          if (a.moduleId !== b.moduleId) return (a.moduleId ?? '') < (b.moduleId ?? '') ? -1 : 1;
+          return a.position - b.position;
+        });
+      } catch {
+        return [];
+      }
+    }
+
     async function builderLoadCourseData(root: ShadowRoot, eid: string, cid: string, token: string): Promise<void> {
       builderLessonsByModule.clear();
       builderModulesCache = await builderFetchModules(eid, cid, token);
@@ -5150,6 +5549,7 @@ if (platformMount) {
         builderLessonsByModule.set(m.id, ls);
         totalLessons += ls.length;
       }
+      builderAttestationsCache = await builderFetchAttestations(eid, cid, token);
 
       const course = await fetchJson<BuilderCourseDetailV1>(
         `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}`,
@@ -5190,7 +5590,17 @@ if (platformMount) {
       }
 
       renderBuilderModTree(root);
-      await applyBuilderLessonToForm(root, eid, token);
+      const aid = builderSelectedAttestationId;
+      if (aid && builderAttestationsCache.some((x) => x.id === aid)) {
+        await selectBuilderAttestation(root, aid);
+      } else {
+        if (aid) {
+          builderSelectedAttestationId = null;
+          builderAttestationDraft = null;
+        }
+        setBuilderEditorMode(root, 'lesson');
+        await applyBuilderLessonToForm(root, eid, token);
+      }
     }
 
     function openBuilderCertificateActionMenu(root: ShadowRoot): void {
@@ -5354,9 +5764,11 @@ if (platformMount) {
         for (const l of lessons) {
           const row = document.createElement('div');
           row.className = 'lesson-row';
-          if (builderSelectedLessonId === l.id) row.classList.add('active');
+          if (builderSelectedLessonId === l.id && builderEditorMode === 'lesson') row.classList.add('active');
           row.dataset.epBuilderLessonId = l.id;
           row.dataset.epBuilderModuleId = m.id;
+          row.draggable = true;
+          attachBuilderLessonDnd(root, row, m.id);
           const ico = document.createElement('span');
           ico.className = 'lesson-ico';
           ico.textContent = '▶';
@@ -5386,8 +5798,128 @@ if (platformMount) {
           row.append(ico, nm, dots);
           box.appendChild(row);
         }
+        for (const a of builderAttestationsCache.filter((x) => x.moduleId === m.id)) {
+          box.appendChild(buildBuilderAttestationRow(root, a, 'module'));
+        }
         item.append(head, box);
         host.appendChild(item);
+      }
+      const courseLevel = builderAttestationsCache.filter((x) => x.scope === 'course');
+      for (const a of courseLevel) {
+        host.appendChild(buildBuilderAttestationRow(root, a, 'course'));
+      }
+    }
+
+    function buildBuilderAttestationRow(
+      root: ShadowRoot,
+      a: BuilderAttestationV1,
+      level: 'module' | 'course',
+    ): HTMLElement {
+      const row = document.createElement('div');
+      row.className = level === 'course' ? 'attestation-row attestation-row--course' : 'attestation-row';
+      row.dataset.epBuilderAttestationId = a.id;
+      if (builderSelectedAttestationId === a.id && builderEditorMode === 'attestation') {
+        row.classList.add('active');
+      }
+      const ico = document.createElement('span');
+      ico.className = 'lesson-ico';
+      ico.textContent = level === 'course' ? '🏁' : '📝';
+      const nm = document.createElement('span');
+      nm.className = 'lesson-name';
+      nm.textContent = a.displayTitle;
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'btn btn-ghost btn-sm';
+      del.textContent = '✕';
+      del.style.padding = '4px 8px';
+      del.style.minWidth = '32px';
+      del.style.minHeight = '28px';
+      del.style.lineHeight = '1';
+      del.style.color = 'var(--err)';
+      del.style.borderColor = 'rgba(220,38,38,0.22)';
+      del.style.background = 'rgba(220,38,38,0.06)';
+      del.setAttribute('aria-label', 'Удалить аттестацию');
+      del.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        void builderDeleteAttestation(root, a.id);
+      });
+      row.append(ico, nm, del);
+      row.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        void selectBuilderAttestation(root, a.id);
+      });
+      return row;
+    }
+
+    /** Drag-and-drop reorder for lessons inside the same module (HTML5 DnD). */
+    function attachBuilderLessonDnd(root: ShadowRoot, row: HTMLElement, moduleId: string): void {
+      row.addEventListener('dragstart', (ev) => {
+        const lessonId = row.dataset.epBuilderLessonId ?? '';
+        if (!lessonId) return;
+        row.classList.add('lesson-row--dragging');
+        try {
+          ev.dataTransfer?.setData('application/x-ep-lesson', `${moduleId}:${lessonId}`);
+          if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move';
+        } catch {
+          /* ignore */
+        }
+      });
+      row.addEventListener('dragend', () => {
+        row.classList.remove('lesson-row--dragging');
+        row.classList.remove('lesson-row--drop-target');
+      });
+      row.addEventListener('dragover', (ev) => {
+        const data = ev.dataTransfer?.types || [];
+        if (!Array.from(data).includes('application/x-ep-lesson')) return;
+        ev.preventDefault();
+        row.classList.add('lesson-row--drop-target');
+      });
+      row.addEventListener('dragleave', () => {
+        row.classList.remove('lesson-row--drop-target');
+      });
+      row.addEventListener('drop', (ev) => {
+        ev.preventDefault();
+        row.classList.remove('lesson-row--drop-target');
+        const raw = ev.dataTransfer?.getData('application/x-ep-lesson') ?? '';
+        if (!raw) return;
+        const [srcMid, srcLid] = raw.split(':');
+        if (!srcMid || !srcLid) return;
+        if (srcMid !== moduleId) return;
+        const dstLid = row.dataset.epBuilderLessonId ?? '';
+        if (!dstLid || dstLid === srcLid) return;
+        void builderReorderLessons(root, moduleId, srcLid, dstLid);
+      });
+    }
+
+    async function builderReorderLessons(
+      root: ShadowRoot,
+      moduleId: string,
+      srcLid: string,
+      dstLid: string,
+    ): Promise<void> {
+      const token = getAccessToken();
+      const eid = await resolveBuilderExpertId();
+      const cid = expertBuilderCourseId;
+      if (!token || !eid || !cid) return;
+      const lessons = (builderLessonsByModule.get(moduleId) ?? []).slice();
+      const srcIdx = lessons.findIndex((x) => x.id === srcLid);
+      const dstIdx = lessons.findIndex((x) => x.id === dstLid);
+      if (srcIdx < 0 || dstIdx < 0) return;
+      const [moved] = lessons.splice(srcIdx, 1);
+      lessons.splice(dstIdx, 0, moved);
+      builderLessonsByModule.set(moduleId, lessons);
+      renderBuilderModTree(root);
+      try {
+        await postJson(
+          `/experts/${encodeURIComponent(eid)}/modules/${encodeURIComponent(moduleId)}/lessons/reorder`,
+          { items: lessons.map((l, i) => ({ id: l.id, position: i })) },
+          token,
+        );
+        await builderLoadCourseData(root, eid, cid, token);
+      } catch {
+        window.alert('Не удалось изменить порядок уроков (нужна роль менеджера+).');
+        await builderLoadCourseData(root, eid, cid, token);
       }
     }
 
@@ -5751,6 +6283,8 @@ if (platformMount) {
     async function selectBuilderLesson(root: ShadowRoot, moduleId: string, lessonId: string): Promise<void> {
       builderSelectedModuleId = moduleId;
       builderSelectedLessonId = lessonId;
+      builderSelectedAttestationId = null;
+      setBuilderEditorMode(root, 'lesson');
       const token = getAccessToken();
       const eid = await resolveBuilderExpertId();
       if (!token || !eid) return;
@@ -5762,8 +6296,10 @@ if (platformMount) {
     async function selectBuilderModule(root: ShadowRoot, moduleId: string): Promise<void> {
       if (!builderModulesCache.some((m) => m.id === moduleId)) return;
       builderSelectedModuleId = moduleId;
+      builderSelectedAttestationId = null;
       const lessons = builderLessonsByModule.get(moduleId) ?? [];
       builderSelectedLessonId = lessons[0]?.id ?? null;
+      setBuilderEditorMode(root, 'lesson');
       const token = getAccessToken();
       const eid = await resolveBuilderExpertId();
       if (!token || !eid) return;
@@ -5936,6 +6472,8 @@ if (platformMount) {
           { title: title.trim(), contentMarkdown: '' },
           token,
         );
+        builderEditorMode = 'lesson';
+        builderSelectedAttestationId = null;
         builderSelectedModuleId = mid;
         builderSelectedLessonId = created.id;
         await builderLoadCourseData(root, eid, cid, token);
@@ -5944,7 +6482,327 @@ if (platformMount) {
       }
     }
 
+    /** Build a list of options for the «scope» picker shown to the expert when adding an attestation. */
+    function builderPickAttestationModuleId(): string | null | undefined {
+      if (builderModulesCache.length === 0) {
+        if (window.confirm('Создать итоговую аттестацию к курсу? Модулей пока нет.')) {
+          return null;
+        }
+        return undefined;
+      }
+      const lines: string[] = ['Введите номер варианта:', '0. Итоговая аттестация к курсу'];
+      builderModulesCache.forEach((m, i) => {
+        lines.push(`${i + 1}. Промежуточная к модулю «${m.title}»`);
+      });
+      const raw = window.prompt(lines.join('\n'), '0');
+      if (raw == null) return undefined;
+      const n = parseInt(raw.trim(), 10);
+      if (!Number.isFinite(n)) return undefined;
+      if (n === 0) return null;
+      const idx = n - 1;
+      if (idx < 0 || idx >= builderModulesCache.length) return undefined;
+      return builderModulesCache[idx].id;
+    }
+
+    async function builderAddAttestation(root: ShadowRoot): Promise<void> {
+      const token = getAccessToken();
+      const eid = await resolveBuilderExpertId();
+      const cid = expertBuilderCourseId;
+      if (!token || !eid || !cid) {
+        window.alert('Сначала создайте или откройте курс.');
+        return;
+      }
+      const moduleId = builderPickAttestationModuleId();
+      if (moduleId === undefined) return;
+      try {
+        const created = await postJson<BuilderAttestationV1>(
+          `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/attestations`,
+          { moduleId },
+          token,
+        );
+        builderEditorMode = 'attestation';
+        builderSelectedLessonId = null;
+        builderSelectedAttestationId = created.id;
+        await builderLoadCourseData(root, eid, cid, token);
+      } catch {
+        window.alert('Не удалось создать аттестацию (нужна роль менеджера+).');
+      }
+    }
+
+    async function builderDeleteAttestation(root: ShadowRoot, attestationId: string): Promise<void> {
+      const token = getAccessToken();
+      const eid = await resolveBuilderExpertId();
+      const cid = expertBuilderCourseId;
+      if (!token || !eid || !cid) return;
+      const a = builderAttestationsCache.find((x) => x.id === attestationId);
+      const label = a?.displayTitle ?? 'аттестация';
+      if (!window.confirm(`Удалить «${label}»? Попытки студентов сохранятся в истории, но аттестация будет скрыта.`)) {
+        return;
+      }
+      try {
+        await deleteJson(
+          `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/attestations/${encodeURIComponent(attestationId)}`,
+          token,
+        );
+        if (builderSelectedAttestationId === attestationId) {
+          builderSelectedAttestationId = null;
+          builderEditorMode = 'lesson';
+          builderAttestationDraft = null;
+        }
+        await builderLoadCourseData(root, eid, cid, token);
+      } catch {
+        window.alert('Не удалось удалить аттестацию (нужна роль менеджера+).');
+      }
+    }
+
+    function setBuilderEditorMode(root: ShadowRoot, mode: 'lesson' | 'attestation'): void {
+      builderEditorMode = mode;
+      const screen = builderScreen(root);
+      if (!screen) return;
+      const hosts = screen.querySelectorAll<HTMLElement>('[data-ep-builder-mode-host]');
+      hosts.forEach((el) => {
+        const target = el.dataset.epBuilderModeHost as 'lesson' | 'attestation';
+        if (target !== mode) {
+          el.style.display = 'none';
+          return;
+        }
+        const layout = (el.dataset.epBuilderModeLayout ?? 'block').trim();
+        el.style.display = layout === 'flex' ? 'flex' : 'block';
+      });
+    }
+
+    async function selectBuilderAttestation(root: ShadowRoot, attestationId: string): Promise<void> {
+      const token = getAccessToken();
+      const eid = await resolveBuilderExpertId();
+      const cid = expertBuilderCourseId;
+      if (!token || !eid || !cid) return;
+      let a = builderAttestationsCache.find((x) => x.id === attestationId) ?? null;
+      try {
+        const fresh = await fetchJson<BuilderAttestationV1>(
+          `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/attestations/${encodeURIComponent(attestationId)}`,
+          token,
+        );
+        a = fresh;
+        const idx = builderAttestationsCache.findIndex((x) => x.id === attestationId);
+        if (idx >= 0) builderAttestationsCache[idx] = fresh;
+      } catch {
+        /* fall back to cached */
+      }
+      if (!a) return;
+      builderSelectedAttestationId = attestationId;
+      builderSelectedLessonId = null;
+      builderAttestationDraft = JSON.parse(JSON.stringify(a)) as BuilderAttestationV1;
+      setBuilderEditorMode(root, 'attestation');
+      renderBuilderModTree(root);
+      renderBuilderAttestationEditor(root);
+    }
+
+    function renderBuilderAttestationEditor(root: ShadowRoot): void {
+      const titleHost = root.querySelector('[data-ep-builder-attestation-title]') as HTMLElement | null;
+      const list = root.querySelector('[data-ep-builder-attestation-questions]') as HTMLElement | null;
+      const empty = root.querySelector('[data-ep-builder-attestation-empty]') as HTMLElement | null;
+      if (!titleHost || !list || !empty) return;
+      list.replaceChildren();
+      if (!builderAttestationDraft) {
+        titleHost.textContent = 'Аттестация';
+        empty.style.display = '';
+        return;
+      }
+      titleHost.textContent = builderAttestationDraft.displayTitle;
+      const questions = builderAttestationDraft.questions;
+      empty.style.display = questions.length === 0 ? '' : 'none';
+      questions.forEach((q, qIdx) => {
+        list.appendChild(buildBuilderAttestationQuestionCard(root, q, qIdx));
+      });
+    }
+
+    function buildBuilderAttestationQuestionCard(
+      root: ShadowRoot,
+      q: BuilderAttestationQuestionV1,
+      qIdx: number,
+    ): HTMLElement {
+      const card = document.createElement('div');
+      card.className = 'att-q-card';
+
+      const head = document.createElement('div');
+      head.className = 'att-q-head';
+      const num = document.createElement('span');
+      num.className = 'att-q-num';
+      num.textContent = `Q${qIdx + 1}`;
+      const promptInp = document.createElement('input');
+      promptInp.type = 'text';
+      promptInp.className = 'form-input';
+      promptInp.placeholder = 'Текст вопроса';
+      promptInp.value = q.prompt;
+      promptInp.addEventListener('input', () => {
+        q.prompt = promptInp.value;
+      });
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'btn btn-ghost btn-sm';
+      removeBtn.textContent = '✕';
+      removeBtn.style.color = 'var(--err)';
+      removeBtn.setAttribute('aria-label', 'Удалить вопрос');
+      removeBtn.addEventListener('click', () => {
+        if (!builderAttestationDraft) return;
+        builderAttestationDraft.questions = builderAttestationDraft.questions.filter((x) => x !== q);
+        renderBuilderAttestationEditor(root);
+      });
+      head.append(num, promptInp, removeBtn);
+
+      const opts = document.createElement('div');
+      opts.className = 'att-q-options';
+      const radioName = `att-q-${q.id || qIdx}-correct`;
+      q.options.forEach((o) => {
+        opts.appendChild(buildBuilderAttestationOptionRow(root, q, o, radioName));
+      });
+
+      const actions = document.createElement('div');
+      actions.className = 'att-q-actions';
+      const addOpt = document.createElement('button');
+      addOpt.type = 'button';
+      addOpt.className = 'btn btn-outline btn-sm';
+      addOpt.textContent = '+ Вариант';
+      addOpt.addEventListener('click', () => {
+        q.options.push({
+          id: cryptoRandomUuid(),
+          position: q.options.length,
+          label: '',
+          isCorrect: q.options.length === 0,
+        });
+        renderBuilderAttestationEditor(root);
+      });
+      actions.appendChild(addOpt);
+
+      card.append(head, opts, actions);
+      return card;
+    }
+
+    function buildBuilderAttestationOptionRow(
+      root: ShadowRoot,
+      q: BuilderAttestationQuestionV1,
+      o: BuilderAttestationOptionV1,
+      radioName: string,
+    ): HTMLElement {
+      const row = document.createElement('div');
+      row.className = 'att-q-option';
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = radioName;
+      radio.checked = Boolean(o.isCorrect);
+      radio.addEventListener('change', () => {
+        for (const x of q.options) x.isCorrect = false;
+        o.isCorrect = true;
+      });
+      const label = document.createElement('input');
+      label.type = 'text';
+      label.placeholder = 'Текст варианта';
+      label.value = o.label;
+      label.addEventListener('input', () => {
+        o.label = label.value;
+      });
+      const correctHint = document.createElement('span');
+      correctHint.className = 'att-q-option-correct';
+      correctHint.textContent = 'верный';
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'btn btn-ghost btn-sm';
+      del.textContent = '✕';
+      del.style.color = 'var(--err)';
+      del.setAttribute('aria-label', 'Удалить вариант');
+      del.addEventListener('click', () => {
+        q.options = q.options.filter((x) => x !== o);
+        if (q.options.length > 0 && !q.options.some((x) => x.isCorrect)) {
+          q.options[0].isCorrect = true;
+        }
+        renderBuilderAttestationEditor(root);
+      });
+      row.append(radio, correctHint, label, del);
+      return row;
+    }
+
+    function cryptoRandomUuid(): string {
+      try {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+          return crypto.randomUUID();
+        }
+      } catch {
+        /* ignore */
+      }
+      return `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    }
+
+    function builderAddAttestationQuestion(root: ShadowRoot): void {
+      if (!builderAttestationDraft) {
+        window.alert('Сначала выберите аттестацию в дереве слева.');
+        return;
+      }
+      const n = builderAttestationDraft.questions.length;
+      builderAttestationDraft.questions.push({
+        id: cryptoRandomUuid(),
+        position: n,
+        prompt: '',
+        options: [
+          { id: cryptoRandomUuid(), position: 0, label: '', isCorrect: true },
+          { id: cryptoRandomUuid(), position: 1, label: '', isCorrect: false },
+        ],
+      });
+      renderBuilderAttestationEditor(root);
+    }
+
+    async function builderSaveAttestation(root: ShadowRoot): Promise<void> {
+      const token = getAccessToken();
+      const eid = await resolveBuilderExpertId();
+      const cid = expertBuilderCourseId;
+      const aid = builderSelectedAttestationId;
+      if (!token || !eid || !cid || !aid || !builderAttestationDraft) return;
+      const questions = builderAttestationDraft.questions.map((q) => ({
+        id: q.id && /^[0-9a-f-]{36}$/i.test(q.id) ? q.id : undefined,
+        prompt: (q.prompt ?? '').trim(),
+        options: q.options.map((o) => ({
+          id: o.id && /^[0-9a-f-]{36}$/i.test(o.id) ? o.id : undefined,
+          label: (o.label ?? '').trim(),
+          isCorrect: Boolean(o.isCorrect),
+        })),
+      }));
+      for (const q of questions) {
+        if (!q.prompt) {
+          window.alert('Каждый вопрос должен иметь текст.');
+          return;
+        }
+        if (q.options.length < 2) {
+          window.alert('У вопроса должно быть минимум 2 варианта.');
+          return;
+        }
+        if (q.options.some((o) => !o.label)) {
+          window.alert('Каждый вариант должен иметь текст.');
+          return;
+        }
+        const correctCount = q.options.filter((o) => o.isCorrect).length;
+        if (correctCount !== 1) {
+          window.alert('У каждого вопроса должен быть ровно один верный вариант.');
+          return;
+        }
+      }
+      try {
+        const updated = await patchJson<BuilderAttestationV1>(
+          `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/attestations/${encodeURIComponent(aid)}`,
+          { questions },
+          token,
+        );
+        builderAttestationDraft = JSON.parse(JSON.stringify(updated)) as BuilderAttestationV1;
+        const idx = builderAttestationsCache.findIndex((x) => x.id === aid);
+        if (idx >= 0) builderAttestationsCache[idx] = updated;
+        renderBuilderAttestationEditor(root);
+        renderBuilderModTree(root);
+        window.alert('Аттестация сохранена.');
+      } catch {
+        window.alert('Не удалось сохранить аттестацию.');
+      }
+    }
+
     async function switchExpertBuilderTab(root: ShadowRoot, tabLabel: string): Promise<void> {
+      if (builderEditorMode === 'attestation') return;
       const screen = builderScreen(root);
       if (!screen) return;
       const tabs = screen.querySelectorAll('[data-ep-builder-tabs] .tab');
@@ -8012,6 +8870,21 @@ if (platformMount) {
         void builderAddLesson(shell.shadowRoot);
         return;
       }
+      if (t?.closest('[data-ep-builder-add-attestation]')) {
+        ev.preventDefault();
+        void builderAddAttestation(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-builder-save-attestation]')) {
+        ev.preventDefault();
+        void builderSaveAttestation(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-builder-attestation-add-question]')) {
+        ev.preventDefault();
+        builderAddAttestationQuestion(shell.shadowRoot);
+        return;
+      }
       if (t?.closest('[data-ep-profile-save]')) {
         ev.preventDefault();
         void saveProfileFromScreen(shell.shadowRoot);
@@ -9028,6 +9901,29 @@ if (platformMount) {
       if (lessonEl && lessonId) {
         ev.preventDefault();
         void openLesson(lessonId);
+        return;
+      }
+
+      if (t?.closest('[data-ep-student-attestation-back]')) {
+        ev.preventDefault();
+        const r = shell.shadowRoot;
+        studentActiveAttestationId = null;
+        studentAttestationShowReview = false;
+        showStudentLessonWorkspace(r);
+        rerenderStudentLessonTree(r);
+        return;
+      }
+
+      if (isShellStudentMode(shell.shadowRoot)) {
+        const attEl = t?.closest('[data-ep-attestation-id]') as HTMLElement | null;
+        const attId = attEl?.dataset.epAttestationId;
+        if (attEl && attId) {
+          ev.preventDefault();
+          const meta = findStudentAttestationMeta(attId);
+          const reviewOnly = Boolean(meta?.latestAttempt && meta.latestAttempt.questionCount > 0);
+          void openStudentAttestation(shell.shadowRoot, attId, { reviewOnly });
+          return;
+        }
       }
 
       // Assignment materials: row → open preview; "Скачать" → attachment download

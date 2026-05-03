@@ -162,13 +162,27 @@ export function AdminPaymentsPage() {
                 <br />
                 userId: {o.userId}
                 <br />
-                courseId: {o.courseId}
+                kind: {o.orderKind}
+                {o.expertId ? (
+                  <>
+                    <br />
+                    expertId: {o.expertId}
+                  </>
+                ) : null}
+                {o.courseId ? (
+                  <>
+                    <br />
+                    courseId: {o.courseId}
+                  </>
+                ) : null}
               </CardDescription>
             </CardHeader>
             <CardContent style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
-              <Button variant="secondary" onClick={() => navigate(`/course/${o.courseId}`)}>
-                Открыть курс
-              </Button>
+              {o.courseId ? (
+                <Button variant="secondary" onClick={() => navigate(`/course/${o.courseId}`)}>
+                  Открыть курс
+                </Button>
+              ) : null}
               <Button
                 variant="primary"
                 disabled={o.status === 'paid' || markPaid.isPending}

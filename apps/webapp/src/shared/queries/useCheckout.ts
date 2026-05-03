@@ -3,25 +3,23 @@ import { ContractsV1 } from '@tracked/shared';
 import { fetchJson, ApiClientError } from '../api/index.js';
 import { getReferral } from '../referrals/referralStorage.js';
 
-export function useCreateCourseCheckout(courseId: string) {
+export function useCreateExpertSubscriptionCheckout() {
   return useMutation({
     mutationFn: async (params?: { email?: string | null; phone?: string | null }) => {
       const referralCode = getReferral();
-      return await fetchJson<ContractsV1.CreateCourseCheckoutResponseV1>({
-        path: `/checkout/courses/${courseId}`,
+      return await fetchJson<ContractsV1.CreateExpertSubscriptionCheckoutResponseV1>({
+        path: '/checkout/expert-subscription',
         method: 'POST',
         body: {
           referralCode: referralCode ?? null,
           email: params?.email ?? null,
           phone: params?.phone ?? null,
-        } satisfies ContractsV1.CreateCourseCheckoutRequestV1,
+        } satisfies ContractsV1.CreateExpertSubscriptionCheckoutRequestV1,
       });
     },
     retry: (failureCount, error) => {
-      // If API forbids checkout because payments are disabled — do not retry
       if (error instanceof ApiClientError && (error.status === 401 || error.status === 403)) return false;
       return failureCount < 1;
     },
   });
 }
-

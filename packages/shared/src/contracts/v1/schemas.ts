@@ -64,6 +64,26 @@ export {
   UpdateExpertLessonRequestV1Schema,
   ReorderExpertLessonsRequestV1Schema,
 } from './expert-lesson.js';
+export {
+  AttestationScopeV1Schema,
+  AttestationOptionV1Schema,
+  AttestationQuestionV1Schema,
+  ExpertAttestationV1Schema,
+  ListExpertAttestationsResponseV1Schema,
+  CreateExpertAttestationRequestV1Schema,
+  UpdateExpertAttestationQuestionOptionV1Schema,
+  UpdateExpertAttestationQuestionV1Schema,
+  UpdateExpertAttestationRequestV1Schema,
+  AttestationAttemptSummaryV1Schema,
+  StudentAttestationTreeRowV1Schema,
+  StudentAttestationQuestionForAttemptV1Schema,
+  GetStudentAttestationForAttemptResponseV1Schema,
+  SubmitStudentAttestationRequestV1Schema,
+  StudentAttestationReviewQuestionV1Schema,
+  SubmitStudentAttestationResponseV1Schema,
+  GetStudentAttestationReviewResponseV1Schema,
+  ListStudentCourseAttestationsResponseV1Schema,
+} from './attestation.js';
 export { InviteV1Schema } from './invite.js';
 export {
   AssignmentV1Schema,
@@ -88,8 +108,9 @@ export { SubmissionV1Schema } from './submission.js';
 export {
   OrderV1Schema,
   OrderStatusV1Schema,
-  CreateCourseCheckoutRequestV1Schema,
-  CreateCourseCheckoutResponseV1Schema,
+  OrderKindV1Schema,
+  CreateExpertSubscriptionCheckoutRequestV1Schema,
+  CreateExpertSubscriptionCheckoutResponseV1Schema,
   MeOrdersResponseV1Schema,
 } from './orders.js';
 export { GetMyReferralResponseV1Schema } from './referral.js';

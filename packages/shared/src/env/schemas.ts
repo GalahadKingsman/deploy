@@ -48,6 +48,8 @@ export const ApiEnvSchema = z.object({
     .default(false),
   /** Referral commission on paid orders: basis points (100 = 1%). Default 0. */
   PAYMENTS_REFERRAL_COMMISSION_BPS: z.coerce.number().int().min(0).max(1_000_000).default(0),
+  /** Сколько дней подписки эксперта начислять за одну успешную оплату заказа expert_subscription. */
+  EXPERT_SUBSCRIPTION_CHECKOUT_PERIOD_DAYS: z.coerce.number().int().min(1).max(3650).default(30),
   /** Tinkoff Acquiring (eCom) — TerminalKey from lk */
   TINKOFF_TERMINAL_KEY: z.string().optional().default(''),
   TINKOFF_PASSWORD: z.string().optional().default(''),

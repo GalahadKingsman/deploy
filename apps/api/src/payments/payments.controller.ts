@@ -16,8 +16,9 @@ import { ApiEnvSchema, ContractsV1, ErrorCodes, validateOrThrow } from '@tracked
 import { JwtAuthGuard } from '../auth/session/jwt-auth.guard.js';
 import type { FastifyRequest } from 'fastify';
 import { OrdersRepository } from './orders.repository.js';
-import { StudentCoursesRepository } from '../student/student_courses.repository.js';
 import { TinkoffAcquiringService } from './tinkoff-acquiring.service.js';
+import { ExpertsRepository } from '../experts/experts.repository.js';
+import { ExpertSubscriptionsRepository } from '../subscriptions/expert-subscriptions.repository.js';
 
 @ApiTags('Payments')
 @Controller()
@@ -26,25 +27,25 @@ export class PaymentsController {
 
   constructor(
     private readonly ordersRepository: OrdersRepository,
-    private readonly coursesRepository: StudentCoursesRepository,
     private readonly tinkoff: TinkoffAcquiringService,
+    private readonly expertsRepository: ExpertsRepository,
+    private readonly expertSubscriptionsRepository: ExpertSubscriptionsRepository,
   ) {}
 
-  @Post('checkout/courses/:courseId')
+  @Post('checkout/expert-subscription')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create checkout order for course (payments scaffolding)' })
+  @ApiOperation({ summary: 'Create checkout for expert platform subscription (Tinkoff)' })
   @ApiResponse({ status: 201, description: 'Order created' })
-  async createCourseCheckout(
-    @Param('courseId') courseId: string,
-    @Body() body: ContractsV1.CreateCourseCheckoutRequestV1,
+  async createExpertSubscriptionCheckout(
+    @Body() body: ContractsV1.CreateExpertSubscriptionCheckoutRequestV1,
     @Req() req: FastifyRequest & { user?: { userId: string } },
-  ): Promise<ContractsV1.CreateCourseCheckoutResponseV1> {
+  ): Promise<ContractsV1.CreateExpertSubscriptionCheckoutResponseV1> {
     const env = validateOrThrow(ApiEnvSchema, process.env);
     if (env.PAYMENTS_ENABLED !== true) {
       throw new ForbiddenException({ code: ErrorCodes.FORBIDDEN, message: 'Payments are disabled' });
     }
-    const parsed = ContractsV1.CreateCourseCheckoutRequestV1Schema.safeParse(body);
+    const parsed = ContractsV1.CreateExpertSubscriptionCheckoutRequestV1Schema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Validation failed' });
     }
@@ -52,12 +53,26 @@ export class PaymentsController {
     const userId = req.user?.userId;
     if (!userId) throw new NotFoundException({ code: ErrorCodes.UNAUTHORIZED, message: 'Unauthorized' });
 
-    const course = await this.coursesRepository.getCourse(courseId);
-    if (!course) throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'Course not found' });
+    const expert = await this.expertsRepository.findByCreatedByUserId(userId);
+    if (!expert) {
+      throw new ForbiddenException({
+        code: ErrorCodes.FORBIDDEN,
+        message: 'Only the expert workspace owner can purchase a subscription',
+      });
+    }
 
-    const existing = await this.ordersRepository.findLatestCreatedByUserAndCourse({ userId, courseId });
-    if (existing?.payUrl) {
-      return { order: existing, payUrl: existing.payUrl };
+    await this.expertSubscriptionsRepository.ensureDefault(expert.id);
+    const sub = await this.expertSubscriptionsRepository.findByExpertId(expert.id);
+    if (!sub) {
+      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Subscription row missing' });
+    }
+
+    const amountCents = sub.priceCents ?? 0;
+    if (amountCents <= 0) {
+      throw new BadRequestException({
+        code: ErrorCodes.VALIDATION_ERROR,
+        message: 'Expert subscription price is not configured (price_cents is 0)',
+      });
     }
 
     const referralCode =
@@ -65,21 +80,26 @@ export class PaymentsController {
         ? parsed.data.referralCode.trim()
         : null;
 
+    const existing = await this.ordersRepository.findLatestCreatedExpertSubscriptionByUser({ userId });
+    if (existing?.payUrl) {
+      return { order: existing, payUrl: existing.payUrl };
+    }
+
     if (existing) {
       return this.tryInitTinkoffAndPersist({
         userId,
         order: existing,
-        courseTitle: course.title,
+        description: 'Подписка EDIFY для эксперта',
         receiptEmail: parsed.data.email ?? existing.receiptEmail ?? null,
         receiptPhone: parsed.data.phone ?? existing.receiptPhone ?? null,
       });
     }
 
-    const order = await this.ordersRepository.create({
+    const order = await this.ordersRepository.createExpertSubscriptionOrder({
       userId,
-      courseId,
-      amountCents: course.priceCents ?? 0,
-      currency: course.currency ?? 'RUB',
+      expertId: expert.id,
+      amountCents,
+      currency: 'RUB',
       referralCode,
       receiptEmail: parsed.data.email ?? null,
       receiptPhone: parsed.data.phone ?? null,
@@ -88,7 +108,7 @@ export class PaymentsController {
     return this.tryInitTinkoffAndPersist({
       userId,
       order,
-      courseTitle: course.title,
+      description: 'Подписка EDIFY для эксперта',
       receiptEmail: parsed.data.email ?? null,
       receiptPhone: parsed.data.phone ?? null,
     });
@@ -97,10 +117,10 @@ export class PaymentsController {
   private async tryInitTinkoffAndPersist(params: {
     userId: string;
     order: ContractsV1.OrderV1;
-    courseTitle: string;
+    description: string;
     receiptEmail: string | null;
     receiptPhone: string | null;
-  }): Promise<ContractsV1.CreateCourseCheckoutResponseV1> {
+  }): Promise<ContractsV1.CreateExpertSubscriptionCheckoutResponseV1> {
     if (!this.tinkoff.isConfigured() || (params.order.amountCents ?? 0) <= 0) {
       return { order: params.order, payUrl: params.order.payUrl ?? null };
     }
@@ -108,7 +128,7 @@ export class PaymentsController {
       const init = await this.tinkoff.initPayment({
         orderId: params.order.id,
         amountCents: params.order.amountCents,
-        description: params.courseTitle,
+        description: params.description,
         receiptEmail: params.receiptEmail,
         receiptPhone: params.receiptPhone,
       });
@@ -149,7 +169,7 @@ export class PaymentsController {
   @Get('me/orders')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'List my orders (payments scaffolding)' })
+  @ApiOperation({ summary: 'List my orders (subscription payments)' })
   @ApiResponse({ status: 200, description: 'Orders list' })
   async listMyOrders(
     @Req() req: FastifyRequest & { user?: { userId: string } },
@@ -160,4 +180,3 @@ export class PaymentsController {
     return { items };
   }
 }
-

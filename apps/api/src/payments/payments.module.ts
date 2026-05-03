@@ -11,11 +11,12 @@ import { TinkoffAcquiringService } from './tinkoff-acquiring.service.js';
 import { OrderFulfillmentService } from './order-fulfillment.service.js';
 import { RefundRequestsRepository } from './refund-requests.repository.js';
 import { PayoutRequestsRepository } from './payout-requests.repository.js';
-import { UsersModule } from '../users/users.module.js';
 import { AuditModule } from '../audit/audit.module.js';
+import { ExpertsModule } from '../experts/experts.module.js';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module.js';
 
 @Module({
-  imports: [JwtModule, AccessDataModule, UsersModule, AuditModule],
+  imports: [JwtModule, AccessDataModule, AuditModule, ExpertsModule, SubscriptionsModule],
   controllers: [PaymentsController, TinkoffWebhookController],
   providers: [
     JwtAuthGuard,

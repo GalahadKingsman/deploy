@@ -24,6 +24,7 @@ export const ErrorCodes = {
   COURSE_MODULE_NOT_FOUND: 'COURSE_MODULE_NOT_FOUND',
   LESSON_NOT_FOUND: 'LESSON_NOT_FOUND',
   COURSE_INVALID_STATUS: 'COURSE_INVALID_STATUS',
+  ATTESTATION_NOT_FOUND: 'ATTESTATION_NOT_FOUND',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

@@ -7,6 +7,7 @@ import { LessonsRepository } from './lessons.repository.js';
 import { ExpertsRepository } from '../experts/experts.repository.js';
 import { TopicsRepository } from './topics.repository.js';
 import { LessonMaterialFilesRepository } from './lesson-material-files.repository.js';
+import { AttestationsRepository } from './attestations.repository.js';
 
 @Module({
   imports: [ExpertsModule],
@@ -37,8 +38,20 @@ import { LessonMaterialFilesRepository } from './lesson-material-files.repositor
       useFactory: (pool: Pool) => new LessonMaterialFilesRepository(pool),
       inject: [Pool],
     },
+    {
+      provide: AttestationsRepository,
+      useFactory: (pool: Pool) => new AttestationsRepository(pool),
+      inject: [Pool],
+    },
   ],
-  exports: [CoursesRepository, CourseModulesRepository, LessonsRepository, TopicsRepository, LessonMaterialFilesRepository],
+  exports: [
+    CoursesRepository,
+    CourseModulesRepository,
+    LessonsRepository,
+    TopicsRepository,
+    LessonMaterialFilesRepository,
+    AttestationsRepository,
+  ],
 })
 export class AuthoringModule {}
 

@@ -2,9 +2,9 @@ import { z } from 'zod';
 import type { Id } from './common.js';
 
 /**
- * Expert subscription plan V1 (stub: free_stub only)
+ * Expert subscription plan V1: `free_stub` until first paid period; `paid` after successful acquiring payment.
  */
-export type ExpertSubscriptionPlanV1 = 'free_stub';
+export type ExpertSubscriptionPlanV1 = 'free_stub' | 'paid';
 
 /**
  * Expert subscription status V1
@@ -23,7 +23,7 @@ export interface ExpertSubscriptionV1 {
   priceCents: number;
 }
 
-export const ExpertSubscriptionPlanV1Schema = z.literal('free_stub');
+export const ExpertSubscriptionPlanV1Schema = z.enum(['free_stub', 'paid']);
 
 export const ExpertSubscriptionStatusV1Schema = z.enum(['inactive', 'active', 'expired']);
 

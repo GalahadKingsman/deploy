@@ -40,12 +40,12 @@ export class AdminPaymentsController {
   @Post('orders/:orderId/mark-paid')
   @RequirePlatformRole('admin')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Mark order as paid and grant enrollment (admin+)' })
+  @ApiOperation({ summary: 'Mark order as paid (subscription or legacy course enrollment) (admin+)' })
   @ApiResponse({ status: 200, description: 'OK' })
   async markPaid(
     @Param('orderId') orderId: string,
     @Req() req: FastifyRequest & { user?: { userId: string }; traceId?: string },
-  ): Promise<{ ok: true; orderId: string; enrollment: ContractsV1.EnrollmentV1 }> {
+  ): Promise<{ ok: true; orderId: string; enrollment: ContractsV1.EnrollmentV1 | null }> {
     const order = await this.ordersRepository.findRawById(orderId);
     if (!order) throw new NotFoundException({ code: ErrorCodes.NOT_FOUND, message: 'Order not found' });
 
@@ -56,7 +56,10 @@ export class AdminPaymentsController {
     if (done.kind === 'invalid_state') {
       throw new BadRequestException({
         code: ErrorCodes.CONFLICT,
-        message: `Order cannot be marked paid (status=${done.status})`,
+        message:
+          done.status === 'missing_expert_id'
+            ? 'Order is expert_subscription but expert_id is missing'
+            : `Order cannot be marked paid (status=${done.status})`,
       });
     }
     if (done.kind === 'not_found') {
@@ -72,7 +75,9 @@ export class AdminPaymentsController {
       meta: {
         orderId,
         userId: order.userId,
+        orderKind: order.orderKind,
         courseId: order.courseId,
+        expertId: order.expertId,
         referralCode: order.referralCode,
       },
       traceId: req.traceId ?? null,

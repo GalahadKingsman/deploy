@@ -5,7 +5,9 @@ import type { ContractsV1 } from '@tracked/shared';
 interface OrderRow {
   id: string;
   user_id: string;
-  course_id: string;
+  course_id: string | null;
+  expert_id: string | null;
+  order_kind: string;
   amount_cents: number;
   currency: string;
   status: string;
@@ -21,10 +23,13 @@ interface OrderRow {
 }
 
 function mapRow(r: OrderRow): ContractsV1.OrderV1 {
+  const orderKind = (r.order_kind ?? 'course') as ContractsV1.OrderKindV1;
   return {
     id: r.id,
+    orderKind,
+    courseId: r.course_id ?? null,
+    expertId: r.expert_id ?? null,
     userId: r.user_id,
-    courseId: r.course_id,
     amountCents: r.amount_cents ?? 0,
     currency: r.currency ?? 'RUB',
     status: r.status as ContractsV1.OrderStatusV1,
@@ -57,22 +62,19 @@ export class OrdersRepository {
     return parseInt(res.rows[0]?.cnt ?? '0', 10) || 0;
   }
 
-  async findLatestCreatedByUserAndCourse(params: {
-    userId: string;
-    courseId: string;
-  }): Promise<ContractsV1.OrderV1 | null> {
+  async findLatestCreatedExpertSubscriptionByUser(params: { userId: string }): Promise<ContractsV1.OrderV1 | null> {
     if (!this.pool) return null;
     const res = await this.pool.query<OrderRow>(
-      `SELECT * FROM orders WHERE user_id = $1 AND course_id = $2 AND status = 'created' ORDER BY created_at DESC LIMIT 1`,
-      [params.userId, params.courseId],
+      `SELECT * FROM orders WHERE user_id = $1 AND order_kind = 'expert_subscription' AND status = 'created' ORDER BY created_at DESC LIMIT 1`,
+      [params.userId],
     );
     const row = res.rows[0];
     return row ? mapRow(row) : null;
   }
 
-  async create(params: {
+  async createExpertSubscriptionOrder(params: {
     userId: string;
-    courseId: string;
+    expertId: string;
     amountCents: number;
     currency: string;
     referralCode: string | null;
@@ -83,14 +85,17 @@ export class OrdersRepository {
     const id = randomUUID();
     const res = await this.pool.query<OrderRow>(
       `
-      INSERT INTO orders (id, user_id, course_id, amount_cents, currency, status, referral_code, receipt_email, receipt_phone, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, 'created', $6, $7, $8, NOW(), NOW())
+      INSERT INTO orders (
+        id, user_id, course_id, expert_id, order_kind, amount_cents, currency, status,
+        referral_code, receipt_email, receipt_phone, created_at, updated_at
+      )
+      VALUES ($1, $2, NULL, $3, 'expert_subscription', $4, $5, 'created', $6, $7, $8, NOW(), NOW())
       RETURNING *
       `,
       [
         id,
         params.userId,
-        params.courseId,
+        params.expertId,
         params.amountCents,
         params.currency,
         params.referralCode,
@@ -114,7 +119,9 @@ export class OrdersRepository {
   async findRawById(orderId: string): Promise<{
     id: string;
     userId: string;
-    courseId: string;
+    orderKind: ContractsV1.OrderKindV1;
+    courseId: string | null;
+    expertId: string | null;
     status: string;
     referralCode: string | null;
     amountCents: number;
@@ -128,7 +135,9 @@ export class OrdersRepository {
     return {
       id: r.id,
       userId: r.user_id,
-      courseId: r.course_id,
+      orderKind: (r.order_kind ?? 'course') as ContractsV1.OrderKindV1,
+      courseId: r.course_id ?? null,
+      expertId: r.expert_id ?? null,
       status: r.status,
       referralCode: r.referral_code ?? null,
       amountCents: r.amount_cents ?? 0,
@@ -240,4 +249,3 @@ export class OrdersRepository {
     return res.rows.map(mapRow);
   }
 }
-

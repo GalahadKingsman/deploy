@@ -1,10 +1,12 @@
 import type { UserV1 } from './user.js';
 import type { CourseV1 } from './course.js';
 import type { LessonV1 } from './lesson.js';
+import type { StudentAttestationTreeRowV1 } from './attestation.js';
 import { z } from 'zod';
 import { UserV1Schema } from './user.js';
 import { CourseV1Schema } from './course.js';
 import { LessonV1Schema } from './lesson.js';
+import { StudentAttestationTreeRowV1Schema } from './attestation.js';
 
 /**
  * GetMeResponse V1
@@ -91,6 +93,8 @@ export interface ListModuleLessonsResponseV1 {
   unlockedLessonIds: string[];
   /** Lessons already completed by the student in this module */
   completedLessonIds: string[];
+  /** Module-level attestations (rendered after lessons in the tree) */
+  attestations: StudentAttestationTreeRowV1[];
 }
 
 /**
@@ -100,4 +104,5 @@ export const ListModuleLessonsResponseV1Schema = z.object({
   items: z.array(LessonV1Schema),
   unlockedLessonIds: z.array(z.string()),
   completedLessonIds: z.array(z.string()),
+  attestations: z.array(StudentAttestationTreeRowV1Schema),
 });

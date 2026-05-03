@@ -61,6 +61,7 @@ export class ExpertSubscriptionsRepository {
     expertId: string,
     days: number,
     now: Date = new Date(),
+    opts?: { plan?: ContractsV1.ExpertSubscriptionPlanV1 },
   ): Promise<ContractsV1.ExpertSubscriptionV1> {
     if (!this.pool) {
       throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
@@ -83,12 +84,22 @@ export class ExpertSubscriptionsRepository {
     const newEnd = new Date(base.getTime() + days * MS_PER_DAY);
     const periodStart = current.currentPeriodStart ? new Date(current.currentPeriodStart) : now;
 
-    await this.pool.query(
-      `UPDATE expert_subscriptions
-       SET status = 'active', current_period_start = $2, current_period_end = $3, updated_at = $4
-       WHERE expert_id = $1`,
-      [expertId, periodStart, newEnd, now],
-    );
+    const plan = opts?.plan;
+    if (plan) {
+      await this.pool.query(
+        `UPDATE expert_subscriptions
+         SET status = 'active', current_period_start = $2, current_period_end = $3, updated_at = $4, plan = $5
+         WHERE expert_id = $1`,
+        [expertId, periodStart, newEnd, now, plan],
+      );
+    } else {
+      await this.pool.query(
+        `UPDATE expert_subscriptions
+         SET status = 'active', current_period_start = $2, current_period_end = $3, updated_at = $4
+         WHERE expert_id = $1`,
+        [expertId, periodStart, newEnd, now],
+      );
+    }
 
     const updated = await this.findByExpertId(expertId);
     if (!updated) throw new Error('Row missing after grantDays update');
