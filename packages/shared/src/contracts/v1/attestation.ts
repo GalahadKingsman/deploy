@@ -66,12 +66,16 @@ export const ListExpertAttestationsResponseV1Schema = z.object({
 });
 
 export interface CreateExpertAttestationRequestV1 {
-  /** null => course-level (final) attestation */
-  moduleId: Id | null;
+  /** null / отсутствует => итоговая аттестация к курсу */
+  moduleId?: Id | null;
 }
 
+/** Пустое тело, пустая строка или отсутствие поля — итоговая аттестация к курсу. */
 export const CreateExpertAttestationRequestV1Schema = z.object({
-  moduleId: z.string().nullable(),
+  moduleId: z.preprocess(
+    (v) => (v === '' || v === undefined ? undefined : v),
+    z.union([z.string().min(1), z.null()]).optional(),
+  ),
 });
 
 export interface UpdateExpertAttestationQuestionOptionV1 {

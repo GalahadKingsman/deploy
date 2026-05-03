@@ -786,7 +786,6 @@ if (platformMount) {
           void hydrateStudentCertificates(action.shadowRoot);
         }
         if (action.type === 'navigate' && action.screenId === 'e-courses') {
-          expertBuilderExpertId = null;
           void hydrateExpertCourses(action.shadowRoot);
         }
         if (action.type === 'navigate' && action.screenId === 'e-team') {
@@ -5833,6 +5832,7 @@ if (platformMount) {
           const dragHandle = document.createElement('span');
           dragHandle.className = 'lesson-row__handle';
           dragHandle.draggable = false;
+          dragHandle.dataset.epBuilderLessonDragHandle = '1';
           dragHandle.title = 'Удерживайте и перетащите — сменить порядок';
           dragHandle.setAttribute('aria-label', 'Перетащить урок');
           dragHandle.textContent = '☰';
@@ -5954,7 +5954,7 @@ if (platformMount) {
       await builderReorderLessons(root, moduleId, lessonId, dstLid);
     }
 
-    /** Перетаскивание урока указателем: «призрак» за курсором и живой перестрой порядка строк в модуле. */
+    /** Перетаскивание урока указателем: «призрак» за курсором, живой порядок строк, FLIP-анимация сдвига. */
     function attachBuilderLessonPointerDrag(
       root: ShadowRoot,
       row: HTMLElement,
@@ -5965,24 +5965,53 @@ if (platformMount) {
       const lessonRowsInBox = (): HTMLElement[] =>
         [...box.children].filter((n): n is HTMLElement => n.classList.contains('lesson-row'));
 
+      const flipRowsAfterDomMove = (before: Map<HTMLElement, DOMRect>, dragged: HTMLElement): void => {
+        for (const [el, oldR] of before) {
+          if (el === dragged || !el.isConnected) continue;
+          const nr = el.getBoundingClientRect();
+          const dy = oldR.top - nr.top;
+          if (Math.abs(dy) < 0.5) continue;
+          el.style.transition = 'none';
+          el.style.transform = `translateY(${dy}px)`;
+          requestAnimationFrame(() => {
+            void el.offsetWidth;
+            el.style.transition = 'transform 0.2s cubic-bezier(0.22, 1, 0.36, 1)';
+            el.style.transform = '';
+            window.setTimeout(() => {
+              el.style.transition = '';
+            }, 220);
+          });
+        }
+      };
+
       const placeRowFromPointer = (clientY: number): void => {
         const rowsAll = lessonRowsInBox();
         const others = rowsAll.filter((r) => r !== row);
         if (others.length === 0) return;
+        const beforeRects = new Map<HTMLElement, DOMRect>();
+        for (const r of others) beforeRects.set(r, r.getBoundingClientRect());
         let newIdx = 0;
         for (const r of others) {
           const br = r.getBoundingClientRect();
           const midY = br.top + br.height / 2;
           if (clientY > midY) newIdx++;
         }
+        let mutated = false;
         if (newIdx < others.length) {
           const ref = others[newIdx]!;
-          if (row.nextSibling !== ref) box.insertBefore(row, ref);
+          if (row.nextSibling !== ref) {
+            box.insertBefore(row, ref);
+            mutated = true;
+          }
         } else {
           const last = others[others.length - 1]!;
           const after = last.nextSibling;
-          if (after !== row) box.insertBefore(row, after);
+          if (after !== row) {
+            box.insertBefore(row, after);
+            mutated = true;
+          }
         }
+        if (mutated) flipRowsAfterDomMove(beforeRects, row);
       };
 
       const scheduleDragFrame = (): void => {
@@ -6006,6 +6035,7 @@ if (platformMount) {
           cancelAnimationFrame(st.raf);
           st.raf = 0;
         }
+        st.box.classList.remove('mod-lessons--drag-active');
         st.row.classList.remove('lesson-row--dragging');
         st.ghost.remove();
         if (!commit) {
@@ -6029,7 +6059,12 @@ if (platformMount) {
         builderLessonsByModule.set(st.moduleId, nextList);
         void (async () => {
           const token = getAccessToken();
-          const eid = await resolveBuilderExpertId();
+          let eid = await resolveBuilderExpertId();
+          const own = builderCourseDetail?.expertId?.trim();
+          if (own && own !== eid) {
+            expertBuilderExpertId = own;
+            eid = own;
+          }
           const cid = expertBuilderCourseId;
           if (!token || !eid || !cid) return;
           renderBuilderModTree(st.root);
@@ -6047,28 +6082,25 @@ if (platformMount) {
         })();
       };
 
-      dragHandle.addEventListener('pointerdown', (ev: PointerEvent) => {
-        if (ev.button !== 0 || builderLessonPointerDrag) return;
+      dragHandle.addEventListener('pointerdown', (downEv: PointerEvent) => {
+        if (downEv.button !== 0 || builderLessonPointerDrag) return;
         const lid = row.dataset.epBuilderLessonId ?? '';
         if (!lid) return;
-        ev.preventDefault();
-        ev.stopPropagation();
+        downEv.preventDefault();
+        downEv.stopPropagation();
         const rect = row.getBoundingClientRect();
         const ghost = document.createElement('div');
         ghost.className = 'ep-lesson-drag-ghost';
         const nm = row.querySelector('.lesson-name');
         ghost.textContent = (nm?.textContent ?? 'Урок').trim() || 'Урок';
         document.body.appendChild(ghost);
-        const grabOffX = ev.clientX - rect.left;
-        const grabOffY = ev.clientY - rect.top;
-        ghost.style.left = `${Math.round(ev.clientX - grabOffX)}px`;
-        ghost.style.top = `${Math.round(ev.clientY - grabOffY)}px`;
+        const grabOffX = downEv.clientX - rect.left;
+        const grabOffY = downEv.clientY - rect.top;
+        ghost.style.left = `${Math.round(downEv.clientX - grabOffX)}px`;
+        ghost.style.top = `${Math.round(downEv.clientY - grabOffY)}px`;
         row.classList.add('lesson-row--dragging');
-        try {
-          dragHandle.setPointerCapture(ev.pointerId);
-        } catch {
-          /* ignore */
-        }
+        box.classList.add('mod-lessons--drag-active');
+        const pid = downEv.pointerId;
         builderLessonPointerDrag = {
           root,
           moduleId,
@@ -6078,21 +6110,28 @@ if (platformMount) {
           grabOffX,
           grabOffY,
           raf: 0,
-          cx: ev.clientX,
-          cy: ev.clientY,
+          cx: downEv.clientX,
+          cy: downEv.clientY,
         };
-        const onMove = (e: PointerEvent): void => {
+
+        const detachWindow = (): void => {
+          window.removeEventListener('pointermove', onDocMove, true);
+          window.removeEventListener('pointerup', onDocUp, true);
+          window.removeEventListener('pointercancel', onDocCancel, true);
+        };
+
+        const onDocMove = (e: PointerEvent): void => {
+          if (e.pointerId !== pid) return;
           const st = builderLessonPointerDrag;
-          if (!st || e.pointerId !== ev.pointerId) return;
+          if (!st) return;
           st.cx = e.clientX;
           st.cy = e.clientY;
           scheduleDragFrame();
         };
-        const onUp = (e: PointerEvent): void => {
-          if (e.pointerId !== ev.pointerId) return;
-          dragHandle.removeEventListener('pointermove', onMove);
-          dragHandle.removeEventListener('pointerup', onUp);
-          dragHandle.removeEventListener('pointercancel', onCancel);
+
+        const onDocUp = (e: PointerEvent): void => {
+          if (e.pointerId !== pid) return;
+          detachWindow();
           const st = builderLessonPointerDrag;
           if (st) {
             st.cx = e.clientX;
@@ -6105,28 +6144,18 @@ if (platformMount) {
             st.ghost.style.top = `${Math.round(st.cy - st.grabOffY)}px`;
             placeRowFromPointer(st.cy);
           }
-          try {
-            dragHandle.releasePointerCapture(e.pointerId);
-          } catch {
-            /* ignore */
-          }
           endDrag(true);
         };
-        const onCancel = (e: PointerEvent): void => {
-          if (e.pointerId !== ev.pointerId) return;
-          dragHandle.removeEventListener('pointermove', onMove);
-          dragHandle.removeEventListener('pointerup', onUp);
-          dragHandle.removeEventListener('pointercancel', onCancel);
-          try {
-            dragHandle.releasePointerCapture(e.pointerId);
-          } catch {
-            /* ignore */
-          }
+
+        const onDocCancel = (e: PointerEvent): void => {
+          if (e.pointerId !== pid) return;
+          detachWindow();
           endDrag(false);
         };
-        dragHandle.addEventListener('pointermove', onMove);
-        dragHandle.addEventListener('pointerup', onUp);
-        dragHandle.addEventListener('pointercancel', onCancel);
+
+        window.addEventListener('pointermove', onDocMove, true);
+        window.addEventListener('pointerup', onDocUp, true);
+        window.addEventListener('pointercancel', onDocCancel, true);
       });
     }
 
@@ -6837,24 +6866,34 @@ if (platformMount) {
 
     async function builderCreateAttestation(root: ShadowRoot, moduleId: string | null): Promise<void> {
       const token = getAccessToken();
-      const eid = await resolveBuilderExpertId();
+      let eid = await resolveBuilderExpertId();
       const cid = expertBuilderCourseId;
       if (!token || !eid || !cid) {
         window.alert('Сначала создайте или откройте курс.');
         return;
       }
+      const owner = builderCourseDetail?.expertId?.trim();
+      if (owner && owner !== eid) {
+        expertBuilderExpertId = owner;
+        eid = owner;
+      }
       try {
         const created = await postJson<BuilderAttestationV1>(
           `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/attestations`,
-          { moduleId },
+          { moduleId: moduleId ?? null },
           token,
         );
         builderEditorMode = 'attestation';
         builderSelectedLessonId = null;
         builderSelectedAttestationId = created.id;
         await builderLoadCourseData(root, eid, cid, token);
-      } catch {
-        window.alert('Не удалось создать аттестацию (нужна роль менеджера+).');
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        window.alert(
+          msg.includes('403') || msg.toLowerCase().includes('forbidden')
+            ? 'Сервер отклонил запрос (нет доступа к курсу или подписка эксперта неактивна). Проверьте, что открыт курс из «Моих курсов» и выбрано верное пространство эксперта.'
+            : `Не удалось создать аттестацию. ${msg.slice(0, 280)}`,
+        );
       }
     }
 
@@ -9164,7 +9203,7 @@ if (platformMount) {
       const bLesson = t?.closest('[data-ep-builder-lesson-id]') as HTMLElement | null;
       const bLid = bLesson?.dataset.epBuilderLessonId;
       const bMid = bLesson?.dataset.epBuilderModuleId;
-      if (bLesson && bLid && bMid) {
+      if (bLesson && bLid && bMid && !t?.closest('[data-ep-builder-lesson-drag-handle]')) {
         ev.preventDefault();
         void selectBuilderLesson(shell.shadowRoot, bMid, bLid);
         return;

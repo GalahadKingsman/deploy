@@ -461,6 +461,7 @@ textarea.form-input{resize:vertical;min-height:80px}
 .mod-cnt{font-family:var(--fm);font-size:9px;color:var(--t3)}
 .mod-lessons{padding-left:16px;display:none}
 .mod-lessons.open{display:block}
+.mod-lessons--drag-active .lesson-row:not(.lesson-row--dragging){will-change:transform}
 [data-ep-builder-mod-tree] .lesson-row{
   user-select:none;
   -webkit-user-select:none;

@@ -77,7 +77,7 @@ export class ExpertAttestationsController {
       userId: req.user!.userId,
       courseId,
     });
-    const parsed = ContractsV1.CreateExpertAttestationRequestV1Schema.safeParse(body);
+    const parsed = ContractsV1.CreateExpertAttestationRequestV1Schema.safeParse(body ?? {});
     if (!parsed.success) {
       throw new BadRequestException({
         code: ErrorCodes.VALIDATION_ERROR,
@@ -85,7 +85,7 @@ export class ExpertAttestationsController {
         errors: parsed.error.errors,
       });
     }
-    const moduleId = parsed.data.moduleId;
+    const moduleId = parsed.data.moduleId ?? null;
     if (moduleId) {
       await this.attestationsRepository.assertModuleInCourse({ courseId, moduleId });
     }
