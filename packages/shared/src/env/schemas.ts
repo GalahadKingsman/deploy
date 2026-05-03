@@ -50,6 +50,15 @@ export const ApiEnvSchema = z.object({
   PAYMENTS_REFERRAL_COMMISSION_BPS: z.coerce.number().int().min(0).max(1_000_000).default(0),
   /** Сколько дней подписки эксперта начислять за одну успешную оплату заказа expert_subscription. */
   EXPERT_SUBSCRIPTION_CHECKOUT_PERIOD_DAYS: z.coerce.number().int().min(1).max(3650).default(30),
+  /**
+   * Сумма в копейках для POST /checkout/expert-subscription (как Tinkoff Amount), если задана и > 0.
+   * Перекрывает `expert_subscriptions.price_cents` в БД — удобно для стенда, пока в БД 0.
+   * Продакшен: оставьте пустым и храните цену в БД.
+   */
+  EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().int().min(0).max(50_000_000).optional(),
+  ),
   /** Tinkoff Acquiring (eCom) — TerminalKey from lk */
   TINKOFF_TERMINAL_KEY: z.string().optional().default(''),
   TINKOFF_PASSWORD: z.string().optional().default(''),

@@ -2,7 +2,8 @@ import './edify.css';
 import { ACCESS_TOKEN_KEY, getAccessToken } from './authSession.js';
 import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
 import { refreshNavAuth } from './navAuthUi.js';
-import { getTelegramSupportUrl } from './env.js';
+import { getTelegramSupportUrl, isLandingPaymentsUiEnabled } from './env.js';
+import { createExpertSubscriptionCheckout } from './expertSubscriptionCheckout.js';
 import { hydrateLandingExpertCourses } from './platform/marketingExpertCoursesPreview.js';
 import { hydrateLandingExpertDashboard } from './platform/marketingExpertDashboardPreview.js';
 import { hydrateLandingStudentScreens } from './platform/marketingStudentScreensPreview.js';
@@ -113,6 +114,39 @@ document.addEventListener('click', (ev) => {
   ev.preventDefault();
   window.closeMobileNav?.();
   window.edifyOpenAuthModal?.(mode);
+});
+
+document.addEventListener('click', (ev) => {
+  const t = ev.target as HTMLElement | null;
+  const btn = t?.closest('[data-edify-checkout-expert-subscription]') as HTMLButtonElement | HTMLAnchorElement | null;
+  if (!btn) return;
+  ev.preventDefault();
+  if (!isLandingPaymentsUiEnabled()) {
+    window.alert('Оплата на лендинге отключена в сборке (VITE_PAYMENTS_ENABLED).');
+    return;
+  }
+  void (async () => {
+    const prev = btn.getAttribute('aria-busy') === 'true';
+    if (prev) return;
+    btn.setAttribute('aria-busy', 'true');
+    (btn as HTMLButtonElement).disabled = true;
+    try {
+      const r = await createExpertSubscriptionCheckout();
+      if (!r.ok) {
+        if (r.needAuth) {
+          window.alert(r.error);
+          window.edifyOpenAuthModal?.('login');
+          return;
+        }
+        window.alert(r.error);
+        return;
+      }
+      window.location.assign(r.payUrl);
+    } finally {
+      btn.removeAttribute('aria-busy');
+      (btn as HTMLButtonElement).disabled = false;
+    }
+  })();
 });
 
 const revealObserver = new IntersectionObserver(

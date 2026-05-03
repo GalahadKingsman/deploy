@@ -57,7 +57,8 @@ export class PaymentsController {
     if (!expert) {
       throw new ForbiddenException({
         code: ErrorCodes.FORBIDDEN,
-        message: 'Only the expert workspace owner can purchase a subscription',
+        message:
+          'Оплатить подписку может только владелец пространства эксперта. Откройте раздел «Платформа» и создайте/выберите команду эксперта под этим аккаунтом.',
       });
     }
 
@@ -67,11 +68,18 @@ export class PaymentsController {
       throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Subscription row missing' });
     }
 
-    const amountCents = sub.priceCents ?? 0;
+    const dbPrice = sub.priceCents ?? 0;
+    const priceOverride = env.EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS;
+    const override =
+      typeof priceOverride === 'number' && Number.isFinite(priceOverride) && priceOverride > 0
+        ? priceOverride
+        : 0;
+    const amountCents = override > 0 ? override : dbPrice;
     if (amountCents <= 0) {
       throw new BadRequestException({
         code: ErrorCodes.VALIDATION_ERROR,
-        message: 'Expert subscription price is not configured (price_cents is 0)',
+        message:
+          'Сумма подписки не задана: в БД price_cents = 0 и не задан EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS (копейки, напр. 99000 для 990 ₽)',
       });
     }
 

@@ -31,6 +31,23 @@ export function getTelegramSupportUrl(): string {
  * Базовый URL веб-приложения / мини-аппа, где в `main.tsx` сохраняется `?ref=` (реферальная ссылка).
  * Переопределение: `VITE_REFERRAL_APP_BASE_URL` или `<meta name="edify-referral-app-base" content="https://…">`.
  */
+/**
+ * Лендинг: выключить кнопку оплаты явно — `VITE_PAYMENTS_ENABLED=0` / `false`.
+ * Если переменная не задана при сборке, считаем оплату доступной (проверка на API).
+ */
+export function isLandingPaymentsUiEnabled(): boolean {
+  try {
+    const v = import.meta.env.VITE_PAYMENTS_ENABLED as string | boolean | undefined;
+    if (v === undefined || v === '') return true;
+    if (typeof v === 'boolean') return v;
+    const s = String(v).toLowerCase().trim();
+    if (s === '0' || s === 'false' || s === 'no') return false;
+    return true;
+  } catch {
+    return true;
+  }
+}
+
 export function getReferralAppBaseUrl(): string {
   const fromEnv = import.meta.env.VITE_REFERRAL_APP_BASE_URL;
   if (typeof fromEnv === 'string' && fromEnv.trim()) return fromEnv.trim().replace(/\/$/, '');
