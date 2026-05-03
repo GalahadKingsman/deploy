@@ -165,7 +165,7 @@
         <div style="font-family:var(--fd);font-size:12px;font-weight:700;color:var(--t1);margin-bottom:2px" data-ep-builder-course-title>—</div>
         <div style="font-size:10px;color:var(--t3);font-family:var(--fm)" data-ep-builder-course-meta>—</div>
       </div>
-      <div style="flex:1;min-height:0;overflow-y:auto;padding:12px 8px">
+      <div class="ep-builder-sidebar-scroll" style="flex:1;min-height:0;overflow-y:auto;padding:12px 8px">
         <div class="mod-tree" data-ep-builder-mod-tree></div>
       </div>
       <div class="ep-builder-sidebar-footer">
@@ -462,6 +462,9 @@
       <div class="form-group" style="margin-bottom:12px">
         <div class="form-label">Название модуля</div>
         <input class="form-input" data-ep-module-actions-title placeholder="Название" autocomplete="off"/>
+      </div>
+      <div style="margin-bottom:14px">
+        <button type="button" class="btn btn-outline btn-sm" style="width:100%;justify-content:center" data-ep-module-actions-add-attestation>+ Аттестация в этом модуле</button>
       </div>
       <div style="display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;margin-top:14px">
         <button type="button" class="btn ep-team-drawer-delete" data-ep-module-actions-delete>Удалить модуль</button>

@@ -466,16 +466,27 @@ textarea.form-input{resize:vertical;min-height:80px}
 }
 .lesson-row:hover{background:var(--bg2);color:var(--t1)}
 .lesson-row.active{background:var(--al);color:var(--a)}
-.lesson-row[draggable="true"]{cursor:grab}
+.lesson-row__handle{
+  flex-shrink:0;
+  cursor:grab;
+  color:var(--t3);
+  font-size:13px;
+  line-height:1;
+  padding:2px 2px 2px 0;
+  user-select:none;
+  -webkit-user-select:none;
+  touch-action:none;
+}
 .lesson-row.lesson-row--dragging{opacity:.55;cursor:grabbing}
+.lesson-row.lesson-row--dragging .lesson-row__handle{cursor:grabbing}
 .lesson-row.lesson-row--drop-target{box-shadow:inset 0 2px 0 0 var(--a)}
 .lesson-row__reorder{
   display:flex;flex-direction:column;gap:0;flex-shrink:0;margin-right:2px;
 }
 .lesson-row__reorder button{
-  font-size:9px;line-height:1;padding:0 4px;min-height:14px;border-radius:4px;
+  font-size:12px;line-height:1;padding:2px 6px;min-height:22px;min-width:26px;border-radius:4px;
   color:var(--t3);background:transparent;border:none;cursor:pointer;
-  font-family:var(--fm);
+  font-family:var(--fm);touch-action:manipulation;
 }
 .lesson-row__reorder button:hover:not(:disabled){color:var(--a);background:var(--al)}
 .lesson-row__reorder button:disabled{opacity:.35;cursor:default}
@@ -488,6 +499,8 @@ textarea.form-input{resize:vertical;min-height:80px}
   padding:6px 12px 18px;
   border-top:1px solid var(--line);
   background:var(--surface2);
+  min-height:fit-content;
+  box-shadow:0 -6px 14px rgba(0,0,0,0.04);
 }
 .ep-builder-sidebar-footer__top{
   display:flex;
@@ -1498,9 +1511,12 @@ textarea.form-input{resize:vertical;min-height:80px}
     max-height:min(38vh,320px);
     flex:0 0 auto;
   }
-  /* Конструктор: дерево + панель кнопок — выше, чтобы двухстрочный футер не обрезался */
+  /* Конструктор: ограничиваем только прокрутку дерева — футер с «+ Аттестация» не обрезается */
   #screen-e-builder .ep-builder-shell>div:nth-child(1){
-    max-height:min(48vh,440px);
+    max-height:none;
+  }
+  #screen-e-builder .ep-builder-shell>div:nth-child(1) .ep-builder-sidebar-scroll{
+    max-height:min(42vh,380px);
   }
   .ep-builder-shell>div:nth-child(2),
   .ep-split-screen>div:nth-child(2){

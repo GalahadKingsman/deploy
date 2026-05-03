@@ -5768,8 +5768,14 @@ if (platformMount) {
           if (builderSelectedLessonId === l.id && builderEditorMode === 'lesson') row.classList.add('active');
           row.dataset.epBuilderLessonId = l.id;
           row.dataset.epBuilderModuleId = m.id;
-          row.draggable = true;
-          attachBuilderLessonDnd(root, row, m.id);
+          row.draggable = false;
+          const dragHandle = document.createElement('span');
+          dragHandle.className = 'lesson-row__handle';
+          dragHandle.draggable = true;
+          dragHandle.title = 'Удерживайте и перетащите — сменить порядок';
+          dragHandle.setAttribute('aria-label', 'Перетащить урок');
+          dragHandle.textContent = '☰';
+          attachBuilderLessonDnd(root, row, m.id, dragHandle);
           const reorderWrap = document.createElement('div');
           reorderWrap.className = 'lesson-row__reorder';
           const upBtn = document.createElement('button');
@@ -5815,7 +5821,7 @@ if (platformMount) {
             ev.stopPropagation();
             void builderDeleteLesson(root, m.id, l.id);
           });
-          row.append(reorderWrap, ico, nm, dots);
+          row.append(dragHandle, reorderWrap, ico, nm, dots);
           box.appendChild(row);
         }
         for (const a of builderAttestationsCache.filter((x) => x.moduleId === m.id)) {
@@ -5888,8 +5894,13 @@ if (platformMount) {
     }
 
     /** Drag-and-drop reorder for lessons inside the same module (HTML5 DnD). */
-    function attachBuilderLessonDnd(root: ShadowRoot, row: HTMLElement, moduleId: string): void {
-      row.addEventListener('dragstart', (ev) => {
+    function attachBuilderLessonDnd(
+      root: ShadowRoot,
+      row: HTMLElement,
+      moduleId: string,
+      dragHandle: HTMLElement,
+    ): void {
+      dragHandle.addEventListener('dragstart', (ev) => {
         const lessonId = row.dataset.epBuilderLessonId ?? '';
         if (!lessonId) return;
         row.classList.add('lesson-row--dragging');
@@ -5900,7 +5911,7 @@ if (platformMount) {
           /* ignore */
         }
       });
-      row.addEventListener('dragend', () => {
+      dragHandle.addEventListener('dragend', () => {
         row.classList.remove('lesson-row--dragging');
         row.classList.remove('lesson-row--drop-target');
       });
@@ -6549,7 +6560,7 @@ if (platformMount) {
       return builderModulesCache[idx].id;
     }
 
-    async function builderAddAttestation(root: ShadowRoot): Promise<void> {
+    async function builderCreateAttestation(root: ShadowRoot, moduleId: string | null): Promise<void> {
       const token = getAccessToken();
       const eid = await resolveBuilderExpertId();
       const cid = expertBuilderCourseId;
@@ -6557,8 +6568,6 @@ if (platformMount) {
         window.alert('Сначала создайте или откройте курс.');
         return;
       }
-      const moduleId = builderPickAttestationModuleId();
-      if (moduleId === undefined) return;
       try {
         const created = await postJson<BuilderAttestationV1>(
           `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/attestations`,
@@ -6572,6 +6581,12 @@ if (platformMount) {
       } catch {
         window.alert('Не удалось создать аттестацию (нужна роль менеджера+).');
       }
+    }
+
+    async function builderAddAttestation(root: ShadowRoot): Promise<void> {
+      const moduleId = builderPickAttestationModuleId();
+      if (moduleId === undefined) return;
+      await builderCreateAttestation(root, moduleId);
     }
 
     async function builderDeleteAttestation(root: ShadowRoot, attestationId: string): Promise<void> {
@@ -8892,6 +8907,15 @@ if (platformMount) {
       ) {
         ev.preventDefault();
         closeBuilderModuleActions(shell.shadowRoot);
+        return;
+      }
+
+      if (t?.closest('[data-ep-module-actions-add-attestation]')) {
+        ev.preventDefault();
+        const mid = builderModuleActionsModuleId;
+        if (!mid) return;
+        closeBuilderModuleActions(shell.shadowRoot);
+        void builderCreateAttestation(shell.shadowRoot, mid);
         return;
       }
 
