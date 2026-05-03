@@ -9,8 +9,8 @@ interface AttestationRow {
   module_id: string | null;
   position: number;
   deleted_at: Date | null;
-  created_at: Date;
-  updated_at: Date;
+  created_at: Date | string;
+  updated_at: Date | string;
 }
 
 interface QuestionRow {
@@ -49,6 +49,16 @@ function buildDisplayTitle(courseTitle: string, moduleTitle: string | null): str
   return `Итоговая аттестация к курсу ${courseTitle}`;
 }
 
+/** node-pg может отдавать timestamptz как Date или string — без этого .toISOString() даёт 500. */
+function pgTsToIso(v: Date | string | null | undefined): string {
+  if (v instanceof Date) return v.toISOString();
+  if (typeof v === 'string') {
+    const d = new Date(v);
+    return Number.isFinite(d.getTime()) ? d.toISOString() : new Date(0).toISOString();
+  }
+  return new Date(0).toISOString();
+}
+
 function rowToExpertAttestation(
   attestation: AttestationRow,
   questions: QuestionRow[],
@@ -61,7 +71,7 @@ function rowToExpertAttestation(
     courseId: attestation.course_id,
     moduleId: attestation.module_id,
     scope: attestation.module_id ? 'module' : 'course',
-    position: attestation.position,
+    position: Number(attestation.position),
     displayTitle,
     questions: orderedQs.map((q) => {
       const opts = (optionsByQuestion.get(q.id) ?? []).slice().sort((a, b) => a.position - b.position);
@@ -77,8 +87,8 @@ function rowToExpertAttestation(
         })),
       };
     }),
-    createdAt: attestation.created_at.toISOString(),
-    updatedAt: attestation.updated_at.toISOString(),
+    createdAt: pgTsToIso(attestation.created_at as Date | string),
+    updatedAt: pgTsToIso(attestation.updated_at as Date | string),
   };
 }
 
@@ -90,7 +100,7 @@ function summariseAttempt(row: AttemptRow): ContractsV1.AttestationAttemptSummar
     correctCount: row.correct_count,
     questionCount: row.question_count,
     percent,
-    submittedAt: row.submitted_at.toISOString(),
+    submittedAt: pgTsToIso(row.submitted_at as Date | string),
   };
 }
 
@@ -311,21 +321,30 @@ export class AttestationsRepository {
   }): Promise<ContractsV1.ExpertAttestationV1> {
     const pool = this.requirePool();
     const id = randomUUID();
-    const posRes = await pool.query<{ max: number | null }>(
-      `
-      SELECT MAX(position) AS max
-      FROM course_attestations
-      WHERE course_id = $1
-        AND ($2::uuid IS NULL AND module_id IS NULL OR module_id = $2::uuid)
-        AND deleted_at IS NULL
-      `,
-      [params.courseId, params.moduleId],
-    );
+    const moduleId = params.moduleId ?? null;
+    const posRes =
+      moduleId === null
+        ? await pool.query<{ max: number | null }>(
+            `
+            SELECT MAX(position) AS max
+            FROM course_attestations
+            WHERE course_id = $1 AND module_id IS NULL AND deleted_at IS NULL
+            `,
+            [params.courseId],
+          )
+        : await pool.query<{ max: number | null }>(
+            `
+            SELECT MAX(position) AS max
+            FROM course_attestations
+            WHERE course_id = $1 AND module_id = $2 AND deleted_at IS NULL
+            `,
+            [params.courseId, moduleId],
+          );
     const next = (posRes.rows[0]?.max ?? -1) + 1;
     await pool.query(
       `INSERT INTO course_attestations (id, course_id, module_id, position, created_at, updated_at)
        VALUES ($1, $2, $3, $4, NOW(), NOW())`,
-      [id, params.courseId, params.moduleId, next],
+      [id, params.courseId, moduleId, next],
     );
     return this.getById(id);
   }
