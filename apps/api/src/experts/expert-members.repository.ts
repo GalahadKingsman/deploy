@@ -48,6 +48,16 @@ interface ExpertTeamMemberRow {
 export class ExpertMembersRepository {
   constructor(private readonly pool: Pool | null) {}
 
+  /** True if the user is in any expert team (any role). */
+  async hasAnyExpertMembership(userId: string): Promise<boolean> {
+    if (!this.pool) return false;
+    const res = await this.pool.query<{ cnt: string }>(
+      `SELECT COUNT(*)::text AS cnt FROM expert_members WHERE user_id = $1`,
+      [userId],
+    );
+    return (parseInt(res.rows[0]?.cnt ?? '0', 10) || 0) > 0;
+  }
+
   async addMember(data: {
     expertId: string;
     userId: string;

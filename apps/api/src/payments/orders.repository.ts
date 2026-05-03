@@ -74,7 +74,7 @@ export class OrdersRepository {
 
   async createExpertSubscriptionOrder(params: {
     userId: string;
-    expertId: string;
+    expertId: string | null;
     amountCents: number;
     currency: string;
     referralCode: string | null;

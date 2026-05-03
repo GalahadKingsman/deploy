@@ -17,8 +17,7 @@ import { JwtAuthGuard } from '../auth/session/jwt-auth.guard.js';
 import type { FastifyRequest } from 'fastify';
 import { OrdersRepository } from './orders.repository.js';
 import { TinkoffAcquiringService } from './tinkoff-acquiring.service.js';
-import { ExpertsRepository } from '../experts/experts.repository.js';
-import { ExpertSubscriptionsRepository } from '../subscriptions/expert-subscriptions.repository.js';
+import { ExpertMembersRepository } from '../experts/expert-members.repository.js';
 
 @ApiTags('Payments')
 @Controller()
@@ -28,8 +27,7 @@ export class PaymentsController {
   constructor(
     private readonly ordersRepository: OrdersRepository,
     private readonly tinkoff: TinkoffAcquiringService,
-    private readonly expertsRepository: ExpertsRepository,
-    private readonly expertSubscriptionsRepository: ExpertSubscriptionsRepository,
+    private readonly expertMembersRepository: ExpertMembersRepository,
   ) {}
 
   @Post('checkout/expert-subscription')
@@ -53,33 +51,24 @@ export class PaymentsController {
     const userId = req.user?.userId;
     if (!userId) throw new NotFoundException({ code: ErrorCodes.UNAUTHORIZED, message: 'Unauthorized' });
 
-    const expert = await this.expertsRepository.findByCreatedByUserId(userId);
-    if (!expert) {
+    if (await this.expertMembersRepository.hasAnyExpertMembership(userId)) {
       throw new ForbiddenException({
         code: ErrorCodes.FORBIDDEN,
         message:
-          'Оплатить подписку может только владелец пространства эксперта. Откройте раздел «Платформа» и создайте/выберите команду эксперта под этим аккаунтом.',
+          'Оформление этой подписки доступно только без участия в команде эксперта. Если вы уже в команде, подписка оформляется в рабочем пространстве.',
       });
     }
 
-    await this.expertSubscriptionsRepository.ensureDefault(expert.id);
-    const sub = await this.expertSubscriptionsRepository.findByExpertId(expert.id);
-    if (!sub) {
-      throw new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'Subscription row missing' });
-    }
-
-    const dbPrice = sub.priceCents ?? 0;
     const priceOverride = env.EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS;
-    const override =
+    const amountCents =
       typeof priceOverride === 'number' && Number.isFinite(priceOverride) && priceOverride > 0
         ? priceOverride
         : 0;
-    const amountCents = override > 0 ? override : dbPrice;
     if (amountCents <= 0) {
       throw new BadRequestException({
         code: ErrorCodes.VALIDATION_ERROR,
         message:
-          'Сумма подписки не задана: в БД price_cents = 0 и не задан EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS (копейки, напр. 99000 для 990 ₽)',
+          'Задайте EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS (копейки, напр. 99000 для 990 ₽): для пользователя без команды эксперта сумма берётся только из этой переменной.',
       });
     }
 
@@ -97,7 +86,7 @@ export class PaymentsController {
       return this.tryInitTinkoffAndPersist({
         userId,
         order: existing,
-        description: 'Подписка EDIFY для эксперта',
+        description: 'Подписка EDIFY',
         receiptEmail: parsed.data.email ?? existing.receiptEmail ?? null,
         receiptPhone: parsed.data.phone ?? existing.receiptPhone ?? null,
       });
@@ -105,7 +94,7 @@ export class PaymentsController {
 
     const order = await this.ordersRepository.createExpertSubscriptionOrder({
       userId,
-      expertId: expert.id,
+      expertId: null,
       amountCents,
       currency: 'RUB',
       referralCode,
@@ -116,7 +105,7 @@ export class PaymentsController {
     return this.tryInitTinkoffAndPersist({
       userId,
       order,
-      description: 'Подписка EDIFY для эксперта',
+      description: 'Подписка EDIFY',
       receiptEmail: parsed.data.email ?? null,
       receiptPhone: parsed.data.phone ?? null,
     });

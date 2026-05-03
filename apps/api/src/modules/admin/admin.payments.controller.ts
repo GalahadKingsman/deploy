@@ -56,10 +56,7 @@ export class AdminPaymentsController {
     if (done.kind === 'invalid_state') {
       throw new BadRequestException({
         code: ErrorCodes.CONFLICT,
-        message:
-          done.status === 'missing_expert_id'
-            ? 'Order is expert_subscription but expert_id is missing'
-            : `Order cannot be marked paid (status=${done.status})`,
+        message: `Order cannot be marked paid (status=${done.status})`,
       });
     }
     if (done.kind === 'not_found') {

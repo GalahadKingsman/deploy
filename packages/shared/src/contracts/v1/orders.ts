@@ -13,7 +13,7 @@ export interface OrderV1 {
   orderKind: OrderKindV1;
   /** Legacy course purchase; null for expert_subscription orders. */
   courseId: Id | null;
-  /** Set for expert_subscription orders (workspace owner paying). */
+  /** expert_subscription: workspace id when paying for that expert; null — student checkout without a team (platform period on user). */
   expertId: Id | null;
   userId: Id;
   amountCents: number;

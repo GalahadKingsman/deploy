@@ -719,6 +719,32 @@ export class UsersRepository {
     await this.pool.query(`UPDATE users SET avatar_synced_at = NOW(), updated_at = NOW() WHERE id = $1`, [userId]);
   }
 
+  /**
+   * Extends paid platform period for checkout without expert workspace (order expert_id NULL).
+   * Base: max(now, current paid_until) + days.
+   */
+  async extendPlatformSubscriptionPaidUntil(params: { userId: string; days: number; now?: Date }): Promise<void> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    const now = params.now ?? new Date();
+    const curRes = await this.pool.query<{ until: Date | null }>(
+      `SELECT platform_subscription_paid_until AS until FROM users WHERE id = $1 LIMIT 1`,
+      [params.userId],
+    );
+    const row = curRes.rows[0];
+    if (!row) {
+      throw new Error(`User not found: ${params.userId}`);
+    }
+    const prev = row.until ? new Date(row.until) : null;
+    const base = prev && prev.getTime() > now.getTime() ? prev : now;
+    const newEnd = new Date(base.getTime() + params.days * 86_400_000);
+    await this.pool.query(
+      `UPDATE users SET platform_subscription_paid_until = $2, updated_at = NOW() WHERE id = $1`,
+      [params.userId, newEnd],
+    );
+  }
+
   private mapRowToUserWithBan(row: UserDbModel): UserWithBan {
     const role = row.platform_role ?? 'user';
     return {
