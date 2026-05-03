@@ -14,9 +14,10 @@ import { PayoutRequestsRepository } from './payout-requests.repository.js';
 import { AuditModule } from '../audit/audit.module.js';
 import { ExpertsModule } from '../experts/experts.module.js';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module.js';
+import { UsersModule } from '../users/users.module.js';
 
 @Module({
-  imports: [JwtModule, AccessDataModule, AuditModule, ExpertsModule, SubscriptionsModule],
+  imports: [JwtModule, UsersModule, AccessDataModule, AuditModule, ExpertsModule, SubscriptionsModule],
   controllers: [PaymentsController, TinkoffWebhookController],
   providers: [
     JwtAuthGuard,
