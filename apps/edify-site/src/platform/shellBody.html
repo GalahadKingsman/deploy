@@ -476,6 +476,20 @@
     </div>
   </div>
 
+  <!-- Выбор области аттестации (вместо prompt) -->
+  <div class="ep-attestation-scope-backdrop" data-ep-attestation-scope-backdrop style="display:none" aria-hidden="true"></div>
+  <div class="ep-attestation-scope-modal" data-ep-attestation-scope-modal style="display:none" role="dialog" aria-modal="true" aria-labelledby="ep-attestation-scope-title">
+    <div class="ep-attestation-scope-modal__card card">
+      <div id="ep-attestation-scope-title" class="ep-attestation-scope-modal__title">Куда добавить аттестацию?</div>
+      <p class="ep-attestation-scope-modal__hint">Выберите вариант и нажмите «Создать».</p>
+      <div data-ep-attestation-scope-list class="ep-attestation-scope-list"></div>
+      <div class="ep-attestation-scope-modal__actions">
+        <button type="button" class="btn btn-outline btn-sm" data-ep-attestation-scope-cancel>Отмена</button>
+        <button type="button" class="btn btn-primary btn-sm" data-ep-attestation-scope-confirm>Создать</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Доступ к курсу (как в TG mini app) -->
   <div class="ep-access-drawer-backdrop" data-ep-access-drawer-backdrop style="display:none" aria-hidden="true"></div>
   <aside class="ep-access-drawer" data-ep-access-drawer style="display:none" aria-label="Доступ к курсу">

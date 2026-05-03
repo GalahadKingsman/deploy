@@ -624,6 +624,23 @@ if (platformMount) {
     let suppressBuilderNavigateHydrate = false;
     let builderSelectedModuleId: string | null = null;
     let builderSelectedLessonId: string | null = null;
+    /** Какие модули в дереве конструктора развёрнуты (независимо друг от друга). */
+    const builderExpandedModuleIds = new Set<string>();
+    /** Последний courseId, для которого уже загружали конструктор — чтобы не сбрасывать модуль при перезагрузке данных. */
+    let lastLoadedBuilderCourseId: string | null = null;
+    type BuilderLessonPointerDragState = {
+      root: ShadowRoot;
+      moduleId: string;
+      row: HTMLElement;
+      box: HTMLElement;
+      ghost: HTMLElement;
+      grabOffX: number;
+      grabOffY: number;
+      raf: number;
+      cx: number;
+      cy: number;
+    };
+    let builderLessonPointerDrag: BuilderLessonPointerDragState | null = null;
     let builderModuleActionsModuleId: string | null = null;
     let builderSliderDraft: { lessonId: string; images: { key: string }[] } | null = null;
     const builderSliderByLessonId = new Map<string, { images: { key: string }[] }>();
@@ -5541,6 +5558,12 @@ if (platformMount) {
     }
 
     async function builderLoadCourseData(root: ShadowRoot, eid: string, cid: string, token: string): Promise<void> {
+      const savedMid = builderSelectedModuleId;
+      const savedLid = builderSelectedLessonId;
+      const savedAtt = builderSelectedAttestationId;
+      const savedEditorMode = builderEditorMode;
+      const sameCourse = lastLoadedBuilderCourseId === cid;
+
       builderLessonsByModule.clear();
       builderModulesCache = await builderFetchModules(eid, cid, token);
       let totalLessons = 0;
@@ -5570,24 +5593,54 @@ if (platformMount) {
       }
       renderBuilderCertificateButton(root);
 
-      let best: { mid: string; lid: string; t: number } | null = null;
-      for (const m of builderModulesCache) {
-        for (const l of builderLessonsByModule.get(m.id) ?? []) {
-          const ts = Date.parse(l.createdAt);
-          if (!Number.isFinite(ts)) continue;
-          if (!best || ts >= best.t) best = { mid: m.id, lid: l.id, t: ts };
+      for (const x of [...builderExpandedModuleIds]) {
+        if (!builderModulesCache.some((m) => m.id === x)) builderExpandedModuleIds.delete(x);
+      }
+      if (!sameCourse) {
+        builderExpandedModuleIds.clear();
+        for (const m of builderModulesCache) builderExpandedModuleIds.add(m.id);
+      }
+
+      let appliedPreserve = false;
+      if (sameCourse && savedMid && builderModulesCache.some((m) => m.id === savedMid)) {
+        builderSelectedModuleId = savedMid;
+        const attOk = Boolean(savedAtt && builderAttestationsCache.some((a) => a.id === savedAtt));
+        if (savedEditorMode === 'attestation' && attOk) {
+          builderSelectedLessonId = null;
+          builderSelectedAttestationId = savedAtt;
+        } else {
+          builderSelectedAttestationId = null;
+          const ls = builderLessonsByModule.get(savedMid) ?? [];
+          if (savedLid && ls.some((l) => l.id === savedLid)) {
+            builderSelectedLessonId = savedLid;
+          } else {
+            builderSelectedLessonId = ls[0]?.id ?? null;
+          }
+        }
+        appliedPreserve = true;
+      }
+      if (!appliedPreserve) {
+        let best: { mid: string; lid: string; t: number } | null = null;
+        for (const m of builderModulesCache) {
+          for (const l of builderLessonsByModule.get(m.id) ?? []) {
+            const ts = Date.parse(l.createdAt);
+            if (!Number.isFinite(ts)) continue;
+            if (!best || ts >= best.t) best = { mid: m.id, lid: l.id, t: ts };
+          }
+        }
+        if (best) {
+          builderSelectedModuleId = best.mid;
+          builderSelectedLessonId = best.lid;
+        } else if (builderModulesCache[0]) {
+          builderSelectedModuleId = builderModulesCache[0].id;
+          builderSelectedLessonId = null;
+        } else {
+          builderSelectedModuleId = null;
+          builderSelectedLessonId = null;
         }
       }
-      if (best) {
-        builderSelectedModuleId = best.mid;
-        builderSelectedLessonId = best.lid;
-      } else if (builderModulesCache[0]) {
-        builderSelectedModuleId = builderModulesCache[0].id;
-        builderSelectedLessonId = null;
-      } else {
-        builderSelectedModuleId = null;
-        builderSelectedLessonId = null;
-      }
+
+      lastLoadedBuilderCourseId = cid;
 
       renderBuilderModTree(root);
       const aid = builderSelectedAttestationId;
@@ -5726,19 +5779,28 @@ if (platformMount) {
 
         const head = document.createElement('div');
         head.className = 'mod-head';
-        head.dataset.epModToggle = '1';
         head.dataset.epBuilderModuleId = m.id;
-        const isOpen = builderSelectedModuleId === m.id;
+        const isOpen = builderExpandedModuleIds.has(m.id);
         if (isOpen) head.classList.add('active');
         const arrow = document.createElement('span');
         arrow.className = `mod-arrow${isOpen ? ' open' : ''}`;
         arrow.textContent = '▶';
+        arrow.dataset.epModToggle = '1';
+        arrow.dataset.epBuilderModuleId = m.id;
+        arrow.title = 'Развернуть или свернуть список уроков';
         const name = document.createElement('span');
         name.className = 'mod-name';
         name.textContent = m.title;
         const cnt = document.createElement('span');
         cnt.className = 'mod-cnt';
         cnt.textContent = String(lessons.length);
+        const selectBtn = document.createElement('button');
+        selectBtn.type = 'button';
+        selectBtn.className = 'mod-head-select';
+        selectBtn.dataset.epBuilderModSelect = '1';
+        selectBtn.dataset.epBuilderModuleId = m.id;
+        selectBtn.title = 'Выбрать модуль для редактирования и «+ Урок»';
+        selectBtn.append(name, cnt);
         const gear = document.createElement('button');
         gear.type = 'button';
         gear.className = 'btn btn-ghost btn-sm';
@@ -5756,8 +5818,7 @@ if (platformMount) {
           ev.stopPropagation();
           openBuilderModuleActions(root, m.id);
         });
-        head.append(arrow, name, cnt);
-        head.appendChild(gear);
+        head.append(arrow, selectBtn, gear);
 
         const box = document.createElement('div');
         box.className = `mod-lessons${isOpen ? ' open' : ''}`;
@@ -5771,11 +5832,11 @@ if (platformMount) {
           row.draggable = false;
           const dragHandle = document.createElement('span');
           dragHandle.className = 'lesson-row__handle';
-          dragHandle.draggable = true;
+          dragHandle.draggable = false;
           dragHandle.title = 'Удерживайте и перетащите — сменить порядок';
           dragHandle.setAttribute('aria-label', 'Перетащить урок');
           dragHandle.textContent = '☰';
-          attachBuilderLessonDnd(root, row, m.id, dragHandle);
+          attachBuilderLessonPointerDrag(root, row, box, m.id, dragHandle);
           const reorderWrap = document.createElement('div');
           reorderWrap.className = 'lesson-row__reorder';
           const upBtn = document.createElement('button');
@@ -5893,58 +5954,179 @@ if (platformMount) {
       await builderReorderLessons(root, moduleId, lessonId, dstLid);
     }
 
-    /** Drag-and-drop reorder for lessons inside the same module (HTML5 DnD). */
-    function attachBuilderLessonDnd(
+    /** Перетаскивание урока указателем: «призрак» за курсором и живой перестрой порядка строк в модуле. */
+    function attachBuilderLessonPointerDrag(
       root: ShadowRoot,
       row: HTMLElement,
+      box: HTMLElement,
       moduleId: string,
       dragHandle: HTMLElement,
     ): void {
-      dragHandle.addEventListener('dragstart', (ev) => {
-        const lessonId = row.dataset.epBuilderLessonId ?? '';
-        if (!lessonId) return;
+      const lessonRowsInBox = (): HTMLElement[] =>
+        [...box.children].filter((n): n is HTMLElement => n.classList.contains('lesson-row'));
+
+      const placeRowFromPointer = (clientY: number): void => {
+        const rowsAll = lessonRowsInBox();
+        const others = rowsAll.filter((r) => r !== row);
+        if (others.length === 0) return;
+        let newIdx = 0;
+        for (const r of others) {
+          const br = r.getBoundingClientRect();
+          const midY = br.top + br.height / 2;
+          if (clientY > midY) newIdx++;
+        }
+        if (newIdx < others.length) {
+          const ref = others[newIdx]!;
+          if (row.nextSibling !== ref) box.insertBefore(row, ref);
+        } else {
+          const last = others[others.length - 1]!;
+          const after = last.nextSibling;
+          if (after !== row) box.insertBefore(row, after);
+        }
+      };
+
+      const scheduleDragFrame = (): void => {
+        const st = builderLessonPointerDrag;
+        if (!st || st.raf !== 0) return;
+        st.raf = requestAnimationFrame(() => {
+          const d = builderLessonPointerDrag;
+          if (!d) return;
+          d.raf = 0;
+          d.ghost.style.left = `${Math.round(d.cx - d.grabOffX)}px`;
+          d.ghost.style.top = `${Math.round(d.cy - d.grabOffY)}px`;
+          placeRowFromPointer(d.cy);
+        });
+      };
+
+      const endDrag = (commit: boolean): void => {
+        const st = builderLessonPointerDrag;
+        if (!st) return;
+        builderLessonPointerDrag = null;
+        if (st.raf !== 0) {
+          cancelAnimationFrame(st.raf);
+          st.raf = 0;
+        }
+        st.row.classList.remove('lesson-row--dragging');
+        st.ghost.remove();
+        if (!commit) {
+          renderBuilderModTree(st.root);
+          return;
+        }
+        const domIds = [...st.box.children]
+          .filter((n): n is HTMLElement => n.classList.contains('lesson-row'))
+          .map((r) => r.dataset.epBuilderLessonId ?? '')
+          .filter(Boolean);
+        const prev = (builderLessonsByModule.get(st.moduleId) ?? []).map((l) => l.id);
+        const same = domIds.length === prev.length && domIds.every((id, i) => id === prev[i]);
+        if (same) return;
+        const list = builderLessonsByModule.get(st.moduleId) ?? [];
+        const byId = new Map(list.map((l) => [l.id, l] as const));
+        const nextList = domIds.map((id) => byId.get(id)).filter((x): x is NonNullable<typeof x> => Boolean(x));
+        if (nextList.length !== list.length) {
+          renderBuilderModTree(st.root);
+          return;
+        }
+        builderLessonsByModule.set(st.moduleId, nextList);
+        void (async () => {
+          const token = getAccessToken();
+          const eid = await resolveBuilderExpertId();
+          const cid = expertBuilderCourseId;
+          if (!token || !eid || !cid) return;
+          renderBuilderModTree(st.root);
+          try {
+            await postJson(
+              `/experts/${encodeURIComponent(eid)}/modules/${encodeURIComponent(st.moduleId)}/lessons/reorder`,
+              { items: nextList.map((l, i) => ({ id: l.id, position: i })) },
+              token,
+            );
+            await builderLoadCourseData(st.root, eid, cid, token);
+          } catch {
+            window.alert('Не удалось изменить порядок уроков (нужна роль менеджера+).');
+            await builderLoadCourseData(st.root, eid, cid, token);
+          }
+        })();
+      };
+
+      dragHandle.addEventListener('pointerdown', (ev: PointerEvent) => {
+        if (ev.button !== 0 || builderLessonPointerDrag) return;
+        const lid = row.dataset.epBuilderLessonId ?? '';
+        if (!lid) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        const rect = row.getBoundingClientRect();
+        const ghost = document.createElement('div');
+        ghost.className = 'ep-lesson-drag-ghost';
+        const nm = row.querySelector('.lesson-name');
+        ghost.textContent = (nm?.textContent ?? 'Урок').trim() || 'Урок';
+        document.body.appendChild(ghost);
+        const grabOffX = ev.clientX - rect.left;
+        const grabOffY = ev.clientY - rect.top;
+        ghost.style.left = `${Math.round(ev.clientX - grabOffX)}px`;
+        ghost.style.top = `${Math.round(ev.clientY - grabOffY)}px`;
         row.classList.add('lesson-row--dragging');
         try {
-          ev.dataTransfer?.setData('application/x-ep-lesson', `${moduleId}:${lessonId}`);
-          if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move';
+          dragHandle.setPointerCapture(ev.pointerId);
         } catch {
           /* ignore */
         }
-      });
-      dragHandle.addEventListener('dragend', () => {
-        row.classList.remove('lesson-row--dragging');
-        row.classList.remove('lesson-row--drop-target');
-      });
-      const allowDrop = (ev: DragEvent): boolean => {
-        const dt = ev.dataTransfer;
-        if (!dt) return false;
-        const types = dt.types ? Array.from(dt.types as unknown as string[]) : [];
-        return types.includes('application/x-ep-lesson');
-      };
-      row.addEventListener('dragenter', (ev) => {
-        if (!allowDrop(ev)) return;
-        ev.preventDefault();
-      });
-      row.addEventListener('dragover', (ev) => {
-        if (!allowDrop(ev)) return;
-        ev.preventDefault();
-        if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move';
-        row.classList.add('lesson-row--drop-target');
-      });
-      row.addEventListener('dragleave', () => {
-        row.classList.remove('lesson-row--drop-target');
-      });
-      row.addEventListener('drop', (ev) => {
-        ev.preventDefault();
-        row.classList.remove('lesson-row--drop-target');
-        const raw = ev.dataTransfer?.getData('application/x-ep-lesson') ?? '';
-        if (!raw) return;
-        const [srcMid, srcLid] = raw.split(':');
-        if (!srcMid || !srcLid) return;
-        if (srcMid !== moduleId) return;
-        const dstLid = row.dataset.epBuilderLessonId ?? '';
-        if (!dstLid || dstLid === srcLid) return;
-        void builderReorderLessons(root, moduleId, srcLid, dstLid);
+        builderLessonPointerDrag = {
+          root,
+          moduleId,
+          row,
+          box,
+          ghost,
+          grabOffX,
+          grabOffY,
+          raf: 0,
+          cx: ev.clientX,
+          cy: ev.clientY,
+        };
+        const onMove = (e: PointerEvent): void => {
+          const st = builderLessonPointerDrag;
+          if (!st || e.pointerId !== ev.pointerId) return;
+          st.cx = e.clientX;
+          st.cy = e.clientY;
+          scheduleDragFrame();
+        };
+        const onUp = (e: PointerEvent): void => {
+          if (e.pointerId !== ev.pointerId) return;
+          dragHandle.removeEventListener('pointermove', onMove);
+          dragHandle.removeEventListener('pointerup', onUp);
+          dragHandle.removeEventListener('pointercancel', onCancel);
+          const st = builderLessonPointerDrag;
+          if (st) {
+            st.cx = e.clientX;
+            st.cy = e.clientY;
+            if (st.raf !== 0) {
+              cancelAnimationFrame(st.raf);
+              st.raf = 0;
+            }
+            st.ghost.style.left = `${Math.round(st.cx - st.grabOffX)}px`;
+            st.ghost.style.top = `${Math.round(st.cy - st.grabOffY)}px`;
+            placeRowFromPointer(st.cy);
+          }
+          try {
+            dragHandle.releasePointerCapture(e.pointerId);
+          } catch {
+            /* ignore */
+          }
+          endDrag(true);
+        };
+        const onCancel = (e: PointerEvent): void => {
+          if (e.pointerId !== ev.pointerId) return;
+          dragHandle.removeEventListener('pointermove', onMove);
+          dragHandle.removeEventListener('pointerup', onUp);
+          dragHandle.removeEventListener('pointercancel', onCancel);
+          try {
+            dragHandle.releasePointerCapture(e.pointerId);
+          } catch {
+            /* ignore */
+          }
+          endDrag(false);
+        };
+        dragHandle.addEventListener('pointermove', onMove);
+        dragHandle.addEventListener('pointerup', onUp);
+        dragHandle.addEventListener('pointercancel', onCancel);
       });
     }
 
@@ -6337,6 +6519,7 @@ if (platformMount) {
     }
 
     async function selectBuilderLesson(root: ShadowRoot, moduleId: string, lessonId: string): Promise<void> {
+      builderExpandedModuleIds.add(moduleId);
       builderSelectedModuleId = moduleId;
       builderSelectedLessonId = lessonId;
       builderSelectedAttestationId = null;
@@ -6351,6 +6534,7 @@ if (platformMount) {
     /** Выбор модуля в конструкторе (в т.ч. пустого — чтобы «+ Урок» создавался в нём). */
     async function selectBuilderModule(root: ShadowRoot, moduleId: string): Promise<void> {
       if (!builderModulesCache.some((m) => m.id === moduleId)) return;
+      builderExpandedModuleIds.add(moduleId);
       builderSelectedModuleId = moduleId;
       builderSelectedAttestationId = null;
       const lessons = builderLessonsByModule.get(moduleId) ?? [];
@@ -6361,6 +6545,14 @@ if (platformMount) {
       if (!token || !eid) return;
       renderBuilderModTree(root);
       await applyBuilderLessonToForm(root, eid, token);
+    }
+
+    /** Клик по шапке модуля в дереве: только развернуть/свернуть (не переключает «активный» модуль редактирования). */
+    function builderToggleModuleHead(root: ShadowRoot, moduleId: string): void {
+      if (!builderModulesCache.some((m) => m.id === moduleId)) return;
+      if (builderExpandedModuleIds.has(moduleId)) builderExpandedModuleIds.delete(moduleId);
+      else builderExpandedModuleIds.add(moduleId);
+      renderBuilderModTree(root);
     }
 
     async function openExpertBuilderNew(root: ShadowRoot): Promise<void> {
@@ -6383,6 +6575,7 @@ if (platformMount) {
         return;
       }
       expertBuilderCourseId = created.id;
+      lastLoadedBuilderCourseId = null;
       await builderLoadCourseData(root, eid, created.id, token);
       void hydrateExpertCourses(root);
     }
@@ -6538,26 +6731,108 @@ if (platformMount) {
       }
     }
 
-    /** Build a list of options for the «scope» picker shown to the expert when adding an attestation. */
-    function builderPickAttestationModuleId(): string | null | undefined {
-      if (builderModulesCache.length === 0) {
-        if (window.confirm('Создать итоговую аттестацию к курсу? Модулей пока нет.')) {
-          return null;
-        }
-        return undefined;
+    function closeBuilderAttestationScopeModal(root: ShadowRoot): void {
+      const bd = root.querySelector('[data-ep-attestation-scope-backdrop]') as HTMLElement | null;
+      const md = root.querySelector('[data-ep-attestation-scope-modal]') as HTMLElement | null;
+      if (bd) {
+        bd.style.display = 'none';
+        bd.setAttribute('aria-hidden', 'true');
       }
-      const lines: string[] = ['Введите номер варианта:', '0. Итоговая аттестация к курсу'];
-      builderModulesCache.forEach((m, i) => {
-        lines.push(`${i + 1}. Промежуточная к модулю «${m.title}»`);
+      if (md) md.style.display = 'none';
+    }
+
+    /** Модальное окно выбора области аттестации. `null` — итог по курсу; `undefined` — отмена. */
+    function openBuilderAttestationScopeModal(root: ShadowRoot): Promise<string | null | undefined> {
+      return new Promise((resolve) => {
+        const bd = root.querySelector('[data-ep-attestation-scope-backdrop]') as HTMLElement | null;
+        const md = root.querySelector('[data-ep-attestation-scope-modal]') as HTMLElement | null;
+        const list = root.querySelector('[data-ep-attestation-scope-list]') as HTMLElement | null;
+        const confirmBtn = root.querySelector('[data-ep-attestation-scope-confirm]') as HTMLButtonElement | null;
+        const cancelBtn = root.querySelector('[data-ep-attestation-scope-cancel]') as HTMLButtonElement | null;
+        if (!bd || !md || !list || !confirmBtn || !cancelBtn) {
+          resolve(undefined);
+          return;
+        }
+
+        type ScopeChoice = '__course__' | string;
+        let picked: ScopeChoice = '__course__';
+
+        const paint = (): void => {
+          list.querySelectorAll<HTMLElement>('.ep-attestation-scope-option').forEach((row) => {
+            const v = (row.dataset.epScopeValue ?? '__course__') as ScopeChoice;
+            row.classList.toggle('ep-attestation-scope-option--sel', v === picked);
+            const inp = row.querySelector('input[type="radio"]') as HTMLInputElement | null;
+            if (inp) inp.checked = v === picked;
+          });
+        };
+
+        list.replaceChildren();
+        const addRow = (value: ScopeChoice, kicker: string, desc: string): void => {
+          const lab = document.createElement('label');
+          lab.className = 'ep-attestation-scope-option ep-attestation-scope-option--sel';
+          lab.dataset.epScopeValue = value;
+          const inp = document.createElement('input');
+          inp.type = 'radio';
+          inp.name = 'ep-attestation-scope';
+          inp.value = value;
+          inp.checked = value === picked;
+          const wrap = document.createElement('div');
+          wrap.className = 'ep-attestation-scope-option__text';
+          const k = document.createElement('div');
+          k.className = 'ep-attestation-scope-option__k';
+          k.textContent = kicker;
+          const d = document.createElement('div');
+          d.className = 'ep-attestation-scope-option__d';
+          d.textContent = desc;
+          wrap.append(k, d);
+          lab.append(inp, wrap);
+          const choose = (): void => {
+            picked = value;
+            paint();
+          };
+          inp.addEventListener('change', choose);
+          lab.addEventListener('click', (ev) => {
+            if ((ev.target as HTMLElement).tagName !== 'INPUT') {
+              inp.checked = true;
+              choose();
+            }
+          });
+          list.appendChild(lab);
+        };
+
+        addRow('__course__', 'Итоговая аттестация', 'В конце курса, вне модулей.');
+        for (const m of builderModulesCache) {
+          addRow(m.id, 'Промежуточная аттестация', `Модуль «${m.title}»`);
+        }
+        paint();
+
+        const finish = (v: string | null | undefined): void => {
+          closeBuilderAttestationScopeModal(root);
+          bd.removeEventListener('click', onBd);
+          confirmBtn.removeEventListener('click', onOk);
+          cancelBtn.removeEventListener('click', onCancelClick);
+          window.removeEventListener('keydown', onKey);
+          resolve(v);
+        };
+
+        const onBd = (ev: MouseEvent): void => {
+          if (ev.target === bd) finish(undefined);
+        };
+        const onOk = (): void => finish(picked === '__course__' ? null : picked);
+        const onCancelClick = (): void => finish(undefined);
+        const onKey = (e: KeyboardEvent): void => {
+          if (e.key === 'Escape') finish(undefined);
+        };
+
+        bd.addEventListener('click', onBd);
+        confirmBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancelClick);
+        window.addEventListener('keydown', onKey);
+
+        bd.style.display = '';
+        bd.setAttribute('aria-hidden', 'false');
+        md.style.display = '';
       });
-      const raw = window.prompt(lines.join('\n'), '0');
-      if (raw == null) return undefined;
-      const n = parseInt(raw.trim(), 10);
-      if (!Number.isFinite(n)) return undefined;
-      if (n === 0) return null;
-      const idx = n - 1;
-      if (idx < 0 || idx >= builderModulesCache.length) return undefined;
-      return builderModulesCache[idx].id;
     }
 
     async function builderCreateAttestation(root: ShadowRoot, moduleId: string | null): Promise<void> {
@@ -6584,7 +6859,7 @@ if (platformMount) {
     }
 
     async function builderAddAttestation(root: ShadowRoot): Promise<void> {
-      const moduleId = builderPickAttestationModuleId();
+      const moduleId = await openBuilderAttestationScopeModal(root);
       if (moduleId === undefined) return;
       await builderCreateAttestation(root, moduleId);
     }
@@ -6649,6 +6924,10 @@ if (platformMount) {
         /* fall back to cached */
       }
       if (!a) return;
+      if (a.scope === 'module' && a.moduleId) {
+        builderExpandedModuleIds.add(a.moduleId);
+        builderSelectedModuleId = a.moduleId;
+      }
       builderSelectedAttestationId = attestationId;
       builderSelectedLessonId = null;
       builderAttestationDraft = JSON.parse(JSON.stringify(a)) as BuilderAttestationV1;
@@ -8852,11 +9131,19 @@ if (platformMount) {
         return;
       }
 
-      const bModHead = t?.closest('[data-ep-builder-mod-tree] [data-ep-mod-toggle]') as HTMLElement | null;
-      const pickMid = bModHead?.dataset.epBuilderModuleId;
-      if (bModHead && pickMid && !t?.closest('[data-ep-builder-module-menu]')) {
+      const bModSelect = t?.closest('[data-ep-builder-mod-tree] [data-ep-builder-mod-select]') as HTMLElement | null;
+      const selMid = bModSelect?.dataset.epBuilderModuleId;
+      if (bModSelect && selMid && !t?.closest('[data-ep-builder-module-menu]')) {
         ev.preventDefault();
-        void selectBuilderModule(shell.shadowRoot, pickMid);
+        void selectBuilderModule(shell.shadowRoot, selMid);
+        return;
+      }
+
+      const bModToggle = t?.closest('[data-ep-builder-mod-tree] [data-ep-mod-toggle]') as HTMLElement | null;
+      const toggleMid = bModToggle?.dataset.epBuilderModuleId;
+      if (bModToggle && toggleMid && !t?.closest('[data-ep-builder-module-menu]')) {
+        ev.preventDefault();
+        builderToggleModuleHead(shell.shadowRoot, toggleMid);
         return;
       }
 
