@@ -8,9 +8,11 @@ import { getAccessToken } from '../shared/auth/tokenStorage.js';
 export function InviteActivatePage() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const toast = useToast();
+  // ToastProvider passes a new object each render; depend on stable `show` only (useCallback),
+  // otherwise after toast.show() the effect re-runs and loops forever.
+  const { show } = useToast();
   const c = (code ?? '').trim();
-  const activate = useActivateInvite();
+  const { mutateAsync, isPending, isError } = useActivateInvite();
 
   React.useEffect(() => {
     let cancelled = false;
@@ -22,9 +24,9 @@ export function InviteActivatePage() {
         let lastErr: unknown = null;
         for (let attempt = 0; attempt < 12; attempt++) {
           try {
-            const res = await activate.mutateAsync(c);
+            const res = await mutateAsync(c);
             if (cancelled) return;
-            toast.show({ title: 'Готово', message: 'Доступ активирован', variant: 'success' });
+            show({ title: 'Готово', message: 'Доступ активирован', variant: 'success' });
             navigate(`/course/${res.courseId}`, { replace: true });
             return;
           } catch (e) {
@@ -47,14 +49,14 @@ export function InviteActivatePage() {
             : e instanceof Error
               ? e.message
               : 'Не удалось активировать';
-        toast.show({ title: 'Не удалось активировать', message: msg, variant: 'error' });
+        show({ title: 'Не удалось активировать', message: msg, variant: 'error' });
       }
     }
     run();
     return () => {
       cancelled = true;
     };
-  }, [c, navigate, toast]);
+  }, [c, navigate, show, mutateAsync]);
 
   if (!c) {
     return (
@@ -69,7 +71,7 @@ export function InviteActivatePage() {
     );
   }
 
-  if (activate.isPending) {
+  if (isPending) {
     return (
       <div style={{ padding: 'var(--sp-4)' }}>
         <Skeleton width="60%" height="28px" style={{ marginBottom: 'var(--sp-3)' }} />
@@ -78,7 +80,7 @@ export function InviteActivatePage() {
     );
   }
 
-  if (activate.isError) {
+  if (isError) {
     return (
       <div style={{ padding: 'var(--sp-4)' }}>
         <Card>
@@ -87,7 +89,20 @@ export function InviteActivatePage() {
             <CardDescription>Проверьте код и попробуйте ещё раз</CardDescription>
           </CardHeader>
           <CardContent style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
-            <Button variant="primary" onClick={() => activate.mutate(c)}>
+            <Button
+              variant="primary"
+              onClick={() => {
+                void (async () => {
+                  try {
+                    const res = await mutateAsync(c);
+                    show({ title: 'Готово', message: 'Доступ активирован', variant: 'success' });
+                    navigate(`/course/${res.courseId}`, { replace: true });
+                  } catch {
+                    /* mutation stays failed */
+                  }
+                })();
+              }}
+            >
               Повторить
             </Button>
           </CardContent>

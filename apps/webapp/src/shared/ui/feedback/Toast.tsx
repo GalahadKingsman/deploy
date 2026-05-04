@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 
 export type ToastVariant = 'success' | 'error' | 'info';
@@ -31,6 +31,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToast(message);
   }, []);
 
+  const contextValue = useMemo<ToastContextValue>(() => ({ show }), [show]);
+
   useEffect(() => {
     if (!toast) return;
 
@@ -60,7 +62,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <ToastContext.Provider value={{ show }}>
+    <ToastContext.Provider value={contextValue}>
       {children}
       {toast &&
         createPortal(
