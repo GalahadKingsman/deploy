@@ -118,8 +118,20 @@ export class PaymentsController {
     receiptEmail: string | null;
     receiptPhone: string | null;
   }): Promise<ContractsV1.CreateExpertSubscriptionCheckoutResponseV1> {
-    if (!this.tinkoff.isConfigured() || (params.order.amountCents ?? 0) <= 0) {
-      return { order: params.order, payUrl: params.order.payUrl ?? null };
+    if ((params.order.amountCents ?? 0) <= 0) {
+      return {
+        order: params.order,
+        payUrl: params.order.payUrl ?? null,
+        tinkoffInitError: 'Сумма заказа не задана.',
+      };
+    }
+    if (!this.tinkoff.isConfigured()) {
+      return {
+        order: params.order,
+        payUrl: params.order.payUrl ?? null,
+        tinkoffInitError:
+          'Tinkoff не настроен в окружении API: задайте непустые TINKOFF_TERMINAL_KEY и TINKOFF_PASSWORD (символ # в .env — только внутри кавычек).',
+      };
     }
     try {
       const init = await this.tinkoff.initPayment({
@@ -140,11 +152,23 @@ export class PaymentsController {
         params.order;
       return { order: updated, payUrl: init.paymentUrl };
     } catch (e) {
-      this.log.warn(
-        `Tinkoff Init failed for order ${params.order.id}: ${e instanceof Error ? e.message : String(e)}`,
-      );
-      return { order: params.order, payUrl: params.order.payUrl ?? null };
+      const msg = e instanceof Error ? e.message : String(e);
+      this.log.warn(`Tinkoff Init failed for order ${params.order.id}: ${msg}`);
+      const refreshed =
+        (await this.ordersRepository.findByIdForUser({ orderId: params.order.id, userId: params.userId })) ??
+        params.order;
+      return {
+        order: refreshed,
+        payUrl: null,
+        tinkoffInitError: PaymentsController.clampCheckoutDiagnosticMessage(msg),
+      };
     }
+  }
+
+  private static clampCheckoutDiagnosticMessage(raw: string): string {
+    const s = raw.replace(/\s+/g, ' ').trim();
+    if (!s) return 'Init Tinkoff отклонён (пустое сообщение). Смотрите логи API.';
+    return s.length > 400 ? `${s.slice(0, 397)}...` : s;
   }
 
   @Get('orders/:orderId')

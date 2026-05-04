@@ -64,11 +64,14 @@ export const CreateExpertSubscriptionCheckoutRequestV1Schema = z.object({
 export interface CreateExpertSubscriptionCheckoutResponseV1 {
   order: OrderV1;
   payUrl?: string | null;
+  /** Если Init Tinkoff не удался или эквайринг не сконфигурирован — краткая причина для диагностики (обрезана). */
+  tinkoffInitError?: string | null;
 }
 
 export const CreateExpertSubscriptionCheckoutResponseV1Schema = z.object({
   order: OrderV1Schema,
   payUrl: z.string().url().nullable().optional(),
+  tinkoffInitError: z.string().max(512).nullable().optional(),
 });
 
 export interface MeOrdersResponseV1 {

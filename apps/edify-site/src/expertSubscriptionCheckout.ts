@@ -37,7 +37,7 @@ export async function createExpertSubscriptionCheckout(): Promise<ExpertSubscrip
   }
 
   const text = await res.text();
-  let data: { payUrl?: string | null; order?: { payUrl?: string | null } } = {};
+  let data: { payUrl?: string | null; tinkoffInitError?: string | null; order?: { payUrl?: string | null } } = {};
   try {
     data = text ? (JSON.parse(text) as typeof data) : {};
   } catch {
@@ -60,10 +60,13 @@ export async function createExpertSubscriptionCheckout(): Promise<ExpertSubscrip
 
   const payUrl = (typeof data.payUrl === 'string' && data.payUrl.trim()) || data.order?.payUrl?.trim() || '';
   if (!payUrl) {
+    const bank =
+      typeof data.tinkoffInitError === 'string' && data.tinkoffInitError.trim() ? data.tinkoffInitError.trim() : '';
+    const base =
+      'Ссылка на оплату не получена. Поле provider у заказа по умолчанию tinkoff в БД — это не признак успешного Init.';
     return {
       ok: false,
-      error:
-        'Ссылка на оплату не получена. Включите PAYMENTS_ENABLED, задайте сумму (EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS или price_cents в БД) и ключи Tinkoff.',
+      error: bank ? `${base} Детали: ${bank}` : `${base} Проверьте TINKOFF_* в окружении API и логи сервера.`,
     };
   }
   return { ok: true, payUrl };
