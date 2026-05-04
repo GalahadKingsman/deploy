@@ -565,8 +565,12 @@ textarea.form-input{resize:vertical;min-height:80px}
 .ep-attestation-scope-option input{accent-color:var(--a);width:16px;height:16px;margin-top:2px;flex-shrink:0}
 .ep-attestation-scope-option__text{flex:1;min-width:0}
 .ep-attestation-scope-option__k{font-size:11px;font-weight:700;color:var(--t1);margin-bottom:2px}
+.ep-attestation-scope-option__k--solo{font-size:12px;margin-bottom:0}
 .ep-attestation-scope-option__d{font-size:11px;color:var(--t3);line-height:1.45}
-.ep-attestation-scope-modal__actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.ep-attestation-scope-modal__actions{
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;
+}
+.ep-attestation-scope-modal__actions-trail{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto}
 .ep-lesson-drag-ghost{
   position:fixed;z-index:20000;pointer-events:none;
   padding:8px 12px;border-radius:var(--r2);background:var(--surface);

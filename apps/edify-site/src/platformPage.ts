@@ -6798,42 +6798,49 @@ if (platformMount) {
         const list = root.querySelector('[data-ep-attestation-scope-list]') as HTMLElement | null;
         const confirmBtn = root.querySelector('[data-ep-attestation-scope-confirm]') as HTMLButtonElement | null;
         const cancelBtn = root.querySelector('[data-ep-attestation-scope-cancel]') as HTMLButtonElement | null;
+        const backBtn = root.querySelector('[data-ep-attestation-scope-back]') as HTMLButtonElement | null;
+        const titleEl = root.querySelector('#ep-attestation-scope-title') as HTMLElement | null;
+        const hintEl = root.querySelector('[data-ep-attestation-scope-hint]') as HTMLElement | null;
         if (!bd || !md || !list || !confirmBtn || !cancelBtn) {
           resolve(undefined);
           return;
         }
 
-        type ScopeChoice = '__course__' | string;
-        let picked: ScopeChoice = '__course__';
+        let phase: 1 | 2 = 1;
+        let kindChoice: 'intermediate' | 'final' | null = null;
+        /** Выбранный ключ: модуль id, `__course__` для итога, на шаге 1 — `__kind_*`. */
+        let picked = '__kind_intermediate';
 
         const paint = (): void => {
           list.querySelectorAll<HTMLElement>('.ep-attestation-scope-option').forEach((row) => {
-            const v = (row.dataset.epScopeValue ?? '__course__') as ScopeChoice;
+            const v = row.dataset.epScopeValue ?? '';
             row.classList.toggle('ep-attestation-scope-option--sel', v === picked);
             const inp = row.querySelector('input[type="radio"]') as HTMLInputElement | null;
             if (inp) inp.checked = v === picked;
           });
         };
 
-        list.replaceChildren();
-        const addRow = (value: ScopeChoice, kicker: string, desc: string): void => {
+        const addRow = (value: string, kicker: string, desc: string): void => {
           const lab = document.createElement('label');
-          lab.className = 'ep-attestation-scope-option ep-attestation-scope-option--sel';
+          lab.className = 'ep-attestation-scope-option';
           lab.dataset.epScopeValue = value;
           const inp = document.createElement('input');
           inp.type = 'radio';
           inp.name = 'ep-attestation-scope';
           inp.value = value;
-          inp.checked = value === picked;
           const wrap = document.createElement('div');
           wrap.className = 'ep-attestation-scope-option__text';
           const k = document.createElement('div');
           k.className = 'ep-attestation-scope-option__k';
+          if (!desc.trim()) k.classList.add('ep-attestation-scope-option__k--solo');
           k.textContent = kicker;
-          const d = document.createElement('div');
-          d.className = 'ep-attestation-scope-option__d';
-          d.textContent = desc;
-          wrap.append(k, d);
+          wrap.appendChild(k);
+          if (desc.trim()) {
+            const d = document.createElement('div');
+            d.className = 'ep-attestation-scope-option__d';
+            d.textContent = desc;
+            wrap.appendChild(d);
+          }
           lab.append(inp, wrap);
           const choose = (): void => {
             picked = value;
@@ -6849,17 +6856,42 @@ if (platformMount) {
           list.appendChild(lab);
         };
 
-        addRow('__course__', 'Итоговая аттестация', 'В конце курса, вне модулей.');
-        for (const m of builderModulesCache) {
-          addRow(m.id, 'Промежуточная аттестация', `Модуль «${m.title}»`);
-        }
-        paint();
+        const render = (): void => {
+          list.replaceChildren();
+          if (phase === 1) {
+            if (titleEl) titleEl.textContent = 'Тип аттестации';
+            if (hintEl) hintEl.textContent = 'Сначала выберите, какую аттестацию создать.';
+            if (backBtn) backBtn.style.display = 'none';
+            confirmBtn.textContent = 'Далее';
+            picked = '__kind_intermediate';
+            addRow('__kind_intermediate', 'Промежуточная аттестация', '');
+            addRow('__kind_final', 'Итоговая аттестация', '');
+            paint();
+            return;
+          }
+          if (backBtn) backBtn.style.display = '';
+          confirmBtn.textContent = 'Создать';
+          if (titleEl) titleEl.textContent = 'Куда добавить аттестацию?';
+          if (kindChoice === 'final') {
+            if (hintEl) hintEl.textContent = 'Размещение в конце курса. Нажмите «Создать».';
+            picked = '__course__';
+            addRow('__course__', 'В конце курса', 'Вне модулей');
+          } else {
+            if (hintEl) hintEl.textContent = 'Выберите модуль и нажмите «Создать».';
+            for (const m of builderModulesCache) {
+              addRow(m.id, `Модуль «${m.title}»`, '');
+            }
+            picked = builderModulesCache[0]?.id ?? '';
+          }
+          paint();
+        };
 
         const finish = (v: string | null | undefined): void => {
           closeBuilderAttestationScopeModal(root);
           bd.removeEventListener('click', onBd);
           confirmBtn.removeEventListener('click', onOk);
           cancelBtn.removeEventListener('click', onCancelClick);
+          if (backBtn) backBtn.removeEventListener('click', onBackClick);
           window.removeEventListener('keydown', onKey);
           resolve(v);
         };
@@ -6867,8 +6899,36 @@ if (platformMount) {
         const onBd = (ev: MouseEvent): void => {
           if (ev.target === bd) finish(undefined);
         };
-        const onOk = (): void => finish(picked === '__course__' ? null : picked);
+        const onOk = (): void => {
+          if (phase === 1) {
+            if (picked === '__kind_intermediate') {
+              if (!builderModulesCache.length) {
+                window.alert('Сначала добавьте хотя бы один модуль.');
+                return;
+              }
+              kindChoice = 'intermediate';
+              phase = 2;
+              render();
+              return;
+            }
+            if (picked === '__kind_final') {
+              kindChoice = 'final';
+              phase = 2;
+              render();
+              return;
+            }
+            return;
+          }
+          finish(picked === '__course__' ? null : picked);
+        };
         const onCancelClick = (): void => finish(undefined);
+        const onBackClick = (): void => {
+          if (phase !== 2) return;
+          phase = 1;
+          kindChoice = null;
+          picked = '__kind_intermediate';
+          render();
+        };
         const onKey = (e: KeyboardEvent): void => {
           if (e.key === 'Escape') finish(undefined);
         };
@@ -6876,7 +6936,10 @@ if (platformMount) {
         bd.addEventListener('click', onBd);
         confirmBtn.addEventListener('click', onOk);
         cancelBtn.addEventListener('click', onCancelClick);
+        if (backBtn) backBtn.addEventListener('click', onBackClick);
         window.addEventListener('keydown', onKey);
+
+        render();
 
         bd.style.display = '';
         bd.setAttribute('aria-hidden', 'false');
