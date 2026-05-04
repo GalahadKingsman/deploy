@@ -6871,17 +6871,20 @@ if (platformMount) {
           }
           if (backBtn) backBtn.style.display = '';
           confirmBtn.textContent = 'Создать';
-          if (titleEl) titleEl.textContent = 'Куда добавить аттестацию?';
-          if (kindChoice === 'final') {
-            if (hintEl) hintEl.textContent = 'Размещение в конце курса. Нажмите «Создать».';
-            picked = '__course__';
-            addRow('__course__', 'В конце курса', 'Вне модулей');
-          } else {
-            if (hintEl) hintEl.textContent = 'Выберите модуль и нажмите «Создать».';
-            for (const m of builderModulesCache) {
-              addRow(m.id, `Модуль «${m.title}»`, '');
-            }
-            picked = builderModulesCache[0]?.id ?? '';
+          if (titleEl) {
+            titleEl.textContent =
+              kindChoice === 'final'
+                ? 'Куда добавить итоговую аттестацию?'
+                : 'Куда добавить промежуточную аттестацию?';
+          }
+          if (hintEl) {
+            hintEl.textContent =
+              'Можно привязать к курсу целиком или к любому модулю. Выберите вариант и нажмите «Создать».';
+          }
+          picked = '__course__';
+          addRow('__course__', 'В конце курса', 'Вне модулей');
+          for (const m of builderModulesCache) {
+            addRow(m.id, `Модуль «${m.title}»`, '');
           }
           paint();
         };
@@ -6902,10 +6905,6 @@ if (platformMount) {
         const onOk = (): void => {
           if (phase === 1) {
             if (picked === '__kind_intermediate') {
-              if (!builderModulesCache.length) {
-                window.alert('Сначала добавьте хотя бы один модуль.');
-                return;
-              }
               kindChoice = 'intermediate';
               phase = 2;
               render();
