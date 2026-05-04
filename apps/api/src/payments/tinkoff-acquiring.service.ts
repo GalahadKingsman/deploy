@@ -10,6 +10,19 @@ export interface TinkoffInitInput {
   receiptPhone: string | null;
 }
 
+/**
+ * T-Bank docs give test base as `https://rest-api-test.tinkoff.ru/v2`; we always POST `…/v2/Init`.
+ * If env already ends with `/v2`, strip it to avoid `/v2/v2/Init` (404 HTML instead of JSON).
+ */
+function resolveTinkoffInitUrl(baseUrlFromEnv: string): string {
+  let base = baseUrlFromEnv.trim().replace(/\/+$/, '');
+  if (/\/v2$/i.test(base)) {
+    base = base.replace(/\/v2$/i, '');
+  }
+  base = base.replace(/\/+$/, '');
+  return `${base}/v2/Init`;
+}
+
 @Injectable()
 export class TinkoffAcquiringService {
   private readonly log = new Logger(TinkoffAcquiringService.name);
@@ -33,7 +46,6 @@ export class TinkoffAcquiringService {
       throw new Error('Amount must be positive');
     }
 
-    const baseUrl = env.TINKOFF_API_BASE_URL.replace(/\/$/, '');
     const description = input.description.slice(0, 140);
 
     const body: Record<string, unknown> = {
@@ -81,7 +93,7 @@ export class TinkoffAcquiringService {
     const token = buildTinkoffRequestToken(body, password);
     const payload = { ...body, Token: token };
 
-    const url = `${baseUrl}/v2/Init`;
+    const url = resolveTinkoffInitUrl(env.TINKOFF_API_BASE_URL);
     let res: Response;
     try {
       res = await fetch(url, {
@@ -94,7 +106,24 @@ export class TinkoffAcquiringService {
       throw e;
     }
 
-    const json = (await res.json()) as Record<string, unknown>;
+    const rawText = await res.text();
+    const trimmed = rawText.trim();
+    const ct = (res.headers.get('content-type') ?? '').toLowerCase();
+    const looksLikeJson =
+      trimmed.startsWith('{') || trimmed.startsWith('[') || ct.includes('application/json');
+    if (!looksLikeJson && trimmed.startsWith('<')) {
+      throw new Error(
+        `Tinkoff вернул HTML (HTTP ${res.status}), ожидался JSON. Частые причины: (1) в TINKOFF_API_BASE_URL был лишний суффикс /v2 — используйте https://rest-api-test.tinkoff.ru или https://rest-api-test.tinkoff.ru/v2; (2) внешний IP сервера API не в белом списке тестовой среды rest-api-test.tinkoff.ru (оформите в чате Т-Бизнес).`,
+      );
+    }
+    let json: Record<string, unknown>;
+    try {
+      json = JSON.parse(trimmed || '{}') as Record<string, unknown>;
+    } catch {
+      throw new Error(
+        `Tinkoff: тело ответа не JSON (HTTP ${res.status}): ${trimmed.slice(0, 160).replace(/\s+/g, ' ')}`,
+      );
+    }
     const success = json.Success === true || json.Success === 'true';
     if (!success) {
       const msg = [json.Message, json.Details, json.ErrorCode].filter(Boolean).join(' — ') || 'Init failed';
