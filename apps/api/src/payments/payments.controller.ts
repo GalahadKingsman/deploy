@@ -51,12 +51,14 @@ export class PaymentsController {
     const userId = req.user?.userId;
     if (!userId) throw new NotFoundException({ code: ErrorCodes.UNAUTHORIZED, message: 'Unauthorized' });
 
-    if (await this.expertMembersRepository.hasAnyExpertMembership(userId)) {
-      throw new ForbiddenException({
-        code: ErrorCodes.FORBIDDEN,
-        message:
-          'Оформление этой подписки доступно только без участия в команде эксперта. Если вы уже в команде, подписка оформляется в рабочем пространстве.',
-      });
+    if (!env.EXPERT_SUBSCRIPTION_CHECKOUT_SKIP_ELIGIBILITY_CHECKS) {
+      if (await this.expertMembersRepository.hasAnyExpertMembership(userId)) {
+        throw new ForbiddenException({
+          code: ErrorCodes.FORBIDDEN,
+          message:
+            'Оформление этой подписки доступно только без участия в команде эксперта. Если вы уже в команде, подписка оформляется в рабочем пространстве.',
+        });
+      }
     }
 
     const priceOverride = env.EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS;
