@@ -210,8 +210,7 @@ export function ExpertCourseAccessPage() {
                 }
                 try {
                   const created = await createInvite.mutateAsync({ maxUses: n });
-                  const tg = buildTelegramInviteUrl(created.code);
-                  const toCopy = tg ?? buildWebInviteUrl(created.code);
+                  const toCopy = buildWebInviteUrl(created.code);
                   const copied = await copyText(toCopy);
                   toast.show({
                     title: copied.ok ? 'Ссылка скопирована' : 'Инвайт создан',
@@ -249,7 +248,7 @@ export function ExpertCourseAccessPage() {
               {inviteRows.map((i) => {
                 const tgLink = buildTelegramInviteUrl(i.code);
                 const webLink = buildWebInviteUrl(i.code);
-                const copyTarget = tgLink ?? webLink;
+                const copyTarget = webLink;
                 const limit = i.maxUses == null ? '∞' : String(i.maxUses);
                 const used = i.usesCount ?? 0;
                 const exhausted = i.maxUses != null && used >= i.maxUses;

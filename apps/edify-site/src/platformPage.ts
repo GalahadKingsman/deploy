@@ -56,9 +56,9 @@ function buildInviteWebActivateUrl(code: string): string {
   return `${getReferralAppBaseUrl()}/invite/${encodeURIComponent(code)}`;
 }
 
-/** Что копируем в буфер: предпочитаем Telegram, иначе веб. */
+/** Что копируем в буфер: основная ссылка зачисления через сайт / Mini App. */
 function resolveInviteCopyUrl(code: string): string {
-  return buildInviteTelegramStartUrl(code) ?? buildInviteWebActivateUrl(code);
+  return buildInviteWebActivateUrl(code);
 }
 
 function extractFileKey(raw: string): string {
@@ -8261,23 +8261,7 @@ if (platformMount) {
         card.style.background = 'var(--surface2)';
         card.style.display = 'flex';
         card.style.flexDirection = 'column';
-        card.style.gap = '8px';
-
-        const top = document.createElement('div');
-        top.style.display = 'flex';
-        top.style.gap = '8px';
-        top.style.flexWrap = 'wrap';
-        top.style.alignItems = 'center';
-        const strong = document.createElement('strong');
-        strong.textContent = i.code;
-        const limit = i.maxUses == null ? '∞' : String(i.maxUses);
-        const used = i.usesCount ?? 0;
-        const meta = document.createElement('span');
-        meta.style.fontSize = '10px';
-        meta.style.color = 'var(--t3)';
-        meta.style.fontFamily = 'var(--fm)';
-        meta.textContent = `использований: ${used}/${limit}`;
-        top.append(strong, meta);
+        card.style.gap = '10px';
 
         const tgUrl = buildInviteTelegramStartUrl(i.code);
         const webUrl = buildInviteWebActivateUrl(i.code);
@@ -8287,12 +8271,16 @@ if (platformMount) {
         linkBlock.style.gap = '6px';
 
         const webLab = document.createElement('div');
-        webLab.style.fontSize = '10px';
-        webLab.style.color = 'var(--t3)';
-        webLab.style.fontFamily = 'var(--fm)';
-        webLab.style.textTransform = 'uppercase';
-        webLab.style.letterSpacing = '0.06em';
-        webLab.textContent = 'Ссылка для ученика (браузер / Mini App, нужен вход)';
+        webLab.style.fontSize = '11px';
+        webLab.style.fontWeight = '650';
+        webLab.style.color = 'var(--t1)';
+        webLab.textContent = 'Ссылка для зачисления';
+        const webHint = document.createElement('div');
+        webHint.style.fontSize = '10px';
+        webHint.style.color = 'var(--t3)';
+        webHint.style.lineHeight = '1.45';
+        webHint.textContent =
+          'Ученик должен быть авторизован на сайте или в Mini App. После перехода доступ к курсу активируется автоматически.';
         const webA = document.createElement('a');
         webA.href = webUrl;
         webA.target = '_blank';
@@ -8301,7 +8289,7 @@ if (platformMount) {
         webA.style.color = 'var(--a)';
         webA.style.wordBreak = 'break-all';
         webA.textContent = webUrl;
-        linkBlock.append(webLab, webA);
+        linkBlock.append(webLab, webHint, webA);
 
         if (tgUrl) {
           const tgLab = document.createElement('div');
@@ -8310,8 +8298,8 @@ if (platformMount) {
           tgLab.style.fontFamily = 'var(--fm)';
           tgLab.style.textTransform = 'uppercase';
           tgLab.style.letterSpacing = '0.06em';
-          tgLab.style.marginTop = '4px';
-          tgLab.textContent = 'Или через Telegram';
+          tgLab.style.marginTop = '6px';
+          tgLab.textContent = 'Дополнительно через Telegram';
           const tgA = document.createElement('a');
           tgA.href = tgUrl;
           tgA.target = '_blank';
@@ -8322,6 +8310,24 @@ if (platformMount) {
           tgA.textContent = tgUrl;
           linkBlock.append(tgLab, tgA);
         }
+
+        const limit = i.maxUses == null ? '∞' : String(i.maxUses);
+        const used = i.usesCount ?? 0;
+        const footer = document.createElement('div');
+        footer.style.display = 'flex';
+        footer.style.flexWrap = 'wrap';
+        footer.style.alignItems = 'baseline';
+        footer.style.gap = '6px 12px';
+        footer.style.fontSize = '10px';
+        footer.style.color = 'var(--t3)';
+        footer.style.fontFamily = 'var(--fm)';
+        const usage = document.createElement('span');
+        usage.textContent = `Активаций: ${used}/${limit}`;
+        const token = document.createElement('span');
+        token.style.opacity = '0.85';
+        token.title = 'Технический идентификатор (не для отправки ученику отдельно)';
+        token.textContent = `код ${i.code}`;
+        footer.append(usage, token);
 
         const actions = document.createElement('div');
         actions.style.display = 'flex';
@@ -8342,7 +8348,7 @@ if (platformMount) {
         revokeBtn.dataset.epAccessInviteRevoke = i.code;
 
         actions.append(copyBtn, revokeBtn);
-        card.append(top, linkBlock, actions);
+        card.append(linkBlock, footer, actions);
         host.appendChild(card);
       }
     }
