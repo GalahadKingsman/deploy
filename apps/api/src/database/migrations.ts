@@ -49,6 +49,7 @@ const MIGRATION_LIST = [
   '037_orders_expert_subscription_kind',
   '038_course_attestations',
   '039_users_platform_subscription_paid_until',
+  '040_attestation_display_kind',
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

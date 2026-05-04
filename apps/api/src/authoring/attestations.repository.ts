@@ -11,6 +11,7 @@ interface AttestationRow {
   deleted_at: Date | null;
   created_at: Date | string;
   updated_at: Date | string;
+  display_kind: 'intermediate' | 'final';
 }
 
 interface QuestionRow {
@@ -44,9 +45,20 @@ export interface AttestationContext {
   moduleTitle: string | null;
 }
 
-function buildDisplayTitle(courseTitle: string, moduleTitle: string | null): string {
-  if (moduleTitle) return `Промежуточная аттестация к модулю ${moduleTitle}`;
-  return `Итоговая аттестация к курсу ${courseTitle}`;
+function formatAttestationDisplayTitle(
+  courseTitle: string,
+  moduleTitle: string | null,
+  displayKind: 'intermediate' | 'final',
+): string {
+  const isFinal = displayKind === 'final';
+  if (moduleTitle) {
+    return isFinal
+      ? `Итоговая аттестация к модулю ${moduleTitle}`
+      : `Промежуточная аттестация к модулю ${moduleTitle}`;
+  }
+  return isFinal
+    ? `Итоговая аттестация к курсу ${courseTitle}`
+    : `Промежуточная аттестация к курсу ${courseTitle}`;
 }
 
 /** node-pg может отдавать timestamptz как Date или string — без этого .toISOString() даёт 500. */
@@ -72,6 +84,7 @@ function rowToExpertAttestation(
     moduleId: attestation.module_id,
     scope: attestation.module_id ? 'module' : 'course',
     position: Number(attestation.position),
+    displayKind: attestation.display_kind,
     displayTitle,
     questions: orderedQs.map((q) => {
       const opts = (optionsByQuestion.get(q.id) ?? []).slice().sort((a, b) => a.position - b.position);
@@ -125,20 +138,22 @@ export class AttestationsRepository {
       a_deleted_at: Date | null;
       a_created_at: Date;
       a_updated_at: Date;
+      a_display_kind: string;
       course_title: string;
       module_title: string | null;
     }>(
       `
       SELECT
-        a.id          AS a_id,
-        a.course_id   AS a_course_id,
-        a.module_id   AS a_module_id,
-        a.position    AS a_position,
-        a.deleted_at  AS a_deleted_at,
-        a.created_at  AS a_created_at,
-        a.updated_at  AS a_updated_at,
-        c.title       AS course_title,
-        m.title       AS module_title
+        a.id             AS a_id,
+        a.course_id      AS a_course_id,
+        a.module_id      AS a_module_id,
+        a.position       AS a_position,
+        a.deleted_at     AS a_deleted_at,
+        a.created_at     AS a_created_at,
+        a.updated_at     AS a_updated_at,
+        a.display_kind   AS a_display_kind,
+        c.title          AS course_title,
+        m.title          AS module_title
       FROM course_attestations a
       JOIN courses c ON c.id = a.course_id AND c.deleted_at IS NULL
       LEFT JOIN course_modules m ON m.id = a.module_id AND m.deleted_at IS NULL
@@ -154,6 +169,8 @@ export class AttestationsRepository {
         message: 'Attestation not found',
       });
     }
+    const displayKind: 'intermediate' | 'final' =
+      row.a_display_kind === 'final' ? 'final' : 'intermediate';
     return {
       attestation: {
         id: row.a_id,
@@ -163,6 +180,7 @@ export class AttestationsRepository {
         deleted_at: row.a_deleted_at,
         created_at: row.a_created_at,
         updated_at: row.a_updated_at,
+        display_kind: displayKind,
       },
       courseTitle: row.course_title,
       moduleTitle: row.module_title,
@@ -272,6 +290,7 @@ export class AttestationsRepository {
       questionsByAttestation.set(q.attestation_id, arr);
     }
     return aRes.rows.map((r) => {
+      const displayKind: 'intermediate' | 'final' = r.display_kind === 'final' ? 'final' : 'intermediate';
       const att: AttestationRow = {
         id: r.id,
         course_id: r.course_id,
@@ -280,8 +299,9 @@ export class AttestationsRepository {
         deleted_at: r.deleted_at,
         created_at: r.created_at,
         updated_at: r.updated_at,
+        display_kind: displayKind,
       };
-      const displayTitle = buildDisplayTitle(courseTitle, r.module_title);
+      const displayTitle = formatAttestationDisplayTitle(courseTitle, r.module_title, displayKind);
       return rowToExpertAttestation(att, questionsByAttestation.get(r.id) ?? [], optionsByQuestion, displayTitle);
     });
   }
@@ -311,13 +331,14 @@ export class AttestationsRepository {
       ctx.attestation,
       qRes.rows,
       optionsByQuestion,
-      buildDisplayTitle(ctx.courseTitle, ctx.moduleTitle),
+      formatAttestationDisplayTitle(ctx.courseTitle, ctx.moduleTitle, ctx.attestation.display_kind),
     );
   }
 
   async create(params: {
     courseId: string;
     moduleId: string | null;
+    displayKind?: 'intermediate' | 'final';
   }): Promise<ContractsV1.ExpertAttestationV1> {
     const pool = this.requirePool();
     const id = randomUUID();
@@ -341,10 +362,12 @@ export class AttestationsRepository {
             [params.courseId, moduleId],
           );
     const next = (posRes.rows[0]?.max ?? -1) + 1;
+    const displayKind: 'intermediate' | 'final' =
+      params.displayKind ?? (moduleId ? 'intermediate' : 'final');
     await pool.query(
-      `INSERT INTO course_attestations (id, course_id, module_id, position, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, NOW(), NOW())`,
-      [id, params.courseId, moduleId, next],
+      `INSERT INTO course_attestations (id, course_id, module_id, position, display_kind, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, NOW(), NOW())`,
+      [id, params.courseId, moduleId, next, displayKind],
     );
     return this.getById(id);
   }
@@ -458,7 +481,11 @@ export class AttestationsRepository {
       id: r.id,
       scope: r.module_id ? ('module' as const) : ('course' as const),
       moduleId: r.module_id,
-      displayTitle: buildDisplayTitle(r.course_title, r.module_title),
+      displayTitle: formatAttestationDisplayTitle(
+        r.course_title,
+        r.module_title,
+        r.display_kind === 'final' ? 'final' : 'intermediate',
+      ),
       position: r.position,
       questionCount:
         typeof r.question_count === 'number' ? r.question_count : parseInt(String(r.question_count), 10) || 0,
@@ -602,7 +629,11 @@ export class AttestationsRepository {
     return summariseAttempt(row);
   }
 
-  buildDisplayTitle(courseTitle: string, moduleTitle: string | null): string {
-    return buildDisplayTitle(courseTitle, moduleTitle);
+  buildDisplayTitle(
+    courseTitle: string,
+    moduleTitle: string | null,
+    displayKind: 'intermediate' | 'final',
+  ): string {
+    return formatAttestationDisplayTitle(courseTitle, moduleTitle, displayKind);
   }
 }

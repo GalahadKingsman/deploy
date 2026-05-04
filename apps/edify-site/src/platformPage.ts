@@ -685,6 +685,7 @@ if (platformMount) {
       moduleId: string | null;
       scope: 'module' | 'course';
       position: number;
+      displayKind?: 'intermediate' | 'final';
       displayTitle: string;
       questions: BuilderAttestationQuestionV1[];
       createdAt: string;
@@ -6790,8 +6791,13 @@ if (platformMount) {
       if (md) md.style.display = 'none';
     }
 
-    /** Модальное окно выбора области аттестации. `null` — итог по курсу; `undefined` — отмена. */
-    function openBuilderAttestationScopeModal(root: ShadowRoot): Promise<string | null | undefined> {
+    type BuilderAttestationScopeResult = {
+      moduleId: string | null;
+      displayKind: 'intermediate' | 'final';
+    };
+
+    /** Модальное окно выбора области аттестации. `moduleId: null` — к курсу целиком; результат `undefined` — отмена. */
+    function openBuilderAttestationScopeModal(root: ShadowRoot): Promise<BuilderAttestationScopeResult | undefined> {
       return new Promise((resolve) => {
         const bd = root.querySelector('[data-ep-attestation-scope-backdrop]') as HTMLElement | null;
         const md = root.querySelector('[data-ep-attestation-scope-modal]') as HTMLElement | null;
@@ -6889,7 +6895,7 @@ if (platformMount) {
           paint();
         };
 
-        const finish = (v: string | null | undefined): void => {
+        const finish = (v: BuilderAttestationScopeResult | undefined): void => {
           closeBuilderAttestationScopeModal(root);
           bd.removeEventListener('click', onBd);
           confirmBtn.removeEventListener('click', onOk);
@@ -6918,7 +6924,11 @@ if (platformMount) {
             }
             return;
           }
-          finish(picked === '__course__' ? null : picked);
+          if (!kindChoice) return;
+          finish({
+            moduleId: picked === '__course__' ? null : picked,
+            displayKind: kindChoice,
+          });
         };
         const onCancelClick = (): void => finish(undefined);
         const onBackClick = (): void => {
@@ -6946,7 +6956,11 @@ if (platformMount) {
       });
     }
 
-    async function builderCreateAttestation(root: ShadowRoot, moduleId: string | null): Promise<void> {
+    async function builderCreateAttestation(
+      root: ShadowRoot,
+      moduleId: string | null,
+      displayKind?: 'intermediate' | 'final',
+    ): Promise<void> {
       const token = getAccessToken();
       let eid = await resolveBuilderExpertId();
       const cid = expertBuilderCourseId;
@@ -6959,10 +6973,12 @@ if (platformMount) {
         expertBuilderExpertId = owner;
         eid = owner;
       }
+      const dk: 'intermediate' | 'final' =
+        displayKind ?? (moduleId ? 'intermediate' : 'final');
       try {
         const created = await postJson<BuilderAttestationV1>(
           `/experts/${encodeURIComponent(eid)}/courses/${encodeURIComponent(cid)}/attestations`,
-          { moduleId: moduleId ?? null },
+          { moduleId: moduleId ?? null, displayKind: dk },
           token,
         );
         builderEditorMode = 'attestation';
@@ -6980,9 +6996,9 @@ if (platformMount) {
     }
 
     async function builderAddAttestation(root: ShadowRoot): Promise<void> {
-      const moduleId = await openBuilderAttestationScopeModal(root);
-      if (moduleId === undefined) return;
-      await builderCreateAttestation(root, moduleId);
+      const scope = await openBuilderAttestationScopeModal(root);
+      if (!scope) return;
+      await builderCreateAttestation(root, scope.moduleId, scope.displayKind);
     }
 
     async function builderDeleteAttestation(root: ShadowRoot, attestationId: string): Promise<void> {

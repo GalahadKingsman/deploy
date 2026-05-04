@@ -89,13 +89,23 @@ export class ExpertAttestationsController {
     if (moduleId) {
       await this.attestationsRepository.assertModuleInCourse({ courseId, moduleId });
     }
-    const created = await this.attestationsRepository.create({ courseId, moduleId });
+    const created = await this.attestationsRepository.create({
+      courseId,
+      moduleId,
+      displayKind: parsed.data.displayKind,
+    });
     await this.auditService.write({
       actorUserId: req.user?.userId ?? null,
       action: 'expert.attestation.create',
       entityType: 'attestation',
       entityId: created.id,
-      meta: { expertId, courseId, moduleId: moduleId ?? null, scope: created.scope },
+      meta: {
+        expertId,
+        courseId,
+        moduleId: moduleId ?? null,
+        scope: created.scope,
+        displayKind: created.displayKind ?? null,
+      },
       traceId: getTraceId(req),
     });
     return created;

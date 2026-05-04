@@ -39,6 +39,8 @@ export interface ExpertAttestationV1 {
   moduleId: Id | null;
   scope: AttestationScopeV1;
   position: number;
+  /** Для подписи в интерфейсе: промежуточная vs итоговая (независимо от module/course). */
+  displayKind?: 'intermediate' | 'final';
   displayTitle: string;
   questions: AttestationQuestionV1[];
   createdAt: IsoDateTime;
@@ -51,6 +53,7 @@ export const ExpertAttestationV1Schema = z.object({
   moduleId: z.string().nullable(),
   scope: AttestationScopeV1Schema,
   position: z.number().int(),
+  displayKind: z.enum(['intermediate', 'final']).optional(),
   displayTitle: z.string(),
   questions: z.array(AttestationQuestionV1Schema),
   createdAt: z.string(),
@@ -68,6 +71,8 @@ export const ListExpertAttestationsResponseV1Schema = z.object({
 export interface CreateExpertAttestationRequestV1 {
   /** null / отсутствует => итоговая аттестация к курсу */
   moduleId?: Id | null;
+  /** Влияет на текст «промежуточная / итоговая» в интерфейсе. Если не передано — по месту: модуль → intermediate, курс → final. */
+  displayKind?: 'intermediate' | 'final';
 }
 
 /** Пустое тело, пустая строка или отсутствие поля — итоговая аттестация к курсу. */
@@ -76,6 +81,7 @@ export const CreateExpertAttestationRequestV1Schema = z.object({
     (v) => (v === '' || v === undefined ? undefined : v),
     z.union([z.string().min(1), z.null()]).optional(),
   ),
+  displayKind: z.enum(['intermediate', 'final']).optional(),
 });
 
 export interface UpdateExpertAttestationQuestionOptionV1 {
