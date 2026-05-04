@@ -21,6 +21,7 @@ export default defineConfig({
       input: {
         index: path.resolve(root, 'index.html'),
         platform: path.resolve(root, 'platform/index.html'),
+        invite: path.resolve(root, 'invite/index.html'),
       },
     },
   },

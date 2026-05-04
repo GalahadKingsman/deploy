@@ -1,4 +1,4 @@
-import { getReferralAppBaseUrl, getTelegramBotUsername } from './env.js';
+import { getReferralAppBaseUrl, getStudentWebBaseUrl, getTelegramBotUsername } from './env.js';
 
 /** Deep link: открыть бота с payload inv_<code>. */
 export function buildInviteTelegramStartUrl(code: string): string | null {
@@ -7,9 +7,9 @@ export function buildInviteTelegramStartUrl(code: string): string | null {
   return `https://t.me/${encodeURIComponent(bot)}?start=${encodeURIComponent(`inv_${code}`)}`;
 }
 
-/** Webapp: POST /invites/activate после входа. */
+/** Страница на публичном сайте: POST /invites/activate после входа (не Mini App). */
 export function buildInviteWebActivateUrl(code: string): string {
-  return `${getReferralAppBaseUrl()}/invite/${encodeURIComponent(code)}`;
+  return `${getStudentWebBaseUrl()}/invite/${encodeURIComponent(code)}`;
 }
 
 /** Что копируем: основная ссылка зачисления (сайт / Mini App). */

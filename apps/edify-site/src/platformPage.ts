@@ -3414,6 +3414,24 @@ if (platformMount) {
 
       const profileNum = root.querySelector('[data-ep-profile-active-courses]') as HTMLElement | null;
       if (profileNum) profileNum.textContent = String((data.items ?? []).length);
+
+      const wantCourse = (() => {
+        try {
+          return new URL(window.location.href).searchParams.get('course')?.trim() ?? '';
+        } catch {
+          return '';
+        }
+      })();
+      if (wantCourse && myCourseIds.has(wantCourse) && isShellStudentMode(root)) {
+        try {
+          const u = new URL(window.location.href);
+          u.searchParams.delete('course');
+          window.history.replaceState({}, '', u.pathname + u.search + u.hash);
+        } catch {
+          /* ignore */
+        }
+        void openCourse(wantCourse);
+      }
     }
 
     function pluralRu(n: number, forms: readonly [string, string, string]): string {

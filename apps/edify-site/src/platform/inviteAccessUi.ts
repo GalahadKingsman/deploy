@@ -41,7 +41,7 @@ export function renderExpertCourseInvitesPanel(root: ShadowRoot, items: ExpertCo
     webHint.style.color = 'var(--t3)';
     webHint.style.lineHeight = '1.45';
     webHint.textContent =
-      'Ученик должен быть авторизован на сайте или в Mini App. После перехода доступ к курсу активируется автоматически.';
+      'Ссылка для браузера (не окно Mini App в Telegram). Ученик должен войти в аккаунт на этом сайте; после перехода доступ к курсу активируется.';
     const webA = document.createElement('a');
     webA.href = webUrl;
     webA.target = '_blank';

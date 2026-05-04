@@ -21,6 +21,7 @@ import {
   useRevokeCourseInvite,
 } from '../shared/queries/useExpertCourseAccess.js';
 import { webappEnv } from '../shared/env/env.js';
+import { config } from '../shared/config/flags.js';
 
 export function ExpertCourseAccessPage() {
   const toast = useToast();
@@ -135,12 +136,8 @@ export function ExpertCourseAccessPage() {
     return `https://t.me/${encodeURIComponent(unameRaw)}?start=${encodeURIComponent(`inv_${code}`)}`;
   };
 
-  const buildWebInviteUrl = (code: string) => {
-    if (typeof window === 'undefined') {
-      return `https://app.edify.su/invite/${encodeURIComponent(code)}`;
-    }
-    return `${window.location.origin.replace(/\/$/, '')}/invite/${encodeURIComponent(code)}`;
-  };
+  const buildWebInviteUrl = (code: string) =>
+    `${config.STUDENT_WEB_BASE_URL}/invite/${encodeURIComponent(code)}`;
 
   const copyText = async (text: string) => {
     // Telegram WebView часто режет navigator.clipboard. Делаем best-effort и не считаем это ошибкой создания.
@@ -185,9 +182,9 @@ export function ExpertCourseAccessPage() {
         <CardHeader>
           <CardTitle style={{ fontSize: 'var(--text-md)' }}>Инвайт-ссылка на зачисление</CardTitle>
           <CardDescription>
-            Пользователь открывает ссылку на это приложение (или бота в Telegram), уже будучи авторизованным — доступ к
-            курсу активируется автоматически. Лимит срабатываний ограничивается. Короткий код в списке — это токен;
-            ученику отправляйте полную ссылку ниже.
+            Браузерная ссылка ведёт на сайт edify.su (не окно Mini App). Telegram — через бота или доп. ссылку ниже.
+            Ученик уже должен быть авторизован — тогда доступ к курсу активируется автоматически. Лимит срабатываний
+            ограничивается; ученику отправляйте полную ссылку, не только код.
           </CardDescription>
         </CardHeader>
         <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>

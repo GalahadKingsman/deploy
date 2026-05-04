@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="edify-api-base" content="https://api.edify.su">
+  <meta name="edify-student-web-base" content="https://edify.su">
+  <title>Инвайт — EDIFY</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: Manrope, system-ui, sans-serif; margin: 0; min-height: 100dvh; background: #0c1214; color: #e8eef0; display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; }
+    #invite-root { max-width: 420px; line-height: 1.55; font-size: 15px; }
+    #invite-root a { color: #5ecfff; }
+    .spinner { width: 28px; height: 28px; border: 3px solid rgba(255,255,255,.15); border-top-color: #5ecfff; border-radius: 50%; animation: spin .85s linear infinite; margin-bottom: 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div id="invite-root">
+    <div class="spinner" aria-hidden="true"></div>
+    <div>Активация приглашения…</div>
+  </div>
+  <script type="module" src="/src/inviteLanding.ts"></script>
+</body>
+</html>

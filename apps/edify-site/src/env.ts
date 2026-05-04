@@ -57,3 +57,21 @@ export function getReferralAppBaseUrl(): string {
   }
   return 'https://app.edify.su';
 }
+
+/**
+ * Публичный сайт (браузер, не Mini App): инвайт `…/invite/<код>`, лендинг, `/platform/`.
+ * Переопределение: `VITE_STUDENT_WEB_BASE_URL` или `<meta name="edify-student-web-base" content="https://edify.su">`.
+ * По умолчанию — origin страницы в браузере, иначе `https://edify.su`.
+ */
+export function getStudentWebBaseUrl(): string {
+  const fromEnv = import.meta.env.VITE_STUDENT_WEB_BASE_URL;
+  if (typeof fromEnv === 'string' && fromEnv.trim()) return fromEnv.trim().replace(/\/$/, '');
+  if (typeof document !== 'undefined') {
+    const m = document.querySelector('meta[name="edify-student-web-base"]')?.getAttribute('content');
+    if (typeof m === 'string' && m.trim()) return m.trim().replace(/\/$/, '');
+  }
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin.replace(/\/$/, '');
+  }
+  return 'https://edify.su';
+}
