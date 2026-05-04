@@ -1184,6 +1184,36 @@ textarea.form-input{resize:vertical;min-height:80px}
   grid-template-columns:repeat(4, minmax(0, 1fr));
   gap:10px;
 }
+/* S-LESSON: левая колонка (как e-builder) — шапка курса фикс, дерево в прокрутке */
+.ep-s-lesson-layout{
+  align-items:stretch;
+}
+.ep-s-lesson-tree{
+  width:240px;
+  flex-shrink:0;
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  align-self:stretch;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--r3);
+  overflow:hidden;
+}
+.ep-s-lesson-tree__head{
+  flex-shrink:0;
+  padding:14px 14px 10px;
+}
+.ep-s-lesson-tree-scroll{
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  padding:0 14px 14px;
+  overscroll-behavior:contain;
+}
+
 @media (max-width: 920px){
   .ep-slider-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
@@ -1638,6 +1668,16 @@ textarea.form-input{resize:vertical;min-height:80px}
     height:auto !important;
     flex:0 0 auto !important;
     order:2;
+    display:flex !important;
+    flex-direction:column !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+  .ep-s-lesson-tree-scroll{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    overflow-y:auto !important;
+    -webkit-overflow-scrolling:touch;
   }
   .ep-s-lesson-main{
     flex:1 1 auto !important;

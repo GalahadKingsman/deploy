@@ -44,6 +44,23 @@ function resolvePublicUrl(url: string): string {
   return api ? `${api}${raw}` : raw;
 }
 
+/** Deep link: открыть бота с payload inv_<code> (как в боте /start). */
+function buildInviteTelegramStartUrl(code: string): string | null {
+  const bot = getTelegramBotUsername();
+  if (!bot) return null;
+  return `https://t.me/${encodeURIComponent(bot)}?start=${encodeURIComponent(`inv_${code}`)}`;
+}
+
+/** Страница Mini App / webapp: после входа вызывается POST /invites/activate. */
+function buildInviteWebActivateUrl(code: string): string {
+  return `${getReferralAppBaseUrl()}/invite/${encodeURIComponent(code)}`;
+}
+
+/** Что копируем в буфер: предпочитаем Telegram, иначе веб. */
+function resolveInviteCopyUrl(code: string): string {
+  return buildInviteTelegramStartUrl(code) ?? buildInviteWebActivateUrl(code);
+}
+
 function extractFileKey(raw: string): string {
   const v = (raw || '').trim();
   if (!v) return '';
@@ -8044,17 +8061,6 @@ if (platformMount) {
       if (platformCard) platformCard.style.display = isOwner ? '' : 'none';
     }
 
-    function buildInviteDeepLink(code: string): string | null {
-      try {
-        const meta = document.querySelector('meta[name="edify-telegram-bot"]') as HTMLMetaElement | null;
-        const unameRaw = (meta?.content ?? '').trim().replace(/^@/, '');
-        if (!unameRaw) return null;
-        return `https://t.me/${encodeURIComponent(unameRaw)}?start=${encodeURIComponent(`inv_${code}`)}`;
-      } catch {
-        return null;
-      }
-    }
-
     function formatUserTitle(u: { username?: string | null; firstName?: string | null; lastName?: string | null; telegramUserId?: string | null }): string {
       const un = (u.username ?? '').trim();
       const fn = (u.firstName ?? '').trim();
@@ -8273,12 +8279,49 @@ if (platformMount) {
         meta.textContent = `использований: ${used}/${limit}`;
         top.append(strong, meta);
 
-        const link = buildInviteDeepLink(i.code);
-        const linkEl = document.createElement('div');
-        linkEl.style.fontSize = '12px';
-        linkEl.style.color = 'var(--t2)';
-        linkEl.style.wordBreak = 'break-all';
-        linkEl.textContent = link ?? `Код: ${i.code}`;
+        const tgUrl = buildInviteTelegramStartUrl(i.code);
+        const webUrl = buildInviteWebActivateUrl(i.code);
+        const linkBlock = document.createElement('div');
+        linkBlock.style.display = 'flex';
+        linkBlock.style.flexDirection = 'column';
+        linkBlock.style.gap = '6px';
+
+        const webLab = document.createElement('div');
+        webLab.style.fontSize = '10px';
+        webLab.style.color = 'var(--t3)';
+        webLab.style.fontFamily = 'var(--fm)';
+        webLab.style.textTransform = 'uppercase';
+        webLab.style.letterSpacing = '0.06em';
+        webLab.textContent = 'Ссылка для ученика (браузер / Mini App, нужен вход)';
+        const webA = document.createElement('a');
+        webA.href = webUrl;
+        webA.target = '_blank';
+        webA.rel = 'noopener noreferrer';
+        webA.style.fontSize = '12px';
+        webA.style.color = 'var(--a)';
+        webA.style.wordBreak = 'break-all';
+        webA.textContent = webUrl;
+        linkBlock.append(webLab, webA);
+
+        if (tgUrl) {
+          const tgLab = document.createElement('div');
+          tgLab.style.fontSize = '10px';
+          tgLab.style.color = 'var(--t3)';
+          tgLab.style.fontFamily = 'var(--fm)';
+          tgLab.style.textTransform = 'uppercase';
+          tgLab.style.letterSpacing = '0.06em';
+          tgLab.style.marginTop = '4px';
+          tgLab.textContent = 'Или через Telegram';
+          const tgA = document.createElement('a');
+          tgA.href = tgUrl;
+          tgA.target = '_blank';
+          tgA.rel = 'noopener noreferrer';
+          tgA.style.fontSize = '12px';
+          tgA.style.color = 'var(--a)';
+          tgA.style.wordBreak = 'break-all';
+          tgA.textContent = tgUrl;
+          linkBlock.append(tgLab, tgA);
+        }
 
         const actions = document.createElement('div');
         actions.style.display = 'flex';
@@ -8288,9 +8331,9 @@ if (platformMount) {
         const copyBtn = document.createElement('button');
         copyBtn.type = 'button';
         copyBtn.className = 'btn btn-outline btn-sm';
-        copyBtn.textContent = 'Скопировать';
+        copyBtn.textContent = 'Скопировать ссылку';
         copyBtn.dataset.epAccessInviteCopy = i.code;
-        copyBtn.disabled = !link;
+        copyBtn.disabled = false;
 
         const revokeBtn = document.createElement('button');
         revokeBtn.type = 'button';
@@ -8299,7 +8342,7 @@ if (platformMount) {
         revokeBtn.dataset.epAccessInviteRevoke = i.code;
 
         actions.append(copyBtn, revokeBtn);
-        card.append(top, linkEl, actions);
+        card.append(top, linkBlock, actions);
         host.appendChild(card);
       }
     }
@@ -10250,11 +10293,7 @@ if (platformMount) {
       const invCopyCode = invCopyBtn?.dataset.epAccessInviteCopy;
       if (invCopyCode) {
         ev.preventDefault();
-        const link = buildInviteDeepLink(invCopyCode);
-        if (!link) {
-          window.alert('Не удалось сформировать ссылку: укажите meta[name="edify-telegram-bot"] на странице.');
-          return;
-        }
+        const link = resolveInviteCopyUrl(invCopyCode);
         void (async () => {
           const ok = await copyText(link);
           window.alert(ok ? 'Ссылка скопирована.' : `Ссылка: ${link}`);

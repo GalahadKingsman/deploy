@@ -536,7 +536,7 @@
 
         <div class="card" style="padding:16px 18px;border-radius:var(--r2)">
           <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Инвайт‑ссылки</div>
-          <div style="font-size:12px;color:var(--t3);line-height:1.55;margin-bottom:12px">Создайте инвайт и отправьте ученику. Лимит активаций настраивается.</div>
+          <div style="font-size:12px;color:var(--t3);line-height:1.55;margin-bottom:12px">Создайте инвайт и отправьте ученику ссылку (веб и при необходимости Telegram). Лимит активаций настраивается. Код в списке — внутренний идентификатор; рабочие ссылки показаны ниже.</div>
           <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px">
             <div style="width:140px">
               <div class="form-label">Лимит</div>
@@ -1036,10 +1036,14 @@
     style="display:flex;gap:20px;height:calc(100vh - 56px - 56px);overflow:hidden"
   >
     <!-- Module tree -->
-    <div class="ep-s-lesson-tree" style="width:240px;flex-shrink:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);padding:14px;overflow-y:auto;height:fit-content">
-      <div data-ep-course-title style="font-family:var(--fd);font-size:11px;font-weight:700;color:var(--t1);margin-bottom:2px">—</div>
-      <div class="prog-wrap" style="margin:8px 0 14px"><div class="prog-bar"><div class="prog-fill" style="width:0%"></div></div><div class="prog-val">—</div></div>
-      <div class="mod-tree" data-ep-lesson-tree></div>
+    <div class="ep-s-lesson-tree">
+      <div class="ep-s-lesson-tree__head">
+        <div data-ep-course-title style="font-family:var(--fd);font-size:11px;font-weight:700;color:var(--t1);margin-bottom:2px">—</div>
+        <div class="prog-wrap" style="margin:8px 0 0"><div class="prog-bar"><div class="prog-fill" style="width:0%"></div></div><div class="prog-val">—</div></div>
+      </div>
+      <div class="ep-s-lesson-tree-scroll">
+        <div class="mod-tree" data-ep-lesson-tree></div>
+      </div>
     </div>
 
     <!-- Main lesson area -->

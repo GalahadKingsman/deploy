@@ -127,14 +127,19 @@ export function ExpertCourseAccessPage() {
   const rows = data.items ?? [];
   const inviteRows = (invites.data?.items ?? []).filter((i) => !revokedInviteCodes[i.code]);
 
-  const buildDeepLink = (code: string) => {
+  const buildTelegramInviteUrl = (code: string) => {
     const unameRaw = (webappEnv as any).VITE_TELEGRAM_BOT_USERNAME
       ? String((webappEnv as any).VITE_TELEGRAM_BOT_USERNAME).trim().replace(/^@/, '')
       : '';
     if (!unameRaw) return null;
-    // Works without BotFather "Mini App short name": Telegram opens bot and user presses Start.
-    // Payload is delivered as /start inv_<code> so bot can show a WebApp button that opens /invite/<code>.
     return `https://t.me/${encodeURIComponent(unameRaw)}?start=${encodeURIComponent(`inv_${code}`)}`;
+  };
+
+  const buildWebInviteUrl = (code: string) => {
+    if (typeof window === 'undefined') {
+      return `https://app.edify.su/invite/${encodeURIComponent(code)}`;
+    }
+    return `${window.location.origin.replace(/\/$/, '')}/invite/${encodeURIComponent(code)}`;
   };
 
   const copyText = async (text: string) => {
@@ -180,8 +185,9 @@ export function ExpertCourseAccessPage() {
         <CardHeader>
           <CardTitle style={{ fontSize: 'var(--text-md)' }}>Инвайт-ссылка на зачисление</CardTitle>
           <CardDescription>
-            Сгенерируйте ссылку и отправьте её пользователю. Он откроет бота, нажмёт кнопку Mini App, авторизуется и
-            будет автоматически зачислен на курс. Лимит срабатываний ограничивается.
+            Пользователь открывает ссылку на это приложение (или бота в Telegram), уже будучи авторизованным — доступ к
+            курсу активируется автоматически. Лимит срабатываний ограничивается. Короткий код в списке — это токен;
+            ученику отправляйте полную ссылку ниже.
           </CardDescription>
         </CardHeader>
         <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
@@ -197,15 +203,6 @@ export function ExpertCourseAccessPage() {
               variant="primary"
               disabled={createInvite.isPending}
               onClick={async () => {
-                if (!buildDeepLink('test')) {
-                  toast.show({
-                    title: 'Нужна настройка Telegram',
-                    message:
-                      'Задайте VITE_TELEGRAM_BOT_USERNAME при сборке фронта.',
-                    variant: 'info',
-                  });
-                  return;
-                }
                 const n = parseInt(inviteMaxUses.trim() || '1', 10);
                 if (!Number.isFinite(n) || n < 1 || n > 10_000) {
                   toast.show({ title: 'Лимит: 1…10000', variant: 'info' });
@@ -213,17 +210,14 @@ export function ExpertCourseAccessPage() {
                 }
                 try {
                   const created = await createInvite.mutateAsync({ maxUses: n });
-                  const link = buildDeepLink(created.code);
-                  if (link) {
-                    const copied = await copyText(link);
-                    toast.show({
-                      title: copied.ok ? 'Ссылка скопирована' : 'Ссылка создана',
-                      message: copied.ok ? undefined : link,
-                      variant: 'success',
-                    });
-                  } else {
-                    toast.show({ title: 'Инвайт создан', message: `Код: ${created.code}`, variant: 'success' });
-                  }
+                  const tg = buildTelegramInviteUrl(created.code);
+                  const toCopy = tg ?? buildWebInviteUrl(created.code);
+                  const copied = await copyText(toCopy);
+                  toast.show({
+                    title: copied.ok ? 'Ссылка скопирована' : 'Инвайт создан',
+                    message: copied.ok ? undefined : toCopy,
+                    variant: 'success',
+                  });
                 } catch {
                   toast.show({ title: 'Ошибка', message: 'Не удалось создать инвайт', variant: 'error' });
                 }
@@ -233,9 +227,10 @@ export function ExpertCourseAccessPage() {
             </Button>
           </div>
 
-          {!buildDeepLink('test') && (
+          {!buildTelegramInviteUrl('x') && (
             <div style={{ color: 'var(--muted-fg)', fontSize: 'var(--text-sm)' }}>
-              Чтобы формировались ссылки, задайте <code>VITE_TELEGRAM_BOT_USERNAME</code> при сборке фронта.
+              Дополнительно: для ссылки вида t.me/… задайте <code>VITE_TELEGRAM_BOT_USERNAME</code> при сборке. Без неё
+              доступна ссылка на это приложение: <code>…/invite/&lt;код&gt;</code>.
             </div>
           )}
 
@@ -252,7 +247,9 @@ export function ExpertCourseAccessPage() {
           {inviteRows.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
               {inviteRows.map((i) => {
-                const link = buildDeepLink(i.code);
+                const tgLink = buildTelegramInviteUrl(i.code);
+                const webLink = buildWebInviteUrl(i.code);
+                const copyTarget = tgLink ?? webLink;
                 const limit = i.maxUses == null ? '∞' : String(i.maxUses);
                 const used = i.usesCount ?? 0;
                 const exhausted = i.maxUses != null && used >= i.maxUses;
@@ -270,7 +267,7 @@ export function ExpertCourseAccessPage() {
                     }}
                   >
                     <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', alignItems: 'center' }}>
-                      <strong>{i.code}</strong>
+                      <strong title="Внутренний код инвайта">{i.code}</strong>
                       <span style={{ color: exhausted ? 'var(--destructive, #c44)' : 'var(--muted-fg)' }}>
                         использований: {used}/{limit}
                       </span>
@@ -280,25 +277,34 @@ export function ExpertCourseAccessPage() {
                         </span>
                       )}
                     </div>
-                    <div style={{ color: 'var(--muted-fg)', wordBreak: 'break-all' }}>
-                      {link ?? 'Укажите bot username, чтобы сформировать ссылку.'}
+                    <div style={{ color: 'var(--muted-fg)', wordBreak: 'break-all', fontSize: 'var(--text-sm)' }}>
+                      <div style={{ marginBottom: 'var(--sp-1)', fontWeight: 600, color: 'var(--fg)' }}>
+                        Ссылка для ученика (браузер / Mini App)
+                      </div>
+                      {webLink}
                     </div>
+                    {tgLink ? (
+                      <div style={{ color: 'var(--muted-fg)', wordBreak: 'break-all', fontSize: 'var(--text-sm)' }}>
+                        <div style={{ marginBottom: 'var(--sp-1)', fontWeight: 600, color: 'var(--fg)' }}>
+                          Или Telegram
+                        </div>
+                        {tgLink}
+                      </div>
+                    ) : null}
                     <div style={{ color: 'var(--muted-fg)', fontSize: 'var(--text-xs)' }}>
-                      Если deep-link не сработал, откройте бота и отправьте: <code>/inv {i.code}</code>
+                      В боте можно также: <code>/inv {i.code}</code>
                     </div>
                     <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
                       <Button
                         variant="secondary"
                         size="sm"
-                        disabled={!link}
                         onClick={async () => {
-                          if (!link) return;
-                        const copied = await copyText(link);
-                        toast.show({
-                          title: copied.ok ? 'Скопировано' : 'Ссылка готова',
-                          message: copied.ok ? undefined : link,
-                          variant: 'success',
-                        });
+                          const copied = await copyText(copyTarget);
+                          toast.show({
+                            title: copied.ok ? 'Скопировано' : 'Ссылка готова',
+                            message: copied.ok ? undefined : copyTarget,
+                            variant: 'success',
+                          });
                         }}
                       >
                         Копировать ссылку
