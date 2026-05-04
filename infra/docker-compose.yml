@@ -1,5 +1,10 @@
 version: '3.9'
 
+# Локальная инфраструктура: Postgres, Redis, MinIO. API обычно запускают через pnpm (читает корневой .env).
+# Полный стек с API и пробросом PAYMENTS_* / TINKOFF_* в контейнер: корневой docker-compose.yml или
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d
+# (те же переменные в services.api.environment — см. docker-compose.prod.yml).
+
 services:
   postgres:
     image: postgres:16-alpine

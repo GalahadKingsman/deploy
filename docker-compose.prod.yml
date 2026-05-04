@@ -2,6 +2,7 @@
 # Webapp: собери статику (pnpm --filter @tracked/webapp build) и отдавай через nginx.
 #
 # Запуск из корня репозитория:
+#   docker compose --env-file .env up -d --build   (через docker-compose.yml → include этого файла)
 #   docker compose -f docker-compose.prod.yml --env-file .env up -d --build
 #
 # Подставь домены/секреты в .env; для BOT_API_BASE_URL внутри сети compose:
@@ -108,6 +109,20 @@ services:
       S3_REGION: ${S3_REGION:-us-east-1}
       S3_BUCKET: ${MINIO_BUCKET:-tracked-prod}
       S3_FORCE_PATH_STYLE: 'true'
+      # Платежи: переменные из `--env-file .env` попадают в контейнер только если перечислены здесь.
+      # VITE_PAYMENTS_ENABLED — при сборке лендинга; на API не влияет.
+      PAYMENTS_ENABLED: ${PAYMENTS_ENABLED:-0}
+      PAYMENTS_REFERRAL_COMMISSION_BPS: ${PAYMENTS_REFERRAL_COMMISSION_BPS:-0}
+      EXPERT_SUBSCRIPTION_CHECKOUT_PERIOD_DAYS: ${EXPERT_SUBSCRIPTION_CHECKOUT_PERIOD_DAYS:-30}
+      EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS: ${EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS:-}
+      TINKOFF_TERMINAL_KEY: ${TINKOFF_TERMINAL_KEY:-}
+      TINKOFF_PASSWORD: ${TINKOFF_PASSWORD:-}
+      TINKOFF_API_BASE_URL: ${TINKOFF_API_BASE_URL:-https://securepay.tinkoff.ru}
+      TINKOFF_NOTIFICATION_URL: ${TINKOFF_NOTIFICATION_URL:-}
+      TINKOFF_SUCCESS_URL: ${TINKOFF_SUCCESS_URL:-}
+      TINKOFF_FAIL_URL: ${TINKOFF_FAIL_URL:-}
+      TINKOFF_RECEIPT_TAXATION: ${TINKOFF_RECEIPT_TAXATION:-usn_income}
+      TINKOFF_RECEIPT_TAX: ${TINKOFF_RECEIPT_TAX:-none}
     ports:
       - '${API_PORT:-3001}:3001'
     depends_on:
