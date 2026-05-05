@@ -28,7 +28,7 @@ export function getTelegramSupportUrl(): string {
 }
 
 /**
- * Базовый URL веб-приложения / мини-аппа, где в `main.tsx` сохраняется `?ref=` (реферальная ссылка).
+ * Базовый URL страницы, куда ведёт реферальная ссылка `?ref=` (лендинг edify.su: `main.ts` сохраняет код в localStorage).
  * Переопределение: `VITE_REFERRAL_APP_BASE_URL` или `<meta name="edify-referral-app-base" content="https://…">`.
  */
 /**
@@ -55,7 +55,13 @@ export function getReferralAppBaseUrl(): string {
     const m = document.querySelector('meta[name="edify-referral-app-base"]')?.getAttribute('content');
     if (typeof m === 'string' && m.trim()) return m.trim().replace(/\/$/, '');
   }
-  return 'https://app.edify.su';
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    const h = window.location.hostname;
+    // Кабинет на app.* — реферал всё равно должен открывать маркетинговый сайт, где обрабатывается ?ref=.
+    if (h === 'app.edify.su') return 'https://edify.su';
+    if (window.location.origin) return window.location.origin.replace(/\/$/, '');
+  }
+  return 'https://edify.su';
 }
 
 /**
