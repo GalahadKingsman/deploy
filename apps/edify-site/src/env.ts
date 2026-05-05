@@ -27,10 +27,18 @@ export function getTelegramSupportUrl(): string {
   return `https://t.me/${bot}?start=support`;
 }
 
-/**
- * Базовый URL страницы, куда ведёт реферальная ссылка `?ref=` (лендинг edify.su: `main.ts` сохраняет код в localStorage).
- * Переопределение: `VITE_REFERRAL_APP_BASE_URL` или `<meta name="edify-referral-app-base" content="https://…">`.
- */
+/** Старый домен приложения в реф-ссылке → всегда маркетинговый лендинг. */
+function normalizeReferralMarketingBase(base: string): string {
+  const trimmed = base.trim().replace(/\/$/, '');
+  try {
+    const host = new URL(trimmed).hostname.toLowerCase();
+    if (host === 'app.edify.su') return 'https://edify.su';
+  } catch {
+    /* ignore invalid URL */
+  }
+  return trimmed;
+}
+
 /**
  * Лендинг: выключить кнопку оплаты явно — `VITE_PAYMENTS_ENABLED=0` / `false`.
  * Если переменная не задана при сборке, считаем оплату доступной (проверка на API).
@@ -48,18 +56,29 @@ export function isLandingPaymentsUiEnabled(): boolean {
   }
 }
 
+/**
+ * Базовый URL для реферальной ссылки `?ref=` (обработка на edify.su).
+ * Приоритет: `VITE_REFERRAL_APP_BASE_URL` → meta `edify-referral-app-base` → `window.location.origin` → `https://edify.su`.
+ * Значения с хостом `app.edify.su` (в т.ч. из старой сборки в env) переписываются на `https://edify.su`.
+ */
 export function getReferralAppBaseUrl(): string {
   const fromEnv = import.meta.env.VITE_REFERRAL_APP_BASE_URL;
-  if (typeof fromEnv === 'string' && fromEnv.trim()) return fromEnv.trim().replace(/\/$/, '');
+  if (typeof fromEnv === 'string' && fromEnv.trim()) {
+    return normalizeReferralMarketingBase(fromEnv.trim().replace(/\/$/, ''));
+  }
   if (typeof document !== 'undefined') {
     const m = document.querySelector('meta[name="edify-referral-app-base"]')?.getAttribute('content');
-    if (typeof m === 'string' && m.trim()) return m.trim().replace(/\/$/, '');
+    if (typeof m === 'string' && m.trim()) {
+      return normalizeReferralMarketingBase(m.trim().replace(/\/$/, ''));
+    }
   }
   if (typeof window !== 'undefined' && window.location?.hostname) {
     const h = window.location.hostname;
     // Кабинет на app.* — реферал всё равно должен открывать маркетинговый сайт, где обрабатывается ?ref=.
     if (h === 'app.edify.su') return 'https://edify.su';
-    if (window.location.origin) return window.location.origin.replace(/\/$/, '');
+    if (window.location.origin) {
+      return normalizeReferralMarketingBase(window.location.origin.replace(/\/$/, ''));
+    }
   }
   return 'https://edify.su';
 }
