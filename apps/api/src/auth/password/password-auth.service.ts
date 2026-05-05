@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ContractsV1, ErrorCodes } from '@tracked/shared';
 import { UsersRepository } from '../../users/users.repository.js';
+import { ReferralAttributionService } from '../../users/referral-attribution.service.js';
 import { JwtService } from '../session/jwt.service.js';
 
 @Injectable()
@@ -9,6 +10,7 @@ export class PasswordAuthService {
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly jwtService: JwtService,
+    private readonly referralAttribution: ReferralAttributionService,
   ) {}
 
   async register(input: ContractsV1.AuthRegisterRequestV1): Promise<ContractsV1.AuthPasswordResponseV1> {
@@ -33,6 +35,11 @@ export class PasswordAuthService {
       lastName,
     });
 
+    await this.referralAttribution.tryAttributeByCode({
+      userId: user.id,
+      rawCode: input.referralAttributionCode ?? null,
+    });
+
     const accessToken = this.jwtService.signAccessToken({
       userId: user.id,
       telegramUserId: user.telegramUserId ?? '',
@@ -51,6 +58,11 @@ export class PasswordAuthService {
 
     const ok = await bcrypt.compare(password, hash);
     if (!ok) return null;
+
+    await this.referralAttribution.tryAttributeByCode({
+      userId: user.id,
+      rawCode: input.referralAttributionCode ?? null,
+    });
 
     const accessToken = this.jwtService.signAccessToken({
       userId: user.id,

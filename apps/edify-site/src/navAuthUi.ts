@@ -1,6 +1,7 @@
 import { getApiBaseUrl, getTelegramBotUsername } from './env.js';
 import { getAvatarImageSrc } from './avatarImageUrl.js';
 import { clearAccessToken, getAccessToken, setAccessToken } from './authSession.js';
+import { getStoredReferralCode } from './referralAttribution.js';
 
 declare global {
   interface Window {
@@ -267,6 +268,7 @@ function openAuthModal(mode: AuthMode): void {
       }
 
       const path = mode === 'register' ? '/auth/register' : '/auth/login';
+      const referralAttributionCode = getStoredReferralCode();
       const body =
         mode === 'register'
           ? {
@@ -274,8 +276,13 @@ function openAuthModal(mode: AuthMode): void {
               lastName: lastName.value.trim(),
               email: email.value.trim(),
               password: password.value,
+              referralAttributionCode,
             }
-          : { email: email.value.trim(), password: password.value };
+          : {
+              email: email.value.trim(),
+              password: password.value,
+              referralAttributionCode,
+            };
       const res = await fetch(`${api}${path}`, {
         method: 'POST',
         headers: { accept: 'application/json', 'content-type': 'application/json' },

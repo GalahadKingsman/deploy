@@ -56,6 +56,8 @@ export interface AuthRegisterRequestV1 {
   lastName: string;
   email: string;
   password: string;
+  /** Опциональный реферальный код пригласившего (?ref= с лендинга). First-wins на бэке. */
+  referralAttributionCode?: string | null;
 }
 
 export const AuthRegisterRequestV1Schema = z.object({
@@ -63,17 +65,21 @@ export const AuthRegisterRequestV1Schema = z.object({
   lastName: z.string().min(1).max(80),
   email: z.string().email().max(320),
   password: z.string().min(8).max(200),
+  referralAttributionCode: z.string().min(1).max(64).nullable().optional(),
 });
 
 /** POST /auth/login */
 export interface AuthLoginRequestV1 {
   email: string;
   password: string;
+  /** Опциональный реферальный код пригласившего (?ref= с лендинга). First-wins на бэке. */
+  referralAttributionCode?: string | null;
 }
 
 export const AuthLoginRequestV1Schema = z.object({
   email: z.string().email().max(320),
   password: z.string().min(1).max(200),
+  referralAttributionCode: z.string().min(1).max(64).nullable().optional(),
 });
 
 /** Auth response for email+password */

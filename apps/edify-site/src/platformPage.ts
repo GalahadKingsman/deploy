@@ -13,6 +13,10 @@ import { setRichTextWithLinks } from './renderTextWithLinksDom.js';
 import { applyUserAvatarToElement } from './userAvatarEl.js';
 import { resolveInviteCopyUrl } from './inviteLinks.js';
 import { renderExpertCourseInvitesPanel } from './platform/inviteAccessUi.js';
+import { captureReferralFromUrl } from './referralAttribution.js';
+
+// На /platform/ модалку не показываем — только запоминаем код, чтобы он улетел при checkout.
+captureReferralFromUrl();
 
 function renderAuthGate(): void {
   document.body.classList.add('platform-gate');
@@ -1382,6 +1386,24 @@ if (platformMount) {
       }
     }
 
+    function formatRefDateRu(iso: string | null | undefined): string {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return '';
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yyyy = String(d.getFullYear());
+      return `${dd}.${mm}.${yyyy}`;
+    }
+
+    function refInitialsFromDisplayName(name: string): string {
+      const parts = name.trim().split(/\s+/).filter(Boolean);
+      const a = parts[0]?.[0] ?? '';
+      const b = parts[1]?.[0] ?? parts[0]?.[1] ?? '';
+      const out = (a + b).toUpperCase();
+      return out || 'ED';
+    }
+
     async function hydrateExpertReferralScreen(root: ShadowRoot): Promise<void> {
       const token = getAccessToken();
       const codeEl = root.querySelector('[data-ep-referral-code]') as HTMLElement | null;
@@ -1389,6 +1411,13 @@ if (platformMount) {
       const invitedEl = root.querySelector('[data-ep-referral-stat-invited]') as HTMLElement | null;
       const paidEl = root.querySelector('[data-ep-referral-stat-paid]') as HTMLElement | null;
       const accruedEl = root.querySelector('[data-ep-referral-stat-accrued]') as HTMLElement | null;
+      const inviterRoot = root.querySelector('[data-ep-referral-inviter]') as HTMLElement | null;
+      const inviterAvatar = root.querySelector('[data-ep-referral-inviter-avatar]') as HTMLElement | null;
+      const inviterName = root.querySelector('[data-ep-referral-inviter-name]') as HTMLElement | null;
+      const inviterDate = root.querySelector('[data-ep-referral-inviter-date]') as HTMLElement | null;
+      const inviteesRoot = root.querySelector('[data-ep-referral-invitees]') as HTMLElement | null;
+      const inviteesEmpty = root.querySelector('[data-ep-referral-invitees-empty]') as HTMLElement | null;
+      const inviteesList = root.querySelector('[data-ep-referral-invitees-list]') as HTMLElement | null;
       expertReferralShareLink = '';
       const setErr = (msg: string) => {
         if (codeEl) codeEl.textContent = '—';
@@ -1400,6 +1429,9 @@ if (platformMount) {
         if (paidEl) paidEl.textContent = '—';
         if (accruedEl) accruedEl.textContent = '—';
       };
+      if (inviterRoot) inviterRoot.style.display = 'none';
+      if (inviteesList) inviteesList.replaceChildren();
+      if (inviteesEmpty) inviteesEmpty.style.display = '';
       if (!token) {
         setErr('Войдите, чтобы увидеть реферальную ссылку');
         return;
@@ -1430,6 +1462,118 @@ if (platformMount) {
         }
       } catch {
         setErr('Не удалось загрузить данные. Обновите страницу.');
+      }
+
+      // «Вас пригласил …»
+      try {
+        const inviter = await fetchJson<{
+          inviter: {
+            userId: string;
+            firstName: string | null;
+            lastName: string | null;
+            avatarUrl: string | null;
+            displayName: string;
+          } | null;
+          referredAt: string | null;
+        }>('/me/referral/inviter', token);
+        if (inviter.inviter && inviterRoot && inviterName && inviterAvatar) {
+          inviterRoot.style.display = '';
+          inviterName.textContent = inviter.inviter.displayName;
+          applyUserAvatarToElement(
+            inviterAvatar,
+            inviter.inviter.avatarUrl,
+            refInitialsFromDisplayName(inviter.inviter.displayName),
+          );
+          if (inviterDate) {
+            const d = formatRefDateRu(inviter.referredAt);
+            inviterDate.textContent = d ? `Вы присоединились ${d}` : '';
+          }
+        }
+      } catch {
+        /* блок необязательный — просто скрыт */
+      }
+
+      // «Кого вы пригласили»
+      try {
+        const data = await fetchJson<{
+          items: Array<{
+            userId: string;
+            firstName: string | null;
+            lastName: string | null;
+            avatarUrl: string | null;
+            displayName: string;
+            subscriptionActive: boolean;
+            commissionTotalCents: number;
+            referredAt: string;
+            firstPaidExpertSubscriptionAt: string | null;
+          }>;
+        }>('/me/referral/invitees', token);
+        const items = Array.isArray(data.items) ? data.items : [];
+        if (inviteesEmpty) inviteesEmpty.style.display = items.length === 0 ? '' : 'none';
+        if (inviteesList) {
+          inviteesList.replaceChildren();
+          for (const it of items) {
+            const row = document.createElement('div');
+            row.className = 'ep-ref-invitee';
+
+            const av = document.createElement('div');
+            av.className = 'ep-ref-invitee__avatar';
+            applyUserAvatarToElement(av, it.avatarUrl, refInitialsFromDisplayName(it.displayName));
+
+            const main = document.createElement('div');
+            main.className = 'ep-ref-invitee__main';
+
+            const name = document.createElement('div');
+            name.className = 'ep-ref-invitee__name';
+            name.textContent = it.displayName;
+            name.title = it.displayName;
+
+            const meta = document.createElement('div');
+            meta.className = 'ep-ref-invitee__meta';
+            const since = document.createElement('span');
+            since.textContent = `Присоединился ${formatRefDateRu(it.referredAt)}`;
+            meta.appendChild(since);
+            const badge = document.createElement('span');
+            badge.className = `ep-ref-invitee__badge ${
+              it.subscriptionActive ? 'ep-ref-invitee__badge--active' : 'ep-ref-invitee__badge--inactive'
+            }`;
+            badge.textContent = it.subscriptionActive ? 'Подписка эксперта активна' : 'Подписка эксперта не активна';
+            meta.appendChild(badge);
+
+            main.append(name, meta);
+
+            const side = document.createElement('div');
+            side.className = 'ep-ref-invitee__side';
+
+            const cents = Math.max(0, Math.trunc(Number(it.commissionTotalCents ?? 0)) || 0);
+            const amount = document.createElement('div');
+            amount.className =
+              cents > 0 ? 'ep-ref-invitee__amount' : 'ep-ref-invitee__amount ep-ref-invitee__amount--zero';
+            amount.textContent = `${Math.round(cents / 100).toLocaleString('ru-RU')}\u00a0₽`;
+            amount.title = 'Сумма ваших начислений по этому пользователю за всё время';
+
+            const paid = document.createElement('div');
+            paid.className = 'ep-ref-invitee__paid';
+            const firstPaid = formatRefDateRu(it.firstPaidExpertSubscriptionAt);
+            paid.textContent = firstPaid
+              ? `Первая оплата ${firstPaid}`
+              : 'Оплат подписки пока не было';
+
+            side.append(amount, paid);
+
+            row.append(av, main, side);
+            inviteesList.appendChild(row);
+          }
+        }
+      } catch {
+        if (inviteesEmpty) {
+          inviteesEmpty.textContent = 'Не удалось загрузить список приглашённых. Обновите страницу.';
+          inviteesEmpty.style.display = '';
+        }
+      }
+
+      if (inviteesRoot) {
+        inviteesRoot.style.display = '';
       }
     }
 

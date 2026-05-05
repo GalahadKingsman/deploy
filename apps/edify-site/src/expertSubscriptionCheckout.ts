@@ -1,5 +1,6 @@
 import { getAccessToken } from './authSession.js';
 import { getApiBaseUrl } from './env.js';
+import { getStoredReferralCode } from './referralAttribution.js';
 
 export type ExpertSubscriptionCheckoutResult =
   | { ok: true; payUrl: string }
@@ -20,6 +21,7 @@ export async function createExpertSubscriptionCheckout(): Promise<ExpertSubscrip
   }
 
   const url = `${api}/checkout/expert-subscription`;
+  const referralCode = getStoredReferralCode();
   let res: Response;
   try {
     res = await fetch(url, {
@@ -29,7 +31,7 @@ export async function createExpertSubscriptionCheckout(): Promise<ExpertSubscrip
         'content-type': 'application/json',
         authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ referralCode }),
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

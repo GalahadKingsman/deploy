@@ -266,6 +266,53 @@ body.platform-gate{background:var(--bg);color:var(--t1)}
   .edify-auth__row2{grid-template-columns:1fr}
 }
 
+/* ── Referral welcome modal (Landing): Вас пригласил <Имя> ── */
+.edify-referral-welcome__card{
+  position:relative;
+  width:min(480px,100%);
+  padding:32px 28px 24px;
+  text-align:center;
+}
+.edify-referral-welcome__close{
+  position:absolute;top:14px;right:14px;
+  width:36px;height:36px;
+}
+.edify-referral-welcome__head{
+  display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:14px;
+}
+.edify-referral-welcome__avatar{
+  width:84px;height:84px;border-radius:50%;
+  border:1px solid var(--line2);
+  background:linear-gradient(160deg,#EBF9FC,var(--card) 70%);
+  overflow:hidden;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 20px rgba(13,18,32,.08);
+}
+.edify-referral-welcome__avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.edify-referral-welcome__avatar-fallback{
+  font-family:var(--fd);font-size:28px;font-weight:800;color:var(--a);
+  letter-spacing:.02em;
+}
+.edify-referral-welcome__title{
+  font-family:var(--fd);font-size:24px;font-weight:900;letter-spacing:-.02em;color:var(--t1);line-height:1.1;
+}
+.edify-referral-welcome__subtitle{
+  font-family:var(--fb);font-size:14px;color:var(--t2);
+}
+.edify-referral-welcome__subtitle strong{color:var(--t1);font-weight:700}
+.edify-referral-welcome__body{
+  font-family:var(--fb);font-size:14px;line-height:1.55;color:var(--t2);
+  display:flex;flex-direction:column;gap:8px;margin:6px 0 18px;text-align:left;
+}
+.edify-referral-welcome__body p{margin:0}
+.edify-referral-welcome__actions{display:flex;flex-direction:column;gap:8px}
+.edify-referral-welcome__primary{margin-top:0}
+@media (max-width: 520px){
+  .edify-referral-welcome__card{padding:26px 20px 18px}
+  .edify-referral-welcome__title{font-size:20px}
+}
+
+/* ── Referral: «Вас пригласил» / «Кого вы пригласили» (platform shell) ── */
+
 /* ── Auth: профиль в стилистике сайта (шапка / меню / футер) ── */
 .nav-auth-mount,
 [data-edify-nav-auth][data-variant="header"]{

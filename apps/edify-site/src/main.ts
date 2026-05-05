@@ -9,6 +9,14 @@ import { hydrateLandingExpertDashboard } from './platform/marketingExpertDashboa
 import { hydrateLandingStudentScreens } from './platform/marketingStudentScreensPreview.js';
 import { mountPlatformShell } from './platform/mountPlatformShell.js';
 import { maybeOpenResetPasswordUi } from './resetPasswordUi.js';
+import {
+  captureReferralFromUrl,
+  fetchReferralPreview,
+  getStoredReferralCode,
+  hasGreetedReferralThisSession,
+  markGreetedReferralThisSession,
+} from './referralAttribution.js';
+import { showReferralWelcomeModal } from './referralWelcomeModal.js';
 
 function toggleMobileNav(): void {
   const nav = document.getElementById('mobile-nav');
@@ -73,6 +81,26 @@ async function runAuthFlow(): Promise<void> {
 }
 
 void runAuthFlow();
+
+/**
+ * Сохраняем реферальный код из ?ref= и (только при свежем переходе по ссылке) показываем
+ * приветственную модалку с именем пригласившего. F5 не повторяет показ — sessionStorage debounce.
+ */
+async function runReferralWelcomeFlow(): Promise<void> {
+  const captured = captureReferralFromUrl();
+  const code = captured ?? null;
+  if (!code) return;
+  if (hasGreetedReferralThisSession()) return;
+  const preview = await fetchReferralPreview(code);
+  if (!preview.displayName) return;
+  markGreetedReferralThisSession();
+  showReferralWelcomeModal({
+    displayName: preview.displayName,
+    avatarUrl: preview.avatarUrl ?? null,
+  });
+}
+
+void runReferralWelcomeFlow();
 
 // Dedicated public page: /reset-password?token=...
 void maybeOpenResetPasswordUi();

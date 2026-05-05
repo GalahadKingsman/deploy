@@ -17,7 +17,6 @@ import { JwtAuthGuard } from '../auth/session/jwt-auth.guard.js';
 import type { FastifyRequest } from 'fastify';
 import { OrdersRepository } from './orders.repository.js';
 import { TinkoffAcquiringService } from './tinkoff-acquiring.service.js';
-import { ExpertMembersRepository } from '../experts/expert-members.repository.js';
 
 @ApiTags('Payments')
 @Controller()
@@ -27,7 +26,6 @@ export class PaymentsController {
   constructor(
     private readonly ordersRepository: OrdersRepository,
     private readonly tinkoff: TinkoffAcquiringService,
-    private readonly expertMembersRepository: ExpertMembersRepository,
   ) {}
 
   @Post('checkout/expert-subscription')
@@ -51,16 +49,6 @@ export class PaymentsController {
     const userId = req.user?.userId;
     if (!userId) throw new NotFoundException({ code: ErrorCodes.UNAUTHORIZED, message: 'Unauthorized' });
 
-    if (!env.EXPERT_SUBSCRIPTION_CHECKOUT_SKIP_ELIGIBILITY_CHECKS) {
-      if (await this.expertMembersRepository.hasAnyExpertMembership(userId)) {
-        throw new ForbiddenException({
-          code: ErrorCodes.FORBIDDEN,
-          message:
-            'Оформление этой подписки доступно только без участия в команде эксперта. Если вы уже в команде, подписка оформляется в рабочем пространстве.',
-        });
-      }
-    }
-
     const priceOverride = env.EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS;
     const amountCents =
       typeof priceOverride === 'number' && Number.isFinite(priceOverride) && priceOverride > 0
@@ -70,7 +58,7 @@ export class PaymentsController {
       throw new BadRequestException({
         code: ErrorCodes.VALIDATION_ERROR,
         message:
-          'Задайте EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS (копейки, напр. 99000 для 990 ₽): для пользователя без команды эксперта сумма берётся только из этой переменной.',
+          'Задайте EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS (копейки, напр. 99000 для 990 ₽): сумма для checkout берётся только из этой переменной.',
       });
     }
 

@@ -59,22 +59,6 @@ export const ApiEnvSchema = z.object({
     emptyToUndefined,
     z.coerce.number().int().min(0).max(50_000_000).optional(),
   ),
-  /**
-   * When true: skip the rule that blocks POST /checkout/expert-subscription for users who already
-   * have any expert_members row (normally 403 — «оформляйте в рабочем пространстве»).
-   * For staging / manual payment tests only; keep false in production.
-   */
-  EXPERT_SUBSCRIPTION_CHECKOUT_SKIP_ELIGIBILITY_CHECKS: z
-    .preprocess((val) => {
-      if (val === undefined || val === null || val === '') return false;
-      if (typeof val === 'boolean') return val;
-      if (typeof val === 'string') {
-        const normalized = val.toLowerCase().trim();
-        return normalized === '1' || normalized === 'true';
-      }
-      return false;
-    }, z.boolean())
-    .default(false),
   /** Tinkoff Acquiring (eCom) — TerminalKey from lk */
   TINKOFF_TERMINAL_KEY: z.string().optional().default(''),
   TINKOFF_PASSWORD: z.string().optional().default(''),
