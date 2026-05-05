@@ -1516,52 +1516,57 @@ if (platformMount) {
             const row = document.createElement('div');
             row.className = 'ep-ref-invitee';
 
+            const cellUser = document.createElement('div');
+            cellUser.className = 'ep-ref-invitee__cell ep-ref-invitee__cell--user';
             const av = document.createElement('div');
             av.className = 'ep-ref-invitee__avatar';
             applyUserAvatarToElement(av, it.avatarUrl, refInitialsFromDisplayName(it.displayName));
-
-            const main = document.createElement('div');
-            main.className = 'ep-ref-invitee__main';
-
             const name = document.createElement('div');
             name.className = 'ep-ref-invitee__name';
             name.textContent = it.displayName;
             name.title = it.displayName;
+            cellUser.append(av, name);
 
-            const meta = document.createElement('div');
-            meta.className = 'ep-ref-invitee__meta';
-            const since = document.createElement('span');
-            since.textContent = `Присоединился ${formatRefDateRu(it.referredAt)}`;
-            meta.appendChild(since);
+            const cellJoined = document.createElement('div');
+            cellJoined.className = 'ep-ref-invitee__cell';
+            const lblJoined = document.createElement('div');
+            lblJoined.className = 'ep-ref-invitee__cell-label';
+            lblJoined.textContent = 'Присоединился';
+            const valJoined = document.createElement('div');
+            valJoined.className = 'ep-ref-invitee__cell-value';
+            valJoined.textContent = formatRefDateRu(it.referredAt) || '—';
+            cellJoined.append(lblJoined, valJoined);
+
+            const cellSub = document.createElement('div');
+            cellSub.className = 'ep-ref-invitee__cell';
+            const lblSub = document.createElement('div');
+            lblSub.className = 'ep-ref-invitee__cell-label';
+            lblSub.textContent = 'Подписка эксперта';
             const badge = document.createElement('span');
             badge.className = `ep-ref-invitee__badge ${
               it.subscriptionActive ? 'ep-ref-invitee__badge--active' : 'ep-ref-invitee__badge--inactive'
             }`;
-            badge.textContent = it.subscriptionActive ? 'Подписка эксперта активна' : 'Подписка эксперта не активна';
-            meta.appendChild(badge);
+            badge.textContent = it.subscriptionActive ? 'Активна' : 'Не активна';
+            cellSub.append(lblSub, badge);
 
-            main.append(name, meta);
-
-            const side = document.createElement('div');
-            side.className = 'ep-ref-invitee__side';
-
+            const cellMoney = document.createElement('div');
+            cellMoney.className = 'ep-ref-invitee__cell ep-ref-invitee__cell--money';
+            const lblMoney = document.createElement('div');
+            lblMoney.className = 'ep-ref-invitee__cell-label';
+            lblMoney.textContent = 'Начислено вам';
             const cents = Math.max(0, Math.trunc(Number(it.commissionTotalCents ?? 0)) || 0);
             const amount = document.createElement('div');
             amount.className =
               cents > 0 ? 'ep-ref-invitee__amount' : 'ep-ref-invitee__amount ep-ref-invitee__amount--zero';
             amount.textContent = `${Math.round(cents / 100).toLocaleString('ru-RU')}\u00a0₽`;
             amount.title = 'Сумма ваших начислений по этому пользователю за всё время';
-
             const paid = document.createElement('div');
-            paid.className = 'ep-ref-invitee__paid';
+            paid.className = 'ep-ref-invitee__cell-sub';
             const firstPaid = formatRefDateRu(it.firstPaidExpertSubscriptionAt);
-            paid.textContent = firstPaid
-              ? `Первая оплата ${firstPaid}`
-              : 'Оплат подписки пока не было';
+            paid.textContent = firstPaid ? `Первая оплата ${firstPaid}` : 'Оплат пока не было';
+            cellMoney.append(lblMoney, amount, paid);
 
-            side.append(amount, paid);
-
-            row.append(av, main, side);
+            row.append(cellUser, cellJoined, cellSub, cellMoney);
             inviteesList.appendChild(row);
           }
         }
