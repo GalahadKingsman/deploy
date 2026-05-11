@@ -95,11 +95,26 @@ export class PaymentsController {
         ? parsed.data.referralCode.trim()
         : null;
 
-    const existing = await this.ordersRepository.findLatestCreatedExpertSubscriptionByUser({
+    let existing = await this.ordersRepository.findLatestCreatedExpertSubscriptionByUser({
       userId,
       checkoutProduct: product,
       billingPeriod,
     });
+
+    if (existing) {
+      const days = existing.subscriptionPeriodDays ?? 0;
+      if (existing.amountCents !== amountCents || days !== periodDays) {
+        await this.ordersRepository.resetCreatedExpertSubscriptionCheckoutPricing({
+          orderId: existing.id,
+          userId,
+          amountCents,
+          subscriptionPeriodDays: periodDays,
+        });
+        existing =
+          (await this.ordersRepository.findByIdForUser({ orderId: existing.id, userId })) ?? existing;
+      }
+    }
+
     if (existing?.payUrl) {
       return { order: existing, payUrl: existing.payUrl };
     }

@@ -232,6 +232,31 @@ export class OrdersRepository {
     await this.pool.query(`UPDATE orders SET status = 'paid', updated_at = NOW() WHERE id = $1`, [orderId]);
   }
 
+  /**
+   * Черновик checkout (created): обновить сумму/период после смены env или фикса багов; сбросить провайдера,
+   * чтобы следующий Init ушёл с актуальной суммой (и не отдавал старую ссылку Т‑Банка).
+   */
+  async resetCreatedExpertSubscriptionCheckoutPricing(params: {
+    orderId: string;
+    userId: string;
+    amountCents: number;
+    subscriptionPeriodDays: number;
+  }): Promise<void> {
+    if (!this.pool) throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    await this.pool.query(
+      `UPDATE orders SET
+         amount_cents = $3,
+         subscription_period_days = $4,
+         provider = NULL,
+         provider_payment_id = NULL,
+         provider_status = NULL,
+         pay_url = NULL,
+         updated_at = NOW()
+       WHERE id = $1 AND user_id = $2 AND status = 'created' AND order_kind = 'expert_subscription'`,
+      [params.orderId, params.userId, params.amountCents, params.subscriptionPeriodDays],
+    );
+  }
+
   async updateProviderFields(
     orderId: string,
     fields: {

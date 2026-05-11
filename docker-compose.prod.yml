@@ -2,7 +2,6 @@
 # Webapp: собери статику (pnpm --filter @tracked/webapp build) и отдавай через nginx.
 #
 # Запуск из корня репозитория:
-#   docker compose --env-file .env up -d --build   (через docker-compose.yml → include этого файла)
 #   docker compose -f docker-compose.prod.yml --env-file .env up -d --build
 #
 # Подставь домены/секреты в .env; для BOT_API_BASE_URL внутри сети compose:
@@ -72,7 +71,6 @@ services:
         printf '%s\n' '{"CORSRules":[{"AllowedOrigins":["*"],"AllowedMethods":["GET","PUT","POST","DELETE","HEAD"],"AllowedHeaders":["*"],"ExposeHeaders":["ETag","x-amz-request-id"],"MaxAgeSeconds":3600}]}' > /tmp/cors.json &&
         mc cors set-json local/$$MINIO_BUCKET /tmp/cors.json || true
     restart: 'no'
-
   api:
     build:
       context: .
@@ -87,7 +85,6 @@ services:
       JWT_ACCESS_TTL_SECONDS: ${JWT_ACCESS_TTL_SECONDS:-900}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       BOT_INTERNAL_TOKEN: ${BOT_INTERNAL_TOKEN:-}
-      TELEGRAM_SUPPORT_GROUP_ID: ${TELEGRAM_SUPPORT_GROUP_ID:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       # Сброс пароля по почте (из .env в контейнер)
       PUBLIC_WEB_ORIGIN: ${PUBLIC_WEB_ORIGIN:-}
@@ -109,12 +106,12 @@ services:
       S3_REGION: ${S3_REGION:-us-east-1}
       S3_BUCKET: ${MINIO_BUCKET:-tracked-prod}
       S3_FORCE_PATH_STYLE: 'true'
-      # Платежи: переменные из `--env-file .env` попадают в контейнер только если перечислены здесь.
-      # VITE_PAYMENTS_ENABLED — при сборке лендинга; на API не влияет.
       PAYMENTS_ENABLED: ${PAYMENTS_ENABLED:-0}
       PAYMENTS_REFERRAL_COMMISSION_BPS: ${PAYMENTS_REFERRAL_COMMISSION_BPS:-0}
       EXPERT_SUBSCRIPTION_CHECKOUT_PERIOD_DAYS: ${EXPERT_SUBSCRIPTION_CHECKOUT_PERIOD_DAYS:-30}
       EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS: ${EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS:-}
+      PLATFORM_ENTRY_PRICE_MONTHLY_CENTS: ${PLATFORM_ENTRY_PRICE_MONTHLY_CENTS:-100}
+      EXPERT_PRO_PRICE_MONTHLY_CENTS: ${EXPERT_PRO_PRICE_MONTHLY_CENTS:-249000}
       TINKOFF_TERMINAL_KEY: ${TINKOFF_TERMINAL_KEY:-}
       TINKOFF_PASSWORD: ${TINKOFF_PASSWORD:-}
       TINKOFF_API_BASE_URL: ${TINKOFF_API_BASE_URL:-https://securepay.tinkoff.ru}
@@ -143,8 +140,6 @@ services:
       BOT_TOKEN: ${BOT_TOKEN}
       BOT_API_BASE_URL: ${BOT_API_BASE_URL:-http://api:3001}
       BOT_INTERNAL_TOKEN: ${BOT_INTERNAL_TOKEN:-}
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      TELEGRAM_SUPPORT_GROUP_ID: ${TELEGRAM_SUPPORT_GROUP_ID:-}
       TELEGRAM_WEBAPP_URL: ${TELEGRAM_WEBAPP_URL:-https://app.edify.su}
     depends_on:
       api:
