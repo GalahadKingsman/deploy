@@ -5,12 +5,19 @@ import { getReferral } from '../referrals/referralStorage.js';
 
 export function useCreateExpertSubscriptionCheckout() {
   return useMutation({
-    mutationFn: async (params?: { email?: string | null; phone?: string | null }) => {
+    mutationFn: async (params?: {
+      email?: string | null;
+      phone?: string | null;
+      product?: ContractsV1.CheckoutProductV1;
+      billingPeriod?: ContractsV1.BillingPeriodV1;
+    }) => {
       const referralCode = getReferral();
       return await fetchJson<ContractsV1.CreateExpertSubscriptionCheckoutResponseV1>({
         path: '/checkout/expert-subscription',
         method: 'POST',
         body: {
+          product: params?.product ?? 'expert_pro',
+          billingPeriod: params?.billingPeriod ?? 'monthly',
           referralCode: referralCode ?? null,
           email: params?.email ?? null,
           phone: params?.phone ?? null,

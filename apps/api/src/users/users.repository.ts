@@ -745,6 +745,206 @@ export class UsersRepository {
     );
   }
 
+  async countInviteesByReferredByUserId(userId: string): Promise<number> {
+    if (!this.pool) return 0;
+    const res = await this.pool.query<{ cnt: string }>(
+      `SELECT COUNT(*)::text AS cnt FROM users WHERE referred_by_user_id = $1`,
+      [userId],
+    );
+    return parseInt(res.rows[0]?.cnt ?? '0', 10) || 0;
+  }
+
+  async getOrCreateTinkoffCustomerKey(userId: string): Promise<string> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    const res = await this.pool.query<{ tinkoff_customer_key: string }>(
+      `
+      UPDATE users
+      SET tinkoff_customer_key = CASE
+        WHEN tinkoff_customer_key IS NULL OR btrim(tinkoff_customer_key) = '' THEN gen_random_uuid()::text
+        ELSE tinkoff_customer_key
+      END,
+      updated_at = NOW()
+      WHERE id = $1
+      RETURNING tinkoff_customer_key
+      `,
+      [userId],
+    );
+    const key = res.rows[0]?.tinkoff_customer_key;
+    if (!key) throw new Error(`User not found: ${userId}`);
+    return key;
+  }
+
+  async saveTinkoffRebillId(userId: string, rebillId: string): Promise<void> {
+    if (!this.pool) return;
+    await this.pool.query(
+      `UPDATE users SET tinkoff_rebill_id = $2, updated_at = NOW() WHERE id = $1`,
+      [userId, rebillId.trim()],
+    );
+  }
+
+  async updateLastSubscriptionBillingSnapshot(params: {
+    userId: string;
+    checkoutProduct: string;
+    billingPeriod: string;
+    amountCents: number;
+  }): Promise<void> {
+    if (!this.pool) return;
+    await this.pool.query(
+      `
+      UPDATE users SET
+        last_subscription_checkout_product = $2,
+        last_subscription_billing_period = $3,
+        last_subscription_billed_amount_cents = $4,
+        updated_at = NOW()
+      WHERE id = $1
+      `,
+      [params.userId, params.checkoutProduct, params.billingPeriod, params.amountCents],
+    );
+  }
+
+  /** После первой успешной оплаты подписки включаем автопродление по умолчанию. */
+  async enableSubscriptionAutoRenew(userId: string): Promise<void> {
+    if (!this.pool) return;
+    await this.pool.query(
+      `UPDATE users SET subscription_auto_renew = true, updated_at = NOW() WHERE id = $1`,
+      [userId],
+    );
+  }
+
+  async setSubscriptionAutoRenew(userId: string, autoRenew: boolean): Promise<void> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    await this.pool.query(
+      `UPDATE users SET subscription_auto_renew = $2, updated_at = NOW() WHERE id = $1`,
+      [userId, autoRenew],
+    );
+  }
+
+  async getExpertBillingProfileRow(userId: string): Promise<{
+    subscriptionAutoRenew: boolean;
+    tinkoffRebillId: string | null;
+    expertId: string | null;
+    expertTitle: string | null;
+    subscriptionStatus: string | null;
+    currentPeriodEnd: Date | null;
+    platformPaidUntil: Date | null;
+  } | null> {
+    if (!this.pool) return null;
+    const res = await this.pool.query<{
+      subscription_auto_renew: boolean;
+      tinkoff_rebill_id: string | null;
+      expert_id: string | null;
+      expert_title: string | null;
+      subscription_status: string | null;
+      current_period_end: Date | null;
+      platform_subscription_paid_until: Date | null;
+    }>(
+      `
+      SELECT
+        u.subscription_auto_renew,
+        u.tinkoff_rebill_id,
+        e.id AS expert_id,
+        e.title AS expert_title,
+        es.status AS subscription_status,
+        es.current_period_end,
+        u.platform_subscription_paid_until
+      FROM users u
+      LEFT JOIN LATERAL (
+        SELECT * FROM experts WHERE created_by_user_id = u.id ORDER BY created_at ASC LIMIT 1
+      ) e ON true
+      LEFT JOIN expert_subscriptions es ON es.expert_id = e.id
+      WHERE u.id = $1
+      LIMIT 1
+      `,
+      [userId],
+    );
+    const r = res.rows[0];
+    if (!r) return null;
+    return {
+      subscriptionAutoRenew: Boolean(r.subscription_auto_renew),
+      tinkoffRebillId: r.tinkoff_rebill_id?.trim() ? r.tinkoff_rebill_id : null,
+      expertId: r.expert_id,
+      expertTitle: r.expert_title,
+      subscriptionStatus: r.subscription_status,
+      currentPeriodEnd: r.current_period_end,
+      platformPaidUntil: r.platform_subscription_paid_until,
+    };
+  }
+
+  /** При неуспешном автосписании платформенного тарифа — отозвать доступ «с сегодня». */
+  async clipPlatformSubscriptionPaidUntilToNow(userId: string): Promise<void> {
+    if (!this.pool) return;
+    await this.pool.query(
+      `
+      UPDATE users SET
+        platform_subscription_paid_until = LEAST(COALESCE(platform_subscription_paid_until, NOW()), NOW()),
+        updated_at = NOW()
+      WHERE id = $1
+      `,
+      [userId],
+    );
+  }
+
+  async listUserIdsDueForRecurrentCharge(): Promise<
+    Array<{
+      userId: string;
+      rebillId: string;
+      amountCents: number;
+      checkoutProduct: string;
+      billingPeriod: string;
+    }>
+  > {
+    if (!this.pool) return [];
+    const res = await this.pool.query<{
+      id: string;
+      tinkoff_rebill_id: string;
+      last_subscription_billed_amount_cents: number;
+      last_subscription_checkout_product: string;
+      last_subscription_billing_period: string;
+    }>(
+      `
+      SELECT u.id,
+             u.tinkoff_rebill_id,
+             u.last_subscription_billed_amount_cents,
+             u.last_subscription_checkout_product,
+             u.last_subscription_billing_period
+      FROM users u
+      WHERE u.subscription_auto_renew = true
+        AND u.tinkoff_rebill_id IS NOT NULL
+        AND btrim(u.tinkoff_rebill_id) <> ''
+        AND COALESCE(u.last_subscription_billed_amount_cents, 0) > 0
+        AND u.last_subscription_checkout_product IS NOT NULL
+        AND u.last_subscription_billing_period IS NOT NULL
+        AND (
+          (u.last_subscription_checkout_product = 'platform_entry'
+            AND u.platform_subscription_paid_until IS NOT NULL
+            AND u.platform_subscription_paid_until <= NOW() + interval '2 days'
+            AND u.platform_subscription_paid_until >= NOW() - interval '1 day')
+          OR
+          (u.last_subscription_checkout_product = 'expert_pro'
+            AND EXISTS (
+              SELECT 1 FROM experts e
+              JOIN expert_subscriptions es ON es.expert_id = e.id
+              WHERE e.created_by_user_id = u.id
+                AND es.current_period_end IS NOT NULL
+                AND es.current_period_end <= NOW() + interval '2 days'
+                AND es.current_period_end >= NOW() - interval '1 day'
+            ))
+        )
+      `,
+    );
+    return res.rows.map((r) => ({
+      userId: r.id,
+      rebillId: r.tinkoff_rebill_id,
+      amountCents: r.last_subscription_billed_amount_cents,
+      checkoutProduct: r.last_subscription_checkout_product,
+      billingPeriod: r.last_subscription_billing_period,
+    }));
+  }
+
   private mapRowToUserWithBan(row: UserDbModel): UserWithBan {
     const role = row.platform_role ?? 'user';
     return {

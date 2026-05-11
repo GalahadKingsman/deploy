@@ -137,10 +137,17 @@ export type {
   OrderV1,
   OrderStatusV1,
   OrderKindV1,
+  CheckoutProductV1,
+  BillingPeriodV1,
   CreateExpertSubscriptionCheckoutRequestV1,
   CreateExpertSubscriptionCheckoutResponseV1,
   MeOrdersResponseV1,
 } from './orders.js';
+export type {
+  MeExpertBillingResponseV1,
+  PatchMeExpertBillingAutoRenewRequestV1,
+  PatchMeExpertBillingAutoRenewResponseV1,
+} from './expert-billing.js';
 export type { GetMyReferralResponseV1 } from './referral.js';
 export { GetMyReferralResponseV1Schema } from './referral.js';
 export type { CommissionV1, MeCommissionsResponseV1 } from './commission.js';
@@ -300,9 +307,14 @@ export {
   OrderV1Schema,
   OrderStatusV1Schema,
   OrderKindV1Schema,
+  CheckoutProductV1Schema,
+  BillingPeriodV1Schema,
   CreateExpertSubscriptionCheckoutRequestV1Schema,
   CreateExpertSubscriptionCheckoutResponseV1Schema,
   MeOrdersResponseV1Schema,
+  MeExpertBillingResponseV1Schema,
+  PatchMeExpertBillingAutoRenewRequestV1Schema,
+  PatchMeExpertBillingAutoRenewResponseV1Schema,
   ApiErrorV1Schema,
   ApiErrorResponseV1Schema,
   GetMeResponseV1Schema,

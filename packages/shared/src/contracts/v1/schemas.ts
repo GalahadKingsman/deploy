@@ -109,10 +109,17 @@ export {
   OrderV1Schema,
   OrderStatusV1Schema,
   OrderKindV1Schema,
+  CheckoutProductV1Schema,
+  BillingPeriodV1Schema,
   CreateExpertSubscriptionCheckoutRequestV1Schema,
   CreateExpertSubscriptionCheckoutResponseV1Schema,
   MeOrdersResponseV1Schema,
 } from './orders.js';
+export {
+  MeExpertBillingResponseV1Schema,
+  PatchMeExpertBillingAutoRenewRequestV1Schema,
+  PatchMeExpertBillingAutoRenewResponseV1Schema,
+} from './expert-billing.js';
 export { GetMyReferralResponseV1Schema } from './referral.js';
 export { CommissionV1Schema, MeCommissionsResponseV1Schema } from './commission.js';
 export { MeReferralStatsResponseV1Schema } from './referral-stats.js';

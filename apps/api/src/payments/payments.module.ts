@@ -9,6 +9,7 @@ import { AccessDataModule } from '../access/access-data.module.js';
 import { CommissionsRepository } from './commissions.repository.js';
 import { TinkoffAcquiringService } from './tinkoff-acquiring.service.js';
 import { OrderFulfillmentService } from './order-fulfillment.service.js';
+import { SubscriptionRenewalScheduler } from './subscription-renewal.scheduler.js';
 import { RefundRequestsRepository } from './refund-requests.repository.js';
 import { PayoutRequestsRepository } from './payout-requests.repository.js';
 import { AuditModule } from '../audit/audit.module.js';
@@ -23,6 +24,7 @@ import { UsersModule } from '../users/users.module.js';
     JwtAuthGuard,
     TinkoffAcquiringService,
     OrderFulfillmentService,
+    SubscriptionRenewalScheduler,
     {
       provide: OrdersRepository,
       useFactory: (pool: Pool) => new OrdersRepository(pool),

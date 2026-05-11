@@ -2,7 +2,12 @@ import { z } from 'zod';
 
 export interface MeReferralStatsResponseV1 {
   code: string;
+  /** Legacy: зачисления по реф-коду в enrollments. */
   enrollmentsCount: number;
+  /** Пользователи, привязанные по реф-ссылке (`referred_by_user_id`). */
+  inviteesCount: number;
+  /** Сколько приглашённых имеют хотя бы одну успешную оплату expert_subscription после привязки. */
+  paidInviteesCount: number;
   ordersCount: number;
   paidOrdersCount: number;
   commissionTotalCents: number;
@@ -11,6 +16,8 @@ export interface MeReferralStatsResponseV1 {
 export const MeReferralStatsResponseV1Schema = z.object({
   code: z.string().min(1).max(64),
   enrollmentsCount: z.number().int().min(0),
+  inviteesCount: z.number().int().min(0),
+  paidInviteesCount: z.number().int().min(0),
   ordersCount: z.number().int().min(0),
   paidOrdersCount: z.number().int().min(0),
   commissionTotalCents: z.number().int().min(0),

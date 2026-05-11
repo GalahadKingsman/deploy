@@ -17,6 +17,10 @@ import { JwtAuthGuard } from '../auth/session/jwt-auth.guard.js';
 import type { FastifyRequest } from 'fastify';
 import { OrdersRepository } from './orders.repository.js';
 import { TinkoffAcquiringService } from './tinkoff-acquiring.service.js';
+import { UsersRepository } from '../users/users.repository.js';
+import { ExpertSubscriptionsRepository } from '../subscriptions/expert-subscriptions.repository.js';
+import { ExpertMembersRepository } from '../experts/expert-members.repository.js';
+import { computeExpertSubscriptionCheckout } from './subscription-checkout-pricing.js';
 
 @ApiTags('Payments')
 @Controller()
@@ -26,6 +30,9 @@ export class PaymentsController {
   constructor(
     private readonly ordersRepository: OrdersRepository,
     private readonly tinkoff: TinkoffAcquiringService,
+    private readonly usersRepository: UsersRepository,
+    private readonly expertSubscriptionsRepository: ExpertSubscriptionsRepository,
+    private readonly expertMembersRepository: ExpertMembersRepository,
   ) {}
 
   @Post('checkout/expert-subscription')
@@ -49,16 +56,36 @@ export class PaymentsController {
     const userId = req.user?.userId;
     if (!userId) throw new NotFoundException({ code: ErrorCodes.UNAUTHORIZED, message: 'Unauthorized' });
 
-    const priceOverride = env.EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS;
-    const amountCents =
-      typeof priceOverride === 'number' && Number.isFinite(priceOverride) && priceOverride > 0
-        ? priceOverride
-        : 0;
+    const product = parsed.data.product;
+    const billingPeriod = parsed.data.billingPeriod;
+
+    let platformMonthly = env.PLATFORM_ENTRY_PRICE_MONTHLY_CENTS;
+    let expertMonthly = env.EXPERT_PRO_PRICE_MONTHLY_CENTS;
+    const legacy = env.EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS;
+    if (typeof legacy === 'number' && Number.isFinite(legacy) && legacy > 0) {
+      platformMonthly = legacy;
+      expertMonthly = legacy;
+    }
+
+    const { amountCents, periodDays } = computeExpertSubscriptionCheckout({
+      product,
+      billingPeriod,
+      platformEntryMonthlyCents: platformMonthly,
+      expertProMonthlyCents: expertMonthly,
+    });
+
     if (amountCents <= 0) {
       throw new BadRequestException({
         code: ErrorCodes.VALIDATION_ERROR,
+        message: 'Некорректная сумма checkout (проверьте PLATFORM_ENTRY_PRICE_MONTHLY_CENTS / EXPERT_PRO_PRICE_MONTHLY_CENTS).',
+      });
+    }
+
+    if (product === 'expert_pro' && (await this.userHasActiveExpertSubscriptionOnAnyTeam(userId))) {
+      throw new BadRequestException({
+        code: ErrorCodes.VALIDATION_ERROR,
         message:
-          'Задайте EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS (копейки, напр. 99000 для 990 ₽): сумма для checkout берётся только из этой переменной.',
+          'У вас уже есть активная подписка эксперта. Продление и настройки автопродления — в разделе «Профиль».',
       });
     }
 
@@ -67,7 +94,11 @@ export class PaymentsController {
         ? parsed.data.referralCode.trim()
         : null;
 
-    const existing = await this.ordersRepository.findLatestCreatedExpertSubscriptionByUser({ userId });
+    const existing = await this.ordersRepository.findLatestCreatedExpertSubscriptionByUser({
+      userId,
+      checkoutProduct: product,
+      billingPeriod,
+    });
     if (existing?.payUrl) {
       return { order: existing, payUrl: existing.payUrl };
     }
@@ -76,7 +107,7 @@ export class PaymentsController {
       return this.tryInitTinkoffAndPersist({
         userId,
         order: existing,
-        description: 'Подписка EDIFY',
+        description: product === 'expert_pro' ? 'EDIFY — подписка эксперта' : 'EDIFY — доступ к платформе',
         receiptEmail: parsed.data.email ?? existing.receiptEmail ?? null,
         receiptPhone: parsed.data.phone ?? existing.receiptPhone ?? null,
       });
@@ -90,15 +121,31 @@ export class PaymentsController {
       referralCode,
       receiptEmail: parsed.data.email ?? null,
       receiptPhone: parsed.data.phone ?? null,
+      checkoutProduct: product,
+      billingPeriod,
+      subscriptionPeriodDays: periodDays,
     });
 
     return this.tryInitTinkoffAndPersist({
       userId,
       order,
-      description: 'Подписка EDIFY',
+      description: product === 'expert_pro' ? 'EDIFY — подписка эксперта' : 'EDIFY — доступ к платформе',
       receiptEmail: parsed.data.email ?? null,
       receiptPhone: parsed.data.phone ?? null,
     });
+  }
+
+  private async userHasActiveExpertSubscriptionOnAnyTeam(userId: string): Promise<boolean> {
+    const memberships = await this.expertMembersRepository.listMembershipsByUserId(userId);
+    const nowMs = Date.now();
+    for (const m of memberships) {
+      await this.expertSubscriptionsRepository.ensureDefault(m.expertId);
+      const s = await this.expertSubscriptionsRepository.findByExpertId(m.expertId);
+      if (!s || s.status !== 'active') continue;
+      const endMs = s.currentPeriodEnd ? new Date(s.currentPeriodEnd).getTime() : null;
+      if (endMs == null || endMs > nowMs) return true;
+    }
+    return false;
   }
 
   private async tryInitTinkoffAndPersist(params: {
@@ -124,12 +171,15 @@ export class PaymentsController {
       };
     }
     try {
+      const customerKey = await this.usersRepository.getOrCreateTinkoffCustomerKey(params.userId);
       const init = await this.tinkoff.initPayment({
         orderId: params.order.id,
         amountCents: params.order.amountCents,
         description: params.description,
         receiptEmail: params.receiptEmail,
         receiptPhone: params.receiptPhone,
+        customerKey,
+        recurrent: true,
       });
       await this.ordersRepository.updateProviderFields(params.order.id, {
         provider: 'tinkoff',

@@ -4,6 +4,7 @@ import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
 import { refreshNavAuth } from './navAuthUi.js';
 import { getTelegramSupportUrl, isLandingPaymentsUiEnabled } from './env.js';
 import { createExpertSubscriptionCheckout } from './expertSubscriptionCheckout.js';
+import type { ExpertSubscriptionCheckoutProduct } from './expertSubscriptionCheckout.js';
 import { hydrateLandingExpertCourses } from './platform/marketingExpertCoursesPreview.js';
 import { hydrateLandingExpertDashboard } from './platform/marketingExpertDashboardPreview.js';
 import { hydrateLandingStudentScreens } from './platform/marketingStudentScreensPreview.js';
@@ -67,6 +68,8 @@ declare global {
     closeMobileNav: () => void;
     faq: (btn: HTMLElement) => void;
     toggleP: () => void;
+    /** Для checkout: текущее состояние тумблера «Ежегодно» на лендинге. */
+    __edifyPricingYearly: () => boolean;
   }
 }
 
@@ -74,6 +77,7 @@ window.toggleMobileNav = toggleMobileNav;
 window.closeMobileNav = closeMobileNav;
 window.faq = faq;
 window.toggleP = toggleP;
+window.__edifyPricingYearly = () => pricingYearly;
 
 async function runAuthFlow(): Promise<void> {
   await claimSiteLoginFromUrl();
@@ -146,20 +150,22 @@ document.addEventListener('click', (ev) => {
 
 document.addEventListener('click', (ev) => {
   const t = ev.target as HTMLElement | null;
-  const btn = t?.closest('[data-edify-checkout-expert-subscription]') as HTMLButtonElement | HTMLAnchorElement | null;
+  const btn = t?.closest('[data-edify-checkout-product]') as HTMLButtonElement | HTMLAnchorElement | null;
   if (!btn) return;
   ev.preventDefault();
   if (!isLandingPaymentsUiEnabled()) {
     window.alert('Оплата на лендинге отключена в сборке (VITE_PAYMENTS_ENABLED).');
     return;
   }
+  const raw = (btn.getAttribute('data-edify-checkout-product') || '').trim();
+  const product = (raw === 'expert_pro' ? 'expert_pro' : 'platform_entry') as ExpertSubscriptionCheckoutProduct;
   void (async () => {
     const prev = btn.getAttribute('aria-busy') === 'true';
     if (prev) return;
     btn.setAttribute('aria-busy', 'true');
     (btn as HTMLButtonElement).disabled = true;
     try {
-      const r = await createExpertSubscriptionCheckout();
+      const r = await createExpertSubscriptionCheckout(product);
       if (!r.ok) {
         if (r.needAuth) {
           window.alert(r.error);

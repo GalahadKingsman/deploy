@@ -46,14 +46,16 @@ export const ApiEnvSchema = z.object({
       return false;
     }, z.boolean())
     .default(false),
-  /** Referral commission on paid orders: basis points (100 = 1%). Default 0. */
-  PAYMENTS_REFERRAL_COMMISSION_BPS: z.coerce.number().int().min(0).max(1_000_000).default(0),
+  /** Referral commission on paid expert_subscription orders: basis points (100 = 1%). Default 25% = 2500. */
+  PAYMENTS_REFERRAL_COMMISSION_BPS: z.coerce.number().int().min(0).max(1_000_000).default(2500),
   /** Сколько дней подписки эксперта начислять за одну успешную оплату заказа expert_subscription. */
   EXPERT_SUBSCRIPTION_CHECKOUT_PERIOD_DAYS: z.coerce.number().int().min(1).max(3650).default(30),
+  /** Помесячная цена «Начать» (platform_entry), копейки. По умолчанию 1 ₽ для теста. */
+  PLATFORM_ENTRY_PRICE_MONTHLY_CENTS: z.coerce.number().int().min(1).max(50_000_000).default(100),
+  /** Помесячная цена «Стать экспертом» (expert_pro), копейки. По умолчанию 2490 ₽. */
+  EXPERT_PRO_PRICE_MONTHLY_CENTS: z.coerce.number().int().min(1).max(50_000_000).default(249_000),
   /**
-   * Сумма в копейках для POST /checkout/expert-subscription (как Tinkoff Amount), если задана и > 0.
-   * Перекрывает `expert_subscriptions.price_cents` в БД — удобно для стенда, пока в БД 0.
-   * Продакшен: оставьте пустым и храните цену в БД.
+   * Устарело: единая сумма checkout. Если задана и > 0, подменяет обе помесячные цены (для старых стендов).
    */
   EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS: z.preprocess(
     emptyToUndefined,

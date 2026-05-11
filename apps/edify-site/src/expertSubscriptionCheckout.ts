@@ -2,15 +2,27 @@ import { getAccessToken } from './authSession.js';
 import { getApiBaseUrl } from './env.js';
 import { getStoredReferralCode } from './referralAttribution.js';
 
+export type ExpertSubscriptionCheckoutProduct = 'platform_entry' | 'expert_pro';
+
 export type ExpertSubscriptionCheckoutResult =
   | { ok: true; payUrl: string }
   | { ok: false; error: string; needAuth?: boolean };
 
+function readLandingPricingYearly(): boolean {
+  try {
+    const fn = (window as unknown as { __edifyPricingYearly?: () => boolean }).__edifyPricingYearly;
+    return typeof fn === 'function' ? Boolean(fn()) : false;
+  } catch {
+    return false;
+  }
+}
+
 /**
- * POST /checkout/expert-subscription — только для владельца пространства эксперта (JWT).
- * Сумма на стороне API: price_cents в БД или EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS.
+ * POST /checkout/expert-subscription — JWT, сумма и период считаются на API.
  */
-export async function createExpertSubscriptionCheckout(): Promise<ExpertSubscriptionCheckoutResult> {
+export async function createExpertSubscriptionCheckout(
+  product: ExpertSubscriptionCheckoutProduct,
+): Promise<ExpertSubscriptionCheckoutResult> {
   const api = getApiBaseUrl();
   if (!api.trim()) {
     return { ok: false, error: 'Не настроен адрес API (VITE_API_BASE_URL или meta edify-api-base).' };
@@ -20,7 +32,35 @@ export async function createExpertSubscriptionCheckout(): Promise<ExpertSubscrip
     return { ok: false, error: 'Войдите в аккаунт, чтобы перейти к оплате.', needAuth: true };
   }
 
-  const url = `${api}/checkout/expert-subscription`;
+  if (product === 'expert_pro') {
+    try {
+      const subRes = await fetch(`${api.replace(/\/+$/, '')}/me/expert-subscription`, {
+        method: 'GET',
+        headers: { accept: 'application/json', authorization: `Bearer ${token}` },
+      });
+      if (subRes.ok) {
+        const sub = (await subRes.json()) as {
+          status?: string;
+          currentPeriodEnd?: string | null;
+        } | null;
+        if (sub && sub.status === 'active') {
+          const endMs = sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd).getTime() : null;
+          if (endMs == null || endMs > Date.now()) {
+            return {
+              ok: false,
+              error:
+                'У вас уже есть активная подписка эксперта. Продление и автопродление — в разделе «Профиль».',
+            };
+          }
+        }
+      }
+    } catch {
+      /* если /me/expert-subscription недоступен — не блокируем оплату */
+    }
+  }
+
+  const billingPeriod = readLandingPricingYearly() ? 'yearly' : 'monthly';
+  const url = `${api.replace(/\/+$/, '')}/checkout/expert-subscription`;
   const referralCode = getStoredReferralCode();
   let res: Response;
   try {
@@ -31,7 +71,7 @@ export async function createExpertSubscriptionCheckout(): Promise<ExpertSubscrip
         'content-type': 'application/json',
         authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ referralCode }),
+      body: JSON.stringify({ product, billingPeriod, referralCode }),
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

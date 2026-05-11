@@ -8,19 +8,39 @@ export interface TinkoffInitInput {
   description: string;
   receiptEmail: string | null;
   receiptPhone: string | null;
+  /** Стабильный id покупателя для рекуррента (Tinkoff CustomerKey). */
+  customerKey?: string | null;
+  /** Сохранить карту для последующего Charge. */
+  recurrent?: boolean;
+}
+
+export interface TinkoffChargeInput {
+  rebillId: string;
+  amountCents: number;
+  orderId: string;
+  customerKey?: string | null;
+  /** Краткое описание для чека/лога. */
+  description?: string;
 }
 
 /**
  * T-Bank docs give test base as `https://rest-api-test.tinkoff.ru/v2`; we always POST `…/v2/Init`.
  * If env already ends with `/v2`, strip it to avoid `/v2/v2/Init` (404 HTML instead of JSON).
  */
-function resolveTinkoffInitUrl(baseUrlFromEnv: string): string {
+function resolveTinkoffBase(baseUrlFromEnv: string): string {
   let base = baseUrlFromEnv.trim().replace(/\/+$/, '');
   if (/\/v2$/i.test(base)) {
     base = base.replace(/\/v2$/i, '');
   }
-  base = base.replace(/\/+$/, '');
-  return `${base}/v2/Init`;
+  return base.replace(/\/+$/, '');
+}
+
+function resolveTinkoffInitUrl(baseUrlFromEnv: string): string {
+  return `${resolveTinkoffBase(baseUrlFromEnv)}/v2/Init`;
+}
+
+function resolveTinkoffChargeUrl(baseUrlFromEnv: string): string {
+  return `${resolveTinkoffBase(baseUrlFromEnv)}/v2/Charge`;
 }
 
 @Injectable()
@@ -65,6 +85,12 @@ export class TinkoffAcquiringService {
     }
     if (env.TINKOFF_FAIL_URL?.trim()) {
       body.FailURL = env.TINKOFF_FAIL_URL.trim();
+    }
+    if (input.customerKey?.trim()) {
+      body.CustomerKey = input.customerKey.trim();
+    }
+    if (input.recurrent === true) {
+      body.Recurrent = 'Y';
     }
 
     const hasContact = Boolean(
@@ -138,5 +164,78 @@ export class TinkoffAcquiringService {
       throw new Error('Tinkoff Init: missing PaymentId or PaymentURL');
     }
     return { paymentId, paymentUrl, status };
+  }
+
+  /**
+   * POST /v2/Charge — рекуррентное списание по RebillId.
+   * @see https://developer.tbank.ru/eacq/
+   */
+  async chargePayment(input: TinkoffChargeInput): Promise<{ paymentId: string; status: string; success: boolean }> {
+    const env = validateOrThrow(ApiEnvSchema, process.env);
+    const terminalKey = env.TINKOFF_TERMINAL_KEY?.trim() ?? '';
+    const password = env.TINKOFF_PASSWORD?.trim() ?? '';
+    if (!terminalKey || !password) {
+      throw new Error('TINKOFF_TERMINAL_KEY and TINKOFF_PASSWORD are required');
+    }
+    if (input.amountCents <= 0) {
+      throw new Error('Amount must be positive');
+    }
+    const rebill = input.rebillId.trim();
+    if (!rebill) {
+      throw new Error('RebillId is required');
+    }
+
+    const body: Record<string, unknown> = {
+      TerminalKey: terminalKey,
+      RebillId: rebill,
+      Amount: input.amountCents,
+      OrderId: input.orderId,
+      PayType: 'O',
+    };
+    if (input.customerKey?.trim()) {
+      body.CustomerKey = input.customerKey.trim();
+    }
+    if (env.TINKOFF_NOTIFICATION_URL?.trim()) {
+      body.NotificationURL = env.TINKOFF_NOTIFICATION_URL.trim();
+    }
+
+    const token = buildTinkoffRequestToken(body, password);
+    const payload = { ...body, Token: token };
+
+    const url = resolveTinkoffChargeUrl(env.TINKOFF_API_BASE_URL);
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (e) {
+      this.log.warn(`Tinkoff Charge network error: ${e instanceof Error ? e.message : String(e)}`);
+      throw e;
+    }
+
+    const rawText = await res.text();
+    const trimmed = rawText.trim();
+    const ct = (res.headers.get('content-type') ?? '').toLowerCase();
+    const looksLikeJson =
+      trimmed.startsWith('{') || trimmed.startsWith('[') || ct.includes('application/json');
+    if (!looksLikeJson && trimmed.startsWith('<')) {
+      throw new Error(`Tinkoff Charge вернул HTML (HTTP ${res.status}), ожидался JSON.`);
+    }
+    let json: Record<string, unknown>;
+    try {
+      json = JSON.parse(trimmed || '{}') as Record<string, unknown>;
+    } catch {
+      throw new Error(`Tinkoff Charge: тело ответа не JSON (HTTP ${res.status})`);
+    }
+    const success = json.Success === true || json.Success === 'true';
+    const paymentId = json.PaymentId != null ? String(json.PaymentId) : '';
+    const status = typeof json.Status === 'string' ? json.Status : '';
+    if (!success) {
+      const msg = [json.Message, json.Details, json.ErrorCode].filter(Boolean).join(' — ') || 'Charge failed';
+      this.log.warn(`Tinkoff Charge rejected: ${msg}`);
+    }
+    return { paymentId, status, success };
   }
 }

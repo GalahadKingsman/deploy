@@ -5,6 +5,7 @@ import type { FastifyReply } from 'fastify';
 import { verifyTinkoffNotification } from './tinkoff-token.util.js';
 import { OrdersRepository } from './orders.repository.js';
 import { OrderFulfillmentService } from './order-fulfillment.service.js';
+import { UsersRepository } from '../users/users.repository.js';
 
 function parseKopecks(body: Record<string, unknown>): number | null {
   const a = body.Amount;
@@ -28,6 +29,7 @@ export class TinkoffWebhookController {
   constructor(
     private readonly ordersRepository: OrdersRepository,
     private readonly fulfillment: OrderFulfillmentService,
+    private readonly usersRepository: UsersRepository,
   ) {}
 
   @Post('tinkoff/notification')
@@ -124,6 +126,13 @@ export class TinkoffWebhookController {
     const refundedStatuses = new Set(['REFUNDED']);
 
     try {
+      if (success && order.orderKind === 'expert_subscription') {
+        const rebillRaw = body.RebillId;
+        const rebill = rebillRaw != null ? String(rebillRaw).trim() : '';
+        if (rebill) {
+          await this.usersRepository.saveTinkoffRebillId(order.userId, rebill);
+        }
+      }
       if (success && status === 'CONFIRMED') {
         const r = await this.fulfillment.completeOrderPayment(orderId);
         if (r.kind === 'not_found') {

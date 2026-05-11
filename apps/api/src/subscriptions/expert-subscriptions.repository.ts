@@ -106,6 +106,36 @@ export class ExpertSubscriptionsRepository {
     return updated;
   }
 
+  async setSuspended(expertId: string, now: Date = new Date()): Promise<ContractsV1.ExpertSubscriptionV1> {
+    if (!this.pool) {
+      throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
+    }
+    const expert = await this.expertsRepository.findExpertById(expertId);
+    if (!expert) {
+      throw new NotFoundException({
+        code: ErrorCodes.EXPERT_NOT_FOUND,
+        message: 'Expert not found',
+      });
+    }
+    await this.ensureDefault(expertId);
+    const current = await this.pool.query<ExpertSubscriptionDbRow>(
+      'SELECT * FROM expert_subscriptions WHERE expert_id = $1',
+      [expertId],
+    );
+    const row = current.rows[0];
+    const periodStart = row?.current_period_start ?? now;
+    const periodEnd = row?.current_period_end ?? now;
+    await this.pool.query(
+      `UPDATE expert_subscriptions
+       SET status = 'suspended', current_period_start = $2, current_period_end = $3, updated_at = $4
+       WHERE expert_id = $1`,
+      [expertId, periodStart, periodEnd, now],
+    );
+    const updated = await this.findByExpertId(expertId);
+    if (!updated) throw new Error('Row missing after setSuspended');
+    return updated;
+  }
+
   async expireNow(
     expertId: string,
     now: Date = new Date(),

@@ -18,6 +18,9 @@ interface OrderRow {
   pay_url?: string | null;
   receipt_email?: string | null;
   receipt_phone?: string | null;
+  checkout_product?: string | null;
+  billing_period?: string | null;
+  subscription_period_days?: number | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -39,6 +42,9 @@ function mapRow(r: OrderRow): ContractsV1.OrderV1 {
     payUrl: r.pay_url ?? null,
     receiptEmail: r.receipt_email ?? null,
     receiptPhone: r.receipt_phone ?? null,
+    checkoutProduct: (r.checkout_product as ContractsV1.CheckoutProductV1 | null) ?? null,
+    billingPeriod: (r.billing_period as ContractsV1.BillingPeriodV1 | null) ?? null,
+    subscriptionPeriodDays: r.subscription_period_days ?? null,
     createdAt: r.created_at.toISOString(),
     updatedAt: r.updated_at.toISOString(),
   };
@@ -62,11 +68,57 @@ export class OrdersRepository {
     return parseInt(res.rows[0]?.cnt ?? '0', 10) || 0;
   }
 
-  async findLatestCreatedExpertSubscriptionByUser(params: { userId: string }): Promise<ContractsV1.OrderV1 | null> {
+  /**
+   * Число приглашённых с хотя бы одной успешной оплатой expert_subscription после referred_at и с ref-кодом пригласившего.
+   */
+  async existsOtherPaidExpertSubscription(params: { userId: string; excludeOrderId: string }): Promise<boolean> {
+    if (!this.pool) return false;
+    const res = await this.pool.query<{ exists: boolean }>(
+      `
+      SELECT EXISTS(
+        SELECT 1 FROM orders
+        WHERE user_id = $1 AND order_kind = 'expert_subscription' AND status = 'paid' AND id <> $2
+      ) AS exists
+      `,
+      [params.userId, params.excludeOrderId],
+    );
+    return Boolean(res.rows[0]?.exists);
+  }
+
+  async countPaidInviteesExpertSubscription(params: { inviterUserId: string; referralCode: string }): Promise<number> {
+    if (!this.pool) return 0;
+    const res = await this.pool.query<{ cnt: string }>(
+      `
+      SELECT COUNT(DISTINCT u.id)::text AS cnt
+      FROM users u
+      WHERE u.referred_by_user_id = $1
+        AND u.referred_at IS NOT NULL
+        AND EXISTS (
+          SELECT 1 FROM orders o
+          WHERE o.user_id = u.id
+            AND o.order_kind = 'expert_subscription'
+            AND o.status = 'paid'
+            AND o.referral_code = $2
+            AND o.created_at >= u.referred_at
+        )
+      `,
+      [params.inviterUserId, params.referralCode],
+    );
+    return parseInt(res.rows[0]?.cnt ?? '0', 10) || 0;
+  }
+
+  async findLatestCreatedExpertSubscriptionByUser(params: {
+    userId: string;
+    checkoutProduct: ContractsV1.CheckoutProductV1;
+    billingPeriod: ContractsV1.BillingPeriodV1;
+  }): Promise<ContractsV1.OrderV1 | null> {
     if (!this.pool) return null;
     const res = await this.pool.query<OrderRow>(
-      `SELECT * FROM orders WHERE user_id = $1 AND order_kind = 'expert_subscription' AND status = 'created' ORDER BY created_at DESC LIMIT 1`,
-      [params.userId],
+      `SELECT * FROM orders
+       WHERE user_id = $1 AND order_kind = 'expert_subscription' AND status = 'created'
+         AND checkout_product = $2 AND billing_period = $3
+       ORDER BY created_at DESC LIMIT 1`,
+      [params.userId, params.checkoutProduct, params.billingPeriod],
     );
     const row = res.rows[0];
     return row ? mapRow(row) : null;
@@ -80,6 +132,9 @@ export class OrdersRepository {
     referralCode: string | null;
     receiptEmail?: string | null;
     receiptPhone?: string | null;
+    checkoutProduct: ContractsV1.CheckoutProductV1;
+    billingPeriod: ContractsV1.BillingPeriodV1;
+    subscriptionPeriodDays: number;
   }): Promise<ContractsV1.OrderV1> {
     if (!this.pool) throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
     const id = randomUUID();
@@ -87,9 +142,11 @@ export class OrdersRepository {
       `
       INSERT INTO orders (
         id, user_id, course_id, expert_id, order_kind, amount_cents, currency, status,
-        referral_code, receipt_email, receipt_phone, created_at, updated_at
+        referral_code, receipt_email, receipt_phone,
+        checkout_product, billing_period, subscription_period_days,
+        created_at, updated_at
       )
-      VALUES ($1, $2, NULL, $3, 'expert_subscription', $4, $5, 'created', $6, $7, $8, NOW(), NOW())
+      VALUES ($1, $2, NULL, $3, 'expert_subscription', $4, $5, 'created', $6, $7, $8, $9, $10, $11, NOW(), NOW())
       RETURNING *
       `,
       [
@@ -101,6 +158,9 @@ export class OrdersRepository {
         params.referralCode,
         params.receiptEmail ?? null,
         params.receiptPhone ?? null,
+        params.checkoutProduct,
+        params.billingPeriod,
+        params.subscriptionPeriodDays,
       ],
     );
     return mapRow(res.rows[0]);
@@ -127,6 +187,9 @@ export class OrdersRepository {
     amountCents: number;
     currency: string;
     providerPaymentId: string | null;
+    checkoutProduct: ContractsV1.CheckoutProductV1 | null;
+    billingPeriod: ContractsV1.BillingPeriodV1 | null;
+    subscriptionPeriodDays: number | null;
   } | null> {
     if (!this.pool) return null;
     const res = await this.pool.query<OrderRow>(`SELECT * FROM orders WHERE id = $1 LIMIT 1`, [orderId]);
@@ -143,6 +206,9 @@ export class OrdersRepository {
       amountCents: r.amount_cents ?? 0,
       currency: r.currency ?? 'RUB',
       providerPaymentId: r.provider_payment_id ?? null,
+      checkoutProduct: (r.checkout_product as ContractsV1.CheckoutProductV1 | null) ?? null,
+      billingPeriod: (r.billing_period as ContractsV1.BillingPeriodV1 | null) ?? null,
+      subscriptionPeriodDays: r.subscription_period_days ?? null,
     };
   }
 
@@ -163,10 +229,7 @@ export class OrdersRepository {
 
   async markPaid(orderId: string): Promise<void> {
     if (!this.pool) throw new Error('Database is disabled (SKIP_DB=1). Cannot perform database operations.');
-    await this.pool.query(
-      `UPDATE orders SET status = 'paid', updated_at = NOW() WHERE id = $1`,
-      [orderId],
-    );
+    await this.pool.query(`UPDATE orders SET status = 'paid', updated_at = NOW() WHERE id = $1`, [orderId]);
   }
 
   async updateProviderFields(

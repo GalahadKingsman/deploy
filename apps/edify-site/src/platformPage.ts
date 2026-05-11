@@ -1007,6 +1007,70 @@ if (platformMount) {
           if (tgStatus) tgStatus.style.display = 'none';
           if (tgBtn) tgBtn.style.display = '';
         }
+
+        const subCard = screen.querySelector('[data-ep-profile-subscription-card]') as HTMLElement | null;
+        const subNote = screen.querySelector('[data-ep-profile-subscription-note]') as HTMLElement | null;
+        const subDays = screen.querySelector('[data-ep-profile-subscription-days]') as HTMLElement | null;
+        const subStatus = screen.querySelector('[data-ep-profile-subscription-status]') as HTMLElement | null;
+        const subAuto = screen.querySelector(
+          '[data-ep-profile-subscription-autorenew]',
+        ) as HTMLInputElement | null;
+        const subAutoHint = screen.querySelector(
+          '[data-ep-profile-subscription-autorenew-hint]',
+        ) as HTMLElement | null;
+        const subRenew = screen.querySelector('[data-ep-profile-subscription-renew]') as HTMLButtonElement | null;
+        if (subCard) {
+          subCard.style.display = '';
+          try {
+            const bill = await fetchJson<{
+              hasExpertWorkspace: boolean;
+              expertTitle: string | null;
+              subscriptionStatus: string;
+              daysRemaining: number | null;
+              autoRenew: boolean;
+              rebillConfigured: boolean;
+            }>('/me/expert-billing', token);
+            if (!bill.hasExpertWorkspace) {
+              if (subNote) {
+                subNote.textContent =
+                  'Воркспейс эксперта создаётся автоматически после успешной оплаты тарифа «Стать экспертом» на сайте edify.su.';
+              }
+              if (subDays) subDays.textContent = '—';
+              if (subStatus) subStatus.textContent = '—';
+              if (subAuto) {
+                subAuto.checked = false;
+                subAuto.disabled = true;
+              }
+              if (subAutoHint) subAutoHint.textContent = '';
+              if (subRenew) subRenew.style.display = 'none';
+            } else {
+              if (subNote) subNote.textContent = bill.expertTitle?.trim() || 'Ваш воркспейс эксперта';
+              if (subDays) subDays.textContent = String(bill.daysRemaining ?? '—');
+              if (subStatus) subStatus.textContent = (bill.subscriptionStatus ?? '—').trim() || '—';
+              if (subAuto) {
+                subAuto.disabled = false;
+                subAuto.checked = Boolean(bill.autoRenew);
+              }
+              if (subAutoHint) {
+                subAutoHint.textContent = bill.rebillConfigured
+                  ? 'Карта привязана для рекуррентных списаний.'
+                  : 'После первой успешной оплаты карта будет сохранена для автопродления.';
+              }
+              if (subRenew) {
+                subRenew.style.display = bill.autoRenew ? 'none' : '';
+              }
+            }
+          } catch {
+            if (subNote) subNote.textContent = 'Не удалось загрузить данные подписки.';
+            if (subDays) subDays.textContent = '—';
+            if (subStatus) subStatus.textContent = '—';
+            if (subAuto) {
+              subAuto.checked = false;
+              subAuto.disabled = true;
+            }
+            if (subRenew) subRenew.style.display = 'none';
+          }
+        }
       } catch {
         // ignore
       }
@@ -1440,6 +1504,8 @@ if (platformMount) {
         const stats = await fetchJson<{
           code: string;
           enrollmentsCount: number;
+          inviteesCount: number;
+          paidInviteesCount: number;
           ordersCount: number;
           paidOrdersCount: number;
           commissionTotalCents: number;
@@ -1452,8 +1518,8 @@ if (platformMount) {
           linkEl.textContent = link;
           linkEl.setAttribute('title', link);
         }
-        const inv = Math.max(0, Math.trunc(Number(stats.enrollmentsCount ?? 0)) || 0);
-        const paid = Math.max(0, Math.trunc(Number(stats.paidOrdersCount ?? 0)) || 0);
+        const inv = Math.max(0, Math.trunc(Number(stats.inviteesCount ?? stats.enrollmentsCount ?? 0)) || 0);
+        const paid = Math.max(0, Math.trunc(Number(stats.paidInviteesCount ?? stats.paidOrdersCount ?? 0)) || 0);
         const cents = Math.max(0, Math.trunc(Number(stats.commissionTotalCents ?? 0)) || 0);
         if (invitedEl) invitedEl.textContent = String(inv);
         if (paidEl) paidEl.textContent = String(paid);
@@ -9470,6 +9536,12 @@ if (platformMount) {
         builderAddAttestationQuestion(shell.shadowRoot);
         return;
       }
+      if (t?.closest('[data-ep-profile-subscription-renew]')) {
+        ev.preventDefault();
+        const base = getReferralAppBaseUrl().replace(/\/+$/, '');
+        window.open(`${base}/#pricing`, '_blank', 'noopener,noreferrer');
+        return;
+      }
       if (t?.closest('[data-ep-profile-save]')) {
         ev.preventDefault();
         void saveProfileFromScreen(shell.shadowRoot);
@@ -10692,6 +10764,37 @@ if (platformMount) {
 
     shell.shadowRoot.addEventListener('change', (ev) => {
       const t = ev.target as HTMLElement | null;
+      if (t?.matches('input[data-ep-profile-subscription-autorenew]')) {
+        const inp = t as HTMLInputElement;
+        const tok = getAccessToken();
+        if (!tok) {
+          inp.checked = !inp.checked;
+          return;
+        }
+        void (async () => {
+          const api = getApiBaseUrl().replace(/\/+$/, '');
+          try {
+            const res = await fetch(`${api}/me/expert-billing/auto-renew`, {
+              method: 'PATCH',
+              headers: {
+                accept: 'application/json',
+                'content-type': 'application/json',
+                authorization: `Bearer ${tok}`,
+              },
+              body: JSON.stringify({ autoRenew: inp.checked }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const renew = shell.shadowRoot.querySelector(
+              '[data-ep-profile-subscription-renew]',
+            ) as HTMLButtonElement | null;
+            if (renew) renew.style.display = inp.checked ? 'none' : '';
+          } catch {
+            inp.checked = !inp.checked;
+            window.alert('Не удалось сохранить настройку. Попробуйте позже.');
+          }
+        })();
+        return;
+      }
       if (t?.matches('input[data-ep-profile-avatar-input]')) {
         const inp = t as HTMLInputElement;
         const f = inp.files?.[0] ?? null;

@@ -3,6 +3,7 @@ import { MeController } from './me.controller.js';
 import { MeExpertApplicationController } from './me-expert-application.controller.js';
 import { MeExpertMembershipsController } from './me-expert-memberships.controller.js';
 import { MeExpertSubscriptionController } from './me-expert-subscription.controller.js';
+import { MeExpertBillingController } from './me-expert-billing.controller.js';
 import { MeReferralAttributionController } from './me-referral-attribution.controller.js';
 import { PublicReferralPreviewController } from './public-referral-preview.controller.js';
 import { JwtModule } from '../../auth/session/jwt.module.js';
@@ -36,6 +37,7 @@ import { TelegramAvatarSyncService } from '../../auth/telegram/telegram-avatar-s
     MeExpertApplicationController,
     MeExpertMembershipsController,
     MeExpertSubscriptionController,
+    MeExpertBillingController,
     MeReferralAttributionController,
     PublicReferralPreviewController,
   ],

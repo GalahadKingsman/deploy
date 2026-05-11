@@ -8,6 +8,13 @@ export const OrderStatusV1Schema = z.enum(['created', 'paid', 'cancelled', 'fail
 export type OrderKindV1 = 'course' | 'expert_subscription';
 export const OrderKindV1Schema = z.enum(['course', 'expert_subscription']);
 
+/** Тариф checkout на лендинге (см. POST /checkout/expert-subscription). */
+export type CheckoutProductV1 = 'platform_entry' | 'expert_pro';
+export const CheckoutProductV1Schema = z.enum(['platform_entry', 'expert_pro']);
+
+export type BillingPeriodV1 = 'monthly' | 'yearly';
+export const BillingPeriodV1Schema = z.enum(['monthly', 'yearly']);
+
 export interface OrderV1 {
   id: Id;
   orderKind: OrderKindV1;
@@ -25,6 +32,9 @@ export interface OrderV1 {
   payUrl?: string | null;
   receiptEmail?: string | null;
   receiptPhone?: string | null;
+  checkoutProduct?: CheckoutProductV1 | null;
+  billingPeriod?: BillingPeriodV1 | null;
+  subscriptionPeriodDays?: number | null;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;
 }
@@ -44,18 +54,26 @@ export const OrderV1Schema = z.object({
   payUrl: z.string().url().nullable().optional(),
   receiptEmail: z.string().nullable().optional(),
   receiptPhone: z.string().nullable().optional(),
+  checkoutProduct: CheckoutProductV1Schema.nullable().optional(),
+  billingPeriod: BillingPeriodV1Schema.nullable().optional(),
+  subscriptionPeriodDays: z.number().int().min(1).max(3650).nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
 
 /** Body for POST /checkout/expert-subscription (чек, реферальный код привлечения эксперта). */
 export interface CreateExpertSubscriptionCheckoutRequestV1 {
+  /** Тариф: вход на платформу (Начать) или полный эксперт (Стать экспертом). */
+  product: CheckoutProductV1;
+  billingPeriod: BillingPeriodV1;
   referralCode?: string | null;
   email?: string | null;
   phone?: string | null;
 }
 
 export const CreateExpertSubscriptionCheckoutRequestV1Schema = z.object({
+  product: CheckoutProductV1Schema,
+  billingPeriod: BillingPeriodV1Schema,
   referralCode: z.string().min(1).max(64).nullable().optional(),
   email: z.string().email().nullable().optional(),
   phone: z.string().min(5).max(32).nullable().optional(),

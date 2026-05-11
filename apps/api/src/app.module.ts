@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { HealthModule } from './modules/health/health.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { TelegramAuthModule } from './auth/telegram/telegram-auth.module.js';
@@ -14,6 +15,7 @@ import { PaymentsModule } from './payments/payments.module.js';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     DatabaseModule,
     HealthModule,
     TelegramAuthModule,

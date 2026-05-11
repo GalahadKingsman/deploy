@@ -333,15 +333,26 @@ export class MeController {
     }
     const code = await this.usersRepository.getOrCreateReferralCode(userId);
 
-    const [enrollmentsCount, ordersCount, paidOrdersCount, commissions] = await Promise.all([
-      this.enrollmentsRepository.countByReferralCode({ referralCode: code }),
-      this.ordersRepository.countByReferralCode({ referralCode: code }),
-      this.ordersRepository.countByReferralCode({ referralCode: code, status: 'paid' }),
-      this.commissionsRepository.list({ limit: 200, referralCode: code }),
-    ]);
+    const [enrollmentsCount, inviteesCount, paidInviteesCount, ordersCount, paidOrdersCount, commissions] =
+      await Promise.all([
+        this.enrollmentsRepository.countByReferralCode({ referralCode: code }),
+        this.usersRepository.countInviteesByReferredByUserId(userId),
+        this.ordersRepository.countPaidInviteesExpertSubscription({ inviterUserId: userId, referralCode: code }),
+        this.ordersRepository.countByReferralCode({ referralCode: code }),
+        this.ordersRepository.countByReferralCode({ referralCode: code, status: 'paid' }),
+        this.commissionsRepository.list({ limit: 200, referralCode: code }),
+      ]);
 
     const commissionTotalCents = (commissions.items ?? []).reduce((sum, c) => sum + (c.amount_cents ?? 0), 0);
-    return { code, enrollmentsCount, ordersCount, paidOrdersCount, commissionTotalCents };
+    return {
+      code,
+      enrollmentsCount,
+      inviteesCount,
+      paidInviteesCount,
+      ordersCount,
+      paidOrdersCount,
+      commissionTotalCents,
+    };
   }
 
   @Get('me/contact')

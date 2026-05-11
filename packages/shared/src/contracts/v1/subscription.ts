@@ -9,7 +9,7 @@ export type ExpertSubscriptionPlanV1 = 'free_stub' | 'paid';
 /**
  * Expert subscription status V1
  */
-export type ExpertSubscriptionStatusV1 = 'inactive' | 'active' | 'expired';
+export type ExpertSubscriptionStatusV1 = 'inactive' | 'active' | 'expired' | 'suspended';
 
 /**
  * Expert subscription entity V1
@@ -25,7 +25,7 @@ export interface ExpertSubscriptionV1 {
 
 export const ExpertSubscriptionPlanV1Schema = z.enum(['free_stub', 'paid']);
 
-export const ExpertSubscriptionStatusV1Schema = z.enum(['inactive', 'active', 'expired']);
+export const ExpertSubscriptionStatusV1Schema = z.enum(['inactive', 'active', 'expired', 'suspended']);
 
 export const ExpertSubscriptionV1Schema = z.object({
   expertId: z.string().uuid(),
