@@ -110,18 +110,14 @@ export class PaymentsController {
       }
     }
 
-    if (existing?.payUrl) {
-      return { order: existing, payUrl: existing.payUrl };
+    if (existing && !String(existing.payUrl ?? '').trim()) {
+      // Init мог пройти в Т‑Банке, а pay_url не записался (или пользователь повторил клик) — повторный Init с тем же UUID → «order_id уже существует».
+      await this.ordersRepository.setOrderStatusIf(existing.id, 'cancelled', ['created']);
+      existing = null;
     }
 
-    if (existing) {
-      return this.tryInitTinkoffAndPersist({
-        userId,
-        order: existing,
-        description: product === 'expert_pro' ? 'EDIFY — подписка эксперта' : 'EDIFY — доступ к платформе',
-        receiptEmail: parsed.data.email ?? existing.receiptEmail ?? null,
-        receiptPhone: parsed.data.phone ?? existing.receiptPhone ?? null,
-      });
+    if (existing?.payUrl) {
+      return { order: existing, payUrl: existing.payUrl };
     }
 
     const order = await this.ordersRepository.createExpertSubscriptionOrder({
