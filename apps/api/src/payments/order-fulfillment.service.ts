@@ -58,28 +58,29 @@ export class OrderFulfillmentService {
           userId: order.userId,
           days,
         });
-      } else {
-        let expert = await this.expertsRepository.findByCreatedByUserId(order.userId);
-        if (!expert) {
-          const user = await this.usersRepository.findById(order.userId);
-          const baseTitle = (user?.firstName ?? '').trim() || 'Эксперт';
-          const expertId = randomUUID();
-          const slug = `ex-${expertId.replace(/-/g, '').slice(0, 10)}`;
-          expert = await this.expertsRepository.createExpert({
-            id: expertId,
-            title: baseTitle,
-            slug,
-            createdByUserId: order.userId,
-          });
-          await this.expertMembersRepository.addMember({
-            expertId: expert.id,
-            userId: order.userId,
-            role: 'owner',
-          });
-        }
-        await this.expertSubscriptionsRepository.ensureDefault(expert.id);
-        await this.expertSubscriptionsRepository.grantDays(expert.id, days, new Date(), { plan: 'paid' });
       }
+
+      // И «Начать», и «Эксперт» дают воркспейс + активную expert_subscription (кабинет /me/expert-*).
+      let expert = await this.expertsRepository.findByCreatedByUserId(order.userId);
+      if (!expert) {
+        const user = await this.usersRepository.findById(order.userId);
+        const baseTitle = (user?.firstName ?? '').trim() || 'Эксперт';
+        const expertId = randomUUID();
+        const slug = `ex-${expertId.replace(/-/g, '').slice(0, 10)}`;
+        expert = await this.expertsRepository.createExpert({
+          id: expertId,
+          title: baseTitle,
+          slug,
+          createdByUserId: order.userId,
+        });
+        await this.expertMembersRepository.addMember({
+          expertId: expert.id,
+          userId: order.userId,
+          role: 'owner',
+        });
+      }
+      await this.expertSubscriptionsRepository.ensureDefault(expert.id);
+      await this.expertSubscriptionsRepository.grantDays(expert.id, days, new Date(), { plan: 'paid' });
 
       const billingPeriod: ContractsV1.BillingPeriodV1 =
         order.billingPeriod === 'yearly' ? 'yearly' : 'monthly';
