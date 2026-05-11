@@ -1014,12 +1014,12 @@ if (platformMount) {
 
       const noBtn = document.createElement('button');
       noBtn.type = 'button';
-      noBtn.className = 'btn-outline';
+      noBtn.className = 'btn btn-outline ep-sub-renew-modal-wrap__btn';
       noBtn.textContent = 'Нет';
 
       const yesBtn = document.createElement('button');
       yesBtn.type = 'button';
-      yesBtn.className = 'btn';
+      yesBtn.className = 'btn btn-accent ep-sub-renew-modal-wrap__btn ep-sub-renew-modal-wrap__btn--primary';
       yesBtn.textContent = 'Да';
 
       const closeAll = () => {
