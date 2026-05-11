@@ -1623,6 +1623,28 @@ if (platformMount) {
       return s || '—';
     }
 
+    function fillReferralWdStatusCell(td: HTMLElement, status: string): void {
+      td.replaceChildren();
+      td.className = 'ep-ref-wd-cell ep-ref-wd-cell--status';
+      const x = (status ?? '').trim().toLowerCase();
+      const span = document.createElement('span');
+      span.className = 'ep-ref-wd-badge';
+      if (x === 'pending') {
+        span.classList.add('ep-ref-wd-badge--pending');
+        span.textContent = 'На рассмотрении';
+      } else if (x === 'approved') {
+        span.classList.add('ep-ref-wd-badge--approved');
+        span.textContent = 'Одобрена';
+      } else if (x === 'rejected') {
+        span.classList.add('ep-ref-wd-badge--rejected');
+        span.textContent = 'Отклонена';
+      } else {
+        span.classList.add('ep-ref-wd-badge--unknown');
+        span.textContent = formatReferralWdStatusRu(status);
+      }
+      td.appendChild(span);
+    }
+
     function formatReferralPanDisplay(raw: string): string {
       const d = referralPanDigits(raw);
       if (!d) return '—';
@@ -1684,8 +1706,7 @@ if (platformMount) {
           tdB.className = 'ep-ref-wd-cell';
           tdB.textContent = (it.bankName ?? '').trim() || '—';
           const tdS = document.createElement('td');
-          tdS.className = 'ep-ref-wd-cell';
-          tdS.textContent = formatReferralWdStatusRu(it.status);
+          fillReferralWdStatusCell(tdS, it.status);
           tr.append(tdD, tdA, tdC, tdP, tdB, tdS);
           tbody.appendChild(tr);
         }
@@ -1725,27 +1746,34 @@ if (platformMount) {
           const tr = document.createElement('tr');
           const tdU = document.createElement('td');
           tdU.className = 'ep-ref-wd-cell';
+          tdU.setAttribute('data-label', 'Пользователь');
           tdU.textContent = name;
           const tdD = document.createElement('td');
           tdD.className = 'ep-ref-wd-cell ep-ref-wd-cell--muted';
+          tdD.setAttribute('data-label', 'Дата');
           tdD.textContent = formatRefDateRu(it.createdAt) || '—';
           const tdA = document.createElement('td');
           tdA.className = 'ep-ref-wd-cell ep-ref-wd-cell--amount';
+          tdA.setAttribute('data-label', 'Сумма');
           tdA.textContent = `${Math.round((it.amountCents ?? 0) / 100).toLocaleString('ru-RU')}\u00a0₽`;
           const tdC = document.createElement('td');
           tdC.className = 'ep-ref-wd-cell ep-ref-wd-cell--mono';
+          tdC.setAttribute('data-label', 'Карта');
           tdC.textContent = formatReferralPanDisplay(it.cardPan ?? '');
           const tdP = document.createElement('td');
           tdP.className = 'ep-ref-wd-cell';
+          tdP.setAttribute('data-label', 'Телефон');
           tdP.textContent = (it.phone ?? '').trim() || '—';
           const tdB = document.createElement('td');
           tdB.className = 'ep-ref-wd-cell';
+          tdB.setAttribute('data-label', 'Банк');
           tdB.textContent = (it.bankName ?? '').trim() || '—';
           const tdS = document.createElement('td');
-          tdS.className = 'ep-ref-wd-cell';
-          tdS.textContent = formatReferralWdStatusRu(it.status);
+          fillReferralWdStatusCell(tdS, it.status);
+          tdS.setAttribute('data-label', 'Статус');
           const tdAct = document.createElement('td');
           tdAct.className = 'ep-ref-wd-cell ep-ref-wd-actions';
+          tdAct.setAttribute('data-label', 'Действия');
           if (it.status === 'pending') {
             const bOk = document.createElement('button');
             bOk.type = 'button';
