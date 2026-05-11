@@ -104,14 +104,9 @@ export class PaymentsController {
     if (existing) {
       const days = existing.subscriptionPeriodDays ?? 0;
       if (existing.amountCents !== amountCents || days !== periodDays) {
-        await this.ordersRepository.resetCreatedExpertSubscriptionCheckoutPricing({
-          orderId: existing.id,
-          userId,
-          amountCents,
-          subscriptionPeriodDays: periodDays,
-        });
-        existing =
-          (await this.ordersRepository.findByIdForUser({ orderId: existing.id, userId })) ?? existing;
+        // Т‑Банк привязывает Init к OrderId навсегда: нельзя повторно Init с тем же UUID после смены суммы/периода.
+        await this.ordersRepository.setOrderStatusIf(existing.id, 'cancelled', ['created']);
+        existing = null;
       }
     }
 
