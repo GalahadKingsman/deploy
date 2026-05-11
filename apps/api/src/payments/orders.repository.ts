@@ -247,7 +247,7 @@ export class OrdersRepository {
       `UPDATE orders SET
          amount_cents = $3,
          subscription_period_days = $4,
-         provider = NULL,
+         provider = 'tinkoff',
          provider_payment_id = NULL,
          provider_status = NULL,
          pay_url = NULL,
