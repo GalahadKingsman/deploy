@@ -1026,7 +1026,7 @@ if (platformMount) {
         ) as HTMLInputElement | null;
         const subRenew = screen.querySelector('[data-ep-profile-subscription-renew]') as HTMLButtonElement | null;
         if (subCard) {
-          subCard.style.display = '';
+          subCard.style.display = 'none';
           try {
             const bill = await fetchJson<{
               hasExpertWorkspace: boolean;
@@ -1037,21 +1037,9 @@ if (platformMount) {
               rebillConfigured: boolean;
             }>('/me/expert-billing', token);
             if (!bill.hasExpertWorkspace) {
-              if (subNote) {
-                subNote.textContent =
-                  'Воркспейс эксперта создаётся автоматически после успешной оплаты тарифа «Стать экспертом» на сайте edify.su.';
-              }
-              if (subDays) subDays.textContent = '—';
-              if (subStatus) {
-                subStatus.textContent = '—';
-                subStatus.className = 'num ep-sub-status-muted';
-              }
-              if (subAuto) {
-                subAuto.checked = false;
-                subAuto.disabled = true;
-              }
-              if (subRenew) subRenew.style.display = 'none';
+              /* Нет записи воркспейса/подписки в БД — блок не показываем до оплаты или ручной выдачи. */
             } else {
+              subCard.style.display = 'block';
               if (subNote) subNote.textContent = bill.expertTitle?.trim() || 'Ваш воркспейс эксперта';
               if (subDays) subDays.textContent = String(bill.daysRemaining ?? '—');
               if (subStatus) {
@@ -1068,17 +1056,7 @@ if (platformMount) {
               }
             }
           } catch {
-            if (subNote) subNote.textContent = 'Не удалось загрузить данные подписки.';
-            if (subDays) subDays.textContent = '—';
-            if (subStatus) {
-              subStatus.textContent = '—';
-              subStatus.className = 'num ep-sub-status-muted';
-            }
-            if (subAuto) {
-              subAuto.checked = false;
-              subAuto.disabled = true;
-            }
-            if (subRenew) subRenew.style.display = 'none';
+            subCard.style.display = 'none';
           }
         }
       } catch {
