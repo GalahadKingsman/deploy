@@ -6,6 +6,7 @@ import { MeExpertSubscriptionController } from './me-expert-subscription.control
 import { MeExpertBillingController } from './me-expert-billing.controller.js';
 import { MeReferralAttributionController } from './me-referral-attribution.controller.js';
 import { PublicReferralPreviewController } from './public-referral-preview.controller.js';
+import { MeReferralWithdrawalsController } from './me-referral-withdrawals.controller.js';
 import { JwtModule } from '../../auth/session/jwt.module.js';
 import { UsersModule } from '../../users/users.module.js';
 import { AuditModule } from '../../audit/audit.module.js';
@@ -40,6 +41,7 @@ import { TelegramAvatarSyncService } from '../../auth/telegram/telegram-avatar-s
     MeExpertBillingController,
     MeReferralAttributionController,
     PublicReferralPreviewController,
+    MeReferralWithdrawalsController,
   ],
   providers: [JwtAuthGuard, TelegramAvatarSyncService],
 })

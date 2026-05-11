@@ -9,17 +9,22 @@ export class TelegramOutboundService {
   private readonly log = new Logger(TelegramOutboundService.name);
 
   async sendMessageToUser(telegramUserId: string, text: string): Promise<void> {
+    await this.sendMessageToChatId(telegramUserId, text);
+  }
+
+  /** `chat_id` may be numeric string or `@publicChannelUsername`. */
+  async sendMessageToChatId(chatId: string, text: string): Promise<void> {
     const env = validateOrThrow(ApiEnvSchema, process.env);
     const token = env.TELEGRAM_BOT_TOKEN?.trim();
-    const chatId = telegramUserId?.trim();
-    if (!token || !chatId || !text.trim()) return;
+    const cid = chatId?.trim();
+    if (!token || !cid || !text.trim()) return;
 
     const url = `https://api.telegram.org/bot${encodeURIComponent(token)}/sendMessage`;
     try {
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text: text.slice(0, 4000) }),
+        body: JSON.stringify({ chat_id: cid, text: text.slice(0, 4000) }),
       });
       if (!res.ok) {
         const body = await res.text();

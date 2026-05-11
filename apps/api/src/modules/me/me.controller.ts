@@ -23,6 +23,7 @@ import { PayoutRequestsRepository } from '../../payments/payout-requests.reposit
 import { S3StorageService } from '../../storage/s3-storage.service.js';
 import { SubmissionsRepository } from '../../submissions/submissions.repository.js';
 import { TelegramAvatarSyncService } from '../../auth/telegram/telegram-avatar-sync.service.js';
+import { ReferralWithdrawalService } from '../../payments/referral-withdrawal.service.js';
 import { ErrorCodes } from '@tracked/shared';
 import { validateTelegramInitData, TelegramInitDataValidationError } from '../../auth/telegram/telegram-init-data.js';
 import { ApiEnvSchema, validateOrThrow } from '@tracked/shared';
@@ -43,6 +44,7 @@ export class MeController {
     private readonly storage: S3StorageService,
     private readonly submissionsRepository: SubmissionsRepository,
     private readonly telegramAvatarSync: TelegramAvatarSyncService,
+    private readonly referralWithdrawals: ReferralWithdrawalService,
   ) {}
 
   @Get('me')
@@ -344,6 +346,7 @@ export class MeController {
       ]);
 
     const commissionTotalCents = (commissions.items ?? []).reduce((sum, c) => sum + (c.amount_cents ?? 0), 0);
+    const snap = await this.referralWithdrawals.computeReferralMoneySnapshot(userId);
     return {
       code,
       enrollmentsCount,
@@ -352,6 +355,8 @@ export class MeController {
       ordersCount,
       paidOrdersCount,
       commissionTotalCents,
+      netAccruedCents: snap.netAccruedCents,
+      hasPendingWithdrawal: snap.hasPendingWithdrawal,
     };
   }
 

@@ -15,6 +15,7 @@ import { PlatformRoleGuard } from '../../auth/rbac/platform-role.guard.js';
 import { PaymentsModule } from '../../payments/payments.module.js';
 import { AccessDataModule } from '../../access/access-data.module.js';
 import { PasswordResetService } from '../../auth/password/password-reset.service.js';
+import { AdminReferralWithdrawalsController } from './admin.referral-withdrawals.controller.js';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { PasswordResetService } from '../../auth/password/password-reset.service
     AdminAuditController,
     AdminPaymentsController,
     AdminUsersController,
+    AdminReferralWithdrawalsController,
   ],
   providers: [JwtAuthGuard, PlatformRoleGuard, PasswordResetService],
 })

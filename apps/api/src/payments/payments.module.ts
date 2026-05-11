@@ -16,9 +16,20 @@ import { AuditModule } from '../audit/audit.module.js';
 import { ExpertsModule } from '../experts/experts.module.js';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module.js';
 import { UsersModule } from '../users/users.module.js';
+import { IntegrationsModule } from '../integrations/integrations.module.js';
+import { ReferralWithdrawalRequestsRepository } from './referral-withdrawal-requests.repository.js';
+import { ReferralWithdrawalService } from './referral-withdrawal.service.js';
 
 @Module({
-  imports: [JwtModule, UsersModule, AccessDataModule, AuditModule, ExpertsModule, SubscriptionsModule],
+  imports: [
+    JwtModule,
+    UsersModule,
+    AccessDataModule,
+    AuditModule,
+    ExpertsModule,
+    SubscriptionsModule,
+    IntegrationsModule,
+  ],
   controllers: [PaymentsController, TinkoffWebhookController],
   providers: [
     JwtAuthGuard,
@@ -45,6 +56,12 @@ import { UsersModule } from '../users/users.module.js';
       useFactory: (pool: Pool) => new PayoutRequestsRepository(pool),
       inject: [Pool],
     },
+    {
+      provide: ReferralWithdrawalRequestsRepository,
+      useFactory: (pool: Pool) => new ReferralWithdrawalRequestsRepository(pool),
+      inject: [Pool],
+    },
+    ReferralWithdrawalService,
   ],
   exports: [
     OrdersRepository,
@@ -52,6 +69,8 @@ import { UsersModule } from '../users/users.module.js';
     OrderFulfillmentService,
     RefundRequestsRepository,
     PayoutRequestsRepository,
+    ReferralWithdrawalRequestsRepository,
+    ReferralWithdrawalService,
   ],
 })
 export class PaymentsModule {}

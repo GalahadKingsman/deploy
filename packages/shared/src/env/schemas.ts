@@ -80,6 +80,12 @@ export const ApiEnvSchema = z.object({
   JWT_ACCESS_TTL_SECONDS: z.coerce.number().default(14 * 24 * 60 * 60),
   /** Публичный origin сайта (лендинг), без завершающего слэша. Ссылки в письмах сброса пароля: https://edify.su */
   PUBLIC_WEB_ORIGIN: z.preprocess(emptyToUndefined, z.string().url().optional()),
+  /** База кабинета платформы (без слэша), для ссылок в Telegram. Например https://edify.su */
+  PUBLIC_PLATFORM_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+  /** Числовой chat_id в Telegram для уведомлений о заявках на вывод (надёжнее, чем username). */
+  REFERRAL_WITHDRAWAL_NOTIFY_CHAT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+  /** Username без @; если нет chat_id, пробуем sendMessage на @username (может не сработать для ЛС). */
+  REFERRAL_WITHDRAWAL_NOTIFY_USERNAME: z.preprocess(emptyToUndefined, z.string().min(1).max(64).optional()),
   SMTP_HOST: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   SMTP_PORT: z.coerce.number().int().positive().optional(),
   /** true для порта 465 (SSL), false для 587 STARTTLS */

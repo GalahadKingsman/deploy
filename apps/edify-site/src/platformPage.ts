@@ -722,7 +722,14 @@ if (platformMount) {
     const initialScreen = (urlParams.get('screen') || '').trim();
     const initialRole = (urlParams.get('role') || '').trim();
     const shouldOpenAdminOnLoad = initialScreen === 'admin';
-    const initialScreenId = shouldOpenAdminOnLoad ? 's-catalog' : initialScreen ? initialScreen : 's-catalog';
+    const shouldOpenAdminReferralWithdrawals = initialScreen === 'admin-referral-withdrawals';
+    const initialScreenId = shouldOpenAdminOnLoad
+      ? 's-catalog'
+      : shouldOpenAdminReferralWithdrawals
+        ? 'admin-referral-withdrawals'
+        : initialScreen
+          ? initialScreen
+          : 's-catalog';
 
     type EpPlatformHistoryState = { __ep: 1; role: 'expert' | 'student'; screen: string };
     let epHistorySeeded = false;
@@ -774,7 +781,8 @@ if (platformMount) {
     }
 
     const shell = mountPlatformShell(platformMount, {
-      initialRole: initialRole === 'expert' ? 'expert' : 'student',
+      initialRole:
+        shouldOpenAdminReferralWithdrawals || initialRole === 'expert' ? 'expert' : 'student',
       initialScreenId,
       beforeSetRole(role) {
         if (role !== 'expert') return true;
@@ -817,6 +825,15 @@ if (platformMount) {
         }
         if (action.type === 'navigate' && action.screenId === 'e-referral') {
           void hydrateExpertReferralScreen(action.shadowRoot);
+        }
+        if (action.type === 'navigate' && action.screenId === 'admin-referral-withdrawals') {
+          const pr = (currentPlatformRole ?? '').trim();
+          if (pr !== 'admin' && pr !== 'owner') {
+            window.alert('Нет доступа к этому разделу.');
+            shell.showScreen('e-dashboard');
+            return;
+          }
+          void hydrateAdminReferralWithdrawalsScreen(action.shadowRoot);
         }
         if (action.type === 'navigate' && action.screenId === 'e-dashboard') {
           void hydrateExpertDashboard(action.shadowRoot);
@@ -1567,7 +1584,179 @@ if (platformMount) {
       return out || 'ED';
     }
 
+    function syncPlatformAdminNav(root: ShadowRoot | null): void {
+      if (!root) return;
+      const sec = root.querySelector('[data-ep-admin-platform-section]') as HTMLElement | null;
+      const nav = root.querySelector('[data-ep-admin-withdrawals-nav]') as HTMLElement | null;
+      const role = (currentPlatformRole ?? '').trim();
+      const show = role === 'admin' || role === 'owner';
+      if (sec) sec.style.display = show ? '' : 'none';
+      if (nav) nav.style.display = show ? '' : 'none';
+    }
+
+    function referralPanDigits(raw: string): string {
+      return (raw ?? '').replace(/\D/g, '');
+    }
+
+    function referralLuhnValid(digits: string): boolean {
+      if (digits.length < 13 || digits.length > 19) return false;
+      let sum = 0;
+      let alt = false;
+      for (let i = digits.length - 1; i >= 0; i--) {
+        let n = parseInt(digits[i]!, 10);
+        if (Number.isNaN(n)) return false;
+        if (alt) {
+          n *= 2;
+          if (n > 9) n -= 9;
+        }
+        sum += n;
+        alt = !alt;
+      }
+      return sum % 10 === 0;
+    }
+
+    function formatReferralWdStatusRu(s: string): string {
+      const x = (s ?? '').trim().toLowerCase();
+      if (x === 'pending') return 'На рассмотрении';
+      if (x === 'approved') return 'Одобрена';
+      if (x === 'rejected') return 'Отклонена';
+      return s || '—';
+    }
+
+    function setExpertReferralWithdrawView(root: ShadowRoot, view: 'main' | 'withdrawals'): void {
+      expertReferralWithdrawView = view;
+      const def = root.querySelector('[data-ep-referral-section-default]') as HTMLElement | null;
+      const wd = root.querySelector('[data-ep-referral-section-withdrawals]') as HTMLElement | null;
+      if (def) def.style.display = view === 'main' ? '' : 'none';
+      if (wd) wd.style.display = view === 'withdrawals' ? '' : 'none';
+    }
+
+    async function hydrateExpertReferralWithdrawalsList(root: ShadowRoot): Promise<void> {
+      const token = getAccessToken();
+      const tbody = root.querySelector('[data-ep-referral-wd-list-tbody]') as HTMLElement | null;
+      const empty = root.querySelector('[data-ep-referral-wd-list-empty]') as HTMLElement | null;
+      if (!tbody) return;
+      tbody.replaceChildren();
+      if (!token) {
+        if (empty) {
+          empty.style.display = '';
+          empty.textContent = 'Войдите, чтобы увидеть заявки.';
+        }
+        return;
+      }
+      try {
+        const res = await fetchJson<{
+          items: Array<{
+            id: string;
+            amountCents: number;
+            status: string;
+            createdAt: string;
+          }>;
+        }>('/me/referral/withdrawals', token);
+        const items = res.items ?? [];
+        if (empty) empty.style.display = items.length === 0 ? '' : 'none';
+        for (const it of items) {
+          const tr = document.createElement('tr');
+          tr.style.borderBottom = '1px solid var(--line)';
+          const tdD = document.createElement('td');
+          tdD.style.padding = '10px 14px';
+          tdD.style.color = 'var(--t2)';
+          tdD.textContent = formatRefDateRu(it.createdAt) || '—';
+          const tdA = document.createElement('td');
+          tdA.style.padding = '10px 14px';
+          tdA.style.textAlign = 'right';
+          tdA.style.fontWeight = '700';
+          tdA.style.color = 'var(--t1)';
+          tdA.textContent = `${Math.round((it.amountCents ?? 0) / 100).toLocaleString('ru-RU')}\u00a0₽`;
+          const tdS = document.createElement('td');
+          tdS.style.padding = '10px 14px';
+          tdS.textContent = formatReferralWdStatusRu(it.status);
+          tr.append(tdD, tdA, tdS);
+          tbody.appendChild(tr);
+        }
+      } catch {
+        if (empty) {
+          empty.style.display = '';
+          empty.textContent = 'Не удалось загрузить заявки.';
+        }
+      }
+    }
+
+    async function hydrateAdminReferralWithdrawalsScreen(root: ShadowRoot): Promise<void> {
+      const token = getAccessToken();
+      const tbody = root.querySelector('[data-ep-admin-rw-tbody]') as HTMLElement | null;
+      const empty = root.querySelector('[data-ep-admin-rw-empty]') as HTMLElement | null;
+      if (!tbody) return;
+      tbody.replaceChildren();
+      if (!token) return;
+      try {
+        const res = await fetchJson<{
+          items: Array<{
+            id: string;
+            firstName: string | null;
+            lastName: string | null;
+            amountCents: number;
+            status: string;
+            createdAt: string;
+          }>;
+        }>('/admin/referral-withdrawals?limit=100&offset=0', token);
+        const items = res.items ?? [];
+        if (empty) empty.style.display = items.length === 0 ? '' : 'none';
+        for (const it of items) {
+          const name = [it.firstName, it.lastName].filter(Boolean).join(' ').trim() || '—';
+          const tr = document.createElement('tr');
+          tr.style.borderBottom = '1px solid var(--line)';
+          const tdU = document.createElement('td');
+          tdU.style.padding = '10px 14px';
+          tdU.textContent = name;
+          const tdD = document.createElement('td');
+          tdD.style.padding = '10px 14px';
+          tdD.style.color = 'var(--t2)';
+          tdD.textContent = formatRefDateRu(it.createdAt) || '—';
+          const tdA = document.createElement('td');
+          tdA.style.padding = '10px 14px';
+          tdA.style.textAlign = 'right';
+          tdA.style.fontWeight = '700';
+          tdA.textContent = `${Math.round((it.amountCents ?? 0) / 100).toLocaleString('ru-RU')}\u00a0₽`;
+          const tdS = document.createElement('td');
+          tdS.style.padding = '10px 14px';
+          tdS.textContent = formatReferralWdStatusRu(it.status);
+          const tdAct = document.createElement('td');
+          tdAct.style.padding = '10px 14px';
+          if (it.status === 'pending') {
+            const bOk = document.createElement('button');
+            bOk.type = 'button';
+            bOk.className = 'btn btn-primary btn-sm';
+            bOk.textContent = 'Одобрить';
+            bOk.dataset.epAdminRwApprove = it.id;
+            const bNo = document.createElement('button');
+            bNo.type = 'button';
+            bNo.className = 'btn btn-outline btn-sm';
+            bNo.style.marginLeft = '6px';
+            bNo.textContent = 'Отклонить';
+            bNo.dataset.epAdminRwReject = it.id;
+            tdAct.append(bOk, bNo);
+          } else {
+            tdAct.textContent = '—';
+            tdAct.style.color = 'var(--t3)';
+          }
+          tr.append(tdU, tdD, tdA, tdS, tdAct);
+          tbody.appendChild(tr);
+        }
+      } catch {
+        if (empty) {
+          empty.style.display = '';
+          empty.textContent = 'Ошибка загрузки (нужны права admin/owner).';
+        }
+      }
+    }
+
     async function hydrateExpertReferralScreen(root: ShadowRoot): Promise<void> {
+      expertReferralWithdrawView = 'main';
+      setExpertReferralWithdrawView(root, 'main');
+      const wdForm = root.querySelector('[data-ep-referral-withdraw-form-wrap]') as HTMLElement | null;
+      if (wdForm) wdForm.style.display = 'none';
+
       const token = getAccessToken();
       const codeEl = root.querySelector('[data-ep-referral-code]') as HTMLElement | null;
       const linkEl = root.querySelector('[data-ep-referral-link-text]') as HTMLElement | null;
@@ -1608,6 +1797,8 @@ if (platformMount) {
           ordersCount: number;
           paidOrdersCount: number;
           commissionTotalCents: number;
+          netAccruedCents?: number;
+          hasPendingWithdrawal?: boolean;
         }>('/me/referral/stats', token);
         const base = getReferralAppBaseUrl();
         const link = `${base}/?ref=${encodeURIComponent(stats.code)}`;
@@ -1619,11 +1810,17 @@ if (platformMount) {
         }
         const inv = Math.max(0, Math.trunc(Number(stats.inviteesCount ?? stats.enrollmentsCount ?? 0)) || 0);
         const paid = Math.max(0, Math.trunc(Number(stats.paidInviteesCount ?? stats.paidOrdersCount ?? 0)) || 0);
-        const cents = Math.max(0, Math.trunc(Number(stats.commissionTotalCents ?? 0)) || 0);
+        const gross = Math.max(0, Math.trunc(Number(stats.commissionTotalCents ?? 0)) || 0);
+        const net =
+          typeof stats.netAccruedCents === 'number' && Number.isFinite(stats.netAccruedCents)
+            ? Math.max(0, Math.trunc(stats.netAccruedCents))
+            : gross;
+        referralWithdrawNetCents = net;
+        referralWithdrawHasPending = Boolean(stats.hasPendingWithdrawal);
         if (invitedEl) invitedEl.textContent = String(inv);
         if (paidEl) paidEl.textContent = String(paid);
         if (accruedEl) {
-          accruedEl.textContent = `${Math.round(cents / 100).toLocaleString('ru-RU')}\u00a0₽`;
+          accruedEl.textContent = `${Math.round(net / 100).toLocaleString('ru-RU')}\u00a0₽`;
         }
       } catch {
         setErr('Не удалось загрузить данные. Обновите страницу.');
@@ -3368,6 +3565,7 @@ if (platformMount) {
         currentMe = null;
         currentPlatformRole = null;
         syncExpertTeamOwnerButton(shell.shadowRoot);
+        syncPlatformAdminNav(shell.shadowRoot);
         void hydrateExpertHomeworkBadge(shell.shadowRoot);
         return;
       }
@@ -3393,11 +3591,13 @@ if (platformMount) {
           currentMe = null;
           currentPlatformRole = null;
           syncExpertTeamOwnerButton(root);
+          syncPlatformAdminNav(root);
           void hydrateExpertHomeworkBadge(root);
           return;
         }
         currentMe = u;
         currentPlatformRole = u.platformRole ?? null;
+        syncPlatformAdminNav(root);
         // Student sidebar badges (best-effort)
         void hydrateStudentMenuBadges(shell.shadowRoot, token);
         // Update streak UI (student sidebar; best-effort)
@@ -3447,6 +3647,7 @@ if (platformMount) {
         currentMe = null;
         currentPlatformRole = null;
         syncExpertTeamOwnerButton(root);
+        syncPlatformAdminNav(root);
         void hydrateExpertHomeworkBadge(root);
         // не ломаем интерфейс, если /me недоступен
       }
@@ -4653,6 +4854,9 @@ if (platformMount) {
     };
     let expertStudentsData: ExpertStudentsResponseV1 | null = null;
     let expertStudentsView: 'table' | 'activity' = 'table';
+    let expertReferralWithdrawView: 'main' | 'withdrawals' = 'main';
+    let referralWithdrawNetCents = 0;
+    let referralWithdrawHasPending = false;
     let expertStudentsActivityLoading = false;
     let expertStudentsSearchTimer: ReturnType<typeof setTimeout> | null = null;
     function expertStudentsDisplayName(s: {
@@ -8986,6 +9190,15 @@ if (platformMount) {
     // Подгружаем данные на старте
     void hydrateTopbarUser().then(() => {
       if (shouldOpenAdminOnLoad) void openAdminDrawer(shell.shadowRoot);
+      if (shouldOpenAdminReferralWithdrawals) {
+        const pr = (currentPlatformRole ?? '').trim();
+        if (pr !== 'admin' && pr !== 'owner') {
+          window.alert('Нет доступа к разделу заявок на вывод.');
+          shell.showScreen('e-dashboard');
+        } else {
+          void hydrateAdminReferralWithdrawalsScreen(shell.shadowRoot);
+        }
+      }
       const r = shell.shadowRoot;
       const isExpertTab = r.getElementById('tab-expert')?.classList.contains('active');
       const dash = r.getElementById('screen-e-dashboard');
@@ -9187,6 +9400,136 @@ if (platformMount) {
         }
         const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(link)}`;
         window.open(qrImg, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      const refWdOpen = t?.closest('[data-ep-referral-withdraw-open]') as HTMLElement | null;
+      if (refWdOpen) {
+        ev.preventDefault();
+        const root = shell.shadowRoot;
+        const hint = root.querySelector('[data-ep-referral-wd-hint]') as HTMLElement | null;
+        const form = root.querySelector('[data-ep-referral-withdraw-form-wrap]') as HTMLElement | null;
+        if (referralWithdrawHasPending) {
+          window.alert('У вас уже есть заявка на рассмотрении. Дождитесь решения.');
+          return;
+        }
+        if (referralWithdrawNetCents <= 0) {
+          window.alert('Нет доступной суммы для вывода.');
+          return;
+        }
+        if (hint) {
+          hint.textContent = `Доступно к выводу: ${Math.floor(referralWithdrawNetCents / 100).toLocaleString('ru-RU')} ₽ (целые рубли).`;
+        }
+        if (form) form.style.display = '';
+        return;
+      }
+      const refWdToggle = t?.closest('[data-ep-referral-withdrawals-toggle]') as HTMLElement | null;
+      if (refWdToggle) {
+        ev.preventDefault();
+        setExpertReferralWithdrawView(shell.shadowRoot, 'withdrawals');
+        void hydrateExpertReferralWithdrawalsList(shell.shadowRoot);
+        return;
+      }
+      const refWdBack = t?.closest('[data-ep-referral-withdrawals-back]') as HTMLElement | null;
+      if (refWdBack) {
+        ev.preventDefault();
+        setExpertReferralWithdrawView(shell.shadowRoot, 'main');
+        return;
+      }
+      const refWdCancel = t?.closest('[data-ep-referral-wd-cancel]') as HTMLElement | null;
+      if (refWdCancel) {
+        ev.preventDefault();
+        const form = shell.shadowRoot.querySelector('[data-ep-referral-withdraw-form-wrap]') as HTMLElement | null;
+        if (form) form.style.display = 'none';
+        return;
+      }
+      const refWdSubmit = t?.closest('[data-ep-referral-wd-submit]') as HTMLElement | null;
+      if (refWdSubmit) {
+        ev.preventDefault();
+        const root = shell.shadowRoot;
+        const tok = getAccessToken();
+        if (!tok) {
+          window.alert('Войдите в аккаунт.');
+          return;
+        }
+        const rubRaw = (root.querySelector('[data-ep-referral-wd-amount]') as HTMLInputElement | null)?.value ?? '';
+        const rub = Math.max(0, Math.trunc(Number(String(rubRaw).replace(',', '.')) || 0));
+        const pan = referralPanDigits(
+          (root.querySelector('[data-ep-referral-wd-card]') as HTMLInputElement | null)?.value ?? '',
+        );
+        const phone = ((root.querySelector('[data-ep-referral-wd-phone]') as HTMLInputElement | null)?.value ?? '')
+          .trim();
+        const bank = ((root.querySelector('[data-ep-referral-wd-bank]') as HTMLInputElement | null)?.value ?? '')
+          .trim();
+        if (!rub || rub * 100 > referralWithdrawNetCents) {
+          window.alert('Укажите сумму в рублях не больше доступного баланса.');
+          return;
+        }
+        if (!referralLuhnValid(pan)) {
+          window.alert('Проверьте номер карты (13–19 цифр, алгоритм Луна).');
+          return;
+        }
+        if (phone.length < 10) {
+          window.alert('Укажите номер телефона.');
+          return;
+        }
+        if (!bank) {
+          window.alert('Укажите банк.');
+          return;
+        }
+        void (async () => {
+          try {
+            await postJson('/me/referral/withdrawals', { amountCents: rub * 100, cardPan: pan, phone, bankName: bank }, tok);
+            window.alert('Заявка создана.');
+            const form = root.querySelector('[data-ep-referral-withdraw-form-wrap]') as HTMLElement | null;
+            if (form) form.style.display = 'none';
+            void hydrateExpertReferralScreen(root);
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            window.alert(msg.includes('409') ? 'У вас уже есть заявка на рассмотрении.' : `Не удалось создать заявку: ${msg}`);
+          }
+        })();
+        return;
+      }
+
+      const adminRwRefresh = t?.closest('[data-ep-admin-rw-refresh]') as HTMLElement | null;
+      if (adminRwRefresh) {
+        ev.preventDefault();
+        void hydrateAdminReferralWithdrawalsScreen(shell.shadowRoot);
+        return;
+      }
+      const adminRwAppr = t?.closest('[data-ep-admin-rw-approve]') as HTMLElement | null;
+      if (adminRwAppr?.dataset.epAdminRwApprove) {
+        ev.preventDefault();
+        const id = adminRwAppr.dataset.epAdminRwApprove;
+        const tok = getAccessToken();
+        if (!tok) return;
+        if (!window.confirm('Одобрить заявку на вывод?')) return;
+        void (async () => {
+          try {
+            await patchJson(`/admin/referral-withdrawals/${encodeURIComponent(id)}`, { status: 'approved' }, tok);
+            void hydrateAdminReferralWithdrawalsScreen(shell.shadowRoot);
+          } catch (e) {
+            window.alert(e instanceof Error ? e.message : String(e));
+          }
+        })();
+        return;
+      }
+      const adminRwRej = t?.closest('[data-ep-admin-rw-reject]') as HTMLElement | null;
+      if (adminRwRej?.dataset.epAdminRwReject) {
+        ev.preventDefault();
+        const id = adminRwRej.dataset.epAdminRwReject;
+        const tok = getAccessToken();
+        if (!tok) return;
+        if (!window.confirm('Отклонить заявку?')) return;
+        void (async () => {
+          try {
+            await patchJson(`/admin/referral-withdrawals/${encodeURIComponent(id)}`, { status: 'rejected' }, tok);
+            void hydrateAdminReferralWithdrawalsScreen(shell.shadowRoot);
+          } catch (e) {
+            window.alert(e instanceof Error ? e.message : String(e));
+          }
+        })();
         return;
       }
 

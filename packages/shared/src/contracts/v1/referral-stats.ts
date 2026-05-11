@@ -10,7 +10,12 @@ export interface MeReferralStatsResponseV1 {
   paidInviteesCount: number;
   ordersCount: number;
   paidOrdersCount: number;
+  /** Сумма комиссий по реф-коду (валовое начисление). */
   commissionTotalCents: number;
+  /** Доступно с учётом одобренных выводов: max(0, commissionTotalCents − сумма approved заявок). */
+  netAccruedCents: number;
+  /** Есть ли заявка на вывод в статусе «на рассмотрении». */
+  hasPendingWithdrawal: boolean;
 }
 
 export const MeReferralStatsResponseV1Schema = z.object({
@@ -21,5 +26,7 @@ export const MeReferralStatsResponseV1Schema = z.object({
   ordersCount: z.number().int().min(0),
   paidOrdersCount: z.number().int().min(0),
   commissionTotalCents: z.number().int().min(0),
+  netAccruedCents: z.number().int().min(0),
+  hasPendingWithdrawal: z.boolean(),
 });
 
