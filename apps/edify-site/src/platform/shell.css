@@ -1868,8 +1868,8 @@ textarea.form-input{resize:vertical;min-height:80px}
 .ep-profile-autorenew-row{
   display:flex;
   align-items:center;
-  justify-content:space-between;
-  gap:12px;
+  justify-content:flex-start;
+  gap:10px;
   margin-bottom:10px;
 }
 .ep-profile-autorenew-toggle{
