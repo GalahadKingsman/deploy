@@ -22,6 +22,8 @@ export default defineConfig({
         index: path.resolve(root, 'index.html'),
         platform: path.resolve(root, 'platform/index.html'),
         invite: path.resolve(root, 'invite/index.html'),
+        paymentSuccess: path.resolve(root, 'payment/success/index.html'),
+        paymentFail: path.resolve(root, 'payment/fail/index.html'),
       },
     },
   },
