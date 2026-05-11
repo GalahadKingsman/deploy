@@ -1272,16 +1272,20 @@
             <div class="lbl">Дней до окончания</div>
           </div>
           <div class="stat-card" style="flex:1;min-width:110px">
-            <div class="num a" data-ep-profile-subscription-status>—</div>
+            <div class="num" data-ep-profile-subscription-status>—</div>
             <div class="lbl">Статус</div>
           </div>
         </div>
-        <label style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--t2);cursor:pointer;margin-bottom:8px">
-          <input type="checkbox" data-ep-profile-subscription-autorenew />
-          Автопродление
-        </label>
-        <div style="font-size:11px;color:var(--t3);line-height:1.45;margin-bottom:10px" data-ep-profile-subscription-autorenew-hint></div>
-        <button type="button" class="btn btn-primary btn-sm" style="width:100%;display:none" data-ep-profile-subscription-renew>Продлить на сайте</button>
+        <div class="ep-profile-autorenew-row">
+          <span style="font-size:13px;color:var(--t2)">Автопродление</span>
+          <label class="ep-profile-autorenew-toggle">
+            <input type="checkbox" class="ep-profile-autorenew-input" data-ep-profile-subscription-autorenew />
+            <span class="ep-profile-toggle-track" aria-hidden="true"><span class="ep-profile-toggle-knob"></span></span>
+          </label>
+        </div>
+        <div style="display:flex;justify-content:flex-end">
+          <button type="button" class="btn btn-primary btn-sm" style="display:none" data-ep-profile-subscription-renew>Продлить на сайте</button>
+        </div>
       </div>
       <div class="stat-card"><div class="num" data-ep-profile-active-courses>—</div><div class="lbl">Активных курса</div></div>
     </div>

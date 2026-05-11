@@ -1863,3 +1863,60 @@ textarea.form-input{resize:vertical;min-height:80px}
   }
   .ep-ref-invitee__avatar{width:40px;height:40px;font-size:12px}
 }
+
+/* Профиль: автопродление (тумблер) и статус подписки */
+.ep-profile-autorenew-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+.ep-profile-autorenew-toggle{
+  position:relative;
+  flex-shrink:0;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+}
+.ep-profile-autorenew-input{
+  position:absolute;
+  opacity:0;
+  width:0;
+  height:0;
+  margin:0;
+}
+.ep-profile-toggle-track{
+  display:block;
+  width:44px;
+  height:26px;
+  border-radius:999px;
+  background:var(--bg3);
+  border:1px solid var(--line2);
+  position:relative;
+  transition:background .2s,border-color .2s;
+}
+.ep-profile-toggle-knob{
+  position:absolute;
+  top:3px;
+  left:3px;
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.12);
+  transition:transform .2s ease;
+}
+.ep-profile-autorenew-input:checked + .ep-profile-toggle-track{
+  background:var(--a);
+  border-color:rgba(10,168,200,.35);
+}
+.ep-profile-autorenew-input:checked + .ep-profile-toggle-track .ep-profile-toggle-knob{
+  transform:translateX(18px);
+}
+.ep-profile-autorenew-toggle:has(.ep-profile-autorenew-input:disabled){
+  opacity:.45;
+  pointer-events:none;
+  cursor:default;
+}
+.stat-card .num.ep-sub-status-muted{color:var(--t3)}

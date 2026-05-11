@@ -962,6 +962,15 @@ if (platformMount) {
       return (a + b).slice(0, 2) || 'ED';
     }
 
+    function formatExpertSubscriptionStatusDisplay(raw: string | null | undefined): { text: string; numClass: string } {
+      const s = (raw ?? '').trim().toLowerCase();
+      if (!raw || !raw.trim()) return { text: '—', numClass: 'num ep-sub-status-muted' };
+      if (s === 'active') return { text: 'Активна', numClass: 'num a' };
+      if (s === 'inactive') return { text: 'Неактивна', numClass: 'num ep-sub-status-muted' };
+      if (s === 'suspended') return { text: 'Приостановлена', numClass: 'num warn' };
+      return { text: raw.trim(), numClass: 'num ep-sub-status-muted' };
+    }
+
     async function hydrateProfileScreen(root: ShadowRoot): Promise<void> {
       const token = getAccessToken();
       if (!token) return;
@@ -1015,9 +1024,6 @@ if (platformMount) {
         const subAuto = screen.querySelector(
           '[data-ep-profile-subscription-autorenew]',
         ) as HTMLInputElement | null;
-        const subAutoHint = screen.querySelector(
-          '[data-ep-profile-subscription-autorenew-hint]',
-        ) as HTMLElement | null;
         const subRenew = screen.querySelector('[data-ep-profile-subscription-renew]') as HTMLButtonElement | null;
         if (subCard) {
           subCard.style.display = '';
@@ -1036,25 +1042,26 @@ if (platformMount) {
                   'Воркспейс эксперта создаётся автоматически после успешной оплаты тарифа «Стать экспертом» на сайте edify.su.';
               }
               if (subDays) subDays.textContent = '—';
-              if (subStatus) subStatus.textContent = '—';
+              if (subStatus) {
+                subStatus.textContent = '—';
+                subStatus.className = 'num ep-sub-status-muted';
+              }
               if (subAuto) {
                 subAuto.checked = false;
                 subAuto.disabled = true;
               }
-              if (subAutoHint) subAutoHint.textContent = '';
               if (subRenew) subRenew.style.display = 'none';
             } else {
               if (subNote) subNote.textContent = bill.expertTitle?.trim() || 'Ваш воркспейс эксперта';
               if (subDays) subDays.textContent = String(bill.daysRemaining ?? '—');
-              if (subStatus) subStatus.textContent = (bill.subscriptionStatus ?? '—').trim() || '—';
+              if (subStatus) {
+                const disp = formatExpertSubscriptionStatusDisplay(bill.subscriptionStatus);
+                subStatus.textContent = disp.text;
+                subStatus.className = disp.numClass;
+              }
               if (subAuto) {
                 subAuto.disabled = false;
                 subAuto.checked = Boolean(bill.autoRenew);
-              }
-              if (subAutoHint) {
-                subAutoHint.textContent = bill.rebillConfigured
-                  ? 'Карта привязана для рекуррентных списаний.'
-                  : 'После первой успешной оплаты карта будет сохранена для автопродления.';
               }
               if (subRenew) {
                 subRenew.style.display = bill.autoRenew ? 'none' : '';
@@ -1063,7 +1070,10 @@ if (platformMount) {
           } catch {
             if (subNote) subNote.textContent = 'Не удалось загрузить данные подписки.';
             if (subDays) subDays.textContent = '—';
-            if (subStatus) subStatus.textContent = '—';
+            if (subStatus) {
+              subStatus.textContent = '—';
+              subStatus.className = 'num ep-sub-status-muted';
+            }
             if (subAuto) {
               subAuto.checked = false;
               subAuto.disabled = true;
