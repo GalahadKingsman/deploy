@@ -60,11 +60,12 @@ export class PaymentsController {
     const billingPeriod = parsed.data.billingPeriod;
 
     let platformMonthly = env.PLATFORM_ENTRY_PRICE_MONTHLY_CENTS;
-    let expertMonthly = env.EXPERT_PRO_PRICE_MONTHLY_CENTS;
+    const expertMonthly = env.EXPERT_PRO_PRICE_MONTHLY_CENTS;
     const legacy = env.EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS;
+    // Устаревшая одна переменная — только для тарифа «Начать» (platform_entry). Иначе при EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS=100
+    // оба checkout получали 1 ₽, хотя в запросе product=expert_pro.
     if (typeof legacy === 'number' && Number.isFinite(legacy) && legacy > 0) {
       platformMonthly = legacy;
-      expertMonthly = legacy;
     }
 
     const { amountCents, periodDays } = computeExpertSubscriptionCheckout({

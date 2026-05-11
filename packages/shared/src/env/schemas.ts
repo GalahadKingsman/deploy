@@ -55,7 +55,8 @@ export const ApiEnvSchema = z.object({
   /** Помесячная цена «Стать экспертом» (expert_pro), копейки. По умолчанию 2490 ₽. */
   EXPERT_PRO_PRICE_MONTHLY_CENTS: z.coerce.number().int().min(1).max(50_000_000).default(249_000),
   /**
-   * Устарело: единая сумма checkout. Если задана и > 0, подменяет обе помесячные цены (для старых стендов).
+   * Устарело: единая помесячная сумма только для тарифа «Начать» (platform_entry). Если задана и > 0, подменяет
+   * PLATFORM_ENTRY_PRICE_MONTHLY_CENTS. На expert_pro не влияет — там всегда EXPERT_PRO_PRICE_MONTHLY_CENTS.
    */
   EXPERT_SUBSCRIPTION_CHECKOUT_PRICE_CENTS: z.preprocess(
     emptyToUndefined,
