@@ -148,40 +148,50 @@ document.addEventListener('click', (ev) => {
   window.edifyOpenAuthModal?.(mode);
 });
 
-document.addEventListener('click', (ev) => {
-  const t = ev.target as HTMLElement | null;
-  const btn = t?.closest('[data-edify-checkout-product]') as HTMLButtonElement | HTMLAnchorElement | null;
-  if (!btn) return;
-  ev.preventDefault();
-  if (!isLandingPaymentsUiEnabled()) {
-    window.alert('Оплата на лендинге отключена в сборке (VITE_PAYMENTS_ENABLED).');
-    return;
-  }
-  const raw = (btn.getAttribute('data-edify-checkout-product') || '').trim();
-  const product = (raw === 'expert_pro' ? 'expert_pro' : 'platform_entry') as ExpertSubscriptionCheckoutProduct;
-  void (async () => {
-    const prev = btn.getAttribute('aria-busy') === 'true';
-    if (prev) return;
-    btn.setAttribute('aria-busy', 'true');
-    (btn as HTMLButtonElement).disabled = true;
-    try {
-      const r = await createExpertSubscriptionCheckout(product);
-      if (!r.ok) {
-        if (r.needAuth) {
-          window.alert(r.error);
-          window.edifyOpenAuthModal?.('login');
-          return;
-        }
-        window.alert(r.error);
+/**
+ * Checkout по тарифам: вешаем обработчик на саму кнопку и читаем продукт с `currentTarget`,
+ * а не через `target.closest(...)`, чтобы сумма всегда соответствовала нажатой CTA.
+ */
+function wireLandingCheckoutProductButtons(): void {
+  document.querySelectorAll<HTMLButtonElement>('button[data-edify-checkout-product]').forEach((btn) => {
+    if (btn.dataset.edifyCheckoutWired === '1') return;
+    btn.dataset.edifyCheckoutWired = '1';
+    btn.addEventListener('click', function onCheckoutClick(ev: MouseEvent) {
+      ev.preventDefault();
+      const el = ev.currentTarget as HTMLButtonElement;
+      if (!isLandingPaymentsUiEnabled()) {
+        window.alert('Оплата на лендинге отключена в сборке (VITE_PAYMENTS_ENABLED).');
         return;
       }
-      window.location.assign(r.payUrl);
-    } finally {
-      btn.removeAttribute('aria-busy');
-      (btn as HTMLButtonElement).disabled = false;
-    }
-  })();
-});
+      const raw = (el.getAttribute('data-edify-checkout-product') || '').trim();
+      const product = (raw === 'expert_pro' ? 'expert_pro' : 'platform_entry') as ExpertSubscriptionCheckoutProduct;
+      void (async () => {
+        const prev = el.getAttribute('aria-busy') === 'true';
+        if (prev) return;
+        el.setAttribute('aria-busy', 'true');
+        el.disabled = true;
+        try {
+          const r = await createExpertSubscriptionCheckout(product);
+          if (!r.ok) {
+            if (r.needAuth) {
+              window.alert(r.error);
+              window.edifyOpenAuthModal?.('login');
+              return;
+            }
+            window.alert(r.error);
+            return;
+          }
+          window.location.assign(r.payUrl);
+        } finally {
+          el.removeAttribute('aria-busy');
+          el.disabled = false;
+        }
+      })();
+    });
+  });
+}
+
+wireLandingCheckoutProductButtons();
 
 const revealObserver = new IntersectionObserver(
   (entries) => {
