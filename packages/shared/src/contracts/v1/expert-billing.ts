@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { BillingPeriodV1Schema, CheckoutProductV1Schema } from './orders.js';
 
 /** GET /me/expert-billing — сводка для блока «Подписка эксперта» в профиле. */
 export interface MeExpertBillingResponseV1 {
@@ -14,6 +15,12 @@ export interface MeExpertBillingResponseV1 {
   autoRenew: boolean;
   /** Есть сохранённый RebillId для рекуррента. */
   rebillConfigured: boolean;
+  /** Последний оплаченный тариф checkout (для кнопки «Продлить»). */
+  checkoutProduct: 'platform_entry' | 'expert_pro' | null;
+  /** Период последней оплаты (месяц / год). */
+  billingPeriod: 'monthly' | 'yearly' | null;
+  /** Дней, на которые продлевается период при оплате (30 или 365). */
+  renewalPeriodDays: number;
 }
 
 export const MeExpertBillingResponseV1Schema = z.object({
@@ -25,6 +32,9 @@ export const MeExpertBillingResponseV1Schema = z.object({
   daysRemaining: z.number().int().min(0).nullable(),
   autoRenew: z.boolean(),
   rebillConfigured: z.boolean(),
+  checkoutProduct: CheckoutProductV1Schema.nullable(),
+  billingPeriod: BillingPeriodV1Schema.nullable(),
+  renewalPeriodDays: z.number().int().min(1).max(366),
 });
 
 /** PATCH /me/expert-billing/auto-renew */

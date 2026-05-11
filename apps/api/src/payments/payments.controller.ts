@@ -82,7 +82,8 @@ export class PaymentsController {
       });
     }
 
-    if (product === 'expert_pro' && (await this.userHasActiveExpertSubscriptionOnAnyTeam(userId))) {
+    const renew = parsed.data.renew === true;
+    if (product === 'expert_pro' && !renew && (await this.userHasActiveExpertSubscriptionOnAnyTeam(userId))) {
       throw new BadRequestException({
         code: ErrorCodes.VALIDATION_ERROR,
         message:

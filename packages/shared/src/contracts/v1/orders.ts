@@ -69,6 +69,11 @@ export interface CreateExpertSubscriptionCheckoutRequestV1 {
   referralCode?: string | null;
   email?: string | null;
   phone?: string | null;
+  /**
+   * Ручное продление из кабинета: разрешает checkout при уже активной подписке эксперта
+   * (лендинг по-прежнему не шлёт этот флаг — дубликат блокируется).
+   */
+  renew?: boolean;
 }
 
 export const CreateExpertSubscriptionCheckoutRequestV1Schema = z.object({
@@ -77,6 +82,7 @@ export const CreateExpertSubscriptionCheckoutRequestV1Schema = z.object({
   referralCode: z.string().min(1).max(64).nullable().optional(),
   email: z.string().email().nullable().optional(),
   phone: z.string().min(5).max(32).nullable().optional(),
+  renew: z.boolean().optional(),
 });
 
 export interface CreateExpertSubscriptionCheckoutResponseV1 {

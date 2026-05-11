@@ -1,6 +1,12 @@
 import './edify.css';
 import { ACCESS_TOKEN_KEY, getAccessToken } from './authSession.js';
-import { getApiBaseUrl, getReferralAppBaseUrl, getTelegramBotUsername, getTelegramSupportUrl } from './env.js';
+import {
+  getApiBaseUrl,
+  getReferralAppBaseUrl,
+  getTelegramBotUsername,
+  getTelegramSupportUrl,
+  isLandingPaymentsUiEnabled,
+} from './env.js';
 import { claimSiteLoginFromUrl } from './siteLoginClaim.js';
 import { refreshNavAuth } from './navAuthUi.js';
 import { mountPlatformShell } from './platform/mountPlatformShell.js';
@@ -14,6 +20,10 @@ import { applyUserAvatarToElement } from './userAvatarEl.js';
 import { resolveInviteCopyUrl } from './inviteLinks.js';
 import { renderExpertCourseInvitesPanel } from './platform/inviteAccessUi.js';
 import { captureReferralFromUrl } from './referralAttribution.js';
+import {
+  createExpertSubscriptionCheckout,
+  type ExpertSubscriptionCheckoutProduct,
+} from './expertSubscriptionCheckout.js';
 
 // На /platform/ модалку не показываем — только запоминаем код, чтобы он улетел при checkout.
 captureReferralFromUrl();
@@ -971,6 +981,90 @@ if (platformMount) {
       return { text: raw.trim(), numClass: 'num ep-sub-status-muted' };
     }
 
+    function closeEpSubscriptionRenewModal(root: ShadowRoot): void {
+      root.querySelector('.ep-sub-renew-modal-wrap')?.remove();
+    }
+
+    function openEpSubscriptionRenewConfirmModal(params: {
+      root: ShadowRoot;
+      renewalDays: number;
+      product: ExpertSubscriptionCheckoutProduct;
+      billingPeriod: 'monthly' | 'yearly';
+    }): void {
+      closeEpSubscriptionRenewModal(params.root);
+      const titleText =
+        params.renewalDays >= 360
+          ? 'Продлить подписку на год (365 дней)?'
+          : `Продлить подписку на ${params.renewalDays} дней?`;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'ep-sub-renew-modal-wrap';
+
+      const card = document.createElement('div');
+      card.className = 'ep-sub-renew-modal-wrap__card';
+      card.setAttribute('role', 'dialog');
+      card.setAttribute('aria-modal', 'true');
+
+      const title = document.createElement('div');
+      title.className = 'ep-sub-renew-modal-wrap__title';
+      title.textContent = titleText;
+
+      const actions = document.createElement('div');
+      actions.className = 'ep-sub-renew-modal-wrap__actions';
+
+      const noBtn = document.createElement('button');
+      noBtn.type = 'button';
+      noBtn.className = 'btn-outline';
+      noBtn.textContent = 'Нет';
+
+      const yesBtn = document.createElement('button');
+      yesBtn.type = 'button';
+      yesBtn.className = 'btn';
+      yesBtn.textContent = 'Да';
+
+      const closeAll = () => {
+        window.removeEventListener('keydown', onKey);
+        closeEpSubscriptionRenewModal(params.root);
+      };
+
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') closeAll();
+      };
+      window.addEventListener('keydown', onKey);
+
+      wrap.addEventListener('click', (e) => {
+        if (e.target === wrap) closeAll();
+      });
+      noBtn.addEventListener('click', () => closeAll());
+      yesBtn.addEventListener('click', () => {
+        closeAll();
+        void (async () => {
+          if (!isLandingPaymentsUiEnabled()) {
+            window.alert('Оплата отключена в сборке (VITE_PAYMENTS_ENABLED).');
+            return;
+          }
+          const r = await createExpertSubscriptionCheckout(params.product, {
+            billingPeriod: params.billingPeriod,
+            renew: true,
+          });
+          if (!r.ok) {
+            if (r.needAuth) {
+              window.alert(r.error);
+              return;
+            }
+            window.alert(r.error);
+            return;
+          }
+          window.location.assign(r.payUrl);
+        })();
+      });
+
+      actions.append(noBtn, yesBtn);
+      card.append(title, actions);
+      wrap.appendChild(card);
+      params.root.appendChild(wrap);
+    }
+
     async function hydrateProfileScreen(root: ShadowRoot): Promise<void> {
       const token = getAccessToken();
       if (!token) return;
@@ -1035,6 +1129,9 @@ if (platformMount) {
               daysRemaining: number | null;
               autoRenew: boolean;
               rebillConfigured: boolean;
+              checkoutProduct?: string | null;
+              billingPeriod?: string | null;
+              renewalPeriodDays?: number;
             }>('/me/expert-billing', token);
             if (!bill.hasExpertWorkspace) {
               /* Нет записи воркспейса/подписки в БД — блок не показываем до оплаты или ручной выдачи. */
@@ -1053,6 +1150,20 @@ if (platformMount) {
               }
               if (subRenew) {
                 subRenew.style.display = bill.autoRenew ? 'none' : '';
+                const cp =
+                  bill.checkoutProduct === 'platform_entry' || bill.checkoutProduct === 'expert_pro'
+                    ? bill.checkoutProduct
+                    : 'expert_pro';
+                const bp = bill.billingPeriod === 'yearly' ? 'yearly' : 'monthly';
+                const rd =
+                  typeof bill.renewalPeriodDays === 'number' && bill.renewalPeriodDays > 0
+                    ? bill.renewalPeriodDays
+                    : bp === 'yearly'
+                      ? 365
+                      : 30;
+                subRenew.dataset.epCheckoutProduct = cp;
+                subRenew.dataset.epBillingPeriod = bp;
+                subRenew.dataset.epRenewalDays = String(rd);
               }
             }
           } catch {
@@ -9526,8 +9637,19 @@ if (platformMount) {
       }
       if (t?.closest('[data-ep-profile-subscription-renew]')) {
         ev.preventDefault();
-        const base = getReferralAppBaseUrl().replace(/\/+$/, '');
-        window.open(`${base}/#pricing`, '_blank', 'noopener,noreferrer');
+        const btn = t.closest('[data-ep-profile-subscription-renew]') as HTMLButtonElement | null;
+        if (!btn) return;
+        const days = Math.max(1, parseInt(btn.dataset.epRenewalDays || '30', 10) || 30);
+        const product = (btn.dataset.epCheckoutProduct === 'platform_entry'
+          ? 'platform_entry'
+          : 'expert_pro') as ExpertSubscriptionCheckoutProduct;
+        const billingPeriod = btn.dataset.epBillingPeriod === 'yearly' ? 'yearly' : 'monthly';
+        openEpSubscriptionRenewConfirmModal({
+          root: shell.shadowRoot,
+          renewalDays: days,
+          product,
+          billingPeriod,
+        });
         return;
       }
       if (t?.closest('[data-ep-profile-save]')) {

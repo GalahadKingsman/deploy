@@ -17,11 +17,18 @@ function readLandingPricingYearly(): boolean {
   }
 }
 
+export type ExpertSubscriptionCheckoutOptions = {
+  billingPeriod?: 'monthly' | 'yearly';
+  /** Продление из профиля: не блокировать при активной подписке и не опираться на лендинг для периода. */
+  renew?: boolean;
+};
+
 /**
  * POST /checkout/expert-subscription — JWT, сумма и период считаются на API.
  */
 export async function createExpertSubscriptionCheckout(
   product: ExpertSubscriptionCheckoutProduct,
+  options?: ExpertSubscriptionCheckoutOptions,
 ): Promise<ExpertSubscriptionCheckoutResult> {
   const api = getApiBaseUrl();
   if (!api.trim()) {
@@ -32,7 +39,7 @@ export async function createExpertSubscriptionCheckout(
     return { ok: false, error: 'Войдите в аккаунт, чтобы перейти к оплате.', needAuth: true };
   }
 
-  if (product === 'expert_pro') {
+  if (product === 'expert_pro' && !options?.renew) {
     try {
       const subRes = await fetch(`${api.replace(/\/+$/, '')}/me/expert-subscription`, {
         method: 'GET',
@@ -59,7 +66,8 @@ export async function createExpertSubscriptionCheckout(
     }
   }
 
-  const billingPeriod = readLandingPricingYearly() ? 'yearly' : 'monthly';
+  const billingPeriod =
+    options?.billingPeriod ?? (readLandingPricingYearly() ? 'yearly' : 'monthly');
   const url = `${api.replace(/\/+$/, '')}/checkout/expert-subscription`;
   const referralCode = getStoredReferralCode();
   let res: Response;
@@ -71,7 +79,12 @@ export async function createExpertSubscriptionCheckout(
         'content-type': 'application/json',
         authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ product, billingPeriod, referralCode }),
+      body: JSON.stringify({
+        product,
+        billingPeriod,
+        referralCode,
+        ...(options?.renew ? { renew: true } : {}),
+      }),
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

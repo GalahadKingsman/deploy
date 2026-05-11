@@ -34,6 +34,12 @@ export class MeExpertBillingController {
     const hasWorkspace = Boolean(row.expertId);
     const end = row.currentPeriodEnd;
     const daysRemaining = hasWorkspace ? daysRemainingFromEnd(end, now) : null;
+    const rawCp = row.lastSubscriptionCheckoutProduct;
+    const checkoutProduct =
+      rawCp === 'platform_entry' || rawCp === 'expert_pro' ? rawCp : null;
+    const rawBp = row.lastSubscriptionBillingPeriod;
+    const billingPeriod = rawBp === 'yearly' || rawBp === 'monthly' ? rawBp : null;
+    const renewalPeriodDays = billingPeriod === 'yearly' ? 365 : 30;
     return {
       hasExpertWorkspace: hasWorkspace,
       expertId: row.expertId,
@@ -43,6 +49,9 @@ export class MeExpertBillingController {
       daysRemaining,
       autoRenew: row.subscriptionAutoRenew,
       rebillConfigured: Boolean(row.tinkoffRebillId?.trim()),
+      checkoutProduct,
+      billingPeriod,
+      renewalPeriodDays,
     };
   }
 

@@ -831,6 +831,8 @@ export class UsersRepository {
     subscriptionStatus: string | null;
     currentPeriodEnd: Date | null;
     platformPaidUntil: Date | null;
+    lastSubscriptionCheckoutProduct: string | null;
+    lastSubscriptionBillingPeriod: string | null;
   } | null> {
     if (!this.pool) return null;
     const res = await this.pool.query<{
@@ -841,6 +843,8 @@ export class UsersRepository {
       subscription_status: string | null;
       current_period_end: Date | null;
       platform_subscription_paid_until: Date | null;
+      last_subscription_checkout_product: string | null;
+      last_subscription_billing_period: string | null;
     }>(
       `
       SELECT
@@ -850,7 +854,9 @@ export class UsersRepository {
         e.title AS expert_title,
         es.status AS subscription_status,
         es.current_period_end,
-        u.platform_subscription_paid_until
+        u.platform_subscription_paid_until,
+        u.last_subscription_checkout_product,
+        u.last_subscription_billing_period
       FROM users u
       LEFT JOIN LATERAL (
         SELECT * FROM experts WHERE created_by_user_id = u.id ORDER BY created_at ASC LIMIT 1
@@ -871,6 +877,12 @@ export class UsersRepository {
       subscriptionStatus: r.subscription_status,
       currentPeriodEnd: r.current_period_end,
       platformPaidUntil: r.platform_subscription_paid_until,
+      lastSubscriptionCheckoutProduct: r.last_subscription_checkout_product?.trim()
+        ? r.last_subscription_checkout_product.trim()
+        : null,
+      lastSubscriptionBillingPeriod: r.last_subscription_billing_period?.trim()
+        ? r.last_subscription_billing_period.trim()
+        : null,
     };
   }
 

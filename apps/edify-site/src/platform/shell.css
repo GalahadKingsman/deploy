@@ -1920,3 +1920,35 @@ textarea.form-input{resize:vertical;min-height:80px}
   cursor:default;
 }
 .stat-card .num.ep-sub-status-muted{color:var(--t3)}
+
+/* Подтверждение продления подписки (профиль) */
+.ep-sub-renew-modal-wrap{
+  position:fixed;inset:0;z-index:240;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  background:rgba(12,18,32,0.45);
+  backdrop-filter:blur(2px);
+}
+.ep-sub-renew-modal-wrap__card{
+  width:min(400px,100%);
+  padding:20px 22px 18px;
+  border-radius:var(--r3);
+  border:1px solid var(--line);
+  background:var(--surface);
+  box-shadow:var(--sh2);
+}
+.ep-sub-renew-modal-wrap__title{
+  font-family:var(--fd);
+  font-size:17px;
+  font-weight:700;
+  color:var(--t1);
+  letter-spacing:-.02em;
+  line-height:1.35;
+  margin:0 0 4px;
+}
+.ep-sub-renew-modal-wrap__actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  justify-content:flex-end;
+  margin-top:18px;
+}
