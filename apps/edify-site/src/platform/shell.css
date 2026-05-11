@@ -1973,3 +1973,66 @@ textarea.form-input{resize:vertical;min-height:80px}
   }
   .ep-sub-renew-modal-wrap__btn{min-width:0;width:100%}
 }
+
+/* Referral withdrawal request tables (expert list + admin) */
+.ep-ref-wd-scroll{
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.ep-ref-wd-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+  line-height:1.35;
+  table-layout:fixed;
+}
+.ep-ref-wd-table--user{min-width:640px}
+.ep-ref-wd-table--admin{min-width:900px}
+.ep-ref-wd-table thead tr{
+  background:var(--surface2);
+  border-bottom:1px solid var(--line);
+}
+.ep-ref-wd-table th{
+  text-align:left;
+  padding:10px 12px;
+  font-weight:700;
+  color:var(--t2);
+  vertical-align:middle;
+}
+.ep-ref-wd-th--right{text-align:right}
+.ep-ref-wd-table td{
+  padding:10px 12px;
+  border-bottom:1px solid var(--line);
+  vertical-align:middle;
+  word-break:break-word;
+  color:var(--t1);
+}
+.ep-ref-wd-table tbody tr:last-child td{border-bottom:none}
+.ep-ref-wd-cell--muted{color:var(--t2)}
+.ep-ref-wd-cell--amount{
+  text-align:right;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+.ep-ref-wd-cell--mono{font-variant-numeric:tabular-nums}
+.ep-ref-wd-cell--dim{color:var(--t3)}
+.ep-ref-wd-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+}
+.ep-ref-wd-col--user{width:14%}
+.ep-ref-wd-col--date{width:10%}
+.ep-ref-wd-col--amount{width:9%}
+.ep-ref-wd-col--card{width:17%}
+.ep-ref-wd-col--phone{width:12%}
+.ep-ref-wd-col--bank{width:15%}
+.ep-ref-wd-col--status{width:12%}
+.ep-ref-wd-col--actions{width:11%;min-width:148px}
+.ep-ref-wd-table--user .ep-ref-wd-col--date{width:11%}
+.ep-ref-wd-table--user .ep-ref-wd-col--amount{width:10%}
+.ep-ref-wd-table--user .ep-ref-wd-col--card{width:20%}
+.ep-ref-wd-table--user .ep-ref-wd-col--phone{width:14%}
+.ep-ref-wd-table--user .ep-ref-wd-col--bank{width:24%}
+.ep-ref-wd-table--user .ep-ref-wd-col--status{width:11%}

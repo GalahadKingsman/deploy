@@ -1623,6 +1623,14 @@ if (platformMount) {
       return s || '—';
     }
 
+    function formatReferralPanDisplay(raw: string): string {
+      const d = referralPanDigits(raw);
+      if (!d) return '—';
+      const parts: string[] = [];
+      for (let i = 0; i < d.length; i += 4) parts.push(d.slice(i, i + 4));
+      return parts.join('\u00a0');
+    }
+
     function setExpertReferralWithdrawView(root: ShadowRoot, view: 'main' | 'withdrawals'): void {
       expertReferralWithdrawView = view;
       const def = root.querySelector('[data-ep-referral-section-default]') as HTMLElement | null;
@@ -1649,6 +1657,9 @@ if (platformMount) {
           items: Array<{
             id: string;
             amountCents: number;
+            cardPan: string;
+            phone: string;
+            bankName: string;
             status: string;
             createdAt: string;
           }>;
@@ -1657,21 +1668,25 @@ if (platformMount) {
         if (empty) empty.style.display = items.length === 0 ? '' : 'none';
         for (const it of items) {
           const tr = document.createElement('tr');
-          tr.style.borderBottom = '1px solid var(--line)';
           const tdD = document.createElement('td');
-          tdD.style.padding = '10px 14px';
-          tdD.style.color = 'var(--t2)';
+          tdD.className = 'ep-ref-wd-cell ep-ref-wd-cell--muted';
           tdD.textContent = formatRefDateRu(it.createdAt) || '—';
           const tdA = document.createElement('td');
-          tdA.style.padding = '10px 14px';
-          tdA.style.textAlign = 'right';
-          tdA.style.fontWeight = '700';
-          tdA.style.color = 'var(--t1)';
+          tdA.className = 'ep-ref-wd-cell ep-ref-wd-cell--amount';
           tdA.textContent = `${Math.round((it.amountCents ?? 0) / 100).toLocaleString('ru-RU')}\u00a0₽`;
+          const tdC = document.createElement('td');
+          tdC.className = 'ep-ref-wd-cell ep-ref-wd-cell--mono';
+          tdC.textContent = formatReferralPanDisplay(it.cardPan ?? '');
+          const tdP = document.createElement('td');
+          tdP.className = 'ep-ref-wd-cell';
+          tdP.textContent = (it.phone ?? '').trim() || '—';
+          const tdB = document.createElement('td');
+          tdB.className = 'ep-ref-wd-cell';
+          tdB.textContent = (it.bankName ?? '').trim() || '—';
           const tdS = document.createElement('td');
-          tdS.style.padding = '10px 14px';
+          tdS.className = 'ep-ref-wd-cell';
           tdS.textContent = formatReferralWdStatusRu(it.status);
-          tr.append(tdD, tdA, tdS);
+          tr.append(tdD, tdA, tdC, tdP, tdB, tdS);
           tbody.appendChild(tr);
         }
       } catch {
@@ -1696,6 +1711,9 @@ if (platformMount) {
             firstName: string | null;
             lastName: string | null;
             amountCents: number;
+            cardPan: string;
+            phone: string;
+            bankName: string;
             status: string;
             createdAt: string;
           }>;
@@ -1705,24 +1723,29 @@ if (platformMount) {
         for (const it of items) {
           const name = [it.firstName, it.lastName].filter(Boolean).join(' ').trim() || '—';
           const tr = document.createElement('tr');
-          tr.style.borderBottom = '1px solid var(--line)';
           const tdU = document.createElement('td');
-          tdU.style.padding = '10px 14px';
+          tdU.className = 'ep-ref-wd-cell';
           tdU.textContent = name;
           const tdD = document.createElement('td');
-          tdD.style.padding = '10px 14px';
-          tdD.style.color = 'var(--t2)';
+          tdD.className = 'ep-ref-wd-cell ep-ref-wd-cell--muted';
           tdD.textContent = formatRefDateRu(it.createdAt) || '—';
           const tdA = document.createElement('td');
-          tdA.style.padding = '10px 14px';
-          tdA.style.textAlign = 'right';
-          tdA.style.fontWeight = '700';
+          tdA.className = 'ep-ref-wd-cell ep-ref-wd-cell--amount';
           tdA.textContent = `${Math.round((it.amountCents ?? 0) / 100).toLocaleString('ru-RU')}\u00a0₽`;
+          const tdC = document.createElement('td');
+          tdC.className = 'ep-ref-wd-cell ep-ref-wd-cell--mono';
+          tdC.textContent = formatReferralPanDisplay(it.cardPan ?? '');
+          const tdP = document.createElement('td');
+          tdP.className = 'ep-ref-wd-cell';
+          tdP.textContent = (it.phone ?? '').trim() || '—';
+          const tdB = document.createElement('td');
+          tdB.className = 'ep-ref-wd-cell';
+          tdB.textContent = (it.bankName ?? '').trim() || '—';
           const tdS = document.createElement('td');
-          tdS.style.padding = '10px 14px';
+          tdS.className = 'ep-ref-wd-cell';
           tdS.textContent = formatReferralWdStatusRu(it.status);
           const tdAct = document.createElement('td');
-          tdAct.style.padding = '10px 14px';
+          tdAct.className = 'ep-ref-wd-cell ep-ref-wd-actions';
           if (it.status === 'pending') {
             const bOk = document.createElement('button');
             bOk.type = 'button';
@@ -1732,15 +1755,14 @@ if (platformMount) {
             const bNo = document.createElement('button');
             bNo.type = 'button';
             bNo.className = 'btn btn-outline btn-sm';
-            bNo.style.marginLeft = '6px';
             bNo.textContent = 'Отклонить';
             bNo.dataset.epAdminRwReject = it.id;
             tdAct.append(bOk, bNo);
           } else {
             tdAct.textContent = '—';
-            tdAct.style.color = 'var(--t3)';
+            tdAct.classList.add('ep-ref-wd-cell--dim');
           }
-          tr.append(tdU, tdD, tdA, tdS, tdAct);
+          tr.append(tdU, tdD, tdA, tdC, tdP, tdB, tdS, tdAct);
           tbody.appendChild(tr);
         }
       } catch {

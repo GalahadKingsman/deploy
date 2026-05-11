@@ -121,12 +121,10 @@ export class ReferralWithdrawalService {
       `Новая заявка на вывод от ${name} на сумму ${rub} ₽.\n` + `${adminUrl}`;
 
     const chatIdRaw = (env.REFERRAL_WITHDRAWAL_NOTIFY_CHAT_ID ?? '').trim();
-    if (chatIdRaw) {
-      await this.telegram.sendMessageToChatId(chatIdRaw, text);
-      return;
-    }
-    const uname = (env.REFERRAL_WITHDRAWAL_NOTIFY_USERNAME ?? 'rickonetic').trim().replace(/^@/, '');
-    await this.telegram.sendMessageToChatId(`@${uname}`, text);
+    /** Личка оператора с ботом (Mini App): надёжнее, чем @username в sendMessage. */
+    const defaultOpsTelegramChatId = '444617251';
+    const dest = chatIdRaw || defaultOpsTelegramChatId;
+    await this.telegram.sendMessageToChatId(dest, text);
   }
 
   async listMine(userId: string): Promise<ContractsV1.ReferralWithdrawalRequestV1[]> {
