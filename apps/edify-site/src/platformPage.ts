@@ -9556,7 +9556,7 @@ if (platformMount) {
         ev.stopPropagation();
         const url = getTelegramSupportUrl();
         if (!url) {
-          window.alert('Поддержка через Telegram пока не настроена. Напишите на hello@edify.su.');
+          window.alert('Поддержка через Telegram пока не настроена. Напишите на edify.support@gmail.com.');
           return;
         }
         const opened = window.open(url, '_blank', 'noopener,noreferrer');

@@ -288,7 +288,7 @@ document.querySelectorAll('.reveal').forEach((el) => revealObserver.observe(el))
 
 /**
  * Перенаправляем «Поддержку» на Telegram-бот (?start=support), если бот настроен.
- * HTML по умолчанию указывает mailto:hello@edify.su — fallback для пустой переменной/окружения без JS.
+ * HTML по умолчанию указывает mailto:edify.support@gmail.com — fallback для пустой переменной/окружения без JS.
  */
 function upgradeSupportLinksToTelegram(): void {
   const url = getTelegramSupportUrl();

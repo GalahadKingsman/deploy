@@ -146,7 +146,7 @@ type ReplyCtx = { reply: (text: string, other?: { reply_markup?: InlineKeyboard 
 async function replyWithSupportEntry(ctx: ReplyCtx) {
   if (!supportEnabled) {
     await ctx.reply(
-      'Поддержка временно недоступна. Напишите на hello@edify.su — мы ответим как можно скорее.',
+      'Поддержка временно недоступна. Напишите на edify.support@gmail.com — мы ответим как можно скорее.',
     );
     return;
   }
