@@ -4,12 +4,11 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Skel
 import { useLesson } from '../shared/queries/useLesson.js';
 import { useLessonAssignment } from '../shared/queries/useLessonAssignment.js';
 import { useMyLessonSubmissions } from '../shared/queries/useMyLessonSubmissions.js';
-import { fetchJson } from '../shared/api/index.js';
+import { downloadAuthenticatedFile, downloadFileFromUrl, fetchJson } from '../shared/api/index.js';
 import type { ContractsV1 } from '@tracked/shared';
 import { buildUrl } from '../shared/api/url.js';
 import { config } from '../shared/config/flags.js';
 import { normalizeRutubeEmbedUrl } from '@tracked/shared';
-import { downloadAuthenticatedFile } from '../shared/api/index.js';
 import { BottomSheet } from '../ui/kit/BottomSheet.js';
 import { renderTextWithLinks } from '../shared/lib/renderTextWithLinks.js';
 import { ApiClientError } from '../shared/api/errors.js';
@@ -205,14 +204,22 @@ export function LessonPage() {
   }, [id]);
 
   const downloadLessonMaterial = async (key: string, filename: string) => {
-    void filename;
-    const signed = await fetchJson<{ url: string }>({
-      path: `/files/signed`,
-      query: { key },
-    });
-    const url = signed.url + (signed.url.includes('?') ? '&' : '?') + 'dl=1';
-    // Telegram WebApp: open in new tab / system viewer
-    window.open(url, '_blank', 'noopener');
+    try {
+      const signed = await fetchJson<{ url: string }>({
+        path: `/files/signed`,
+        query: { key },
+      });
+      const apiBase =
+        config.API_BASE_URL || (typeof window !== 'undefined' ? (window.location?.origin ?? '') : '');
+      const raw = (signed.url ?? '').trim();
+      if (!raw) throw new Error('empty signed url');
+      const base =
+        raw.startsWith('http://') || raw.startsWith('https://') ? raw : buildUrl(apiBase, raw);
+      const url = base + (base.includes('?') ? '&' : '?') + 'dl=1';
+      await downloadFileFromUrl({ url, fallbackFilename: filename || 'file' });
+    } catch {
+      toast.show({ title: 'Ошибка', message: 'Не удалось скачать файл', variant: 'error' });
+    }
   };
 
   const complete = async () => {

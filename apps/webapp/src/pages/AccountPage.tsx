@@ -10,6 +10,7 @@ import {
   useToast,
 } from '../shared/ui/index.js';
 import { useMe } from '../shared/queries/useMe.js';
+import { useMyCourses } from '../shared/queries/useMyCourses.js';
 import { useMyExpertSubscription } from '../shared/queries/useMyExpertSubscription.js';
 import { useMyReferral } from '../shared/queries/useMyReferral.js';
 import { useMyCommissions } from '../shared/queries/useMyCommissions.js';
@@ -26,10 +27,6 @@ const SUPPORT_LINK =
   typeof rawSupport === 'string' && rawSupport.trim()
     ? rawSupport.trim()
     : 'https://t.me/somefunc';
-
-const mockStats = {
-  progress: { completed: 12, total: 30, label: 'Прогресс' },
-};
 
 // Copy to clipboard helper with fallback
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -459,7 +456,11 @@ function ReferralCard() {
 // Stats Row Component
 function StatsRow() {
   const { data: me } = useMe();
+  const { data: coursesData, isPending: coursesLoading, isError: coursesError } = useMyCourses();
   const streakDays = Math.max(0, Number(me?.user?.streakDays ?? 0) || 0);
+  const items = coursesData?.items ?? [];
+  const doneLessons = items.reduce((s, it) => s + Math.max(0, Number(it.doneLessons ?? 0) || 0), 0);
+  const totalLessons = items.reduce((s, it) => s + Math.max(0, Number(it.totalLessons ?? 0) || 0), 0);
   const avgScore = ((): number | null => {
     const raw = (me?.user as any)?.homeworkAvgScore;
     if (typeof raw !== 'number' || !Number.isFinite(raw)) return null;
@@ -515,7 +516,7 @@ function StatsRow() {
             marginBottom: 'var(--sp-2)',
           }}
         >
-          {mockStats.progress.label}
+          Прогресс
         </div>
         <div
           style={{
@@ -524,7 +525,7 @@ function StatsRow() {
             color: 'var(--fg)',
           }}
         >
-          {mockStats.progress.completed}/{mockStats.progress.total}
+          {coursesLoading ? '…' : coursesError ? '—' : `${doneLessons}/${totalLessons}`}
         </div>
         <div
           style={{
@@ -553,7 +554,7 @@ function StatsRow() {
             color: 'var(--fg)',
           }}
         >
-          {streakDays}
+          {streakDays >= 7 ? `🔥 ${streakDays}` : String(streakDays)}
         </div>
         <div
           style={{
