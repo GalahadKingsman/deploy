@@ -16,6 +16,10 @@ import { PaymentsModule } from '../../payments/payments.module.js';
 import { AccessDataModule } from '../../access/access-data.module.js';
 import { PasswordResetService } from '../../auth/password/password-reset.service.js';
 import { AdminReferralWithdrawalsController } from './admin.referral-withdrawals.controller.js';
+import { AdminPlatformLegalDocumentsController } from './admin.platform-legal-documents.controller.js';
+import { PlatformLegalDocumentsRepository } from './platform-legal-documents.repository.js';
+import { StorageModule } from '../../storage/storage.module.js';
+import { Pool } from 'pg';
 
 @Module({
   imports: [
@@ -26,6 +30,7 @@ import { AdminReferralWithdrawalsController } from './admin.referral-withdrawals
     AuditModule,
     PaymentsModule,
     AccessDataModule,
+    StorageModule,
   ],
   controllers: [
     AdminController,
@@ -35,7 +40,17 @@ import { AdminReferralWithdrawalsController } from './admin.referral-withdrawals
     AdminPaymentsController,
     AdminUsersController,
     AdminReferralWithdrawalsController,
+    AdminPlatformLegalDocumentsController,
   ],
-  providers: [JwtAuthGuard, PlatformRoleGuard, PasswordResetService],
+  providers: [
+    JwtAuthGuard,
+    PlatformRoleGuard,
+    PasswordResetService,
+    {
+      provide: PlatformLegalDocumentsRepository,
+      useFactory: (pool: Pool) => new PlatformLegalDocumentsRepository(pool),
+      inject: [Pool],
+    },
+  ],
 })
 export class AdminModule {}

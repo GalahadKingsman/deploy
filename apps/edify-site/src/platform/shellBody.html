@@ -954,7 +954,7 @@
   <div class="page-header">
     <div>
       <div class="page-title">Заявки на вывод</div>
-      <div class="page-sub">Реферальные начисления — только просмотр и смена статуса (без реальных платежей)</div>
+      <div class="page-sub">Реферальные начисления пользователям платформы</div>
     </div>
     <button type="button" class="btn btn-outline btn-sm" data-ep-admin-rw-refresh>Обновить</button>
   </div>
@@ -1440,6 +1440,30 @@
     </div>
     <div data-ep-admin-form style="display:none">
       <div class="card" style="padding:16px 18px;border-radius:var(--r2);margin-bottom:12px;position:relative">
+        <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Документы сайта</div>
+        <div style="font-size:12px;color:var(--t3);line-height:1.55;margin-bottom:14px">
+          Три файла в формате DOCX: договор-оферта, политика конфиденциальности и обработка персональных данных.
+        </div>
+        <div style="margin-bottom:16px">
+          <div class="form-label">Договор-оферта</div>
+          <button type="button" class="btn btn-outline btn-sm" style="width:100%;justify-content:center;margin-bottom:6px" data-ep-admin-legal-btn="offer">Загрузить документ</button>
+          <input type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-ep-admin-legal-input="offer" style="display:none" />
+          <div data-ep-admin-legal-status="offer" style="font-size:11px;color:var(--t3);line-height:1.45;display:none"></div>
+        </div>
+        <div style="margin-bottom:16px">
+          <div class="form-label">Политика конфиденциальности</div>
+          <button type="button" class="btn btn-outline btn-sm" style="width:100%;justify-content:center;margin-bottom:6px" data-ep-admin-legal-btn="privacy">Загрузить документ</button>
+          <input type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-ep-admin-legal-input="privacy" style="display:none" />
+          <div data-ep-admin-legal-status="privacy" style="font-size:11px;color:var(--t3);line-height:1.45;display:none"></div>
+        </div>
+        <div>
+          <div class="form-label">Обработка персональных данных</div>
+          <button type="button" class="btn btn-outline btn-sm" style="width:100%;justify-content:center;margin-bottom:6px" data-ep-admin-legal-btn="personal_data">Загрузить документ</button>
+          <input type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-ep-admin-legal-input="personal_data" style="display:none" />
+          <div data-ep-admin-legal-status="personal_data" style="font-size:11px;color:var(--t3);line-height:1.45;display:none"></div>
+        </div>
+      </div>
+      <div class="card" style="padding:16px 18px;border-radius:var(--r2);margin-bottom:12px;position:relative">
         <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Создать эксперта</div>
         <div style="font-size:12px;color:var(--t3);line-height:1.55;margin-bottom:12px">Создаёт новую эксперт‑организацию на платформе.</div>
         <div class="form-group" style="margin-bottom:10px">
@@ -1620,6 +1644,18 @@
       </div>
     </div>
   </div>
+    <div class="ep-admin-legal-menu-backdrop" data-ep-admin-legal-menu-backdrop style="display:none" aria-hidden="true"></div>
+    <div class="ep-admin-legal-menu" data-ep-admin-legal-menu style="display:none" role="dialog" aria-modal="true" aria-labelledby="ep-admin-legal-menu-title">
+      <div class="ep-admin-legal-menu__card card">
+        <div id="ep-admin-legal-menu-title" class="ep-admin-legal-menu__title">Документ загружен</div>
+        <p class="ep-admin-legal-menu__sub">Что сделать с файлом документа?</p>
+        <div class="ep-admin-legal-menu__actions">
+          <button type="button" class="btn btn-outline btn-sm ep-admin-legal-menu__btn" data-ep-admin-legal-menu-replace>Заменить файл</button>
+          <button type="button" class="btn btn-outline btn-sm ep-admin-legal-menu__del ep-admin-legal-menu__btn" data-ep-admin-legal-menu-delete>Удалить документ</button>
+          <button type="button" class="btn btn-ghost btn-sm ep-admin-legal-menu__btn" data-ep-admin-legal-menu-cancel>Отмена</button>
+        </div>
+      </div>
+    </div>
 </aside>
 
   <!-- Добавление участника команды (вне .screen, иначе панель скрыта, когда не активен конструктор) -->

@@ -135,6 +135,13 @@ export {
   PatchAdminReferralWithdrawalResponseV1Schema,
 } from './referral-withdrawals.js';
 export {
+  PlatformLegalDocKindV1Schema,
+  AdminPlatformLegalDocumentV1Schema,
+  ListAdminPlatformLegalDocumentsResponseV1Schema,
+  UploadAdminPlatformLegalDocumentResponseV1Schema,
+  DeleteAdminPlatformLegalDocumentResponseV1Schema,
+} from './platform-legal-documents.js';
+export {
   MeContactV1Schema,
   GetMyContactResponseV1Schema,
   UpdateMyContactRequestV1Schema,

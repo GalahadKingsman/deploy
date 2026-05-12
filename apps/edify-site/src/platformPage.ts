@@ -457,6 +457,20 @@ if (platformMount) {
       if (!res.ok) throw new Error(`HTTP ${res.status} ${path}`);
     }
 
+    async function deleteJsonRes<T>(path: string, token?: string): Promise<T> {
+      const api = getApiBaseUrl();
+      if (!api) throw new Error('API base url is empty');
+      const res = await fetch(`${api}${path}`, {
+        method: 'DELETE',
+        headers: {
+          accept: 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${path}`);
+      return (await res.json()) as T;
+    }
+
     type MyRecentSubmissionRowV1 = {
       id: string;
       lessonId: string;
@@ -8505,6 +8519,7 @@ if (platformMount) {
       if (bd) bd.style.display = 'none';
       if (dr) dr.style.display = 'none';
       root.querySelectorAll<HTMLElement>('[data-ep-admin-suggest]').forEach((el) => (el.style.display = 'none'));
+      closeAdminLegalDocMenu(root);
     }
 
     function applyAdminExpertIdFields(root: ShadowRoot, activeExpertId: string | null | undefined): void {
@@ -8708,6 +8723,151 @@ if (platformMount) {
 
       const platformCard = root.querySelector('[data-ep-admin-platform-set]')?.closest('.card') as HTMLElement | null;
       if (platformCard) platformCard.style.display = isOwner ? '' : 'none';
+
+      void hydrateAdminLegalDocuments(root);
+    }
+
+    type AdminLegalDocKind = 'offer' | 'privacy' | 'personal_data';
+
+    let adminLegalDocMenuKind: AdminLegalDocKind | null = null;
+
+    const adminLegalDocKindLabels: Record<AdminLegalDocKind, string> = {
+      offer: 'Договор-оферта',
+      privacy: 'Политика конфиденциальности',
+      personal_data: 'Обработка персональных данных',
+    };
+
+    function closeAdminLegalDocMenu(root: ShadowRoot): void {
+      adminLegalDocMenuKind = null;
+      const bd = root.querySelector('[data-ep-admin-legal-menu-backdrop]') as HTMLElement | null;
+      const box = root.querySelector('[data-ep-admin-legal-menu]') as HTMLElement | null;
+      if (bd) {
+        bd.style.display = 'none';
+        bd.setAttribute('aria-hidden', 'true');
+      }
+      if (box) box.style.display = 'none';
+    }
+
+    function openAdminLegalDocMenu(root: ShadowRoot, kind: AdminLegalDocKind): void {
+      adminLegalDocMenuKind = kind;
+      const bd = root.querySelector('[data-ep-admin-legal-menu-backdrop]') as HTMLElement | null;
+      const box = root.querySelector('[data-ep-admin-legal-menu]') as HTMLElement | null;
+      if (bd) {
+        bd.style.display = 'block';
+        bd.setAttribute('aria-hidden', 'false');
+      }
+      if (box) box.style.display = 'flex';
+    }
+
+    function renderAdminLegalDocRow(
+      root: ShadowRoot,
+      kind: AdminLegalDocKind,
+      doc: { uploaded: boolean; originalFilename: string | null },
+    ): void {
+      const btn = root.querySelector(`[data-ep-admin-legal-btn="${kind}"]`) as HTMLButtonElement | null;
+      const st = root.querySelector(`[data-ep-admin-legal-status="${kind}"]`) as HTMLElement | null;
+      if (!btn) return;
+      const uploaded = doc.uploaded === true;
+      btn.textContent = uploaded ? 'Документ загружен' : 'Загрузить документ';
+      btn.classList.toggle('btn-outline', !uploaded);
+      btn.classList.toggle('ep-builder-cert-btn--uploaded', uploaded);
+      if (uploaded) btn.dataset.epAdminLegalHasFile = '1';
+      else delete btn.dataset.epAdminLegalHasFile;
+      btn.title = uploaded
+        ? 'Нажмите, чтобы заменить или удалить DOCX'
+        : `Загрузить DOCX: ${adminLegalDocKindLabels[kind]}`;
+      if (st) {
+        const fn = (doc.originalFilename ?? '').trim();
+        if (uploaded && fn) {
+          st.style.display = '';
+          st.textContent = fn;
+        } else {
+          st.style.display = 'none';
+          st.textContent = '';
+        }
+      }
+    }
+
+    async function hydrateAdminLegalDocuments(root: ShadowRoot): Promise<void> {
+      const tok = getAccessToken();
+      const kinds: AdminLegalDocKind[] = ['offer', 'privacy', 'personal_data'];
+      if (!tok) {
+        for (const k of kinds) renderAdminLegalDocRow(root, k, { uploaded: false, originalFilename: null });
+        return;
+      }
+      try {
+        const res = await fetchJson<{
+          items: Array<{ kind: string; uploaded: boolean; originalFilename: string | null }>;
+        }>('/admin/platform/legal-documents', tok);
+        const by = new Map((res.items ?? []).map((x) => [x.kind, x] as const));
+        for (const k of kinds) {
+          const row = by.get(k);
+          renderAdminLegalDocRow(root, k, {
+            uploaded: !!row?.uploaded,
+            originalFilename: row?.originalFilename ?? null,
+          });
+        }
+      } catch {
+        for (const k of kinds) renderAdminLegalDocRow(root, k, { uploaded: false, originalFilename: null });
+      }
+    }
+
+    async function uploadAdminLegalDocument(root: ShadowRoot, kind: AdminLegalDocKind, file: File): Promise<void> {
+      const tok = getAccessToken();
+      if (!tok) return;
+      const mime = (file.type || '').toLowerCase();
+      const okMime =
+        mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+        mime === 'application/msword';
+      const okExt = /\.docx$/i.test(file.name || '');
+      if (!okMime && !okExt) {
+        window.alert('Можно загрузить только DOCX.');
+        return;
+      }
+      const maxBytes = 30 * 1024 * 1024;
+      if (file.size > maxBytes) {
+        window.alert('Файл слишком большой (максимум 30 МБ).');
+        return;
+      }
+      const btn = root.querySelector(`[data-ep-admin-legal-btn="${kind}"]`) as HTMLButtonElement | null;
+      const st = root.querySelector(`[data-ep-admin-legal-status="${kind}"]`) as HTMLElement | null;
+      if (btn) btn.disabled = true;
+      if (st) {
+        st.style.display = '';
+        st.textContent = 'Загружаем…';
+      }
+      try {
+        const form = new FormData();
+        form.append('file', file, file.name || 'document.docx');
+        await fetchMultipartJson<unknown>(
+          `/admin/platform/legal-documents/${encodeURIComponent(kind)}/upload`,
+          form,
+          tok,
+        );
+        await hydrateAdminLegalDocuments(root);
+      } catch (e) {
+        const msg = e instanceof Error && e.message ? e.message : 'Не удалось загрузить документ.';
+        window.alert(msg);
+        await hydrateAdminLegalDocuments(root);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    async function deleteAdminLegalDocument(root: ShadowRoot, kind: AdminLegalDocKind): Promise<void> {
+      const tok = getAccessToken();
+      if (!tok) return;
+      const btn = root.querySelector(`[data-ep-admin-legal-btn="${kind}"]`) as HTMLButtonElement | null;
+      if (btn) btn.disabled = true;
+      try {
+        await deleteJsonRes<unknown>(`/admin/platform/legal-documents/${encodeURIComponent(kind)}`, tok);
+        await hydrateAdminLegalDocuments(root);
+      } catch {
+        window.alert('Не удалось удалить документ.');
+        await hydrateAdminLegalDocuments(root);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
     }
 
     function formatUserTitle(u: { username?: string | null; firstName?: string | null; lastName?: string | null; telegramUserId?: string | null }): string {
@@ -9468,7 +9628,7 @@ if (platformMount) {
           return;
         }
         if (hint) {
-          hint.textContent = `Доступно к выводу: ${Math.floor(referralWithdrawNetCents / 100).toLocaleString('ru-RU')} ₽ (целые рубли).`;
+          hint.textContent = `Доступно к выводу: ${Math.floor(referralWithdrawNetCents / 100).toLocaleString('ru-RU')} ₽`;
         }
         if (form) form.style.display = '';
         return;
@@ -10349,6 +10509,54 @@ if (platformMount) {
         const uploaded = builderCourseDetail.certificateUploaded === true;
         if (uploaded) {
           openBuilderCertificateActionMenu(shell.shadowRoot);
+        } else if (inp) {
+          inp.value = '';
+          inp.click();
+        }
+        return;
+      }
+      if (t?.closest('[data-ep-admin-legal-menu-backdrop]') || t?.closest('[data-ep-admin-legal-menu-cancel]')) {
+        ev.preventDefault();
+        closeAdminLegalDocMenu(shell.shadowRoot);
+        return;
+      }
+      if (t?.closest('[data-ep-admin-legal-menu-replace]')) {
+        ev.preventDefault();
+        const kind = adminLegalDocMenuKind;
+        closeAdminLegalDocMenu(shell.shadowRoot);
+        if (!kind) return;
+        const inp = shell.shadowRoot.querySelector(
+          `input[data-ep-admin-legal-input="${kind}"]`,
+        ) as HTMLInputElement | null;
+        if (inp) {
+          inp.value = '';
+          inp.click();
+        }
+        return;
+      }
+      if (t?.closest('[data-ep-admin-legal-menu-delete]')) {
+        ev.preventDefault();
+        closeAdminLegalDocMenu(shell.shadowRoot);
+        const kind = adminLegalDocMenuKind;
+        if (!kind) return;
+        if (window.confirm('Удалить загруженный документ?')) {
+          void deleteAdminLegalDocument(shell.shadowRoot, kind);
+        }
+        return;
+      }
+      if (t?.closest('[data-ep-admin-legal-btn]')) {
+        ev.preventDefault();
+        const legalBtn = t.closest('[data-ep-admin-legal-btn]') as HTMLElement | null;
+        const raw = (legalBtn?.getAttribute('data-ep-admin-legal-btn') ?? '').trim();
+        const kind =
+          raw === 'offer' || raw === 'privacy' || raw === 'personal_data' ? (raw as AdminLegalDocKind) : null;
+        if (!kind) return;
+        const uploaded = legalBtn?.dataset.epAdminLegalHasFile === '1';
+        const inp = shell.shadowRoot.querySelector(
+          `input[data-ep-admin-legal-input="${kind}"]`,
+        ) as HTMLInputElement | null;
+        if (uploaded) {
+          openAdminLegalDocMenu(shell.shadowRoot, kind);
         } else if (inp) {
           inp.value = '';
           inp.click();
@@ -11326,6 +11534,17 @@ if (platformMount) {
         inp.value = '';
         if (!f) return;
         void uploadBuilderCertificate(shell.shadowRoot, f);
+        return;
+      }
+      if (t?.matches('input[data-ep-admin-legal-input]')) {
+        const inp = t as HTMLInputElement;
+        const raw = (inp.getAttribute('data-ep-admin-legal-input') ?? '').trim();
+        const kind =
+          raw === 'offer' || raw === 'privacy' || raw === 'personal_data' ? (raw as AdminLegalDocKind) : null;
+        const f = inp.files?.[0];
+        inp.value = '';
+        if (!f || !kind) return;
+        void uploadAdminLegalDocument(shell.shadowRoot, kind, f);
         return;
       }
       if (t?.matches('input[data-ep-builder-materials-file-input]')) {

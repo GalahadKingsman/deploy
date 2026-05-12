@@ -177,6 +177,20 @@ export {
   PatchAdminReferralWithdrawalResponseV1Schema,
 } from './referral-withdrawals.js';
 export type {
+  PlatformLegalDocKindV1,
+  AdminPlatformLegalDocumentV1,
+  ListAdminPlatformLegalDocumentsResponseV1,
+  UploadAdminPlatformLegalDocumentResponseV1,
+  DeleteAdminPlatformLegalDocumentResponseV1,
+} from './platform-legal-documents.js';
+export {
+  PlatformLegalDocKindV1Schema,
+  AdminPlatformLegalDocumentV1Schema,
+  ListAdminPlatformLegalDocumentsResponseV1Schema,
+  UploadAdminPlatformLegalDocumentResponseV1Schema,
+  DeleteAdminPlatformLegalDocumentResponseV1Schema,
+} from './platform-legal-documents.js';
+export type {
   ReferralInviterV1,
   GetMyReferralInviterResponseV1,
   ReferralInviteeV1,

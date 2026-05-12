@@ -1386,6 +1386,64 @@ textarea.form-input{resize:vertical;min-height:80px}
   flex:1;overflow-y:auto;padding:16px 18px 28px;
 }
 
+/* Админ-панель: меню действий с загруженным DOCX (как сертификат в конструкторе) */
+.ep-admin-legal-menu-backdrop{
+  position:fixed;
+  left:0;right:0;bottom:0;
+  top:56px;
+  z-index:130;
+  background:rgba(12,18,32,0.35);
+  backdrop-filter:blur(2px);
+}
+.ep-admin-legal-menu{
+  position:fixed;
+  left:0;right:0;bottom:0;
+  top:56px;
+  z-index:131;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  pointer-events:none;
+}
+.ep-admin-legal-menu__card{
+  pointer-events:auto;
+  width:100%;
+  max-width:360px;
+  padding:20px 22px;
+  border-radius:var(--r2);
+  box-shadow:var(--sh2);
+}
+.ep-admin-legal-menu__title{
+  font-family:var(--fd);
+  font-size:15px;
+  font-weight:700;
+  color:var(--t1);
+  margin-bottom:8px;
+}
+.ep-admin-legal-menu__sub{
+  font-size:13px;
+  color:var(--t2);
+  line-height:1.55;
+  margin:0 0 16px;
+}
+.ep-admin-legal-menu__actions{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.ep-admin-legal-menu__btn{
+  width:100%;
+  justify-content:center;
+}
+.ep-admin-legal-menu__del{
+  color:#B91C1C !important;
+  border-color:rgba(220,38,38,0.35) !important;
+}
+.ep-admin-legal-menu__del:hover{
+  background:rgba(220,38,38,0.06);
+  border-color:rgba(220,38,38,0.5) !important;
+}
+
 #screen-e-builder .ep-course-drawer{
   position:absolute;top:0;right:0;bottom:0;z-index:41;
   width:min(440px,100%);
