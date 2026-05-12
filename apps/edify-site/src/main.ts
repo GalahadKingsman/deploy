@@ -5,6 +5,7 @@ import { refreshNavAuth } from './navAuthUi.js';
 import { getTelegramSupportUrl, isLandingPaymentsUiEnabled } from './env.js';
 import { createExpertSubscriptionCheckout } from './expertSubscriptionCheckout.js';
 import type { ExpertSubscriptionCheckoutProduct } from './expertSubscriptionCheckout.js';
+import { legalDocumentPdfUrl } from './legalDocumentUrls.js';
 import { hydrateLandingExpertCourses } from './platform/marketingExpertCoursesPreview.js';
 import { hydrateLandingExpertDashboard } from './platform/marketingExpertDashboardPreview.js';
 import { hydrateLandingStudentScreens } from './platform/marketingStudentScreensPreview.js';
@@ -148,6 +149,104 @@ document.addEventListener('click', (ev) => {
   window.edifyOpenAuthModal?.(mode);
 });
 
+function wireLegalDocumentAnchors(): void {
+  document.querySelectorAll<HTMLAnchorElement>('a[data-edify-legal]').forEach((a) => {
+    const k = a.getAttribute('data-edify-legal');
+    if (k !== 'offer' && k !== 'privacy' && k !== 'personal_data') return;
+    a.href = legalDocumentPdfUrl(k);
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+  });
+}
+
+function openLandingPayConfirmModal(opts: {
+  checkoutButton: HTMLButtonElement;
+  product: ExpertSubscriptionCheckoutProduct;
+}): void {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'edify-pay-confirm';
+  const card = document.createElement('div');
+  card.className = 'edify-pay-confirm__card';
+
+  const title = document.createElement('div');
+  title.className = 'edify-pay-confirm__title';
+  title.textContent = 'Подтверждение оплаты';
+
+  const text = document.createElement('p');
+  text.className = 'edify-pay-confirm__text';
+  text.append(
+    document.createTextNode('Продолжая оплату, вы соглашаетесь с '),
+    (() => {
+      const a = document.createElement('a');
+      a.className = 'edify-pay-confirm__link';
+      a.href = legalDocumentPdfUrl('offer');
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = 'Договором-офертой';
+      return a;
+    })(),
+    document.createTextNode('.'),
+  );
+
+  const actions = document.createElement('div');
+  actions.className = 'edify-pay-confirm__actions';
+
+  const btnPay = document.createElement('button');
+  btnPay.type = 'button';
+  btnPay.className = 'edify-pay-confirm__btn edify-pay-confirm__btn--primary';
+  btnPay.textContent = 'Оплатить';
+
+  const btnCancel = document.createElement('button');
+  btnCancel.type = 'button';
+  btnCancel.className = 'edify-pay-confirm__btn edify-pay-confirm__btn--ghost';
+  btnCancel.textContent = 'Отмена';
+
+  const close = () => backdrop.remove();
+  btnCancel.addEventListener('click', close);
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) close();
+  });
+
+  btnPay.addEventListener('click', () => {
+    btnPay.disabled = true;
+    btnCancel.disabled = true;
+    const el = opts.checkoutButton;
+    const hadBusy = el.getAttribute('aria-busy') === 'true';
+    if (!hadBusy) {
+      el.setAttribute('aria-busy', 'true');
+      el.disabled = true;
+    }
+    void (async () => {
+      try {
+        const r = await createExpertSubscriptionCheckout(opts.product);
+        if (!r.ok) {
+          if (r.needAuth) {
+            window.alert(r.error);
+            window.edifyOpenAuthModal?.('login');
+            return;
+          }
+          window.alert(r.error);
+          return;
+        }
+        close();
+        window.location.assign(r.payUrl);
+      } finally {
+        if (!hadBusy) {
+          el.removeAttribute('aria-busy');
+          el.disabled = false;
+        }
+        btnPay.disabled = false;
+        btnCancel.disabled = false;
+      }
+    })();
+  });
+
+  actions.append(btnPay, btnCancel);
+  card.append(title, text, actions);
+  backdrop.appendChild(card);
+  document.body.appendChild(backdrop);
+}
+
 /**
  * Checkout по тарифам: вешаем обработчик на саму кнопку и читаем продукт с `currentTarget`,
  * а не через `target.closest(...)`, чтобы сумма всегда соответствовала нажатой CTA.
@@ -165,31 +264,12 @@ function wireLandingCheckoutProductButtons(): void {
       }
       const raw = (el.getAttribute('data-edify-checkout-product') || '').trim();
       const product = (raw === 'expert_pro' ? 'expert_pro' : 'platform_entry') as ExpertSubscriptionCheckoutProduct;
-      void (async () => {
-        const prev = el.getAttribute('aria-busy') === 'true';
-        if (prev) return;
-        el.setAttribute('aria-busy', 'true');
-        el.disabled = true;
-        try {
-          const r = await createExpertSubscriptionCheckout(product);
-          if (!r.ok) {
-            if (r.needAuth) {
-              window.alert(r.error);
-              window.edifyOpenAuthModal?.('login');
-              return;
-            }
-            window.alert(r.error);
-            return;
-          }
-          window.location.assign(r.payUrl);
-        } finally {
-          el.removeAttribute('aria-busy');
-          el.disabled = false;
-        }
-      })();
+      openLandingPayConfirmModal({ checkoutButton: el, product });
     });
   });
 }
+
+wireLegalDocumentAnchors();
 
 wireLandingCheckoutProductButtons();
 

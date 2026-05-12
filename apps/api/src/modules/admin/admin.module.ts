@@ -19,6 +19,7 @@ import { AdminReferralWithdrawalsController } from './admin.referral-withdrawals
 import { AdminPlatformLegalDocumentsController } from './admin.platform-legal-documents.controller.js';
 import { PlatformLegalDocumentsRepository } from './platform-legal-documents.repository.js';
 import { StorageModule } from '../../storage/storage.module.js';
+import { LegalDocxToPdfService } from '../../common/legal-docx-to-pdf.service.js';
 import { Pool } from 'pg';
 
 @Module({
@@ -46,6 +47,7 @@ import { Pool } from 'pg';
     JwtAuthGuard,
     PlatformRoleGuard,
     PasswordResetService,
+    LegalDocxToPdfService,
     {
       provide: PlatformLegalDocumentsRepository,
       useFactory: (pool: Pool) => new PlatformLegalDocumentsRepository(pool),

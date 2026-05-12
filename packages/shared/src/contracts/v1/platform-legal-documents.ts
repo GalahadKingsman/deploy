@@ -7,6 +7,8 @@ export const PlatformLegalDocKindV1Schema = z.enum(['offer', 'privacy', 'persona
 export interface AdminPlatformLegalDocumentV1 {
   kind: PlatformLegalDocKindV1;
   uploaded: boolean;
+  /** PDF сгенерирован и доступен публично (после успешной конвертации DOCX). */
+  pdfReady: boolean;
   originalFilename: string | null;
   uploadedAt: string | null;
 }
@@ -14,6 +16,7 @@ export interface AdminPlatformLegalDocumentV1 {
 export const AdminPlatformLegalDocumentV1Schema = z.object({
   kind: PlatformLegalDocKindV1Schema,
   uploaded: z.boolean(),
+  pdfReady: z.boolean(),
   originalFilename: z.string().nullable(),
   uploadedAt: z.string().nullable(),
 });

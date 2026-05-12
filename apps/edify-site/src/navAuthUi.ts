@@ -1,4 +1,5 @@
 import { getApiBaseUrl, getTelegramBotUsername } from './env.js';
+import { legalDocumentPdfUrl } from './legalDocumentUrls.js';
 import { getAvatarImageSrc } from './avatarImageUrl.js';
 import { clearAccessToken, getAccessToken, setAccessToken } from './authSession.js';
 import { getStoredReferralCode } from './referralAttribution.js';
@@ -163,6 +164,7 @@ function openAuthModal(mode: AuthMode): void {
       tReg.classList.remove('is-active');
       regFields.style.display = 'none';
       password.style.display = 'none';
+      consentBlock.style.display = 'none';
       submit.textContent = 'Отправить письмо для восстановления';
       forgotToLogin.textContent = 'Назад ко входу';
     } else {
@@ -173,6 +175,7 @@ function openAuthModal(mode: AuthMode): void {
       tReg.classList.toggle('is-active', mode === 'register');
       regFields.style.display = mode === 'register' ? '' : 'none';
       password.style.display = '';
+      consentBlock.style.display = mode === 'register' ? '' : 'none';
       submit.textContent = mode === 'register' ? 'Создать аккаунт' : 'Войти';
       forgotToLogin.textContent = 'Забыли пароль?';
     }
@@ -213,6 +216,33 @@ function openAuthModal(mode: AuthMode): void {
   password.type = 'password';
   password.autocomplete = mode === 'register' ? 'new-password' : 'current-password';
 
+  const consentBlock = document.createElement('div');
+  consentBlock.className = 'edify-auth__consent';
+  consentBlock.style.display = 'none';
+  consentBlock.append(
+    document.createTextNode('Завершая регистрацию, вы соглашаетесь с '),
+    (() => {
+      const a = document.createElement('a');
+      a.className = 'edify-auth__consent-link';
+      a.textContent = 'Политикой конфиденциальности';
+      a.href = legalDocumentPdfUrl('privacy');
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      return a;
+    })(),
+    document.createTextNode(' и '),
+    (() => {
+      const a = document.createElement('a');
+      a.className = 'edify-auth__consent-link';
+      a.textContent = 'Обработкой персональных данных';
+      a.href = legalDocumentPdfUrl('personal_data');
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      return a;
+    })(),
+    document.createTextNode('.'),
+  );
+
   const msg = document.createElement('div');
   msg.className = 'edify-auth__msg';
   msg.setAttribute('role', 'status');
@@ -223,7 +253,7 @@ function openAuthModal(mode: AuthMode): void {
   submit.className = 'edify-auth__submit';
   submit.textContent = mode === 'register' ? 'Создать аккаунт' : 'Войти';
 
-  form.append(regFields, email, password, msg, submit);
+  form.append(regFields, email, password, consentBlock, msg, submit);
   form.noValidate = true;
 
   const setMsg = (text: string, kind: 'neutral' | 'error' | 'ok' = 'neutral') => {

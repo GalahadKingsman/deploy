@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  InternalServerErrorException,
   Param,
   Post,
   Req,
@@ -19,6 +20,7 @@ import { RequirePlatformRole } from '../../auth/rbac/require-platform-role.decor
 import { PlatformLegalDocumentsRepository } from './platform-legal-documents.repository.js';
 import { S3StorageService } from '../../storage/s3-storage.service.js';
 import { AuditService } from '../../audit/audit.service.js';
+import { LegalDocxToPdfService } from '../../common/legal-docx-to-pdf.service.js';
 
 const KIND_SCHEMA = ContractsV1.PlatformLegalDocKindV1Schema;
 
@@ -46,6 +48,7 @@ export class AdminPlatformLegalDocumentsController {
     private readonly legalDocs: PlatformLegalDocumentsRepository,
     private readonly storage: S3StorageService,
     private readonly audit: AuditService,
+    private readonly docxToPdf: LegalDocxToPdfService,
   ) {}
 
   @Get()
@@ -60,7 +63,7 @@ export class AdminPlatformLegalDocumentsController {
   @Post(':kind/upload')
   @HttpCode(HttpStatus.CREATED)
   @RequirePlatformRole('admin')
-  @ApiOperation({ summary: 'Upload platform legal DOCX (admin+)' })
+  @ApiOperation({ summary: 'Upload platform legal DOCX (admin+); PDF generated on server' })
   @ApiResponse({ status: 201, description: 'Uploaded' })
   async upload(
     @Param('kind') kindRaw: string,
@@ -114,36 +117,76 @@ export class AdminPlatformLegalDocumentsController {
     }
 
     const safeName = original.replace(/[^\w.\-]+/g, '_').slice(0, 120);
-    const key = `platform-legal/${kind}/${Date.now()}-${safeName}`;
+    const ts = Date.now();
+    const docxKey = `platform-legal/${kind}/${ts}-${safeName}`;
+    const pdfKey = `platform-legal/${kind}/${ts}-document.pdf`;
     const prev = await this.legalDocs.getRow(kind);
 
+    let pdfUploaded = false;
     await this.storage.putObject({
-      key,
+      key: docxKey,
       body: new Uint8Array(buf),
       contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
 
+    try {
+      const pdfBuf = await this.docxToPdf.convert(buf);
+      await this.storage.putObject({
+        key: pdfKey,
+        body: new Uint8Array(pdfBuf),
+        contentType: 'application/pdf',
+      });
+      pdfUploaded = true;
+    } catch {
+      try {
+        await this.storage.deleteObject({ key: docxKey });
+      } catch {
+        /* best-effort */
+      }
+      throw new InternalServerErrorException({
+        code: ErrorCodes.INTERNAL_ERROR,
+        message:
+          'Не удалось преобразовать DOCX в PDF (LibreOffice). Проверьте файл или установите LibreOffice на сервере API.',
+      });
+    }
+
     let document: ContractsV1.AdminPlatformLegalDocumentV1;
     try {
-      document = await this.legalDocs.upsert({
+      document = await this.legalDocs.upsertDocument({
         kind,
-        storageKey: key,
+        storageKey: docxKey,
+        pdfStorageKey: pdfKey,
         originalFilename: original,
         uploadedByUserId: req.user?.userId ?? null,
       });
     } catch (e) {
       try {
-        await this.storage.deleteObject({ key });
+        await this.storage.deleteObject({ key: docxKey });
       } catch {
-        // best-effort
+        /* best-effort */
+      }
+      if (pdfUploaded) {
+        try {
+          await this.storage.deleteObject({ key: pdfKey });
+        } catch {
+          /* best-effort */
+        }
       }
       throw e;
     }
-    if (prev?.storage_key && prev.storage_key !== key) {
+
+    if (prev?.storage_key && prev.storage_key !== docxKey) {
       try {
         await this.storage.deleteObject({ key: prev.storage_key });
       } catch {
-        // best-effort
+        /* best-effort */
+      }
+    }
+    if (prev?.pdf_storage_key && prev.pdf_storage_key !== pdfKey) {
+      try {
+        await this.storage.deleteObject({ key: prev.pdf_storage_key });
+      } catch {
+        /* best-effort */
       }
     }
 
@@ -152,7 +195,7 @@ export class AdminPlatformLegalDocumentsController {
       action: 'admin.platform_legal.upload',
       entityType: 'platform_legal_document',
       entityId: kind,
-      meta: { filename: original },
+      meta: { filename: original, docxKey, pdfKey },
       traceId: getTraceId(req),
     });
 
@@ -182,12 +225,20 @@ export class AdminPlatformLegalDocumentsController {
       try {
         await this.storage.deleteObject({ key: prev.storage_key });
       } catch {
-        // best-effort
+        /* best-effort */
+      }
+    }
+    if (prev?.pdf_storage_key) {
+      try {
+        await this.storage.deleteObject({ key: prev.pdf_storage_key });
+      } catch {
+        /* best-effort */
       }
     }
     const document: ContractsV1.AdminPlatformLegalDocumentV1 = {
       kind,
       uploaded: false,
+      pdfReady: false,
       originalFilename: null,
       uploadedAt: null,
     };

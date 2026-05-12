@@ -54,6 +54,7 @@ const MIGRATION_LIST = [
   '042_orders_checkout_product_and_user_recurring',
   '043_referral_withdrawal_requests',
   '044_platform_legal_documents',
+  '045_platform_legal_documents_pdf',
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

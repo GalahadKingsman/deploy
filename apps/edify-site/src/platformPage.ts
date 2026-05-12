@@ -8762,23 +8762,26 @@ if (platformMount) {
     function renderAdminLegalDocRow(
       root: ShadowRoot,
       kind: AdminLegalDocKind,
-      doc: { uploaded: boolean; originalFilename: string | null },
+      doc: { uploaded: boolean; pdfReady?: boolean; originalFilename: string | null },
     ): void {
       const btn = root.querySelector(`[data-ep-admin-legal-btn="${kind}"]`) as HTMLButtonElement | null;
       const st = root.querySelector(`[data-ep-admin-legal-status="${kind}"]`) as HTMLElement | null;
       if (!btn) return;
-      const uploaded = doc.uploaded === true;
-      btn.textContent = uploaded ? 'Документ загружен' : 'Загрузить документ';
-      btn.classList.toggle('btn-outline', !uploaded);
-      btn.classList.toggle('ep-builder-cert-btn--uploaded', uploaded);
-      if (uploaded) btn.dataset.epAdminLegalHasFile = '1';
+      const pdfReady = doc.pdfReady === true;
+      const showAsUploaded = doc.uploaded === true && pdfReady;
+      btn.textContent = showAsUploaded ? 'Документ загружен' : 'Загрузить документ';
+      btn.classList.toggle('btn-outline', !showAsUploaded);
+      btn.classList.toggle('ep-builder-cert-btn--uploaded', showAsUploaded);
+      if (showAsUploaded) btn.dataset.epAdminLegalHasFile = '1';
       else delete btn.dataset.epAdminLegalHasFile;
-      btn.title = uploaded
-        ? 'Нажмите, чтобы заменить или удалить DOCX'
-        : `Загрузить DOCX: ${adminLegalDocKindLabels[kind]}`;
+      btn.title = showAsUploaded
+        ? 'Нажмите, чтобы заменить или удалить документ'
+        : doc.uploaded && !pdfReady
+          ? 'Файл без PDF в хранилище — загрузите документ заново'
+          : `Загрузить DOCX: ${adminLegalDocKindLabels[kind]}`;
       if (st) {
         const fn = (doc.originalFilename ?? '').trim();
-        if (uploaded && fn) {
+        if (doc.uploaded && fn) {
           st.style.display = '';
           st.textContent = fn;
         } else {
@@ -8792,23 +8795,26 @@ if (platformMount) {
       const tok = getAccessToken();
       const kinds: AdminLegalDocKind[] = ['offer', 'privacy', 'personal_data'];
       if (!tok) {
-        for (const k of kinds) renderAdminLegalDocRow(root, k, { uploaded: false, originalFilename: null });
+        for (const k of kinds)
+          renderAdminLegalDocRow(root, k, { uploaded: false, pdfReady: false, originalFilename: null });
         return;
       }
       try {
         const res = await fetchJson<{
-          items: Array<{ kind: string; uploaded: boolean; originalFilename: string | null }>;
+          items: Array<{ kind: string; uploaded: boolean; pdfReady?: boolean; originalFilename: string | null }>;
         }>('/admin/platform/legal-documents', tok);
         const by = new Map((res.items ?? []).map((x) => [x.kind, x] as const));
         for (const k of kinds) {
           const row = by.get(k);
           renderAdminLegalDocRow(root, k, {
             uploaded: !!row?.uploaded,
+            pdfReady: row?.pdfReady === true,
             originalFilename: row?.originalFilename ?? null,
           });
         }
       } catch {
-        for (const k of kinds) renderAdminLegalDocRow(root, k, { uploaded: false, originalFilename: null });
+        for (const k of kinds)
+          renderAdminLegalDocRow(root, k, { uploaded: false, pdfReady: false, originalFilename: null });
       }
     }
 
