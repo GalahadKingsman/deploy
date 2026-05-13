@@ -93,28 +93,31 @@ export class TinkoffAcquiringService {
       body.Recurrent = 'Y';
     }
 
-    const hasContact = Boolean(
-      (input.receiptEmail && input.receiptEmail.trim()) || (input.receiptPhone && input.receiptPhone.trim()),
-    );
-    if (hasContact) {
-      const receipt: Record<string, unknown> = {
-        Taxation: env.TINKOFF_RECEIPT_TAXATION,
-        Items: [
-          {
-            Name: description.slice(0, 128),
-            Price: input.amountCents,
-            Quantity: 1,
-            Amount: input.amountCents,
-            Tax: env.TINKOFF_RECEIPT_TAX,
-            PaymentMethod: 'full_payment',
-            PaymentObject: 'service',
-          },
-        ],
-      };
-      if (input.receiptEmail?.trim()) receipt.Email = input.receiptEmail.trim();
-      if (input.receiptPhone?.trim()) receipt.Phone = input.receiptPhone.trim();
-      body.Receipt = receipt;
+    const email = input.receiptEmail?.trim() ?? '';
+    const phone = input.receiptPhone?.trim() ?? '';
+    const hasContact = Boolean(email || phone);
+    if (!hasContact) {
+      throw new Error(
+        'Для Init Tinkoff нужен email или телефон в чеке (54-ФЗ). Укажите контакт в профиле или в теле POST /checkout/expert-subscription.',
+      );
     }
+    const receipt: Record<string, unknown> = {
+      Taxation: env.TINKOFF_RECEIPT_TAXATION,
+      Items: [
+        {
+          Name: description.slice(0, 128),
+          Price: input.amountCents,
+          Quantity: 1,
+          Amount: input.amountCents,
+          Tax: env.TINKOFF_RECEIPT_TAX,
+          PaymentMethod: 'full_payment',
+          PaymentObject: 'service',
+        },
+      ],
+    };
+    if (email) receipt.Email = email.toLowerCase();
+    if (phone) receipt.Phone = phone;
+    body.Receipt = receipt;
 
     const token = buildTinkoffRequestToken(body, password);
     const payload = { ...body, Token: token };

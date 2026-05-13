@@ -96,6 +96,18 @@ export class PaymentsController {
         ? parsed.data.referralCode.trim()
         : null;
 
+    const bodyEmail =
+      typeof parsed.data.email === 'string' && parsed.data.email.trim() ? parsed.data.email.trim().toLowerCase() : null;
+    const bodyPhone =
+      typeof parsed.data.phone === 'string' && parsed.data.phone.trim() ? parsed.data.phone.trim() : null;
+    const profile = await this.usersRepository.getContact(userId);
+    const profileEmail =
+      typeof profile.email === 'string' && profile.email.trim() ? profile.email.trim().toLowerCase() : null;
+    const profilePhone =
+      typeof profile.phone === 'string' && profile.phone.trim() ? profile.phone.trim() : null;
+    const receiptEmail = bodyEmail ?? profileEmail;
+    const receiptPhone = bodyPhone ?? profilePhone;
+
     let existing = await this.ordersRepository.findLatestCreatedExpertSubscriptionByUser({
       userId,
       checkoutProduct: product,
@@ -121,14 +133,22 @@ export class PaymentsController {
       return { order: existing, payUrl: existing.payUrl };
     }
 
+    if (!receiptEmail && !receiptPhone) {
+      throw new BadRequestException({
+        code: ErrorCodes.VALIDATION_ERROR,
+        message:
+          'Для оплаты нужен email или телефон для фискального чека (54-ФЗ). Укажите контакт в профиле или передайте поля email/phone в запросе checkout.',
+      });
+    }
+
     const order = await this.ordersRepository.createExpertSubscriptionOrder({
       userId,
       expertId: null,
       amountCents,
       currency: 'RUB',
       referralCode,
-      receiptEmail: parsed.data.email ?? null,
-      receiptPhone: parsed.data.phone ?? null,
+      receiptEmail,
+      receiptPhone,
       checkoutProduct: product,
       billingPeriod,
       subscriptionPeriodDays: periodDays,
@@ -138,8 +158,8 @@ export class PaymentsController {
       userId,
       order,
       description: product === 'expert_pro' ? 'EDIFY — подписка эксперта' : 'EDIFY — доступ к платформе',
-      receiptEmail: parsed.data.email ?? null,
-      receiptPhone: parsed.data.phone ?? null,
+      receiptEmail,
+      receiptPhone,
     });
   }
 
