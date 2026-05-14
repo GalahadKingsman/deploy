@@ -16,3 +16,5 @@ export { ToastHost } from './ToastHost.js';
 export { toast } from './toast.js';
 export { BottomSheet } from './BottomSheet.js';
 export type { BottomSheetProps } from './BottomSheet.js';
+export { MiniAppRowAction } from './MiniAppRowAction.js';
+export type { MiniAppRowActionProps } from './MiniAppRowAction.js';

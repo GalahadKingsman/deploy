@@ -17,8 +17,9 @@ import { useMyCommissions } from '../shared/queries/useMyCommissions.js';
 import { useMyReferralStats } from '../shared/queries/useMyReferralStats.js';
 import { deriveExpertCtaState } from '../features/account/expertCtaState.js';
 import { BecomeExpertCard } from '../features/account/BecomeExpertCard.js';
-import { getTelegramDisplayUser, type TelegramDisplayUser } from '../shared/auth/telegram.js';
+import { getTelegramDisplayUser, isTelegramMiniApp, type TelegramDisplayUser } from '../shared/auth/telegram.js';
 import type { ContractsV1 } from '@tracked/shared';
+import { MiniAppRowAction } from '../ui/kit/MiniAppRowAction.js';
 
 type DisplayUser = ContractsV1.UserV1 | TelegramDisplayUser | null;
 
@@ -389,32 +390,45 @@ function ReferralCard() {
           >
             {isLoading ? '…' : referralLink || '—'}
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleCopy}
-            disabled={!referralLink || isLoading}
-            style={{
-              flex: '0 0 auto',
-              minWidth: 44,
-              minHeight: 44,
-              borderRadius: 12,
-              padding: '0 14px',
-            }}
-            aria-label="Скопировать ссылку"
-          >
-            ⧉
-          </Button>
+          {!isTelegramMiniApp() ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleCopy}
+              disabled={!referralLink || isLoading}
+              style={{
+                flex: '0 0 auto',
+                minWidth: 44,
+                minHeight: 44,
+                borderRadius: 12,
+                padding: '0 14px',
+              }}
+              aria-label="Скопировать ссылку"
+            >
+              ⧉
+            </Button>
+          ) : null}
         </div>
       </div>
-      <Button
-        variant="primary"
-        onClick={handleCopy}
-        style={{ width: '100%', height: 44, borderRadius: 12, fontWeight: 'var(--font-weight-semibold)' }}
-        disabled={!referralLink || isLoading}
-      >
-        Скопировать ссылку
-      </Button>
+      {isTelegramMiniApp() ? (
+        <MiniAppRowAction
+          title="Скопировать ссылку"
+          subtitle="В буфер обмена — поделиться с коллегами"
+          trailing="chevron"
+          disabled={!referralLink || isLoading}
+          onClick={() => void handleCopy()}
+          icon={<CopyIcon size={20} />}
+        />
+      ) : (
+        <Button
+          variant="primary"
+          onClick={handleCopy}
+          style={{ width: '100%', height: 44, borderRadius: 12, fontWeight: 'var(--font-weight-semibold)' }}
+          disabled={!referralLink || isLoading}
+        >
+          Скопировать ссылку
+        </Button>
+      )}
 
       <div style={{ marginTop: 'var(--sp-4)' }}>
         <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)', marginBottom: 'var(--sp-2)' }}>

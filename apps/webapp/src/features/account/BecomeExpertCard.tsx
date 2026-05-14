@@ -8,6 +8,8 @@ import {
   CardContent,
   Button,
 } from '../../shared/ui/index.js';
+import { MiniAppRowAction } from '../../ui/kit/MiniAppRowAction.js';
+import { isTelegramMiniApp } from '../../shared/auth/telegram.js';
 import type { ExpertCtaState } from './expertCtaState.js';
 import type { ContractsV1 } from '@tracked/shared';
 
@@ -232,18 +234,33 @@ export function BecomeExpertCard({ state, subscription }: BecomeExpertCardProps)
       </div>
 
       <div style={{ marginTop: 'var(--sp-3)' }}>
-        <Button
-          variant="primary"
-          onClick={() => navigate('/expert')}
-          style={{
-            width: '100%',
-            borderRadius: 12,
-            height: 44,
-            fontWeight: 'var(--font-weight-semibold)',
-          }}
-        >
-          Открыть кабинет →
-        </Button>
+        {isTelegramMiniApp() ? (
+          <MiniAppRowAction
+            to="/expert"
+            title="Открыть кабинет"
+            subtitle="Курсы, команда и контент"
+            trailing="chevron"
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <path d="M3 7l9-4 9 4-9 4-9-4Z" />
+                <path d="M21 10l-9 4-9-4" opacity="0.7" />
+              </svg>
+            }
+          />
+        ) : (
+          <Button
+            variant="primary"
+            onClick={() => navigate('/expert')}
+            style={{
+              width: '100%',
+              borderRadius: 12,
+              height: 44,
+              fontWeight: 'var(--font-weight-semibold)',
+            }}
+          >
+            Открыть кабинет →
+          </Button>
+        )}
       </div>
     </Card>
   );

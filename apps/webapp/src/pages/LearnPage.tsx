@@ -1,29 +1,41 @@
 import React from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Button, Card, Skeleton, EmptyState, ErrorState } from '../shared/ui/index.js';
+import { Card, Skeleton, EmptyState, ErrorState } from '../shared/ui/index.js';
 import { useMe } from '../shared/queries/useMe.js';
 import { useLearnSummary } from '../shared/queries/useLearnSummary.js';
 import { useMyCourses } from '../shared/queries/useMyCourses.js';
 import { ApiClientError } from '../shared/api/errors.js';
-import { getTelegramDisplayUser } from '../shared/auth/telegram.js';
+import { getTelegramDisplayUser, isTelegramMiniApp } from '../shared/auth/telegram.js';
 
 // Progress Circle Component
-function ProgressCircle({ completed, total }: { completed: number; total: number }) {
-  const percentage = (completed / total) * 100;
+function ProgressCircle({
+  completed,
+  total,
+  variant = 'default',
+}: {
+  completed: number;
+  total: number;
+  variant?: 'default' | 'compact';
+}) {
+  const percentage = total > 0 ? (completed / total) * 100 : 0;
   const angle = (percentage / 100) * 360;
+  const px = variant === 'compact' ? 64 : 80;
+  const pad = variant === 'compact' ? 3 : 4;
+  const numSize = variant === 'compact' ? 'var(--text-md)' : 'var(--text-lg)';
 
   return (
     <div
       style={{
         position: 'relative',
-        width: '80px',
-        height: '80px',
+        width: px,
+        height: px,
         borderRadius: '50%',
+        flexShrink: 0,
         background: `conic-gradient(
           var(--accent) 0deg ${angle}deg,
           rgba(255, 255, 255, 0.1) ${angle}deg 360deg
         )`,
-        padding: '4px',
+        padding: `${pad}px`,
       }}
     >
       <div
@@ -40,7 +52,7 @@ function ProgressCircle({ completed, total }: { completed: number; total: number
       >
         <div
           style={{
-            fontSize: 'var(--text-lg)',
+            fontSize: numSize,
             fontWeight: 'var(--font-weight-semibold)',
             color: 'var(--fg)',
             lineHeight: 1.2,
@@ -115,6 +127,23 @@ function ProgressBar({ progress }: { progress: number }) {
 
 // Current Course Card
 function CurrentCourseCard({ title, courseId, completed, total }: { title: string; courseId: string; completed: number; total: number }) {
+  const tg = isTelegramMiniApp();
+  const circleVariant = tg ? 'compact' : 'default';
+  const titleStyle: React.CSSProperties = {
+    fontSize: 'var(--text-md)',
+    fontWeight: 'var(--font-weight-semibold)',
+    color: 'var(--fg)',
+    lineHeight: 1.35,
+    ...(tg
+      ? {
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical' as const,
+          overflow: 'hidden',
+        }
+      : {}),
+  };
+
   return (
     <Card
       style={{
@@ -124,69 +153,48 @@ function CurrentCourseCard({ title, courseId, completed, total }: { title: strin
     >
       <div
         style={{
-          display: 'flex',
-          gap: 'var(--sp-4)',
-          alignItems: 'flex-start',
+          display: 'grid',
+          gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+          alignItems: 'start',
+          gap: 'var(--sp-3)',
         }}
       >
-        {/* Left: Progress circle + text */}
+        <ProgressCircle completed={completed} total={total} variant={circleVariant} />
         <div
           style={{
+            minWidth: 0,
             display: 'flex',
-            gap: 'var(--sp-4)',
-            alignItems: 'flex-start',
-            flex: 1,
+            flexDirection: 'column',
+            gap: 'var(--sp-1)',
           }}
         >
-          <ProgressCircle completed={completed} total={total} />
           <div
             style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--sp-1)',
+              fontSize: 'var(--text-sm)',
+              color: 'var(--muted-fg)',
             }}
           >
-            <div
-              style={{
-                fontSize: 'var(--text-sm)',
-                color: 'var(--muted-fg)',
-              }}
-            >
-              Текущий курс:
-            </div>
-            <div
-              style={{
-                fontSize: 'var(--text-md)',
-                fontWeight: 'var(--font-weight-semibold)',
-                color: 'var(--fg)',
-              }}
-            >
-              {title}
-            </div>
+            Текущий курс:
+          </div>
+          <div style={titleStyle} title={title}>
+            {title}
           </div>
         </div>
-        {/* Right: Action area with button */}
-        <div
+        <Link
+          to={`/course/${courseId}`}
           style={{
-            display: 'flex',
-            alignItems: 'center',
             flexShrink: 0,
+            marginTop: 2,
+            fontSize: 'var(--text-sm)',
+            fontWeight: 'var(--font-weight-semibold)',
+            color: 'var(--accent)',
+            textDecoration: 'none',
+            whiteSpace: 'nowrap',
+            alignSelf: 'center',
           }}
         >
-          <Button
-            asChild
-            variant="primary"
-            size="sm"
-            style={{
-              borderRadius: '999px',
-              padding: 'var(--sp-2) var(--sp-4)',
-              minHeight: '36px',
-            }}
-          >
-            <Link to={`/course/${courseId}`}>Продолжить</Link>
-          </Button>
-        </div>
+          Продолжить
+        </Link>
       </div>
     </Card>
   );

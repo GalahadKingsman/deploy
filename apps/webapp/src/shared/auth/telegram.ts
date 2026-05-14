@@ -80,6 +80,12 @@ declare global {
   }
 }
 
+/** True when the app runs inside Telegram Mini App (WebApp object is injected). */
+export function isTelegramMiniApp(): boolean {
+  if (typeof window === 'undefined') return false;
+  return Boolean(window.Telegram?.WebApp);
+}
+
 /** Open external HTTPS URL (payment redirect). Uses `Telegram.WebApp.openLink` inside Mini App when available. */
 export function openExternalHttpsUrl(url: string): void {
   if (typeof window === 'undefined') return;

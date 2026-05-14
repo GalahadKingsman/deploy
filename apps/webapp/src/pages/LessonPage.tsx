@@ -380,6 +380,35 @@ export function LessonPage() {
         </Card>
       ) : null}
 
+      <Card style={{ marginBottom: 'var(--sp-4)' }}>
+        <CardHeader>
+          <CardTitle style={{ fontSize: 'var(--text-md)' }}>Материал</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div
+            style={{
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              overflowWrap: 'anywhere',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+              fontSize: 'var(--text-sm)',
+              color: 'var(--fg)',
+              margin: 0,
+            }}
+          >
+            {renderTextWithLinks(lesson.contentMarkdown ?? '', { wordBreak: 'break-all' })}
+          </div>
+          <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', marginTop: 'var(--sp-4)' }}>
+            <Button variant="primary" onClick={complete} disabled={completing}>
+              Завершить урок
+            </Button>
+            <Button variant="secondary" onClick={() => navigate(`/course/${lesson.courseId}`)}>
+              К курсу
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {showHomeworkSection && (
         <Card style={{ marginBottom: 'var(--sp-4)' }}>
           <CardHeader>
@@ -474,35 +503,6 @@ export function LessonPage() {
           ))}
         </div>
       </BottomSheet>
-
-      <Card>
-        <CardHeader>
-          <CardTitle style={{ fontSize: 'var(--text-md)' }}>Материал</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div
-            style={{
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-              overflowWrap: 'anywhere',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-              fontSize: 'var(--text-sm)',
-              color: 'var(--fg)',
-              margin: 0,
-            }}
-          >
-            {renderTextWithLinks(lesson.contentMarkdown ?? '', { wordBreak: 'break-all' })}
-          </div>
-          <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', marginTop: 'var(--sp-4)' }}>
-            <Button variant="primary" onClick={complete} disabled={completing}>
-              Завершить урок
-            </Button>
-            <Button variant="secondary" onClick={() => navigate(`/course/${lesson.courseId}`)}>
-              К курсу
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
