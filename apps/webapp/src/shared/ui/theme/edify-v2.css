@@ -709,6 +709,69 @@
   display: none;
 }
 
+/* Expert content editor (modules / lessons) — edify_modules_lessons.html */
+.edify-editor .edify-content-header {
+  padding-top: var(--sp-3);
+  margin-bottom: var(--sp-6);
+}
+.edify-editor .edify-content-header .edify-h--lg {
+  font-size: 26px;
+  margin-bottom: 8px;
+}
+.edify-editor .edify-composer {
+  margin-bottom: 28px;
+}
+.edify-editor .edify-section-header {
+  margin: 0 0 4px;
+}
+.edify-editor .edify-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.edify-editor .edify-section-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.edify-editor .edify-item-row {
+  transition: padding-left 0.2s ease;
+}
+@media (hover: hover) {
+  .edify-editor .edify-item-row:hover {
+    padding-left: 4px;
+  }
+  .edify-editor .edify-item-row:hover .edify-item-trash {
+    opacity: 1;
+  }
+}
+.edify-editor .edify-item-title {
+  font-size: 14.5px;
+  letter-spacing: -0.005em;
+}
+.edify-editor .edify-item-meta {
+  font-size: 11.5px;
+}
+.edify-editor .edify-item-meta-tag {
+  font-size: 10.5px;
+}
+.edify-editor .edify-item-trash {
+  opacity: 0.5;
+  transition: color 0.2s, background 0.2s, opacity 0.2s;
+}
+@media (hover: hover) {
+  .edify-editor .edify-item-trash:hover {
+    color: var(--danger);
+    background: rgba(239, 83, 80, 0.1);
+    opacity: 1;
+  }
+}
+.edify-editor .edify-empty-panel {
+  margin-top: var(--sp-7);
+}
+
 /* Content editor (modules / lessons) */
 .edify-content-header {
   padding-top: var(--sp-2);

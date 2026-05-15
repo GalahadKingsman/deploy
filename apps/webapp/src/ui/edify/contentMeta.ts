@@ -18,6 +18,33 @@ function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+export function pluralWords(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'слово';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'слова';
+  return 'слов';
+}
+
+export function estimateLessonReadMinutes(lesson: ContractsV1.ExpertLessonV1): number {
+  const v = lesson.video;
+  if (v && v.kind !== 'none') return 5;
+  const words = countWords(lesson.contentMarkdown ?? '');
+  if (words <= 0) return 0;
+  return Math.max(1, Math.round(words / 150));
+}
+
+export type EditorMetaParts = { tag?: string; parts: string[] };
+
+export function formatModuleMeta(count: number, minutes: number): EditorMetaParts {
+  if (count === 0) {
+    return { tag: 'DRAFT', parts: ['0 уроков'] };
+  }
+  const parts = [pluralLessons(count)];
+  if (minutes > 0) parts.push(`${minutes} мин`);
+  return { parts };
+}
+
 export function lessonFormatTag(lesson: ContractsV1.ExpertLessonV1): string {
   const v = lesson.video;
   if (v && v.kind !== 'none') return 'VIDEO';
@@ -27,9 +54,9 @@ export function lessonFormatTag(lesson: ContractsV1.ExpertLessonV1): string {
   return 'TEXT';
 }
 
-export function formatLessonMeta(lesson: ContractsV1.ExpertLessonV1): string[] {
+export function formatLessonMeta(lesson: ContractsV1.ExpertLessonV1): EditorMetaParts {
+  const tag = lessonFormatTag(lesson);
   const parts: string[] = [];
-  parts.push(lessonFormatTag(lesson));
   if (lesson.hiddenFromStudents) parts.push('Скрыт');
 
   const v = lesson.video;
@@ -42,10 +69,12 @@ export function formatLessonMeta(lesson: ContractsV1.ExpertLessonV1): string[] {
   } else {
     const words = countWords(lesson.contentMarkdown ?? '');
     if (words > 0) {
-      parts.push(`${words} сл.`);
+      parts.push(`${words} ${pluralWords(words)}`);
       parts.push(`~${Math.max(1, Math.round(words / 150))} мин`);
+    } else if (lesson.presentation?.pdfKey) {
+      parts.push('PDF');
     }
   }
 
-  return parts;
+  return { tag, parts };
 }

@@ -4,7 +4,8 @@ import { Modal, Skeleton, useToast } from '../shared/ui/index.js';
 import { fetchJson } from '../shared/api/index.js';
 import type { ContractsV1 } from '@tracked/shared';
 import { PageScreen } from '../ui/edify/PageScreen.js';
-import { pluralLessons, truncateMiddle } from '../ui/edify/contentMeta.js';
+import { EditorMetaLine } from '../ui/edify/EditorMetaLine.js';
+import { estimateLessonReadMinutes, formatModuleMeta, truncateMiddle } from '../ui/edify/contentMeta.js';
 
 const ArrowIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
@@ -20,12 +21,14 @@ const TrashIcon = () => (
   </svg>
 );
 
+type ModuleStats = { count: number; minutes: number };
+
 export function ExpertCourseModulesPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const { expertId, courseId } = useParams<{ expertId: string; courseId: string }>();
   const [items, setItems] = React.useState<ContractsV1.ExpertCourseModuleV1[]>([]);
-  const [lessonCounts, setLessonCounts] = React.useState<Record<string, number>>({});
+  const [moduleStats, setModuleStats] = React.useState<Record<string, ModuleStats>>({});
   const [courseTitle, setCourseTitle] = React.useState('');
   const [loading, setLoading] = React.useState(true);
   const [title, setTitle] = React.useState('');
@@ -49,20 +52,22 @@ export function ExpertCourseModulesPage() {
       setItems(list);
       setCourseTitle(courseRes?.course?.title ?? '');
 
-      const counts: Record<string, number> = {};
+      const stats: Record<string, ModuleStats> = {};
       await Promise.all(
         list.map(async (m) => {
           try {
             const lessonsRes = await fetchJson<ContractsV1.ListExpertLessonsResponseV1>({
               path: `/experts/${expertId}/modules/${m.id}/lessons`,
             });
-            counts[m.id] = lessonsRes.items?.length ?? 0;
+            const lessons = lessonsRes.items ?? [];
+            const minutes = lessons.reduce((sum, lesson) => sum + estimateLessonReadMinutes(lesson), 0);
+            stats[m.id] = { count: lessons.length, minutes };
           } catch {
-            counts[m.id] = 0;
+            stats[m.id] = { count: 0, minutes: 0 };
           }
         }),
       );
-      setLessonCounts(counts);
+      setModuleStats(stats);
     } finally {
       setLoading(false);
     }
@@ -123,7 +128,7 @@ export function ExpertCourseModulesPage() {
 
   if (!expertId || !courseId) {
     return (
-      <PageScreen>
+      <PageScreen variant="editor">
         <div className="edify-empty-panel">
           <div className="edify-empty-panel__title">Некорректные параметры</div>
         </div>
@@ -132,9 +137,13 @@ export function ExpertCourseModulesPage() {
   }
 
   const courseCrumb = truncateMiddle(courseTitle || 'Курс', 28);
+  const isEmpty = !loading && items.length === 0;
+  const subtitle = isEmpty
+    ? 'Структура курса. Создайте первый модуль, чтобы начать.'
+    : 'Структура курса. Нажмите на название, чтобы переименовать.';
 
   return (
-    <PageScreen>
+    <PageScreen variant="editor">
       <div className="edify-content-header">
         <div className="edify-eyebrow">EDIT · STRUCTURE</div>
         <nav className="edify-breadcrumb" aria-label="Навигация">
@@ -144,7 +153,7 @@ export function ExpertCourseModulesPage() {
         </nav>
         <h1 className="edify-h edify-h--lg">Модули</h1>
         <p className="edify-subtitle" style={{ marginTop: 8 }}>
-          Структура курса. Нажмите на название, чтобы переименовать.
+          {subtitle}
         </p>
       </div>
 
@@ -152,7 +161,7 @@ export function ExpertCourseModulesPage() {
         <input
           type="text"
           className="edify-composer__input"
-          placeholder="Название нового модуля"
+          placeholder={isEmpty ? 'Например: «Введение»' : 'Название нового модуля'}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => {
@@ -171,9 +180,7 @@ export function ExpertCourseModulesPage() {
       {!loading && items.length > 0 ? (
         <div className="edify-section-header">
           <h2 className="edify-section-title">Всего модулей</h2>
-          <span className="edify-section-count" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
-            {String(items.length).padStart(2, '0')}
-          </span>
+          <span className="edify-section-count">{String(items.length).padStart(2, '0')}</span>
         </div>
       ) : null}
 
@@ -184,7 +191,7 @@ export function ExpertCourseModulesPage() {
         </>
       ) : null}
 
-      {!loading && items.length === 0 ? (
+      {isEmpty ? (
         <div className="edify-empty-panel">
           <div className="edify-empty-panel__icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -200,15 +207,19 @@ export function ExpertCourseModulesPage() {
 
       {!loading
         ? items.map((m, index) => {
-            const count = lessonCounts[m.id] ?? 0;
+            const stats = moduleStats[m.id] ?? { count: 0, minutes: 0 };
+            const meta = formatModuleMeta(stats.count, stats.minutes);
             return (
               <div key={m.id} className="edify-item-row edify-item-row--static">
                 <span className="edify-item-num">{String(index + 1).padStart(2, '0')}</span>
-                <button type="button" className="edify-item-content" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'inherit' }} onClick={() => openRename(m)}>
+                <button
+                  type="button"
+                  className="edify-item-content"
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'inherit' }}
+                  onClick={() => openRename(m)}
+                >
                   <div className="edify-item-title">{m.title}</div>
-                  <div className="edify-item-meta">
-                    <span>{pluralLessons(count)}</span>
-                  </div>
+                  <EditorMetaLine tag={meta.tag} parts={meta.parts} />
                 </button>
                 <Link to={`/expert/${expertId}/modules/${m.id}/lessons?courseId=${courseId}`} className="edify-item-link">
                   Уроки

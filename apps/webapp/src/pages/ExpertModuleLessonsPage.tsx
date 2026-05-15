@@ -4,6 +4,7 @@ import { Modal, Skeleton, useToast } from '../shared/ui/index.js';
 import { fetchJson } from '../shared/api/index.js';
 import type { ContractsV1 } from '@tracked/shared';
 import { PageScreen } from '../ui/edify/PageScreen.js';
+import { EditorMetaLine } from '../ui/edify/EditorMetaLine.js';
 import { formatLessonMeta, truncateMiddle } from '../ui/edify/contentMeta.js';
 
 const ArrowIcon = () => (
@@ -93,7 +94,7 @@ export function ExpertModuleLessonsPage() {
 
   if (!expertId || !moduleId) {
     return (
-      <PageScreen>
+      <PageScreen variant="editor">
         <div className="edify-empty-panel">
           <div className="edify-empty-panel__title">Некорректные параметры</div>
         </div>
@@ -103,9 +104,13 @@ export function ExpertModuleLessonsPage() {
 
   const courseCrumb = truncateMiddle(courseTitle || 'Курс', 22);
   const moduleCrumb = truncateMiddle(moduleTitle || 'Модуль', 18);
+  const isEmpty = !loading && items.length === 0;
+  const subtitle = isEmpty
+    ? 'Добавьте первый урок — текст, видео или презентацию.'
+    : 'Markdown-редактор и материалы к уроку.';
 
   return (
-    <PageScreen>
+    <PageScreen variant="editor">
       <div className="edify-content-header">
         <div className="edify-eyebrow">EDIT · LESSONS</div>
         <nav className="edify-breadcrumb" aria-label="Навигация">
@@ -125,7 +130,7 @@ export function ExpertModuleLessonsPage() {
         </nav>
         <h1 className="edify-h edify-h--lg">Уроки</h1>
         <p className="edify-subtitle" style={{ marginTop: 8 }}>
-          Markdown-редактор и материалы к уроку.
+          {subtitle}
         </p>
       </div>
 
@@ -133,7 +138,7 @@ export function ExpertModuleLessonsPage() {
         <input
           type="text"
           className="edify-composer__input"
-          placeholder="Название нового урока"
+          placeholder={isEmpty ? 'Например: «Введение в тему»' : 'Название нового урока'}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => {
@@ -152,9 +157,7 @@ export function ExpertModuleLessonsPage() {
       {!loading && items.length > 0 ? (
         <div className="edify-section-header">
           <h2 className="edify-section-title">Всего уроков</h2>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
-            {String(items.length).padStart(2, '0')}
-          </span>
+          <span className="edify-section-count">{String(items.length).padStart(2, '0')}</span>
         </div>
       ) : null}
 
@@ -165,7 +168,7 @@ export function ExpertModuleLessonsPage() {
         </>
       ) : null}
 
-      {!loading && items.length === 0 ? (
+      {isEmpty ? (
         <div className="edify-empty-panel">
           <div className="edify-empty-panel__icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
@@ -180,21 +183,13 @@ export function ExpertModuleLessonsPage() {
 
       {!loading
         ? items.map((l, index) => {
-            const metaParts = formatLessonMeta(l);
+            const meta = formatLessonMeta(l);
             return (
               <div key={l.id} className="edify-item-row edify-item-row--static">
                 <span className="edify-item-num">{String(index + 1).padStart(2, '0')}</span>
                 <div className="edify-item-content">
                   <div className="edify-item-title">{l.title}</div>
-                  <div className="edify-item-meta">
-                    {metaParts.length > 0 ? <span className="edify-item-meta-tag">{metaParts[0]}</span> : null}
-                    {metaParts.slice(1).map((part) => (
-                      <React.Fragment key={part}>
-                        <span className="edify-item-meta-dot" />
-                        <span>{part}</span>
-                      </React.Fragment>
-                    ))}
-                  </div>
+                  <EditorMetaLine tag={meta.tag} parts={meta.parts} />
                 </div>
                 <Link to={`/expert/${expertId}/modules/${moduleId}/lessons/${l.id}`} className="edify-item-link">
                   Открыть

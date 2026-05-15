@@ -1,9 +1,19 @@
 import React from 'react';
 
-export function PageScreen({ children }: { children: React.ReactNode }) {
+type PageScreenVariant = 'default' | 'editor';
+
+export function PageScreen({
+  children,
+  variant = 'default',
+}: {
+  children: React.ReactNode;
+  variant?: PageScreenVariant;
+}) {
+  const innerClass =
+    variant === 'editor' ? 'edify-screen__inner edify-editor' : 'edify-screen__inner';
   return (
     <div className="edify-screen">
-      <div className="edify-screen__inner">{children}</div>
+      <div className={innerClass}>{children}</div>
     </div>
   );
 }
