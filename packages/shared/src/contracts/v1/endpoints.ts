@@ -60,6 +60,8 @@ export const GetLearnSummaryResponseV1Schema = z.object({
 export interface GetCourseResponseV1 {
   course: CourseV1;
   lessons: LessonV1[];
+  /** First incomplete visible lesson for enrolled user; null if not enrolled or all complete */
+  nextLesson?: LessonV1 | null;
 }
 
 /**
@@ -68,6 +70,7 @@ export interface GetCourseResponseV1 {
 export const GetCourseResponseV1Schema = z.object({
   course: CourseV1Schema,
   lessons: z.array(LessonV1Schema),
+  nextLesson: LessonV1Schema.nullable().optional(),
 });
 
 /**

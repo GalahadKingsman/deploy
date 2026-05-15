@@ -80,6 +80,19 @@ export function CourseDetailPage() {
   const cover = resolveCoverUrl(course.coverUrl);
   const enrollUrl = (course.enrollmentContactUrl ?? '').trim();
   const enrollOk = Boolean(enrollUrl && ContractsV1.isEnrollmentContactUrlAllowed(enrollUrl));
+  const resumeLesson = data.nextLesson ?? data.lessons[0] ?? null;
+
+  const goToCurrentLesson = () => {
+    if (resumeLesson) {
+      navigate(`/lesson/${resumeLesson.id}`);
+      return;
+    }
+    if (modules[0]) {
+      navigate(`/course/${courseId}/modules/${modules[0].id}`);
+      return;
+    }
+    navigate('/learn');
+  };
 
   return (
     <PageScreen>
@@ -140,7 +153,7 @@ export function CourseDetailPage() {
           </p>
         ) : null}
         {hasAccess ? (
-          <button type="button" className="edify-btn-primary-outline" style={{ marginTop: 16 }} onClick={() => navigate('/learn')}>
+          <button type="button" className="edify-btn-solid" style={{ marginTop: 16, width: '100%' }} onClick={goToCurrentLesson}>
             Перейти к обучению
           </button>
         ) : null}
@@ -163,7 +176,7 @@ export function CourseDetailPage() {
             onClick={() => navigate(`/course/${courseId}/modules/${m.id}`)}
           >
             <span className="edify-module-num">{String(index + 1).padStart(2, '0')}</span>
-            <div>
+            <div className="edify-module-content">
               <div className="edify-module-title">{m.title}</div>
               <div className="edify-module-sub">
                 {hasAccess ? 'Открыть уроки модуля' : 'Доступ появится после зачисления'}

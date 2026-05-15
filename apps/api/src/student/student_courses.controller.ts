@@ -5,6 +5,8 @@ import { StudentCoursesRepository } from './student_courses.repository.js';
 import type { FastifyRequest } from 'fastify';
 import { EnrollmentsRepository } from './student_enrollments.repository.js';
 import { OptionalJwtAuthGuard } from '../auth/session/optional-jwt-auth.guard.js';
+import { ProgressRepository } from './student_progress.repository.js';
+import { computeCourseLessonAccess } from './student_lesson_access.js';
 
 @ApiTags('Courses')
 @Controller()
@@ -12,6 +14,7 @@ export class CoursesController {
   constructor(
     private readonly coursesRepository: StudentCoursesRepository,
     private readonly enrollmentsRepository: EnrollmentsRepository,
+    private readonly progressRepository: ProgressRepository,
   ) {}
 
   @Get('courses/:id')
@@ -38,7 +41,16 @@ export class CoursesController {
     }
 
     const lessons = await this.coursesRepository.listLessonsByCourseId(id);
-    return { course, lessons };
+    const access = await computeCourseLessonAccess({
+      userId,
+      courseId: id,
+      coursesRepository: this.coursesRepository,
+      progressRepository: this.progressRepository,
+    });
+    const nextLesson = access.nextUnlockedLessonId
+      ? (lessons.find((l) => l.id === access.nextUnlockedLessonId) ?? null)
+      : null;
+    return { course, lessons, nextLesson };
   }
 }
 

@@ -249,10 +249,12 @@ export function tryHandleMockRequest(req: MockRequest): MockResponse | null {
     }
 
     const lessons = getMockLessons(course.id);
+    const nextLesson = lessons[0] ?? null;
 
     const response: ContractsV1.GetCourseResponseV1 = {
       course,
       lessons,
+      nextLesson,
     };
 
     return {

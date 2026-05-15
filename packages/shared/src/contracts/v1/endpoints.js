@@ -28,6 +28,7 @@ export const GetLearnSummaryResponseV1Schema = z.object({
 export const GetCourseResponseV1Schema = z.object({
   course: CourseV1Schema,
   lessons: z.array(LessonV1Schema),
+  nextLesson: LessonV1Schema.nullable().optional(),
 });
 /**
  * Zod schema for GetLessonResponseV1

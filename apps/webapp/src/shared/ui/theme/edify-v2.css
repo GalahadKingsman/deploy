@@ -595,10 +595,16 @@
   display: flex;
   align-items: flex-start;
   gap: 14px;
+  width: 100%;
   padding: 16px 0;
+  border: none;
   border-bottom: 1px solid var(--hairline);
+  background: none;
   text-decoration: none;
+  text-align: left;
+  font: inherit;
   color: inherit;
+  cursor: pointer;
 }
 .edify-module-num {
   font-family: var(--font-mono);
@@ -606,6 +612,11 @@
   color: var(--text-muted);
   padding-top: 2px;
   flex-shrink: 0;
+  min-width: 28px;
+}
+.edify-module-content {
+  flex: 1;
+  min-width: 0;
 }
 .edify-module-title {
   font-size: 14px;
@@ -613,6 +624,7 @@
   color: var(--fg);
   line-height: 1.35;
   margin-bottom: 4px;
+  overflow-wrap: anywhere;
 }
 .edify-module-sub {
   font-size: 12px;
