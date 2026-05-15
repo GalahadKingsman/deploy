@@ -354,53 +354,55 @@ export function ExpertCourseAccessPage() {
                   {revoked ? `Отозван: ${e.revokedAt ? new Date(e.revokedAt).toLocaleString('ru-RU') : ''}` : 'Активен'}
                 </div>
                 {!revoked ? (
-                  <div className="edify-composer" style={{ marginTop: 'var(--sp-3)' }}>
-                    <input
-                      type="text"
-                      className="edify-composer__input edify-field__input--narrow"
-                      placeholder="Дней"
-                      value={daysStr}
-                      onChange={(ev) => setGrantDaysByRow((s) => ({ ...s, [e.id]: ev.target.value }))}
-                      inputMode="numeric"
-                    />
+                  <>
+                    <div className="edify-composer" style={{ marginTop: 'var(--sp-3)' }}>
+                      <input
+                        type="text"
+                        className="edify-composer__input edify-field__input--narrow"
+                        placeholder="Дней"
+                        value={daysStr}
+                        onChange={(ev) => setGrantDaysByRow((s) => ({ ...s, [e.id]: ev.target.value }))}
+                        inputMode="numeric"
+                      />
+                      <button
+                        type="button"
+                        className="edify-composer__submit"
+                        disabled={extend.isPending}
+                        onClick={async () => {
+                          const n = parseInt(daysStr, 10);
+                          if (!Number.isFinite(n) || n < 1) {
+                            toast.show({ title: 'Укажите число дней', variant: 'info' });
+                            return;
+                          }
+                          try {
+                            await extend.mutateAsync({ enrollmentId: e.id, grantDays: n });
+                            toast.show({ title: 'Срок продлён', variant: 'success' });
+                          } catch {
+                            toast.show({ title: 'Ошибка продления', variant: 'error' });
+                          }
+                        }}
+                      >
+                        Продлить
+                      </button>
+                    </div>
                     <button
                       type="button"
-                      className="edify-composer__submit"
-                      disabled={extend.isPending}
+                      className="edify-btn-secondary"
+                      style={{ width: '100%', marginTop: 8 }}
+                      disabled={revoke.isPending}
                       onClick={async () => {
-                        const n = parseInt(daysStr, 10);
-                        if (!Number.isFinite(n) || n < 1) {
-                          toast.show({ title: 'Укажите число дней', variant: 'info' });
-                          return;
-                        }
+                        if (!window.confirm('Отозвать доступ у этого ученика?')) return;
                         try {
-                          await extend.mutateAsync({ enrollmentId: e.id, grantDays: n });
-                          toast.show({ title: 'Срок продлён', variant: 'success' });
+                          await revoke.mutateAsync({ enrollmentId: e.id });
+                          toast.show({ title: 'Доступ отозван', variant: 'success' });
                         } catch {
-                          toast.show({ title: 'Ошибка продления', variant: 'error' });
+                          toast.show({ title: 'Ошибка', variant: 'error' });
                         }
                       }}
                     >
-                      Продлить
+                      Отозвать доступ
                     </button>
-                  </div>
-                  <button
-                    type="button"
-                    className="edify-btn-secondary"
-                    style={{ width: '100%', marginTop: 8 }}
-                    disabled={revoke.isPending}
-                    onClick={async () => {
-                      if (!window.confirm('Отозвать доступ у этого ученика?')) return;
-                      try {
-                        await revoke.mutateAsync({ enrollmentId: e.id });
-                        toast.show({ title: 'Доступ отозван', variant: 'success' });
-                      } catch {
-                        toast.show({ title: 'Ошибка', variant: 'error' });
-                      }
-                    }}
-                  >
-                    Отозвать доступ
-                  </button>
+                  </>
                 ) : null}
               </div>
             );
