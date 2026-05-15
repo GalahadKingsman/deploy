@@ -1,5 +1,5 @@
-import React from 'react';
-import { useParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Skeleton, useToast } from '../shared/ui/index.js';
 import { fetchJson, fetchMultipart } from '../shared/api/index.js';
 import { ContractsV1 } from '@tracked/shared';
@@ -43,6 +43,8 @@ function parseEstimatedCompletionHoursInput(
 
 export function ExpertCourseEditorPage() {
   const toast = useToast();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { expertId, courseId } = useParams<{ expertId: string; courseId: string }>();
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
@@ -67,6 +69,7 @@ export function ExpertCourseEditorPage() {
   const [customTopicTitle, setCustomTopicTitle] = React.useState('');
   const [customTopicSaving, setCustomTopicSaving] = React.useState(false);
   const [extraTopics, setExtraTopics] = React.useState<ContractsV1.TopicV1[]>([]);
+  const [deleting, setDeleting] = React.useState(false);
 
   React.useEffect(() => {
     const ids = new Set((courseTopicsData?.items ?? []).map((t) => t.id));
@@ -205,6 +208,37 @@ export function ExpertCourseEditorPage() {
       toast.show({ title: 'Ошибка', message: msg, variant: 'error' });
     } finally {
       setCoverUploading(false);
+    }
+  };
+
+  const deleteCourse = async () => {
+    if (!expertId || !courseId) return;
+    if (
+      !window.confirm(
+        'Удалить курс? Он скроется у студентов, доступ к материалам пропадёт. Продолжить?',
+      )
+    ) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await fetchJson<{ ok: true }>({
+        path: `/experts/${expertId}/courses/${courseId}`,
+        method: 'DELETE',
+      });
+      await queryClient.invalidateQueries({ queryKey: ['experts', expertId, 'courses'] });
+      toast.show({ title: 'Курс удалён', variant: 'success' });
+      navigate(`/expert/${expertId}/courses`, { replace: true });
+    } catch (e) {
+      const msg =
+        e instanceof ApiClientError
+          ? `${e.message} (HTTP ${e.status})`
+          : e instanceof Error
+            ? e.message
+            : 'Не удалось удалить курс';
+      toast.show({ title: 'Ошибка', message: msg, variant: 'error' });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -475,6 +509,18 @@ export function ExpertCourseEditorPage() {
             Сохранить темы
           </button>
         </div>
+      </div>
+
+      <div className="edify-panel" style={{ marginTop: 'var(--sp-6)' }}>
+        <h2 className="edify-panel__title" style={{ color: 'var(--danger)' }}>
+          Опасная зона
+        </h2>
+        <p className="edify-panel__desc">
+          Курс будет скрыт: студенты не увидят его в списке. Операция через API необратима для учеников.
+        </p>
+        <button type="button" className="edify-btn-danger" disabled={deleting} onClick={() => void deleteCourse()}>
+          {deleting ? 'Удаление…' : 'Удалить курс'}
+        </button>
       </div>
     </PageScreen>
   );

@@ -1079,12 +1079,33 @@
   justify-content: center;
   gap: 10px;
   width: 100%;
-  margin-top: var(--sp-4);
+  margin-bottom: var(--sp-5);
 }
 @media (max-width: 320px) {
   .edify-expert-catalog-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.edify-btn-danger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  background: rgba(239, 83, 80, 0.14);
+  color: var(--danger);
+  border: 1px solid rgba(239, 83, 80, 0.38);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.edify-btn-danger:disabled {
+  opacity: 0.55;
+  pointer-events: none;
 }
 
 .edify-invite-card {
