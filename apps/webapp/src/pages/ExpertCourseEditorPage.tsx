@@ -1,5 +1,5 @@
 import React from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { Skeleton, useToast } from '../shared/ui/index.js';
 import { fetchJson, fetchMultipart } from '../shared/api/index.js';
 import { ContractsV1 } from '@tracked/shared';
@@ -7,6 +7,21 @@ import { useTopics, useCourseTopics, useSetCourseTopics } from '../shared/querie
 import { ApiClientError } from '../shared/api/errors.js';
 import { PageScreen } from '../ui/edify/PageScreen.js';
 import { FormField, FormInput, FormSelect, FormTextarea } from '../ui/edify/FormField.js';
+import { ExpertListRow } from '../ui/edify/ExpertListRow.js';
+
+const ModulesIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+    <polygon points="12 2 2 7 12 12 22 7 12 2" />
+    <polyline points="2 17 12 22 22 17" />
+    <polyline points="2 12 12 17 22 12" />
+  </svg>
+);
+
+const AccessIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+  </svg>
+);
 
 function parseEstimatedCompletionHoursInput(
   raw: string,
@@ -307,46 +322,70 @@ export function ExpertCourseEditorPage() {
           </div>
 
           <FormField label="Файл обложки">
-            <div className="edify-actions" style={{ alignItems: 'center' }}>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
-                style={{ fontSize: 13, color: 'var(--text-secondary)', flex: '1 1 180px', minWidth: 0 }}
-              />
-              <button
-                type="button"
-                className="edify-btn-secondary"
-                onClick={() => void uploadCover()}
-                disabled={!coverFile || coverUploading}
+            <div className="edify-composer">
+              <div
+                className="edify-composer__input"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: coverFile ? 'var(--fg)' : 'var(--text-muted)',
+                  cursor: 'default',
+                }}
               >
-                {coverUploading ? 'Загрузка…' : 'Загрузить'}
-              </button>
+                {coverFile?.name ?? 'Файл не выбран'}
+              </div>
+              <label className="edify-composer__submit" style={{ cursor: 'pointer' }}>
+                Выбрать
+                <input
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
             </div>
-          </FormField>
-
-          <div className="edify-actions">
-            <button type="button" className="edify-btn-solid" onClick={() => void save()} disabled={saving}>
-              {saving ? 'Сохранение…' : 'Сохранить'}
+            <button
+              type="button"
+              className="edify-btn-primary-outline"
+              style={{ marginTop: 10 }}
+              onClick={() => void uploadCover()}
+              disabled={!coverFile || coverUploading}
+            >
+              {coverUploading ? 'Загрузка…' : 'Загрузить обложку'}
             </button>
-            {course.status !== 'published' ? (
-              <button type="button" className="edify-btn-secondary" onClick={() => void publish()}>
-                Опубликовать
-              </button>
-            ) : (
-              <button type="button" className="edify-btn-secondary" onClick={() => void unpublish()}>
-                Снять с публикации
-              </button>
-            )}
-            <Link to={`/expert/${expertId}/courses/${courseId}/modules`} className="edify-btn-secondary">
-              Модули
-            </Link>
-            <Link to={`/expert/${expertId}/courses/${courseId}/access`} className="edify-btn-secondary">
-              Доступ
-            </Link>
-          </div>
+          </FormField>
         </div>
       </div>
+
+      <div className="edify-action-stack">
+        <button type="button" className="edify-btn-solid" onClick={() => void save()} disabled={saving}>
+          {saving ? 'Сохранение…' : 'Сохранить'}
+        </button>
+        {course.status !== 'published' ? (
+          <button type="button" className="edify-btn-primary-outline" onClick={() => void publish()}>
+            Опубликовать
+          </button>
+        ) : (
+          <button type="button" className="edify-btn-primary-outline" onClick={() => void unpublish()}>
+            Снять с публикации
+          </button>
+        )}
+      </div>
+
+      <nav className="edify-nav-panel" aria-label="Разделы курса">
+        <ExpertListRow
+          to={`/expert/${expertId}/courses/${courseId}/modules`}
+          title="Модули"
+          subtitle="Структура курса и уроки"
+          icon={<ModulesIcon />}
+        />
+        <ExpertListRow
+          to={`/expert/${expertId}/courses/${courseId}/access`}
+          title="Доступ"
+          subtitle="Инвайты и зачисления"
+          icon={<AccessIcon />}
+        />
+      </nav>
 
       <div className="edify-panel">
         <h2 className="edify-panel__title">Темы курса</h2>
@@ -422,7 +461,6 @@ export function ExpertCourseEditorPage() {
           <button
             type="button"
             className="edify-btn-primary-outline"
-            style={{ width: 'auto', alignSelf: 'flex-start' }}
             disabled={setTopics.isPending}
             onClick={async () => {
               try {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { Skeleton, useToast } from '../shared/ui/index.js';
 import {
   useExpertCourseEnrollments,
@@ -14,6 +14,7 @@ import { webappEnv } from '../shared/env/env.js';
 import { config } from '../shared/config/flags.js';
 import { PageScreen } from '../ui/edify/PageScreen.js';
 import { FormField, FormInput } from '../ui/edify/FormField.js';
+import { ExpertListRow } from '../ui/edify/ExpertListRow.js';
 
 export function ExpertCourseAccessPage() {
   const toast = useToast();
@@ -161,11 +162,19 @@ export function ExpertCourseAccessPage() {
         </p>
       </div>
 
-      <div className="edify-panel" style={{ padding: 'var(--sp-3) var(--sp-4)' }}>
-        <Link to={`/expert/${expertId}/courses/${courseId}`} className="edify-btn-secondary" style={{ width: '100%' }}>
-          Редактор курса
-        </Link>
-      </div>
+      <nav className="edify-nav-panel" aria-label="Курс">
+        <ExpertListRow
+          to={`/expert/${expertId}/courses/${courseId}`}
+          title="Редактор курса"
+          subtitle="Название, обложка, публикация"
+          icon={
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+          }
+        />
+      </nav>
 
       <div className="edify-panel">
         <h2 className="edify-panel__title">Инвайт-ссылка на зачисление</h2>
@@ -255,10 +264,10 @@ export function ExpertCourseAccessPage() {
                 <p className="edify-invite-card__hint">
                   В боте: <code>/inv {i.code}</code>
                 </p>
-                <div className="edify-actions">
+                <div className="edify-card-actions">
                   <button
                     type="button"
-                    className="edify-btn-secondary"
+                    className="edify-btn-primary-outline"
                     onClick={async () => {
                       const copied = await copyText(webLink);
                       toast.show({
@@ -268,7 +277,7 @@ export function ExpertCourseAccessPage() {
                       });
                     }}
                   >
-                    Копировать
+                    Копировать ссылку
                   </button>
                   <button
                     type="button"
@@ -296,11 +305,17 @@ export function ExpertCourseAccessPage() {
       <div className="edify-panel">
         <h2 className="edify-panel__title">Зачислить по Telegram username</h2>
         <p className="edify-panel__desc">@username — пользователь должен хотя бы раз открыть Mini App.</p>
-        <div className="edify-toolbar">
-          <FormInput placeholder="@someuser" value={usernameManual} onChange={(e) => setUsernameManual(e.target.value)} />
+        <div className="edify-composer">
+          <input
+            type="text"
+            className="edify-composer__input"
+            placeholder="@someuser"
+            value={usernameManual}
+            onChange={(e) => setUsernameManual(e.target.value)}
+          />
           <button
             type="button"
-            className="edify-btn-solid edify-btn-solid--inline"
+            className="edify-composer__submit"
             disabled={enrollUsername.isPending}
             onClick={async () => {
               const u = usernameManual.trim();
@@ -339,9 +354,10 @@ export function ExpertCourseAccessPage() {
                   {revoked ? `Отозван: ${e.revokedAt ? new Date(e.revokedAt).toLocaleString('ru-RU') : ''}` : 'Активен'}
                 </div>
                 {!revoked ? (
-                  <div className="edify-toolbar" style={{ marginTop: 'var(--sp-3)' }}>
-                    <FormInput
-                      className="edify-field__input--narrow"
+                  <div className="edify-composer" style={{ marginTop: 'var(--sp-3)' }}>
+                    <input
+                      type="text"
+                      className="edify-composer__input edify-field__input--narrow"
                       placeholder="Дней"
                       value={daysStr}
                       onChange={(ev) => setGrantDaysByRow((s) => ({ ...s, [e.id]: ev.target.value }))}
@@ -349,7 +365,7 @@ export function ExpertCourseAccessPage() {
                     />
                     <button
                       type="button"
-                      className="edify-btn-secondary"
+                      className="edify-composer__submit"
                       disabled={extend.isPending}
                       onClick={async () => {
                         const n = parseInt(daysStr, 10);
@@ -367,23 +383,24 @@ export function ExpertCourseAccessPage() {
                     >
                       Продлить
                     </button>
-                    <button
-                      type="button"
-                      className="edify-btn-secondary"
-                      disabled={revoke.isPending}
-                      onClick={async () => {
-                        if (!window.confirm('Отозвать доступ у этого ученика?')) return;
-                        try {
-                          await revoke.mutateAsync({ enrollmentId: e.id });
-                          toast.show({ title: 'Доступ отозван', variant: 'success' });
-                        } catch {
-                          toast.show({ title: 'Ошибка', variant: 'error' });
-                        }
-                      }}
-                    >
-                      Отозвать
-                    </button>
                   </div>
+                  <button
+                    type="button"
+                    className="edify-btn-secondary"
+                    style={{ width: '100%', marginTop: 8 }}
+                    disabled={revoke.isPending}
+                    onClick={async () => {
+                      if (!window.confirm('Отозвать доступ у этого ученика?')) return;
+                      try {
+                        await revoke.mutateAsync({ enrollmentId: e.id });
+                        toast.show({ title: 'Доступ отозван', variant: 'success' });
+                      } catch {
+                        toast.show({ title: 'Ошибка', variant: 'error' });
+                      }
+                    }}
+                  >
+                    Отозвать доступ
+                  </button>
                 ) : null}
               </div>
             );

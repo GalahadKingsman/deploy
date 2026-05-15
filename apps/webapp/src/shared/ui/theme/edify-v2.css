@@ -936,6 +936,44 @@
   min-height: 44px;
 }
 
+/* Stacked primary / secondary actions (expert forms) */
+.edify-action-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+.edify-action-stack .edify-btn-solid,
+.edify-action-stack .edify-btn-primary-outline,
+.edify-action-stack .edify-btn-secondary {
+  width: 100%;
+  min-height: 48px;
+}
+
+.edify-nav-panel {
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  padding: 0 var(--sp-4);
+  margin-bottom: var(--sp-4);
+  overflow: hidden;
+}
+.edify-nav-panel .edify-list-row:last-child {
+  border-bottom: none;
+}
+
+.edify-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+.edify-card-actions .edify-btn-secondary,
+.edify-card-actions .edify-btn-primary-outline {
+  width: 100%;
+  min-height: 44px;
+}
+
 .edify-course-row {
   display: block;
   padding: var(--sp-4);
