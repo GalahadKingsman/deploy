@@ -1,10 +1,12 @@
 import React from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, useToast } from '../shared/ui/index.js';
+import { useParams, Link } from 'react-router-dom';
+import { Skeleton, useToast } from '../shared/ui/index.js';
 import { fetchJson, fetchMultipart } from '../shared/api/index.js';
 import { ContractsV1 } from '@tracked/shared';
 import { useTopics, useCourseTopics, useSetCourseTopics } from '../shared/queries/useTopics.js';
 import { ApiClientError } from '../shared/api/errors.js';
+import { PageScreen } from '../ui/edify/PageScreen.js';
+import { FormField, FormInput, FormSelect, FormTextarea } from '../ui/edify/FormField.js';
 
 function parseEstimatedCompletionHoursInput(
   raw: string,
@@ -26,7 +28,6 @@ function parseEstimatedCompletionHoursInput(
 
 export function ExpertCourseEditorPage() {
   const toast = useToast();
-  const navigate = useNavigate();
   const { expertId, courseId } = useParams<{ expertId: string; courseId: string }>();
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
@@ -151,6 +152,7 @@ export function ExpertCourseEditorPage() {
       method: 'POST',
     });
     setCourse(updated);
+    toast.show({ title: 'Опубликовано', variant: 'success' });
   };
 
   const unpublish = async () => {
@@ -160,6 +162,7 @@ export function ExpertCourseEditorPage() {
       method: 'POST',
     });
     setCourse(updated);
+    toast.show({ title: 'Снято с публикации', variant: 'success' });
   };
 
   const uploadCover = async () => {
@@ -191,193 +194,187 @@ export function ExpertCourseEditorPage() {
   };
 
   if (loading) {
-    return <div style={{ padding: 'var(--sp-4)' }}>Загрузка…</div>;
+    return (
+      <PageScreen>
+        <div className="edify-brand" aria-hidden="true" />
+        <Skeleton width="60%" height={32} radius="lg" style={{ marginBottom: 16 }} />
+        <Skeleton width="100%" height={280} radius="lg" />
+      </PageScreen>
+    );
   }
 
   if (!course || !expertId || !courseId) {
     return (
-      <div style={{ padding: 'var(--sp-4)' }}>
-        <Card>
-          <CardHeader>
-            <CardTitle>Курс</CardTitle>
-            <CardDescription>Не найден.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* back handled by Telegram BackButton */}
-          </CardContent>
-        </Card>
-      </div>
+      <PageScreen>
+        <div className="edify-empty-panel">
+          <div className="edify-empty-panel__title">Курс не найден</div>
+        </div>
+      </PageScreen>
     );
   }
 
+  const allTopics = [...(allTopicsData?.items ?? []), ...extraTopics];
+
   return (
-    <div style={{ padding: 'var(--sp-4)', display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
-      <Card>
-        <CardHeader>
-          <CardTitle>Редактор курса</CardTitle>
-          <CardDescription>
-            Статус: {course.status} • {course.visibility}
-          </CardDescription>
-        </CardHeader>
-        <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
-          <Input label="Название" value={title} onChange={(e) => setTitle(e.target.value)} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-medium)' }}>Описание</div>
-            <textarea
+    <PageScreen>
+      <div className="edify-brand" aria-hidden="true" />
+
+      <div className="edify-content-header">
+        <div className="edify-eyebrow">EXPERT · EDIT</div>
+        <h1 className="edify-h edify-h--lg">Редактор курса</h1>
+        <p className="edify-subtitle" style={{ marginTop: 8 }}>
+          Статус: {course.status} • {course.visibility}
+        </p>
+      </div>
+
+      <div className="edify-panel">
+        <div className="edify-panel__body">
+          <FormField label="Название">
+            <FormInput value={title} onChange={(e) => setTitle(e.target.value)} />
+          </FormField>
+
+          <FormField label="Описание">
+            <FormTextarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Коротко опишите, что будет в курсе"
               rows={4}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: 'var(--r-sm)',
-                border: '1px solid var(--border)',
-                background: 'var(--bg)',
-                color: 'var(--fg)',
-                resize: 'vertical',
-              }}
             />
-          </div>
-          <Input
+          </FormField>
+
+          <FormField
             label="Укажите фамилию и имя автора курса"
-            value={authorDisplayName}
-            onChange={(e) => setAuthorDisplayName(e.target.value)}
-            placeholder="Например: Иванов Иван"
             hint="Показывается ученикам на странице курса строкой «Автор курса — …»."
-          />
-          <Input
+          >
+            <FormInput
+              value={authorDisplayName}
+              onChange={(e) => setAuthorDisplayName(e.target.value)}
+              placeholder="Например: Иванов Иван"
+            />
+          </FormField>
+
+          <FormField
             label="Куда студенту написать для зачисления? (ссылка)"
-            value={enrollmentContactUrl}
-            onChange={(e) => setEnrollmentContactUrl(e.target.value)}
-            placeholder="https://t.me/… или tg:resolve?domain=…"
             hint="Откроется по кнопке «Записаться» в карточке курса. Разрешены http(s), tg: и mailto:."
-          />
-          <Input
+          >
+            <FormInput
+              value={enrollmentContactUrl}
+              onChange={(e) => setEnrollmentContactUrl(e.target.value)}
+              placeholder="https://t.me/… или tg:resolve?domain=…"
+            />
+          </FormField>
+
+          <FormField
             label="Укажите время прохождения курса в часах"
-            value={estimatedCompletionHours}
-            onChange={(e) => setEstimatedCompletionHours(e.target.value)}
-            placeholder="Например: 12"
-            inputMode="numeric"
             hint="Только целое число от 1 до 8760, без ведущего нуля. В превью отобразится как «12 ч»."
-          />
-          <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div style={{ flex: '1 1 220px' }}>
-              <Input
-                label="Обложка (URL, auto)"
-                placeholder="/public/course-cover?key=..."
-                value={coverUrl}
-                onChange={(e) => setCoverUrl(e.target.value)}
-                hint="Это поле заполняется автоматически после загрузки файла."
-              />
-            </div>
-            <div style={{ flex: '0 1 160px' }}>
-              <div style={{ marginBottom: 'var(--sp-2)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-medium)' }}>
-                Видимость
-              </div>
-              <select
+          >
+            <FormInput
+              className="edify-field__input--narrow"
+              value={estimatedCompletionHours}
+              onChange={(e) => setEstimatedCompletionHours(e.target.value)}
+              placeholder="Например: 12"
+              inputMode="numeric"
+            />
+          </FormField>
+
+          <FormField label="Обложка (URL, auto)" hint="Поле заполняется автоматически после загрузки файла.">
+            <FormInput
+              placeholder="/public/course-cover?key=..."
+              value={coverUrl}
+              onChange={(e) => setCoverUrl(e.target.value)}
+            />
+          </FormField>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--sp-3)' }}>
+            <FormField label="Видимость">
+              <FormSelect
                 value={visibility}
                 onChange={(e) => setVisibility(e.target.value === 'public' ? 'public' : 'private')}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: 'var(--r-sm)',
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg)',
-                  color: 'var(--fg)',
-                }}
               >
                 <option value="private">private (только по ссылке)</option>
                 <option value="public">public (в библиотеке)</option>
-              </select>
-            </div>
-            <div style={{ flex: '0 1 200px' }}>
-              <div style={{ marginBottom: 'var(--sp-2)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-medium)' }}>
-                Доступ к урокам
-              </div>
-              <select
+              </FormSelect>
+            </FormField>
+            <FormField label="Доступ к урокам">
+              <FormSelect
                 value={lessonAccessMode}
                 onChange={(e) => setLessonAccessMode(e.target.value === 'open' ? 'open' : 'sequential')}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: 'var(--r-sm)',
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg)',
-                  color: 'var(--fg)',
-                }}
               >
                 <option value="sequential">поочерёдно</option>
                 <option value="open">все сразу (кроме скрытых)</option>
-              </select>
-            </div>
+              </FormSelect>
+            </FormField>
           </div>
-          <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', alignItems: 'center' }}>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const f = e.target.files?.[0] ?? null;
-                setCoverFile(f);
-              }}
-            />
-            <Button variant="secondary" onClick={uploadCover} disabled={!coverFile || coverUploading}>
-              {coverUploading ? 'Загрузка…' : 'Загрузить обложку'}
-            </Button>
-          </div>
-          <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
-            <Button variant="primary" onClick={save} disabled={saving}>
-              Сохранить
-            </Button>
-            {course.status !== 'published' ? (
-              <Button variant="secondary" onClick={publish}>
-                Опубликовать
-              </Button>
-            ) : (
-              <Button variant="secondary" onClick={unpublish}>
-                Снять с публикации
-              </Button>
-            )}
-            <Button variant="secondary" asChild>
-              <Link to={`/expert/${expertId}/courses/${courseId}/modules`}>Модули</Link>
-            </Button>
-            <Button variant="secondary" asChild>
-              <Link to={`/expert/${expertId}/courses/${courseId}/access`}>Доступ</Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle style={{ fontSize: 'var(--text-md)' }}>Темы курса</CardTitle>
-          <CardDescription>Мультиселект из справочника тем платформы.</CardDescription>
-        </CardHeader>
-        <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
-          <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 220px' }}>
-              <Input
-                label="Указать тему"
-                placeholder="Например: Маркетинг, Психология..."
-                value={customTopicTitle}
-                onChange={(e) => setCustomTopicTitle(e.target.value)}
+          <FormField label="Файл обложки">
+            <div className="edify-actions" style={{ alignItems: 'center' }}>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
+                style={{ fontSize: 13, color: 'var(--text-secondary)', flex: '1 1 180px', minWidth: 0 }}
               />
+              <button
+                type="button"
+                className="edify-btn-secondary"
+                onClick={() => void uploadCover()}
+                disabled={!coverFile || coverUploading}
+              >
+                {coverUploading ? 'Загрузка…' : 'Загрузить'}
+              </button>
             </div>
-            <Button
-              variant="secondary"
-              disabled={customTopicSaving || !expertId || !courseId || !customTopicTitle.trim()}
+          </FormField>
+
+          <div className="edify-actions">
+            <button type="button" className="edify-btn-solid" onClick={() => void save()} disabled={saving}>
+              {saving ? 'Сохранение…' : 'Сохранить'}
+            </button>
+            {course.status !== 'published' ? (
+              <button type="button" className="edify-btn-secondary" onClick={() => void publish()}>
+                Опубликовать
+              </button>
+            ) : (
+              <button type="button" className="edify-btn-secondary" onClick={() => void unpublish()}>
+                Снять с публикации
+              </button>
+            )}
+            <Link to={`/expert/${expertId}/courses/${courseId}/modules`} className="edify-btn-secondary">
+              Модули
+            </Link>
+            <Link to={`/expert/${expertId}/courses/${courseId}/access`} className="edify-btn-secondary">
+              Доступ
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      <div className="edify-panel">
+        <h2 className="edify-panel__title">Темы курса</h2>
+        <p className="edify-panel__desc">Мультиселект из справочника тем платформы.</p>
+        <div className="edify-panel__body edify-panel__body--tight">
+          <div className="edify-composer">
+            <input
+              type="text"
+              className="edify-composer__input"
+              placeholder="Например: Маркетинг, Психология…"
+              value={customTopicTitle}
+              onChange={(e) => setCustomTopicTitle(e.target.value)}
+            />
+            <button
+              type="button"
+              className="edify-composer__submit"
+              disabled={customTopicSaving || !customTopicTitle.trim()}
               onClick={async () => {
-                const title = customTopicTitle.trim();
-                if (!title) return;
+                const topicTitle = customTopicTitle.trim();
+                if (!topicTitle) return;
                 setCustomTopicSaving(true);
                 try {
                   const topic = await fetchJson<ContractsV1.TopicV1>({
-                    path: `/experts/${encodeURIComponent(expertId ?? '')}/courses/${encodeURIComponent(courseId ?? '')}/topics/custom`,
+                    path: `/experts/${encodeURIComponent(expertId)}/courses/${encodeURIComponent(courseId)}/topics/custom`,
                     method: 'POST',
-                    body: { title },
+                    body: { title: topicTitle },
                   });
                   setCustomTopicTitle('');
-                  // Do not refetch topics list; just extend UI locally.
                   setExtraTopics((prev) => (prev.some((t) => t.id === topic.id) ? prev : [...prev, topic]));
                   setSelectedTopicIds((prev) => new Set([...prev, topic.id]));
                   toast.show({ title: 'Тема добавлена', variant: 'success' });
@@ -395,16 +392,17 @@ export function ExpertCourseEditorPage() {
               }}
             >
               Добавить
-            </Button>
+            </button>
           </div>
-          {([...(allTopicsData?.items ?? []), ...extraTopics]).length === 0 && (
-            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>Темы не загружены.</div>
-          )}
-          {[...(allTopicsData?.items ?? []), ...extraTopics].map((t) => (
-            <label
-              key={t.id}
-              style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center', fontSize: 'var(--text-sm)' }}
-            >
+
+          {allTopics.length === 0 ? (
+            <p className="edify-field__hint" style={{ margin: 0 }}>
+              Темы не загружены.
+            </p>
+          ) : null}
+
+          {allTopics.map((t) => (
+            <label key={t.id} className="edify-topic-check">
               <input
                 type="checkbox"
                 checked={selectedTopicIds.has(t.id)}
@@ -420,9 +418,12 @@ export function ExpertCourseEditorPage() {
               {t.title}
             </label>
           ))}
-          <Button
-            variant="secondary"
-            disabled={setTopics.isPending || !expertId || !courseId}
+
+          <button
+            type="button"
+            className="edify-btn-primary-outline"
+            style={{ width: 'auto', alignSelf: 'flex-start' }}
+            disabled={setTopics.isPending}
             onClick={async () => {
               try {
                 await setTopics.mutateAsync({ topicIds: [...selectedTopicIds] });
@@ -434,10 +435,9 @@ export function ExpertCourseEditorPage() {
             }}
           >
             Сохранить темы
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
+          </button>
+        </div>
+      </div>
+    </PageScreen>
   );
 }
-
