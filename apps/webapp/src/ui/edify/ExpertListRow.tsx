@@ -26,7 +26,7 @@ export function ExpertListRow({
       <div className="edify-list-text">
         <div className="edify-list-title">{title}</div>
         {subtitle ? <div className="edify-list-sub">{subtitle}</div> : null}
-      </motionless.div>
+      </div>
       <Chevron />
     </>
   );
