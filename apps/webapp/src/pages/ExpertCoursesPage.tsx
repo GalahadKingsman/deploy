@@ -6,8 +6,29 @@ import type { ContractsV1 } from '@tracked/shared';
 import { ApiClientError } from '../shared/api/errors.js';
 import { useToast } from '../shared/ui/feedback/Toast.js';
 import { PageScreen } from '../ui/edify/PageScreen.js';
+import { config } from '../shared/config/flags.js';
 
 type TabFilter = 'all' | 'draft' | 'published';
+
+function resolveCoverUrl(raw: string): string {
+  const u = raw.trim();
+  if (!u) return '';
+  if (u.startsWith('http://') || u.startsWith('https://')) return u;
+  if (u.startsWith('/')) {
+    const base =
+      config.API_BASE_URL || (typeof window !== 'undefined' ? (window.location?.origin ?? '') : '');
+    return `${base}${u}`;
+  }
+  return u;
+}
+
+function courseInitials(title: string): string {
+  const t = title.trim();
+  if (!t) return '?';
+  const parts = t.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).slice(0, 2).toUpperCase();
+  return t.slice(0, 2).toUpperCase();
+}
 
 function tabToStatus(tab: TabFilter): ContractsV1.CourseStatusV1 | undefined {
   if (tab === 'draft') return 'draft';
@@ -107,40 +128,45 @@ export function ExpertCoursesPage() {
           <button type="button" className="edify-btn-secondary" onClick={applySearch}>
             Найти
           </button>
-          <button
-            type="button"
-            className="edify-btn-solid edify-btn-solid--inline"
-            disabled={!expertId || create.isPending}
-            onClick={() => {
-              create.mutate(
-                { title: 'Новый курс', visibility: 'private' },
-                {
-                  onSuccess: () => {
-                    toast.show({ title: 'Курс создан', variant: 'success' });
-                  },
-                  onError: (e) => {
-                    const msg =
-                      e instanceof ApiClientError
-                        ? `${e.message}${e.status ? ` (HTTP ${e.status})` : ''}`
-                        : e instanceof Error
-                          ? e.message
-                          : 'Не удалось создать курс';
-                    toast.show({ title: 'Ошибка', message: msg, variant: 'error' });
-                  },
-                },
-              );
-            }}
-          >
-            Создать
-          </button>
         </div>
+
+        <button
+          type="button"
+          className="edify-btn-solid edify-expert-catalog-create"
+          disabled={!expertId || create.isPending}
+          onClick={() => {
+            create.mutate(
+              { title: 'Новый курс', visibility: 'private' },
+              {
+                onSuccess: () => {
+                  toast.show({ title: 'Курс создан', variant: 'success' });
+                },
+                onError: (e) => {
+                  const msg =
+                    e instanceof ApiClientError
+                      ? `${e.message}${e.status ? ` (HTTP ${e.status})` : ''}`
+                      : e instanceof Error
+                        ? e.message
+                        : 'Не удалось создать курс';
+                  toast.show({ title: 'Ошибка', message: msg, variant: 'error' });
+                },
+              },
+            );
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Новый курс
+        </button>
       </div>
 
       {isLoading ? (
-        <>
-          <Skeleton width="100%" height={72} radius="lg" style={{ marginBottom: 12 }} />
-          <Skeleton width="100%" height={72} radius="lg" />
-        </>
+        <div className="edify-expert-catalog-grid">
+          <Skeleton width="100%" height={200} radius="lg" />
+          <Skeleton width="100%" height={200} radius="lg" />
+        </div>
       ) : null}
 
       {error ? (
@@ -164,16 +190,32 @@ export function ExpertCoursesPage() {
         </div>
       ) : null}
 
-      {!isLoading && !error
-        ? items.map((c) => (
-            <Link key={c.id} to={`/expert/${expertId}/courses/${c.id}`} className="edify-course-row">
-              <div className="edify-course-row__title">{c.title}</div>
-              <div className="edify-course-row__meta">
-                {c.status} {c.visibility === 'public' ? '• public' : '• private'}
-              </div>
-            </Link>
-          ))
-        : null}
+      {!isLoading && !error && items.length > 0 ? (
+        <div className="edify-expert-catalog-grid">
+          {items.map((c) => {
+            const cover = typeof c.coverUrl === 'string' && c.coverUrl.trim() ? resolveCoverUrl(c.coverUrl) : '';
+            return (
+              <Link key={c.id} to={`/expert/${expertId}/courses/${c.id}`} className="edify-expert-catalog-tile">
+                <div className="edify-expert-catalog-tile__media">
+                  {cover ? (
+                    <img src={cover} alt="" loading="lazy" decoding="async" />
+                  ) : (
+                    <span className="edify-expert-catalog-tile__placeholder" aria-hidden>
+                      {courseInitials(c.title)}
+                    </span>
+                  )}
+                </div>
+                <div className="edify-expert-catalog-tile__body">
+                  <div className="edify-expert-catalog-tile__title">{c.title}</div>
+                  <div className="edify-expert-catalog-tile__meta">
+                    {c.status} {c.visibility === 'public' ? '· public' : '· private'}
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      ) : null}
     </PageScreen>
   );
 }
