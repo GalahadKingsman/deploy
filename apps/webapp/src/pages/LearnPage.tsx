@@ -123,10 +123,7 @@ export function LearnPage() {
 
   return (
     <PageScreen>
-      <div className="edify-brand">
-        <span className="edify-brand__name">Edify</span>
-        <span className="edify-brand__beta">BETA</span>
-      </div>
+      <div className="edify-brand" aria-hidden="true" />
 
       <div className="edify-greeting">
         <div className="edify-eyebrow">STUDENT</div>

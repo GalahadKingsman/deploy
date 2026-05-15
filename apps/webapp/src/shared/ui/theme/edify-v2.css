@@ -696,28 +696,444 @@
   margin-top: 2px;
 }
 
-/* App brand header */
+/* App brand header — reserved top space (logo hidden in TG mini app) */
 .edify-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  display: block;
+  min-height: 28px;
   margin-bottom: var(--sp-5);
   padding-top: var(--sp-2);
+  flex-shrink: 0;
 }
-.edify-brand__name {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--fg);
-  letter-spacing: -0.02em;
-}
+.edify-brand__name,
 .edify-brand__beta {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: var(--surface-2);
-  border: 1px solid var(--hairline);
+  display: none;
+}
+
+/* Content editor (modules / lessons) */
+.edify-content-header {
+  padding-top: var(--sp-2);
+  margin-bottom: var(--sp-5);
+}
+.edify-breadcrumb {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.edify-breadcrumb a,
+.edify-breadcrumb button.edify-breadcrumb__link {
   color: var(--text-secondary);
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+.edify-breadcrumb__sep {
+  color: var(--text-dim, var(--text-muted));
+}
+
+.edify-composer {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: var(--sp-5);
+}
+.edify-composer__input {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  padding: 14px;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+}
+.edify-composer__input:focus {
+  border-color: var(--accent-border);
+}
+.edify-composer__input::placeholder {
+  color: var(--text-muted);
+}
+.edify-composer__submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 16px;
+  border-radius: var(--r-lg);
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.edify-composer__submit:disabled {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: var(--hairline);
+  cursor: not-allowed;
+}
+
+.edify-item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 18px 0;
+  border: none;
+  border-bottom: 1px solid var(--hairline);
+  background: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+.edify-item-row--static {
+  cursor: default;
+}
+.edify-item-num {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+  min-width: 26px;
+  line-height: 1;
+}
+.edify-item-content {
+  flex: 1;
+  min-width: 0;
+}
+.edify-item-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
+  margin-bottom: 3px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.edify-item-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.edify-item-meta-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-dim, var(--text-muted));
+  flex-shrink: 0;
+}
+.edify-item-meta-tag {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
   letter-spacing: 0.04em;
+}
+.edify-item-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  flex-shrink: 0;
+  padding: 4px 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+.edify-item-trash {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.edify-item-trash:active {
+  color: var(--danger);
+  background: rgba(255, 92, 92, 0.1);
+}
+
+.edify-empty-panel {
+  margin-top: var(--sp-6);
+  padding: 32px 16px;
+  text-align: center;
+  border: 1px dashed var(--hairline-strong, var(--hairline));
+  border-radius: var(--r-lg);
+}
+.edify-empty-panel__icon {
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 14px;
+  border-radius: 12px;
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+.edify-empty-panel__title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
+  margin-bottom: 6px;
+}
+.edify-empty-panel__text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  max-width: 240px;
+  margin: 0 auto;
+}
+
+/* Lesson view (student) */
+.edify-lesson-panel {
+  margin-bottom: var(--sp-5);
+  padding-bottom: var(--sp-5);
+  border-bottom: 1px solid var(--hairline);
+}
+.edify-lesson-panel:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.edify-lesson-panel__title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 var(--sp-3);
+}
+.edify-lesson-panel__sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin: 0 0 var(--sp-4);
+}
+.edify-lesson-video {
+  margin-bottom: var(--sp-5);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  background: #000;
+}
+.edify-lesson-video__inner {
+  position: relative;
+  padding-top: 56.25%;
+}
+.edify-lesson-video__inner iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.edify-lesson-prose {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fg);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  margin: 0;
+}
+.edify-lesson-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: var(--sp-5);
+}
+.edify-file-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+  margin-bottom: 8px;
+}
+.edify-file-row:last-child {
+  margin-bottom: 0;
+}
+.edify-file-row__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.edify-file-row__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.edify-hw-card {
+  margin-top: var(--sp-3);
+}
+.edify-hw-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+.edify-hw-card__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.edify-hw-block {
+  border-radius: var(--r-lg);
+  padding: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+.edify-hw-block:last-child {
+  margin-bottom: 0;
+}
+.edify-hw-block__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: var(--sp-2);
+}
+.edify-hw-block--answer {
+  border: 1px solid rgba(100, 190, 165, 0.42);
+  background: linear-gradient(145deg, rgba(72, 160, 130, 0.14) 0%, rgba(255, 255, 255, 0.03) 55%, rgba(12, 36, 32, 0.35) 100%);
+}
+.edify-hw-block--answer .edify-hw-block__label {
+  color: rgba(120, 214, 190, 0.95);
+}
+.edify-hw-block--review {
+  border: 1px solid rgba(212, 192, 144, 0.38);
+  background: linear-gradient(145deg, rgba(212, 192, 144, 0.12) 0%, rgba(255, 255, 255, 0.03) 55%, rgba(20, 24, 32, 0.35) 100%);
+}
+.edify-hw-block--review .edify-hw-block__label {
+  color: rgba(212, 192, 144, 0.95);
+}
+.edify-hw-block__body {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--fg);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.edify-hw-stars {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.edify-hw-stars span {
+  font-size: 1.1rem;
+}
+
+/* Homework submit form */
+.edify-hw-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.edify-hw-form__textarea {
+  width: 100%;
+  min-height: 168px;
+  padding: 14px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--hairline);
+  background: var(--surface-1);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.55;
+  resize: vertical;
+  outline: none;
+}
+.edify-hw-form__textarea:focus {
+  border-color: var(--accent-border);
+}
+.edify-hw-form__textarea::placeholder {
+  color: var(--text-muted);
+}
+.edify-hw-form__file-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.edify-hw-form__file-input {
+  width: 100%;
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-family: inherit;
+}
+.edify-hw-form__attached {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--hairline);
+  background: var(--surface-1);
+}
+.edify-hw-form__attached-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.edify-hw-form__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: var(--sp-2);
 }

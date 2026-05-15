@@ -1,17 +1,52 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton, useToast } from '../shared/ui/index.js';
+import { Skeleton, useToast } from '../shared/ui/index.js';
 import { useLesson } from '../shared/queries/useLesson.js';
 import { useCreateLessonSubmission } from '../shared/queries/useCreateLessonSubmission.js';
 import { useMyLessonSubmissions } from '../shared/queries/useMyLessonSubmissions.js';
 import { fetchMultipart } from '../shared/api/index.js';
 import { ApiClientError } from '../shared/api/errors.js';
 import type { ContractsV1 } from '@tracked/shared';
+import { PageScreen } from '../ui/edify/PageScreen.js';
+import { truncateMiddle } from '../ui/edify/contentMeta.js';
 
 function labelFromSubmissionFileKey(key: string): string {
   const tail = key.includes('/') ? key.slice(key.lastIndexOf('/') + 1) : key;
   const withoutTs = tail.replace(/^\d+-/, '');
   return (withoutTs || tail || 'файл').trim() || 'файл';
+}
+
+function HomeworkScreenShell({
+  title,
+  subtitle,
+  lessonTitle,
+  lessonId,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  lessonTitle?: string;
+  lessonId?: string;
+  children: React.ReactNode;
+}) {
+  const navigate = useNavigate();
+  return (
+    <PageScreen>
+      <div className="edify-content-header">
+        <div className="edify-eyebrow">HOMEWORK</div>
+        {lessonId ? (
+          <nav className="edify-breadcrumb" aria-label="Навигация">
+            <button type="button" className="edify-breadcrumb__link" onClick={() => navigate(`/lesson/${lessonId}`)}>
+              {truncateMiddle(lessonTitle || 'Урок', 28)}
+            </button>
+          </nav>
+        ) : null}
+        <h1 className="edify-h edify-h--lg">{title}</h1>
+        {subtitle ? <p className="edify-subtitle" style={{ marginTop: 8 }}>{subtitle}</p> : null}
+      </div>
+      {children}
+    </PageScreen>
+  );
 }
 
 export function LessonHomeworkSubmitPage() {
@@ -47,75 +82,51 @@ export function LessonHomeworkSubmitPage() {
 
   if (!id) {
     return (
-      <div style={{ padding: 'var(--sp-4)' }}>
-        <Card>
-          <CardHeader>
-            <CardTitle>Домашнее задание</CardTitle>
-            <CardDescription>Некорректный id</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
+      <HomeworkScreenShell title="Домашнее задание" subtitle="Некорректный id урока">
+        <div className="edify-empty-panel">
+          <div className="edify-empty-panel__title">Не удалось открыть форму</div>
+        </div>
+      </HomeworkScreenShell>
     );
   }
 
-  if (isLoading) {
+  if (isLoading || !mySubsFetched) {
     return (
-      <div style={{ padding: 'var(--sp-4)' }}>
-        <Skeleton width="70%" height="28px" style={{ marginBottom: 'var(--sp-3)' }} />
-        <Skeleton width="100%" height="220px" radius="lg" />
-      </div>
+      <PageScreen>
+        <Skeleton width="70%" height={32} style={{ marginBottom: 'var(--sp-5)' }} />
+        <Skeleton width="100%" height={200} radius="lg" />
+      </PageScreen>
     );
   }
 
   if (error || !data) {
     return (
-      <div style={{ padding: 'var(--sp-4)' }}>
-        <Card>
-          <CardHeader>
-            <CardTitle>Не удалось загрузить урок</CardTitle>
-            <CardDescription>Попробуйте ещё раз</CardDescription>
-          </CardHeader>
-          <CardContent style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
-            <Button variant="primary" onClick={() => refetch()}>
-              Повторить
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!mySubsFetched) {
-    return (
-      <div style={{ padding: 'var(--sp-4)' }}>
-        <Skeleton width="70%" height="28px" style={{ marginBottom: 'var(--sp-3)' }} />
-        <Skeleton width="100%" height="220px" radius="lg" />
-      </div>
+      <HomeworkScreenShell title="Не удалось загрузить урок" subtitle="Попробуйте ещё раз">
+        <button type="button" className="edify-btn-solid" onClick={() => void refetch()}>
+          Повторить
+        </button>
+      </HomeworkScreenShell>
     );
   }
 
   const latestSubmission = mySubsData?.items?.[0] ?? null;
+  const lesson = data.lesson;
+
   if (latestSubmission?.status === 'accepted') {
     return (
-      <div style={{ padding: 'var(--sp-4)' }}>
-        <Card>
-          <CardHeader>
-            <CardTitle>Редактирование недоступно</CardTitle>
-            <CardDescription>
-              Эксперт уже принял ваш ответ. Отправленные материалы больше нельзя изменить.
-            </CardDescription>
-          </CardHeader>
-          <CardContent style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
-            <Button variant="primary" onClick={() => navigate(`/lesson/${id}`, { replace: true })}>
-              К уроку
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <HomeworkScreenShell
+        title="Редактирование недоступно"
+        subtitle="Эксперт уже принял ваш ответ. Отправленные материалы больше нельзя изменить."
+        lessonTitle={lesson.title}
+        lessonId={id}
+      >
+        <button type="button" className="edify-btn-solid" onClick={() => navigate(`/lesson/${id}`, { replace: true })}>
+          К уроку
+        </button>
+      </HomeworkScreenShell>
     );
   }
 
-  const lesson = data.lesson;
   const isEditing = Boolean(latestSubmission);
 
   const upload = async () => {
@@ -170,10 +181,10 @@ export function LessonHomeworkSubmitPage() {
               ? e.message
               : 'Не удалось загрузить файл';
         toast.show({ title: 'Ошибка', message: msg, variant: 'error' });
-        return;
-      } finally {
         setSaving(false);
+        return;
       }
+      setSaving(false);
     }
 
     if (!t && !fileKey) {
@@ -197,93 +208,86 @@ export function LessonHomeworkSubmitPage() {
     }
   };
 
-  return (
-    <div style={{ padding: 'var(--sp-4)' }}>
-      <Card style={{ marginBottom: 'var(--sp-4)' }}>
-        <CardHeader>
-          <CardTitle>{isEditing ? 'Изменить ответ' : 'Сдать домашнее задание'}</CardTitle>
-          <CardDescription>Урок: {lesson.title}</CardDescription>
-        </CardHeader>
-      </Card>
+  const attachedName = uploadedFileKey
+    ? labelFromSubmissionFileKey(uploadedFileKey)
+    : selectedFile?.name ?? null;
 
-      <Card>
-        <CardHeader>
-          <CardTitle style={{ fontSize: 'var(--text-md)' }}>Ваш ответ</CardTitle>
-          <CardDescription>
-            {isEditing
-              ? 'Измените текст и при необходимости замените или удалите файл.'
-              : 'Текст + файл (опционально)'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
+  return (
+    <HomeworkScreenShell
+      title={isEditing ? 'Изменить ответ' : 'Сдать домашнее задание'}
+      subtitle={
+        isEditing
+          ? 'Измените текст и при необходимости замените или удалите файл.'
+          : 'Добавьте текст ответа и при необходимости прикрепите файл.'
+      }
+      lessonTitle={lesson.title}
+      lessonId={id}
+    >
+      <section className="edify-lesson-panel" style={{ borderBottom: 'none', marginBottom: 0, paddingBottom: 0 }}>
+        <h2 className="edify-lesson-panel__title">Ваш ответ</h2>
+
+        <div className="edify-hw-form">
           <textarea
+            className="edify-hw-form__textarea"
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Текст ответа"
-            style={{
-              width: '100%',
-              minHeight: 160,
-              padding: 'var(--sp-3)',
-              borderRadius: 'var(--r-md)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              background: 'var(--card)',
-              color: 'var(--fg)',
-            }}
           />
 
-          <input
-            type="file"
-            onChange={(e) => {
-              const f = e.target.files?.[0] ?? null;
-              setSelectedFile(f);
-              setUploadedFileKey(null);
-            }}
-            style={{ width: '100%' }}
-          />
-
-          {uploadedFileKey ? (
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                gap: 'var(--sp-2)',
-                padding: 'var(--sp-3)',
-                borderRadius: 'var(--r-md)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                background: 'rgba(255,255,255,0.04)',
+          <div className="edify-hw-form__file-wrap">
+            <input
+              type="file"
+              className="edify-hw-form__file-input"
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                setSelectedFile(f);
+                setUploadedFileKey(null);
               }}
-            >
-              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)', flex: '1 1 auto', minWidth: 0 }}>
-                Прикреплённый файл:{' '}
-                <span style={{ color: 'var(--fg)', wordBreak: 'break-word' }}>{labelFromSubmissionFileKey(uploadedFileKey)}</span>
+            />
+          </div>
+
+          {attachedName ? (
+            <div className="edify-hw-form__attached">
+              <span className="edify-hw-form__attached-name" title={attachedName}>
+                {attachedName}
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
+                type="button"
+                className="edify-item-link"
+                style={{ padding: '4px 0' }}
                 onClick={() => {
                   setUploadedFileKey(null);
                   setSelectedFile(null);
                 }}
               >
-                Удалить файл
-              </Button>
+                Удалить
+              </button>
             </div>
           ) : null}
 
-          <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
-            <Button variant="secondary" onClick={upload} disabled={!selectedFile || uploading}>
+          <div className="edify-hw-form__actions">
+            <button
+              type="button"
+              className="edify-btn-primary-outline"
+              onClick={() => void upload()}
+              disabled={!selectedFile || uploading}
+            >
               {uploading ? 'Загрузка…' : uploadedFileKey ? 'Заменить файл' : 'Загрузить файл'}
-            </Button>
-            <Button variant="primary" onClick={() => void save()} disabled={createSubmission.isPending || saving}>
-              {createSubmission.isPending || saving ? 'Отправка…' : isEditing ? 'Сохранить изменения' : 'Сохранить'}
-            </Button>
-            <Button variant="secondary" onClick={() => navigate(-1)}>
-              Назад
-            </Button>
+            </button>
+            <button
+              type="button"
+              className="edify-btn-solid"
+              onClick={() => void save()}
+              disabled={createSubmission.isPending || saving}
+            >
+              {createSubmission.isPending || saving ? 'Отправка…' : isEditing ? 'Сохранить изменения' : 'Отправить'}
+            </button>
+            <button type="button" className="edify-btn-primary-outline" onClick={() => navigate(`/lesson/${id}`)}>
+              Отмена
+            </button>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </section>
+    </HomeworkScreenShell>
   );
 }
