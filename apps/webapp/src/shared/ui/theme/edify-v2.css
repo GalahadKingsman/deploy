@@ -1,0 +1,711 @@
+/**
+ * Edify Mini App — Design System v2 (layout from edify_app_redesign.html, accent from product screenshot)
+ */
+
+.edify-screen {
+  padding: 0 var(--sp-4) var(--sp-6);
+  min-height: 100%;
+}
+
+.edify-screen__inner {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* Eyebrow */
+.edify-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.edify-eyebrow::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.edify-eyebrow--plain {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.edify-eyebrow--plain::before {
+  display: none;
+}
+
+/* Headings */
+.edify-h {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--fg);
+  line-height: 1.05;
+  margin: 0;
+}
+.edify-h--xl {
+  font-size: 28px;
+}
+.edify-h--lg {
+  font-size: 24px;
+}
+.edify-h--md {
+  font-size: 18px;
+}
+
+.edify-subtitle {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.edify-greeting {
+  padding-top: var(--sp-2);
+  margin-bottom: var(--sp-6);
+}
+
+/* Section */
+.edify-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: var(--sp-7) 0 var(--sp-4);
+}
+.edify-section-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--fg);
+  margin: 0;
+}
+
+/* List row */
+.edify-list-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--hairline);
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  width: 100%;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  text-align: left;
+  font: inherit;
+}
+.edify-list-row:last-child {
+  border-bottom: 1px solid var(--hairline);
+}
+.edify-list-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.edify-list-text {
+  flex: 1;
+  min-width: 0;
+}
+.edify-list-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fg);
+  margin-bottom: 2px;
+}
+.edify-list-sub {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.edify-list-chev {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* Featured row (open cabinet) */
+.edify-featured-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--r-lg);
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  width: 100%;
+  font: inherit;
+  text-align: left;
+}
+.edify-featured-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(94, 176, 245, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.edify-featured-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--fg);
+  margin-bottom: 2px;
+}
+.edify-featured-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Current course — screenshot style */
+.edify-current-course {
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-xl);
+  padding: var(--sp-4);
+  margin-bottom: var(--sp-5);
+}
+.edify-current-course__top {
+  display: flex;
+  gap: var(--sp-4);
+  align-items: flex-start;
+  margin-bottom: var(--sp-4);
+}
+.edify-progress-ring {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  padding: 4px;
+}
+.edify-progress-ring__inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.edify-progress-ring__num {
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--fg);
+  line-height: 1.1;
+}
+.edify-progress-ring__lbl {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+.edify-current-course__meta {
+  flex: 1;
+  min-width: 0;
+}
+.edify-current-course__label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--sp-1);
+}
+.edify-current-course__title {
+  font-size: var(--text-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--fg);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.edify-btn-solid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  background: var(--accent);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 4px 20px var(--accent-glow);
+}
+.edify-btn-solid:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Next lesson */
+.edify-next-lesson {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: var(--sp-4);
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  margin-bottom: var(--sp-5);
+  text-decoration: none;
+  color: inherit;
+}
+.edify-next-lesson__dot {
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--accent-glow);
+  flex-shrink: 0;
+}
+.edify-next-lesson__text {
+  flex: 1;
+  font-size: 13.5px;
+  color: var(--fg);
+  min-width: 0;
+}
+.edify-next-lesson__text span {
+  color: var(--text-secondary);
+  margin-right: 6px;
+}
+.edify-next-lesson__text strong {
+  font-weight: 600;
+}
+
+/* Progress bar */
+.edify-progress {
+  height: 3px;
+  background: var(--hairline);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: var(--sp-2);
+}
+.edify-progress__fill {
+  height: 100%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+  transition: width 0.35s ease;
+}
+
+/* Course row list */
+.edify-course-row {
+  padding: var(--sp-4) 0;
+  border-bottom: 1px solid var(--hairline);
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+.edify-course-row__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: var(--sp-2);
+}
+.edify-course-row__name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fg);
+  line-height: 1.35;
+  flex: 1;
+  min-width: 0;
+}
+.edify-course-row__pct {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.edify-course-row__pct--active {
+  color: var(--accent);
+}
+
+/* My courses grid */
+.edify-course-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-6);
+}
+.edify-course-tile {
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+}
+.edify-course-tile__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  margin-bottom: var(--sp-3);
+}
+.edify-course-tile__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg);
+  line-height: 1.3;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.edify-course-tile__pct {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-top: var(--sp-2);
+}
+
+/* Profile */
+.edify-profile {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: var(--sp-2) 0 var(--sp-6);
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: var(--sp-6);
+}
+.edify-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2a3440 0%, #15151a 100%);
+  border: 1px solid var(--hairline);
+  flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.edify-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.edify-profile-name {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--fg);
+}
+.edify-pro-badge {
+  display: inline-flex;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+.edify-profile-handle {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.edify-profile-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Status */
+.edify-status-block {
+  padding-bottom: var(--sp-5);
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: var(--sp-5);
+}
+.edify-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: var(--sp-3);
+  font-size: 13px;
+}
+.edify-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
+  flex-shrink: 0;
+}
+
+/* Ref boxes */
+.edify-ref-box {
+  padding: 14px 16px;
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  margin-bottom: 10px;
+}
+.edify-ref-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.edify-ref-code {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--fg);
+}
+.edify-ref-link {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent);
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.edify-btn-primary-outline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.edify-btn-primary-outline:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Stats */
+.edify-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-5);
+}
+.edify-stat {
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  padding: var(--sp-3);
+  text-align: center;
+}
+.edify-stat-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: var(--sp-2);
+}
+.edify-stat-value {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--fg);
+}
+.edify-stat-value span {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 14px;
+}
+.edify-stat-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Search */
+.edify-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  margin-bottom: var(--sp-5);
+  color: var(--text-muted);
+}
+.edify-search input {
+  background: transparent;
+  border: none;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 14px;
+  flex: 1;
+  outline: none;
+  min-width: 0;
+}
+.edify-search input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Module row */
+.edify-module-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--hairline);
+  text-decoration: none;
+  color: inherit;
+}
+.edify-module-num {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  padding-top: 2px;
+  flex-shrink: 0;
+}
+.edify-module-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fg);
+  line-height: 1.35;
+  margin-bottom: 4px;
+}
+.edify-module-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Course hero */
+.edify-course-hero {
+  margin-bottom: var(--sp-5);
+}
+.edify-course-hero__title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--fg);
+  margin: var(--sp-4) 0 var(--sp-3);
+}
+.edify-course-hero__meta {
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.edify-access-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--sp-3);
+  font-size: 12px;
+  color: var(--accent);
+}
+.edify-access-badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* Menu list */
+.edify-menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--hairline);
+  text-decoration: none;
+  color: inherit;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  width: 100%;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.edify-menu-row__title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--fg);
+}
+.edify-menu-row__sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* App brand header */
+.edify-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: var(--sp-5);
+  padding-top: var(--sp-2);
+}
+.edify-brand__name {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--fg);
+  letter-spacing: -0.02em;
+}
+.edify-brand__beta {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}

@@ -6,12 +6,18 @@ body,
 
 html,
 body {
-  background: linear-gradient(180deg, var(--app-bg-1) 0%, var(--app-bg-2) 100%);
+  background:
+    radial-gradient(ellipse at 20% 0%, #0d1218 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, #0a0d14 0%, transparent 50%),
+    var(--bg);
 }
 
 #root {
   min-height: 100dvh;
-  background: linear-gradient(180deg, var(--app-bg-1) 0%, var(--app-bg-2) 100%);
+  background:
+    radial-gradient(ellipse at 20% 0%, #0d1218 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, #0a0d14 0%, transparent 50%),
+    var(--bg);
   color: var(--fg);
 }
 

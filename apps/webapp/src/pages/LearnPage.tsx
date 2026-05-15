@@ -1,380 +1,71 @@
 import React from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Card, Skeleton, EmptyState, ErrorState } from '../shared/ui/index.js';
+import { Skeleton, EmptyState, ErrorState } from '../shared/ui/index.js';
 import { useMe } from '../shared/queries/useMe.js';
 import { useLearnSummary } from '../shared/queries/useLearnSummary.js';
 import { useMyCourses } from '../shared/queries/useMyCourses.js';
 import { ApiClientError } from '../shared/api/errors.js';
-import { getTelegramDisplayUser, isTelegramMiniApp } from '../shared/auth/telegram.js';
+import { getTelegramDisplayUser } from '../shared/auth/telegram.js';
+import { PageScreen } from '../ui/edify/PageScreen.js';
 
-// Progress Circle Component
-function ProgressCircle({
-  completed,
-  total,
-  variant = 'default',
-}: {
-  completed: number;
-  total: number;
-  variant?: 'default' | 'compact';
-}) {
-  const percentage = total > 0 ? (completed / total) * 100 : 0;
-  const angle = (percentage / 100) * 360;
-  const px = variant === 'compact' ? 64 : 80;
-  const pad = variant === 'compact' ? 3 : 4;
-  const numSize = variant === 'compact' ? 'var(--text-md)' : 'var(--text-lg)';
-
+function ProgressRing({ completed, total }: { completed: number; total: number }) {
+  const pct = total > 0 ? (completed / total) * 100 : 0;
+  const angle = (pct / 100) * 360;
   return (
     <div
+      className="edify-progress-ring"
       style={{
-        position: 'relative',
-        width: px,
-        height: px,
-        borderRadius: '50%',
-        flexShrink: 0,
-        background: `conic-gradient(
-          var(--accent) 0deg ${angle}deg,
-          rgba(255, 255, 255, 0.1) ${angle}deg 360deg
-        )`,
-        padding: `${pad}px`,
+        background: `conic-gradient(var(--accent) 0deg ${angle}deg, var(--hairline) ${angle}deg 360deg)`,
       }}
     >
-      <div
-        style={{
-          width: '100%',
-          height: '100%',
-          borderRadius: '50%',
-          backgroundColor: 'var(--card)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <div
-          style={{
-            fontSize: numSize,
-            fontWeight: 'var(--font-weight-semibold)',
-            color: 'var(--fg)',
-            lineHeight: 1.2,
-          }}
-        >
+      <div className="edify-progress-ring__inner">
+        <div className="edify-progress-ring__num">
           {completed}/{total}
         </div>
-        <div
-          style={{
-            fontSize: 'var(--text-xs)',
-            color: 'var(--muted-fg)',
-            marginTop: '2px',
-          }}
-        >
-          уроков
-        </div>
+        <div className="edify-progress-ring__lbl">уроков</div>
       </div>
     </div>
   );
 }
 
-// Section Header Component
-function SectionHeader({ title, right }: { title: string; right?: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 'var(--sp-4)',
-      }}
-    >
-      <h2
-        style={{
-          fontSize: 'var(--text-lg)',
-          fontWeight: 'var(--font-weight-semibold)',
-          color: 'var(--fg)',
-          margin: 0,
-        }}
-      >
-        {title}
-      </h2>
-      {right && <div>{right}</div>}
-    </div>
-  );
-}
-
-// Progress Bar Component
-function ProgressBar({ progress }: { progress: number }) {
-  return (
-    <div
-      style={{
-        width: '100%',
-        height: '4px',
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-        borderRadius: '2px',
-        overflow: 'hidden',
-        marginTop: 'var(--sp-2)',
-      }}
-    >
-      <div
-        style={{
-          width: `${progress}%`,
-          height: '100%',
-          backgroundColor: 'var(--accent)',
-          transition: 'width 0.3s ease',
-        }}
-      />
-    </div>
-  );
-}
-
-// Current Course Card
-function CurrentCourseCard({ title, courseId, completed, total }: { title: string; courseId: string; completed: number; total: number }) {
-  const tg = isTelegramMiniApp();
-  const circleVariant = tg ? 'compact' : 'default';
-  const titleStyle: React.CSSProperties = {
-    fontSize: 'var(--text-md)',
-    fontWeight: 'var(--font-weight-semibold)',
-    color: 'var(--fg)',
-    lineHeight: 1.35,
-    ...(tg
-      ? {
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical' as const,
-          overflow: 'hidden',
-        }
-      : {}),
-  };
-
-  return (
-    <Card
-      style={{
-        marginBottom: 'var(--sp-5)',
-        padding: 'var(--sp-4)',
-      }}
-    >
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'auto minmax(0, 1fr) auto',
-          alignItems: 'start',
-          gap: 'var(--sp-3)',
-        }}
-      >
-        <ProgressCircle completed={completed} total={total} variant={circleVariant} />
-        <div
-          style={{
-            minWidth: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--sp-1)',
-          }}
-        >
-          <div
-            style={{
-              fontSize: 'var(--text-sm)',
-              color: 'var(--muted-fg)',
-            }}
-          >
-            Текущий курс:
-          </div>
-          <div style={titleStyle} title={title}>
-            {title}
-          </div>
-        </div>
-        <Link
-          to={`/course/${courseId}`}
-          style={{
-            flexShrink: 0,
-            marginTop: 2,
-            fontSize: 'var(--text-sm)',
-            fontWeight: 'var(--font-weight-semibold)',
-            color: 'var(--accent)',
-            textDecoration: 'none',
-            whiteSpace: 'nowrap',
-            alignSelf: 'center',
-          }}
-        >
-          Продолжить
-        </Link>
-      </div>
-    </Card>
-  );
-}
-
-// Next Lesson Card
-function NextLessonCard({ title, lessonId }: { title: string; lessonId: string }) {
-  return (
-    <Link to={`/lesson/${lessonId}`} style={{ textDecoration: 'none', display: 'block' }}>
-      <Card
-        style={{
-          marginBottom: 'var(--sp-5)',
-          padding: 'var(--sp-4)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--sp-3)',
-          cursor: 'pointer',
-        }}
-      >
-        <div
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: 'var(--r-md)',
-            backgroundColor: 'var(--accent)',
-            opacity: 0.2,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
-        >
-          <div
-            style={{
-              width: '20px',
-              height: '20px',
-              borderRadius: '50%',
-              backgroundColor: 'var(--accent)',
-            }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              fontSize: 'var(--text-sm)',
-              color: 'var(--muted-fg)',
-              marginBottom: 'var(--sp-1)',
-            }}
-          >
-            Следующий урок:
-          </div>
-          <div
-            style={{
-              fontSize: 'var(--text-md)',
-              fontWeight: 'var(--font-weight-semibold)',
-              color: 'var(--fg)',
-            }}
-          >
-            {title}
-          </div>
-        </div>
-        <div
-          style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: 'var(--r-md)',
-            backgroundColor: 'var(--accent)',
-            opacity: 0.1,
-            flexShrink: 0,
-          }}
-        />
-      </Card>
-    </Link>
-  );
-}
-
-// My Courses Section
-function MyCoursesSection({ items }: { items: Array<{ id: string; title: string; progressPercent: number }> }) {
-  return (
-    <div style={{ marginBottom: 'var(--sp-6)' }}>
-      <SectionHeader
-        title="Мои курсы"
-        right={
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--sp-2)',
-            }}
-          >
-            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>›</div>
-          </div>
-        }
-      />
-      <div>
-        {items.map((course) => (
-          <Link
-            key={course.id}
-            to={`/course/${course.id}`}
-            style={{ textDecoration: 'none', display: 'block' }}
-          >
-            <Card
-              style={{
-                marginBottom: 'var(--sp-2)',
-                padding: 'var(--sp-3) var(--sp-4)',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: 'var(--sp-2)',
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 'var(--text-md)',
-                    fontWeight: 'var(--font-weight-medium)',
-                    color: 'var(--fg)',
-                    flex: 1,
-                  }}
-                >
-                    {course.title}
-                </div>
-                <div
-                  style={{
-                    fontSize: 'var(--text-sm)',
-                    color: 'var(--muted-fg)',
-                    marginLeft: 'var(--sp-3)',
-                  }}
-                >
-                    {course.progressPercent}%
-                </div>
-              </div>
-                <ProgressBar progress={course.progressPercent} />
-            </Card>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// Loading State
-function LoadingState() {
-  return (
-    <div style={{ padding: 'var(--sp-4)' }}>
-      <Skeleton width="60%" height="32px" style={{ marginBottom: 'var(--sp-5)' }} />
-      <Skeleton width="100%" height="120px" radius="lg" style={{ marginBottom: 'var(--sp-5)' }} />
-      <Skeleton width="100%" height="80px" radius="lg" style={{ marginBottom: 'var(--sp-5)' }} />
-      <Skeleton width="50%" height="24px" style={{ marginBottom: 'var(--sp-4)' }} />
-      <Skeleton width="100%" height="60px" radius="md" style={{ marginBottom: 'var(--sp-2)' }} />
-      <Skeleton width="100%" height="60px" radius="md" style={{ marginBottom: 'var(--sp-5)' }} />
-      <Skeleton width="50%" height="24px" style={{ marginBottom: 'var(--sp-4)' }} />
-      <div style={{ display: 'flex', gap: 'var(--sp-3)', overflowX: 'auto' }}>
-        <Skeleton width="140px" height="160px" radius="lg" />
-        <Skeleton width="140px" height="160px" radius="lg" />
-        <Skeleton width="140px" height="160px" radius="lg" />
-      </div>
-    </div>
-  );
-}
-
-function displayName(
-  user: { firstName?: string; lastName?: string; username?: string } | null,
-): string {
+function displayName(user: { firstName?: string; lastName?: string; username?: string } | null): string {
   if (!user) return 'Пользователь';
   const first = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
   if (first) return first;
-  if (user.username) return user.username;
+  if (user.username) return user.username.replace(/^@/, '');
   return 'Пользователь';
 }
 
-// Main LearnPage Component
+function CourseIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
+  );
+}
+
+function LoadingState() {
+  return (
+    <PageScreen>
+      <Skeleton width="50%" height="28px" style={{ marginBottom: 'var(--sp-5)' }} />
+      <Skeleton width="100%" height="140px" radius="lg" style={{ marginBottom: 'var(--sp-5)' }} />
+      <Skeleton width="100%" height="72px" radius="lg" style={{ marginBottom: 'var(--sp-5)' }} />
+      <Skeleton width="40%" height="20px" style={{ marginBottom: 'var(--sp-4)' }} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-3)' }}>
+        <Skeleton width="100%" height="120px" radius="lg" />
+        <Skeleton width="100%" height="120px" radius="lg" />
+      </div>
+    </PageScreen>
+  );
+}
+
 export function LearnPage() {
   const [searchParams] = useSearchParams();
   const state = searchParams.get('state') || 'default';
   const { data: meData } = useMe();
-  const { data: summary, isLoading: summaryLoading, error: summaryError, refetch: refetchSummary } = useLearnSummary();
+  const { data: summary, isLoading: summaryLoading, error: summaryError, refetch: refetchSummary } =
+    useLearnSummary();
   const { data: myCourses, isLoading: myCoursesLoading } = useMyCourses();
   const apiUser = meData?.user ?? null;
   const displayUser = apiUser ?? getTelegramDisplayUser();
@@ -386,10 +77,14 @@ export function LearnPage() {
 
   const activeCourse = summary?.activeCourse ?? null;
   const nextLesson = summary?.nextLesson ?? null;
+  const courseItems = myCourses?.items ?? [];
+  const activeProgress = activeCourse ? courseItems.find((x) => x.course.id === activeCourse.id) : null;
+  const done = activeProgress?.doneLessons ?? 0;
+  const total = Math.max(1, activeProgress?.totalLessons ?? activeCourse?.lessonsCount ?? 1);
 
   if (state === 'empty' || (!activeCourse && !summaryError)) {
     return (
-      <div style={{ padding: 'var(--sp-4)' }}>
+      <PageScreen>
         <EmptyState
           title="Нет активного обучения"
           description="Начните обучение, выбрав курс из библиотеки"
@@ -398,7 +93,7 @@ export function LearnPage() {
             window.location.href = '/library';
           }}
         />
-      </div>
+      </PageScreen>
     );
   }
 
@@ -415,52 +110,77 @@ export function LearnPage() {
       }
     }
     return (
-      <div style={{ padding: 'var(--sp-4)' }}>
+      <PageScreen>
         <ErrorState
           title="Не удалось загрузить данные"
           description={description}
           actionLabel="Повторить"
-          onAction={() => {
-            refetchSummary();
-          }}
+          onAction={() => refetchSummary()}
         />
-      </div>
+      </PageScreen>
     );
   }
 
-  // Default state
   return (
-    <div style={{ padding: 'var(--sp-4)' }}>
-      {/* Header */}
-      <h1
-        style={{
-          fontSize: 'var(--text-xl)',
-          fontWeight: 'var(--font-weight-semibold)',
-          color: 'var(--fg)',
-          margin: '0 0 var(--sp-5) 0',
-        }}
-      >
-        Привет, {userName}
-      </h1>
+    <PageScreen>
+      <div className="edify-brand">
+        <span className="edify-brand__name">Edify</span>
+        <span className="edify-brand__beta">BETA</span>
+      </div>
+
+      <div className="edify-greeting">
+        <div className="edify-eyebrow">STUDENT</div>
+        <h1 className="edify-h edify-h--lg" style={{ marginBottom: 6 }}>
+          Привет, {userName}
+        </h1>
+        <p className="edify-subtitle">Продолжайте там, где остановились.</p>
+      </div>
 
       {activeCourse && (
-        <CurrentCourseCard
-          title={activeCourse.title}
-          courseId={activeCourse.id}
-          completed={0}
-          total={Math.max(1, activeCourse.lessonsCount ?? 1)}
-        />
+        <div className="edify-current-course">
+          <div className="edify-current-course__top">
+            <ProgressRing completed={done} total={total} />
+            <div className="edify-current-course__meta">
+              <div className="edify-current-course__label">Текущий курс:</div>
+              <div className="edify-current-course__title" title={activeCourse.title}>
+                {activeCourse.title}
+              </div>
+            </div>
+          </div>
+          <Link to={`/course/${activeCourse.id}`} className="edify-btn-solid">
+            Продолжить
+          </Link>
+        </div>
       )}
 
-      {nextLesson && <NextLessonCard title={nextLesson.title} lessonId={nextLesson.id} />}
+      {nextLesson && (
+        <Link to={`/lesson/${nextLesson.id}`} className="edify-next-lesson">
+          <div className="edify-next-lesson__dot" />
+          <div className="edify-next-lesson__text">
+            <span>Следующий урок ·</span>
+            <strong>{nextLesson.title}</strong>
+          </div>
+        </Link>
+      )}
 
-      <MyCoursesSection
-        items={(myCourses?.items ?? []).map((x) => ({
-          id: x.course.id,
-          title: x.course.title,
-          progressPercent: x.progressPercent,
-        }))}
-      />
-    </div>
+      {courseItems.length > 0 && (
+        <>
+          <div className="edify-section-header" style={{ marginTop: 0 }}>
+            <h2 className="edify-section-title">Мои курсы</h2>
+          </div>
+          <div className="edify-course-grid">
+            {courseItems.map((x) => (
+              <Link key={x.course.id} to={`/course/${x.course.id}`} className="edify-course-tile">
+                <div className="edify-course-tile__icon">
+                  <CourseIcon />
+                </div>
+                <div className="edify-course-tile__title">{x.course.title}</div>
+                <div className="edify-course-tile__pct">{x.progressPercent}%</div>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
+    </PageScreen>
   );
 }

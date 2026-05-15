@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { App } from './App.js';
 import './shared/ui/theme/tokens.css';
 import './shared/ui/theme/global.css';
+import './shared/ui/theme/edify-v2.css';
 import { startMocking } from './shared/mocks/startMocking.js';
 import { bootstrapAuth } from './shared/auth/bootstrapAuth.js';
 import { getAccessToken, clearAccessToken } from './shared/auth/tokenStorage.js';

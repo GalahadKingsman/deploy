@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Card,
   CardHeader,
@@ -8,7 +8,6 @@ import {
   CardContent,
   Button,
 } from '../../shared/ui/index.js';
-import { MiniAppRowAction } from '../../ui/kit/MiniAppRowAction.js';
 import { isTelegramMiniApp } from '../../shared/auth/telegram.js';
 import type { ExpertCtaState } from './expertCtaState.js';
 import type { ContractsV1 } from '@tracked/shared';
@@ -183,85 +182,45 @@ export function BecomeExpertCard({ state, subscription }: BecomeExpertCardProps)
   }
 
   // state === 'active'
+  const periodText = periodEndFormatted ? ` до ${periodEndFormatted}` : '';
+  const cabinetCta = (
+    <>
+      <div className="edify-featured-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+          <polygon points="12 2 2 7 12 12 22 7 12 2" />
+          <polyline points="2 17 12 22 22 17" />
+          <polyline points="2 12 12 17 22 12" />
+        </svg>
+      </div>
+      <div className="edify-featured-text">
+        <div className="edify-featured-title">Открыть кабинет</div>
+        <div className="edify-featured-sub">Курсы · Команда · Контент</div>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ color: 'var(--accent)' }} aria-hidden>
+        <polyline points="9 18 15 12 9 6" />
+      </svg>
+    </>
+  );
+
   return (
-    <Card
-      style={{
-        marginBottom: 'var(--sp-4)',
-        padding: 'var(--sp-4)',
-        position: 'relative',
-        overflow: 'hidden',
-        borderRadius: 'var(--r-xl)',
-        border: '1px solid rgba(255,255,255,0.10)',
-        background:
-          'radial-gradient(120% 120% at 0% 0%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 55%, rgba(0,0,0,0) 100%)',
-      }}
-    >
-      <div style={{ display: 'flex', gap: 'var(--sp-3)', alignItems: 'flex-start' }}>
-        <div
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 12,
-            background: 'rgba(61,220,151,0.10)',
-            border: '1px solid rgba(61,220,151,0.22)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            overflow: 'hidden',
-            color: 'rgba(255,255,255,0.9)',
-            fontWeight: 800,
-          }}
-          aria-hidden
-        >
-          ✓
-        </div>
-
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: 'var(--text-md)',
-              fontWeight: 'var(--font-weight-semibold)',
-              color: 'var(--fg)',
-            }}
-          >
-            Вы эксперт
-          </div>
-          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)', marginTop: 2 }}>
-            Подписка активна{periodEndFormatted ? ` · до ${periodEndFormatted}` : ''}.
-          </div>
+    <div className="edify-status-block" style={{ marginBottom: 'var(--sp-4)' }}>
+      <div className="edify-status-row">
+        <div className="edify-status-dot" />
+        <div style={{ fontSize: 13, color: 'var(--fg)' }}>
+          <strong>Вы эксперт.</strong>
+          <span style={{ color: 'var(--text-secondary)' }}> Подписка активна{periodText}.</span>
         </div>
       </div>
-
-      <div style={{ marginTop: 'var(--sp-3)' }}>
-        {isTelegramMiniApp() ? (
-          <MiniAppRowAction
-            to="/expert"
-            title="Открыть кабинет"
-            subtitle="Курсы, команда и контент"
-            trailing="chevron"
-            icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-                <path d="M3 7l9-4 9 4-9 4-9-4Z" />
-                <path d="M21 10l-9 4-9-4" opacity="0.7" />
-              </svg>
-            }
-          />
-        ) : (
-          <Button
-            variant="primary"
-            onClick={() => navigate('/expert')}
-            style={{
-              width: '100%',
-              borderRadius: 12,
-              height: 44,
-              fontWeight: 'var(--font-weight-semibold)',
-            }}
-          >
-            Открыть кабинет →
-          </Button>
-        )}
-      </div>
-    </Card>
+      {isTelegramMiniApp() ? (
+        <Link to="/expert" className="edify-featured-row">
+          {cabinetCta}
+        </Link>
+      ) : (
+        <button type="button" className="edify-featured-row" onClick={() => navigate('/expert')}>
+          {cabinetCta}
+        </button>
+      )}
+    </div>
   );
 }
+

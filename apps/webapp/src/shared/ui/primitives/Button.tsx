@@ -57,9 +57,9 @@ export function Button({
 
   const variantStyles: Record<'primary' | 'secondary' | 'ghost' | 'danger', React.CSSProperties> = {
     primary: {
-      background: 'var(--btn-grad)',
-      color: 'var(--bg)',
-      boxShadow: '0 10px 26px rgba(124,207,230,0.18)',
+      background: 'var(--accent)',
+      color: '#fff',
+      boxShadow: '0 8px 24px var(--accent-glow)',
     },
     secondary: {
       backgroundColor: 'rgba(255,255,255,0.06)',

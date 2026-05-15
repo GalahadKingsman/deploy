@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import type { ContractsV1 } from '@tracked/shared';
-import { Input, Button, Card, Skeleton, EmptyState, ErrorState } from '../shared/ui/index.js';
+import { Card, Skeleton, EmptyState, ErrorState } from '../shared/ui/index.js';
+import { PageScreen } from '../ui/edify/PageScreen.js';
 import { useLibrary } from '../shared/queries/useLibrary.js';
 import { ApiClientError } from '../shared/api/errors.js';
 import { config } from '../shared/config/flags.js';
@@ -22,25 +23,9 @@ function resolveCoverUrl(raw: string): string {
 // Section Header Component
 function SectionHeader({ title, right }: { title: string; right?: React.ReactNode }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 'var(--sp-4)',
-      }}
-    >
-      <h2
-        style={{
-          fontSize: 'var(--text-lg)',
-          fontWeight: 'var(--font-weight-semibold)',
-          color: 'var(--fg)',
-          margin: 0,
-        }}
-      >
-        {title}
-      </h2>
-      {right && <div>{right}</div>}
+    <div className="edify-section-header">
+      <h2 className="edify-section-title">{title}</h2>
+      {right ? <div>{right}</div> : null}
     </div>
   );
 }
@@ -60,7 +45,7 @@ function SquareCourseCard({ course }: { course: ContractsV1.CourseV1 }) {
           padding: 0,
           overflow: 'hidden',
           borderRadius: 'var(--r-xl)',
-          border: '1px solid rgba(255,255,255,0.10)',
+          border: '1px solid var(--hairline)',
         }}
       >
         <div style={{ position: 'relative' }}>
@@ -240,65 +225,32 @@ export function LibraryPage() {
 
   // Default state
   return (
-    <div style={{ padding: 'var(--sp-4)' }}>
-      {/* Search Input */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 'var(--sp-2)',
-          marginBottom: 'var(--sp-5)',
-          alignItems: 'center',
-        }}
-      >
-        <div style={{ flex: 1, position: 'relative' }}>
-          <Input
-            placeholder="Поиск курсов"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              paddingRight: searchQuery ? 'var(--sp-9)' : undefined,
-            }}
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              style={{
-                position: 'absolute',
-                right: 'var(--sp-3)',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'none',
-                border: 'none',
-                color: 'var(--muted-fg)',
-                fontSize: 'var(--text-xl)',
-                cursor: 'pointer',
-                padding: 'var(--sp-1)',
-                lineHeight: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '24px',
-                height: '24px',
-              }}
-              aria-label="Очистить поиск"
-            >
-              ×
-            </button>
-          )}
-        </div>
-        {searchQuery && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSearchQuery('')}
-            style={{
-              flexShrink: 0,
-            }}
-          >
-            Очистить
-          </Button>
-        )}
+    <PageScreen>
+      <div className="edify-brand">
+        <span className="edify-brand__name">Edify</span>
+        <span className="edify-brand__beta">BETA</span>
       </div>
+      <div className="edify-greeting" style={{ marginBottom: 'var(--sp-5)' }}>
+        <div className="edify-eyebrow">LIBRARY</div>
+        <h1 className="edify-h edify-h--lg">Каталог курсов</h1>
+      </div>
+      <label className="edify-search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input
+          type="search"
+          placeholder="Поиск курсов"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        {searchQuery ? (
+          <button type="button" onClick={() => setSearchQuery('')} aria-label="Очистить поиск" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}>
+            ×
+          </button>
+        ) : null}
+      </label>
 
       {/* Search Results Empty State */}
       {isSearchActive && !hasSearchResults && (
@@ -326,13 +278,7 @@ export function LibraryPage() {
               </div>
             }
           />
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-              gap: 'var(--sp-3)',
-            }}
-          >
+          <div className="edify-course-grid">
             {catalogCourses.map((course) => (
               <SquareCourseCard key={course.id} course={course} />
             ))}
@@ -344,13 +290,7 @@ export function LibraryPage() {
       {isSearchActive && hasSearchResults && filteredCatalogCourses.length > 0 && (
         <div style={{ marginBottom: 'var(--sp-6)' }}>
           <SectionHeader title="Каталог курсов" />
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-              gap: 'var(--sp-3)',
-            }}
-          >
+          <div className="edify-course-grid">
             {filteredCatalogCourses.map((course) => (
               <SquareCourseCard key={course.id} course={course} />
             ))}
@@ -376,13 +316,7 @@ export function LibraryPage() {
               ) : undefined
             }
           />
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-              gap: 'var(--sp-3)',
-            }}
-          >
+          <div className="edify-course-grid">
             {filteredRecommendedCourses.map((course) => (
               <SquareCourseCard key={course.id} course={course} />
             ))}
@@ -390,6 +324,6 @@ export function LibraryPage() {
         </div>
       )}
 
-    </div>
+    </PageScreen>
   );
 }

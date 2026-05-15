@@ -1,12 +1,10 @@
 import React from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
-  Button,
   Card,
   Skeleton,
   EmptyState,
   ErrorState,
-  ListItem,
   useToast,
 } from '../shared/ui/index.js';
 import { useMe } from '../shared/queries/useMe.js';
@@ -20,6 +18,7 @@ import { BecomeExpertCard } from '../features/account/BecomeExpertCard.js';
 import { getTelegramDisplayUser, isTelegramMiniApp, type TelegramDisplayUser } from '../shared/auth/telegram.js';
 import type { ContractsV1 } from '@tracked/shared';
 import { MiniAppRowAction } from '../ui/kit/MiniAppRowAction.js';
+import { PageScreen } from '../ui/edify/PageScreen.js';
 
 type DisplayUser = ContractsV1.UserV1 | TelegramDisplayUser | null;
 
@@ -202,96 +201,30 @@ function ProfileCard({
   }, [tgId, toast]);
 
   return (
-    <Card style={{ padding: 'var(--sp-4)', marginBottom: 'var(--sp-4)' }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--sp-4)',
-        }}
-      >
+    <div className="edify-profile">
+      <div className="edify-avatar">
         <UserAvatar user={user} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Row 1: displayName + Pro badge in one line; name truncates, badge stays visible */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              marginBottom: 'var(--sp-1)',
-            }}
-          >
-            <span
-              style={{
-                fontSize: 'var(--text-lg)',
-                fontWeight: 'var(--font-weight-semibold)',
-                color: 'var(--fg)',
-                minWidth: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {name}
-            </span>
-            {isPro && (
-              <span
-                style={{
-                  flex: '0 0 auto',
-                  padding: 'var(--sp-1) var(--sp-2)',
-                  backgroundColor: 'var(--accent)',
-                  borderRadius: 'var(--r-sm)',
-                  fontSize: 'var(--text-xs)',
-                  color: 'var(--bg)',
-                  fontWeight: 'var(--font-weight-medium)',
-                }}
-              >
-                Pro
-              </span>
-            )}
-          </div>
-          {/* Row 2: @username */}
-          {handle && (
-            <div
-              style={{
-                fontSize: 'var(--text-sm)',
-                color: 'var(--muted-fg)',
-                marginBottom: tgId ? 'var(--sp-1)' : 'var(--sp-2)',
-              }}
-            >
-              {handle}
-            </div>
-          )}
-          {/* Row 3: TG ID + copy icon */}
-          {tgId && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--sp-2)',
-                marginBottom: 'var(--sp-2)',
-              }}
-            >
-              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>{tgId}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCopyTgId}
-                aria-label="Copy ID"
-                style={{
-                  padding: 'var(--sp-1)',
-                  minWidth: 32,
-                  minHeight: 32,
-                }}
-              >
-                <CopyIcon size={16} />
-              </Button>
-            </div>
-          )}
-        </div>
       </div>
-    </Card>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+          <span className="edify-profile-name" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {name}
+          </span>
+          {isPro ? <span className="edify-pro-badge">Pro</span> : null}
+        </div>
+        {handle ? <div className="edify-profile-handle">{handle}</div> : null}
+        {tgId ? (
+          <div className="edify-profile-id">
+            <span>{tgId}</span>
+            <button type="button" onClick={handleCopyTgId} aria-label="Скопировать TG ID" style={{ background: 'none', border: 'none', padding: 4, color: 'var(--accent)', cursor: 'pointer' }}>
+              <CopyIcon size={14} />
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
+
 }
 
 // Referral Card Component
@@ -321,93 +254,18 @@ function ReferralCard() {
   };
 
   return (
-    <Card style={{ padding: 'var(--sp-4)', marginBottom: 'var(--sp-4)' }}>
-      <div
-        style={{
-          fontSize: 'var(--text-lg)',
-          fontWeight: 'var(--font-weight-semibold)',
-          color: 'var(--fg)',
-          marginBottom: 'var(--sp-4)',
-        }}
-      >
-        Реферальная программа
+    <section style={{ marginBottom: 'var(--sp-5)' }}>
+      <div className="edify-section-header">
+        <h2 className="edify-section-title">Реферальная программа</h2>
       </div>
-      <div style={{ marginBottom: 'var(--sp-3)' }}>
-        <div
-          style={{
-            fontSize: 'var(--text-sm)',
-            color: 'var(--muted-fg)',
-            marginBottom: 'var(--sp-2)',
-          }}
-        >
-          Реферальный код:
-        </div>
-        <div
-          style={{
-            fontSize: 'var(--text-md)',
-            fontWeight: 'var(--font-weight-semibold)',
-            color: 'var(--fg)',
-            fontFamily: 'monospace',
-            letterSpacing: '0.05em',
-          }}
-        >
-          {isLoading ? '…' : referralCode || '—'}
-        </div>
+      <div className="edify-ref-box">
+        <div className="edify-ref-label">Реферальный код</div>
+        <div className="edify-ref-code">{isLoading ? '…' : referralCode || '—'}</div>
       </div>
-      <div style={{ marginBottom: 'var(--sp-4)' }}>
-        <div
-          style={{
-            fontSize: 'var(--text-sm)',
-            color: 'var(--muted-fg)',
-            marginBottom: 'var(--sp-2)',
-          }}
-        >
-          Реферальная ссылка:
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            gap: 'var(--sp-2)',
-            alignItems: 'stretch',
-          }}
-        >
-          <div
-            style={{
-              flex: 1,
-              minWidth: 0,
-              fontSize: 'var(--text-sm)',
-              color: 'var(--fg)',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              padding: 'var(--sp-3)',
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              borderRadius: 'var(--r-md)',
-            }}
-            title={referralLink || ''}
-          >
-            {isLoading ? '…' : referralLink || '—'}
-          </div>
-          {!isTelegramMiniApp() ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleCopy}
-              disabled={!referralLink || isLoading}
-              style={{
-                flex: '0 0 auto',
-                minWidth: 44,
-                minHeight: 44,
-                borderRadius: 12,
-                padding: '0 14px',
-              }}
-              aria-label="Скопировать ссылку"
-            >
-              ⧉
-            </Button>
-          ) : null}
+      <div className="edify-ref-box">
+        <div className="edify-ref-label">Реферальная ссылка</div>
+        <div className="edify-ref-link" title={referralLink || ''}>
+          {isLoading ? '…' : referralLink || '—'}
         </div>
       </div>
       {isTelegramMiniApp() ? (
@@ -420,51 +278,41 @@ function ReferralCard() {
           icon={<CopyIcon size={20} />}
         />
       ) : (
-        <Button
-          variant="primary"
-          onClick={handleCopy}
-          style={{ width: '100%', height: 44, borderRadius: 12, fontWeight: 'var(--font-weight-semibold)' }}
+        <button
+          type="button"
+          className="edify-btn-primary-outline"
+          onClick={() => void handleCopy()}
           disabled={!referralLink || isLoading}
         >
+          <CopyIcon size={16} />
           Скопировать ссылку
-        </Button>
+        </button>
       )}
-
-      <div style={{ marginTop: 'var(--sp-4)' }}>
-        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)', marginBottom: 'var(--sp-2)' }}>
-          Начисления (beta)
-        </div>
-        <div style={{ fontSize: 'var(--text-md)', fontWeight: 'var(--font-weight-semibold)', marginBottom: 'var(--sp-2)' }}>
+      <div style={{ marginTop: 'var(--sp-5)' }}>
+        <div className="edify-ref-label">Начисления (beta)</div>
+        <div className="edify-stat-value" style={{ textAlign: 'left', marginTop: 8, marginBottom: 8 }}>
           {Math.round(totalCents / 100).toLocaleString('ru-RU')} ₽
         </div>
-        {stats && (
-          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)', marginBottom: 'var(--sp-3)' }}>
+        {stats ? (
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
             Приглашено: {stats.enrollmentsCount} · Заказы: {stats.ordersCount} · Оплачено: {stats.paidOrdersCount}
           </div>
-        )}
+        ) : null}
         {commissions.length === 0 ? (
-          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>Пока нет начислений.</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Пока нет начислений.</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {commissions.slice(0, 5).map((c) => (
-              <div
-                key={c.id}
-                style={{
-                  padding: 'var(--sp-2)',
-                  background: 'var(--card-2)',
-                  borderRadius: 'var(--r-sm)',
-                  fontSize: 'var(--text-sm)',
-                  color: 'var(--fg)',
-                }}
-              >
+              <div key={c.id} className="edify-ref-box" style={{ marginBottom: 0, fontSize: 13 }}>
                 +{Math.round((c.amountCents ?? 0) / 100).toLocaleString('ru-RU')} ₽ · orderId: {c.orderId}
               </div>
             ))}
           </div>
         )}
       </div>
-    </Card>
+    </section>
   );
+
 }
 
 // Stats Row Component
@@ -514,93 +362,46 @@ function StatsRow() {
       </span>
     );
   };
+  const progressValue = coursesLoading ? '…' : coursesError ? '—' : `${doneLessons}/${totalLessons}`;
+  const streakValue = streakDays >= 7 ? `🔥 ${streakDays}` : String(streakDays);
+
   return (
-    <div
-      style={{
-        display: 'flex',
-        gap: 'var(--sp-3)',
-        marginBottom: 'var(--sp-4)',
-      }}
-    >
-      <Card style={{ flex: 1, padding: 'var(--sp-4)' }}>
-        <div
-          style={{
-            fontSize: 'var(--text-sm)',
-            color: 'var(--muted-fg)',
-            marginBottom: 'var(--sp-2)',
-          }}
-        >
-          Прогресс
-        </div>
-        <div
-          style={{
-            fontSize: 'var(--text-xl)',
-            fontWeight: 'var(--font-weight-semibold)',
-            color: 'var(--fg)',
-          }}
-        >
-          {coursesLoading ? '…' : coursesError ? '—' : `${doneLessons}/${totalLessons}`}
-        </div>
-        <div
-          style={{
-            fontSize: 'var(--text-xs)',
-            color: 'var(--muted-fg)',
-            marginTop: 'var(--sp-1)',
-          }}
-        >
-          уроков
-        </div>
-      </Card>
-      <Card style={{ flex: 1, padding: 'var(--sp-4)' }}>
-        <div
-          style={{
-            fontSize: 'var(--text-sm)',
-            color: 'var(--muted-fg)',
-            marginBottom: 'var(--sp-2)',
-          }}
-        >
-          Streak
-        </div>
-        <div
-          style={{
-            fontSize: 'var(--text-xl)',
-            fontWeight: 'var(--font-weight-semibold)',
-            color: 'var(--fg)',
-          }}
-        >
-          {streakDays >= 7 ? `🔥 ${streakDays}` : String(streakDays)}
-        </div>
-        <div
-          style={{
-            fontSize: 'var(--text-xs)',
-            color: 'var(--muted-fg)',
-            marginTop: 'var(--sp-1)',
-          }}
-        >
-          дней
-        </div>
-      </Card>
-      <Card style={{ flex: 1, padding: 'var(--sp-4)' }}>
-        <div
-          style={{
-            fontSize: 'var(--text-sm)',
-            color: 'var(--muted-fg)',
-            marginBottom: 'var(--sp-2)',
-          }}
-        >
-          Средний балл
-        </div>
-        <div
-          style={{
-            fontSize: 'var(--text-xl)',
-            fontWeight: 'var(--font-weight-semibold)',
-            color: 'var(--fg)',
-          }}
-        >
+    <div className="edify-stats-grid">
+      <div className="edify-stat">
+        <div className="edify-stat-label">Прогресс</div>
+        <div className="edify-stat-value">{progressValue}</div>
+        <div className="edify-stat-sub">уроков</div>
+      </div>
+      <div className="edify-stat">
+        <div className="edify-stat-label">Streak</div>
+        <div className="edify-stat-value">{streakValue}</div>
+        <div className="edify-stat-sub">дней</div>
+      </div>
+      <div className="edify-stat">
+        <div className="edify-stat-label">Средний балл</div>
+        <div className="edify-stat-value">
           <Stars avg={avgScore} />
         </div>
-      </Card>
+      </div>
     </div>
+  );
+}
+
+const MenuChevron = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ color: 'var(--text-muted)', flexShrink: 0 }} aria-hidden>
+    <polyline points="9 18 15 12 9 6" />
+  </svg>
+);
+
+function AccountMenuRow({ title, subtitle, onClick }: { title: string; subtitle: string; onClick: () => void }) {
+  return (
+    <button type="button" className="edify-menu-row" onClick={onClick}>
+      <div>
+        <div className="edify-menu-row__title">{title}</div>
+        <div className="edify-menu-row__sub">{subtitle}</div>
+      </div>
+      <MenuChevron />
+    </button>
   );
 }
 
@@ -612,40 +413,15 @@ function ActionsList() {
 
   return (
     <div>
-      <ListItem
-        title="Мои заказы"
-        subtitle="Покупки и статусы"
-        right="›"
-        onClick={() => navigate('/account/orders')}
-      />
-      {isAdmin && (
-        <ListItem
-          title="Admin: payments"
-          subtitle="Заказы / mark paid"
-          right="›"
-          onClick={() => navigate('/admin/payments')}
-        />
-      )}
-      {isAdmin && (
-        <ListItem
-          title="Admin: experts"
-          subtitle="Эксперты / роли / подписка"
-          right="›"
-          onClick={() => navigate('/admin/experts')}
-        />
-      )}
-      <ListItem
-        title="Поддержка"
-        subtitle="Помощь и обратная связь"
-        right="›"
-        onClick={openSupportLink}
-      />
-      <ListItem
-        title="Язык"
-        subtitle="Русский (RU)"
-        right="›"
-        onClick={() => navigate('/settings')}
-      />
+      <AccountMenuRow title="Мои заказы" subtitle="Покупки и статусы" onClick={() => navigate('/account/orders')} />
+      {isAdmin ? (
+        <AccountMenuRow title="Admin: payments" subtitle="Заказы / mark paid" onClick={() => navigate('/admin/payments')} />
+      ) : null}
+      {isAdmin ? (
+        <AccountMenuRow title="Admin: experts" subtitle="Эксперты / роли / подписка" onClick={() => navigate('/admin/experts')} />
+      ) : null}
+      <AccountMenuRow title="Поддержка" subtitle="Помощь и обратная связь" onClick={openSupportLink} />
+      <AccountMenuRow title="Язык" subtitle="Русский (RU)" onClick={() => navigate('/settings')} />
     </div>
   );
 }
@@ -764,19 +540,13 @@ export function AccountPage() {
 
   // Default state
   return (
-    <div style={{ padding: 'var(--sp-4)' }}>
+    <PageScreen>
       <ProfileCard user={user} isPro={expertState === 'active'} tgId={tgId} />
-
       <ExpertCtaBlock />
-
-      {/* Реферальная программа — только у эксперта с активной подпиской (приглашение других экспертов) */}
-      {expertState === 'active' && <ReferralCard />}
-
-      {/* Stats Row */}
+      {expertState === 'active' ? <ReferralCard /> : null}
       <StatsRow />
-
-      {/* Actions List */}
       <ActionsList />
-    </div>
+    </PageScreen>
   );
+
 }
