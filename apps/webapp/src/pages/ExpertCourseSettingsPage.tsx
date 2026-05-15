@@ -8,21 +8,7 @@ import { useTopics, useCourseTopics, useSetCourseTopics } from '../shared/querie
 import { ApiClientError } from '../shared/api/errors.js';
 import { PageScreen } from '../ui/edify/PageScreen.js';
 import { FormField, FormInput, FormSelect, FormTextarea } from '../ui/edify/FormField.js';
-import { ExpertListRow } from '../ui/edify/ExpertListRow.js';
-
-const ModulesIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
-    <polygon points="12 2 2 7 12 12 22 7 12 2" />
-    <polyline points="2 17 12 22 22 17" />
-    <polyline points="2 12 12 17 22 12" />
-  </svg>
-);
-
-const AccessIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-  </svg>
-);
+import { truncateMiddle } from '../ui/edify/contentMeta.js';
 
 function parseEstimatedCompletionHoursInput(
   raw: string,
@@ -42,7 +28,7 @@ function parseEstimatedCompletionHoursInput(
   return { ok: true, value: n };
 }
 
-export function ExpertCourseEditorPage() {
+export function ExpertCourseSettingsPage() {
   const toast = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -264,14 +250,24 @@ export function ExpertCourseEditorPage() {
   }
 
   const allTopics = [...(allTopicsData?.items ?? []), ...extraTopics];
+  const titleForCrumb = truncateMiddle(course.title, 28);
 
   return (
     <PageScreen>
       <div className="edify-brand" aria-hidden="true" />
 
       <div className="edify-content-header">
-        <div className="edify-eyebrow">EXPERT · EDIT</div>
-        <h1 className="edify-h edify-h--lg">Редактор курса</h1>
+        <div className="edify-eyebrow">EXPERT · SETTINGS</div>
+        <nav className="edify-breadcrumb" aria-label="Навигация">
+          <button
+            type="button"
+            className="edify-breadcrumb__link"
+            onClick={() => navigate(`/expert/${expertId}/courses/${courseId}`)}
+          >
+            {titleForCrumb}
+          </button>
+        </nav>
+        <h1 className="edify-h edify-h--lg">Настройки курса</h1>
         <p className="edify-subtitle" style={{ marginTop: 8 }}>
           Статус: {course.status} • {course.visibility}
         </p>
@@ -407,21 +403,6 @@ export function ExpertCourseEditorPage() {
         )}
       </div>
 
-      <nav className="edify-nav-panel" aria-label="Разделы курса">
-        <ExpertListRow
-          to={`/expert/${expertId}/courses/${courseId}/modules`}
-          title="Модули"
-          subtitle="Структура курса и уроки"
-          icon={<ModulesIcon />}
-        />
-        <ExpertListRow
-          to={`/expert/${expertId}/courses/${courseId}/access`}
-          title="Доступ"
-          subtitle="Инвайты и зачисления"
-          icon={<AccessIcon />}
-        />
-      </nav>
-
       <div className="edify-panel">
         <h2 className="edify-panel__title">Темы курса</h2>
         <p className="edify-panel__desc">Мультиселект из справочника тем платформы.</p>
@@ -517,7 +498,7 @@ export function ExpertCourseEditorPage() {
           Опасная зона
         </h2>
         <p className="edify-panel__desc">
-          Курс будет скрыт: студенты не увидят его в списке. Операция через API необратима для учеников.
+          Курс будет навсегда удален.
         </p>
         <button type="button" className="edify-btn-danger" disabled={deleting} onClick={() => void deleteCourse()}>
           {deleting ? 'Удаление…' : 'Удалить курс'}

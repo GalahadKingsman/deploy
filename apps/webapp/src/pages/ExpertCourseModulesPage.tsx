@@ -147,7 +147,7 @@ export function ExpertCourseModulesPage() {
       <div className="edify-content-header">
         <div className="edify-eyebrow">EDIT · STRUCTURE</div>
         <nav className="edify-breadcrumb" aria-label="Навигация">
-          <button type="button" className="edify-breadcrumb__link" onClick={() => navigate(`/expert/${expertId}/courses`)}>
+          <button type="button" className="edify-breadcrumb__link" onClick={() => navigate(`/expert/${expertId}/courses/${courseId}`)}>
             {courseCrumb}
           </button>
         </nav>

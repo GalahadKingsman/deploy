@@ -15,7 +15,8 @@ import { UiPreviewPage } from '../pages/UiPreviewPage.js';
 import { ExpertHomePage } from '../pages/ExpertHomePage.js';
 import { ExpertTeamPage } from '../pages/ExpertTeamPage.js';
 import { ExpertCoursesPage } from '../pages/ExpertCoursesPage.js';
-import { ExpertCourseEditorPage } from '../pages/ExpertCourseEditorPage.js';
+import { ExpertCourseHubPage } from '../pages/ExpertCourseHubPage.js';
+import { ExpertCourseSettingsPage } from '../pages/ExpertCourseSettingsPage.js';
 import { ExpertCourseAccessPage } from '../pages/ExpertCourseAccessPage.js';
 import { ExpertCourseModulesPage } from '../pages/ExpertCourseModulesPage.js';
 import { ExpertModuleLessonsPage } from '../pages/ExpertModuleLessonsPage.js';
@@ -53,7 +54,8 @@ export const router = createBrowserRouter([
       { path: 'expert', element: <ExpertHomePage /> },
       { path: 'expert/:expertId/team', element: <ExpertTeamPage /> },
       { path: 'expert/:expertId/courses', element: <ExpertCoursesPage /> },
-      { path: 'expert/:expertId/courses/:courseId', element: <ExpertCourseEditorPage /> },
+      { path: 'expert/:expertId/courses/:courseId', element: <ExpertCourseHubPage /> },
+      { path: 'expert/:expertId/courses/:courseId/settings', element: <ExpertCourseSettingsPage /> },
       { path: 'expert/:expertId/courses/:courseId/access', element: <ExpertCourseAccessPage /> },
       { path: 'expert/:expertId/courses/:courseId/modules', element: <ExpertCourseModulesPage /> },
       { path: 'expert/:expertId/modules/:moduleId/lessons', element: <ExpertModuleLessonsPage /> },
