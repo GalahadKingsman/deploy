@@ -97,8 +97,11 @@ export function ExpertCourseAccessPage() {
       // fallback
     }
     try {
-      const tg = (window as { Telegram?: { WebApp?: { showPopup?: (o: { title: string; message: string }) => void } } } })
-        .Telegram?.WebApp;
+      const tg = (
+        window as unknown as {
+          Telegram?: { WebApp?: { showPopup?: (o: { title: string; message: string }) => void } };
+        }
+      ).Telegram?.WebApp;
       tg?.showPopup?.({
         title: 'Ссылка создана',
         message: 'Не удалось скопировать автоматически. Нажмите и удерживайте ссылку, чтобы скопировать.',
