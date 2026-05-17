@@ -1,16 +1,9 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  Button,
-} from '../../shared/ui/index.js';
 import { isTelegramMiniApp } from '../../shared/auth/telegram.js';
 import type { ExpertCtaState } from './expertCtaState.js';
 import type { ContractsV1 } from '@tracked/shared';
+import { MiniAppRowAction } from '../../ui/kit/MiniAppRowAction.js';
 
 export interface BecomeExpertCardProps {
   state: ExpertCtaState;
@@ -30,6 +23,20 @@ function formatPeriodEnd(iso: string | null): string {
   }
 }
 
+const ExpertLayersIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+    <path d="M3 7l9-4 9 4-9 4-9-4Z" />
+    <path d="M21 10l-9 4-9-4" opacity="0.7" />
+    <path d="M21 14l-9 4-9-4" opacity="0.4" />
+  </svg>
+);
+
+const ExpiredIcon = () => (
+  <span style={{ fontWeight: 700, fontSize: 16, lineHeight: 1 }} aria-hidden>
+    !
+  </span>
+);
+
 export function BecomeExpertCard({ state, subscription }: BecomeExpertCardProps) {
   const navigate = useNavigate();
 
@@ -38,146 +45,31 @@ export function BecomeExpertCard({ state, subscription }: BecomeExpertCardProps)
 
   if (state === 'none') {
     return (
-      <Card
-        style={{
-          marginBottom: 'var(--sp-4)',
-          padding: 'var(--sp-4)',
-          position: 'relative',
-          overflow: 'hidden',
-          borderRadius: 'var(--r-xl)',
-          border: '1px solid rgba(255,255,255,0.10)',
-          background:
-            'radial-gradient(120% 120% at 0% 0%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 55%, rgba(0,0,0,0) 100%)',
-        }}
-      >
-        <div style={{ display: 'flex', gap: 'var(--sp-3)', alignItems: 'flex-start' }}>
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 12,
-              background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              overflow: 'hidden',
-            }}
-            aria-hidden
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 7l9-4 9 4-9 4-9-4Z" />
-              <path d="M21 10l-9 4-9-4" opacity="0.7" />
-              <path d="M21 14l-9 4-9-4" opacity="0.4" />
-            </svg>
-          </div>
-
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <div
-                style={{
-                  fontSize: 'var(--text-md)',
-                  fontWeight: 'var(--font-weight-semibold)',
-                  color: 'var(--fg)',
-                }}
-              >
-                Стать экспертом
-              </div>
-              <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 18, lineHeight: 1 }} aria-hidden>
-                ›
-              </div>
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)', marginTop: 2 }}>
-              Создавайте курсы и зарабатывайте
-            </div>
-          </div>
-        </div>
-
-        <div style={{ marginTop: 'var(--sp-3)' }}>
-          <Button
-            variant="primary"
-            onClick={() => navigate('/creator/onboarding')}
-            style={{
-              width: '100%',
-              borderRadius: 12,
-              height: 44,
-              fontWeight: 'var(--font-weight-semibold)',
-            }}
-          >
-            Перейти в режим эксперта
-          </Button>
-        </div>
-      </Card>
+      <div style={{ marginBottom: 'var(--sp-4)' }}>
+        <MiniAppRowAction
+          title="Стать экспертом"
+          subtitle="Создавайте курсы и зарабатывайте"
+          onClick={() => navigate('/creator/onboarding')}
+          icon={<ExpertLayersIcon />}
+        />
+      </div>
     );
   }
 
   if (state === 'expired') {
     return (
-      <Card
-        style={{
-          marginBottom: 'var(--sp-4)',
-          padding: 'var(--sp-4)',
-          position: 'relative',
-          overflow: 'hidden',
-          borderRadius: 'var(--r-xl)',
-          border: '1px solid rgba(255,255,255,0.10)',
-          background:
-            'radial-gradient(120% 120% at 0% 0%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 55%, rgba(0,0,0,0) 100%)',
-        }}
-      >
-        <div style={{ display: 'flex', gap: 'var(--sp-3)', alignItems: 'flex-start' }}>
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 12,
-              background: 'rgba(239,83,80,0.10)',
-              border: '1px solid rgba(239,83,80,0.22)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              overflow: 'hidden',
-              color: 'rgba(255,255,255,0.9)',
-              fontWeight: 700,
-            }}
-            aria-hidden
-          >
-            !
-          </div>
-
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                fontSize: 'var(--text-md)',
-                fontWeight: 'var(--font-weight-semibold)',
-                color: 'var(--fg)',
-              }}
-            >
-              Подписка истекла
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)', marginTop: 2 }}>
-              Доступ к эксперт‑функциям ограничен{periodEndFormatted ? ` · до ${periodEndFormatted}` : ''}.
-            </div>
-          </div>
-        </div>
-
-        <div style={{ marginTop: 'var(--sp-3)' }}>
-          <Button
-            variant="primary"
-            onClick={() => navigate('/creator/onboarding')}
-            style={{
-              width: '100%',
-              borderRadius: 12,
-              height: 44,
-              fontWeight: 'var(--font-weight-semibold)',
-            }}
-          >
-            Продлить (0₽)
-          </Button>
-        </div>
-      </Card>
+      <div style={{ marginBottom: 'var(--sp-4)' }}>
+        <MiniAppRowAction
+          title="Подписка истекла"
+          subtitle={
+            periodEndFormatted
+              ? `Доступ ограничен · до ${periodEndFormatted}`
+              : 'Доступ к эксперт‑функциям ограничен'
+          }
+          onClick={() => navigate('/creator/onboarding')}
+          icon={<ExpiredIcon />}
+        />
+      </div>
     );
   }
 
@@ -223,4 +115,3 @@ export function BecomeExpertCard({ state, subscription }: BecomeExpertCardProps)
     </div>
   );
 }
-

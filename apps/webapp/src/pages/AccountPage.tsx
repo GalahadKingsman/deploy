@@ -452,13 +452,7 @@ function ExpertCtaBlock() {
   const state = forcedState ?? deriveExpertCtaState(subscription);
 
   if (isLoading && forcedState == null) {
-    return (
-      <Card style={{ marginBottom: 'var(--sp-4)', padding: 'var(--sp-4)' }}>
-        <Skeleton width="40%" height="20px" style={{ marginBottom: 'var(--sp-2)' }} />
-        <Skeleton width="100%" height="16px" style={{ marginBottom: 'var(--sp-3)' }} />
-        <Skeleton width="100%" height="40px" radius="md" />
-      </Card>
-    );
+    return <Skeleton width="100%" height={60} radius="lg" style={{ marginBottom: 'var(--sp-4)' }} />;
   }
 
   return <BecomeExpertCard state={state} subscription={subscription} />;
