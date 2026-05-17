@@ -37,6 +37,10 @@ interface TelegramWebApp {
   isExpanded?: boolean;
   viewportHeight?: number;
   viewportStableHeight?: number;
+  /** Bot API 8.0+ — вырез/статус-бар устройства */
+  safeAreaInset?: { top?: number; bottom?: number; left?: number; right?: number };
+  /** Bot API 8.0+ — зона под кнопку «Закрыть» и прочий UI Telegram */
+  contentSafeAreaInset?: { top?: number; bottom?: number; left?: number; right?: number };
   headerColor?: string;
   backgroundColor?: string;
   BackButton?: {
@@ -91,6 +95,68 @@ export function isTelegramMiniApp(): boolean {
   return Boolean(window.Telegram?.WebApp);
 }
 
+type TgInset = { top: number; bottom: number; left: number; right: number };
+
+function readTelegramInset(raw: unknown): TgInset {
+  const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const n = (k: string) => (typeof o[k] === 'number' && Number.isFinite(o[k]) ? Math.max(0, o[k] as number) : 0);
+  return { top: n('top'), bottom: n('bottom'), left: n('left'), right: n('right') };
+}
+
+/**
+ * Пробрасывает safeAreaInset + contentSafeAreaInset Telegram в CSS-переменные.
+ * Без лишних блоков: отступ = ровно зона, которую Telegram резервирует под «Закрыть» / notch.
+ */
+export function applyTelegramSafeAreaCssVars(): void {
+  if (typeof document === 'undefined') return;
+  const tg = window.Telegram?.WebApp;
+  const root = document.documentElement;
+  if (!tg) {
+    root.style.removeProperty('--tg-safe-top');
+    root.style.removeProperty('--tg-safe-bottom');
+    root.style.removeProperty('--tg-safe-left');
+    root.style.removeProperty('--tg-safe-right');
+    root.style.removeProperty('--tg-content-top');
+    root.style.removeProperty('--tg-content-bottom');
+    root.style.removeProperty('--tg-content-left');
+    root.style.removeProperty('--tg-content-right');
+    return;
+  }
+  const safe = readTelegramInset(tg.safeAreaInset);
+  const content = readTelegramInset(tg.contentSafeAreaInset);
+  root.style.setProperty('--tg-safe-top', `${safe.top}px`);
+  root.style.setProperty('--tg-safe-bottom', `${safe.bottom}px`);
+  root.style.setProperty('--tg-safe-left', `${safe.left}px`);
+  root.style.setProperty('--tg-safe-right', `${safe.right}px`);
+  root.style.setProperty('--tg-content-top', `${content.top}px`);
+  root.style.setProperty('--tg-content-bottom', `${content.bottom}px`);
+  root.style.setProperty('--tg-content-left', `${content.left}px`);
+  root.style.setProperty('--tg-content-right', `${content.right}px`);
+}
+
+let safeAreaListenersBound = false;
+
+function bindTelegramSafeAreaListeners(tg: TelegramWebApp): void {
+  if (safeAreaListenersBound) return;
+  safeAreaListenersBound = true;
+  const apply = () => applyTelegramSafeAreaCssVars();
+  try {
+    tg.onEvent?.('safeAreaChanged', apply);
+    tg.onEvent?.('contentSafeAreaChanged', apply);
+    tg.onEvent?.('fullscreenChanged', apply);
+    tg.onEvent?.('viewportChanged', apply);
+  } catch {
+    /* ignore */
+  }
+}
+
+function scheduleSafeAreaRefresh(): void {
+  applyTelegramSafeAreaCssVars();
+  requestAnimationFrame(() => applyTelegramSafeAreaCssVars());
+  window.setTimeout(() => applyTelegramSafeAreaCssVars(), 120);
+  window.setTimeout(() => applyTelegramSafeAreaCssVars(), 400);
+}
+
 /**
  * Развернуть Mini App на максимальную высоту (убирает «половинный» bottom sheet при открытии из Menu Button).
  * BotFather задаёт только URL кнопки; режим окна — через Web App API.
@@ -116,6 +182,8 @@ export function applyTelegramWebAppLayout(): void {
   } catch {
     /* старые клиенты без fullscreen API */
   }
+  bindTelegramSafeAreaListeners(tg);
+  scheduleSafeAreaRefresh();
 }
 
 /** Open external HTTPS URL (payment redirect). Uses `Telegram.WebApp.openLink` inside Mini App when available. */

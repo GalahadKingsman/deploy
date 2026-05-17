@@ -79,8 +79,25 @@
   --glass-bg: rgba(17, 17, 20, 0.88);
   --glass-blur: blur(20px);
 
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-left: env(safe-area-inset-left, 0px);
-  --safe-right: env(safe-area-inset-right, 0px);
+  /* env() = Safari; --tg-* = Telegram WebApp (contentSafeArea под «Закрыть» в fullscreen) */
+  --tg-safe-top: 0px;
+  --tg-safe-bottom: 0px;
+  --tg-safe-left: 0px;
+  --tg-safe-right: 0px;
+  --tg-content-top: 0px;
+  --tg-content-bottom: 0px;
+  --tg-content-left: 0px;
+  --tg-content-right: 0px;
+  --safe-top: calc(
+    max(env(safe-area-inset-top, 0px), var(--tg-safe-top)) + var(--tg-content-top)
+  );
+  --safe-bottom: calc(
+    max(env(safe-area-inset-bottom, 0px), var(--tg-safe-bottom)) + var(--tg-content-bottom)
+  );
+  --safe-left: calc(
+    max(env(safe-area-inset-left, 0px), var(--tg-safe-left)) + var(--tg-content-left)
+  );
+  --safe-right: calc(
+    max(env(safe-area-inset-right, 0px), var(--tg-safe-right)) + var(--tg-content-right)
+  );
 }

@@ -3,7 +3,7 @@
  */
 
 .edify-screen {
-  padding: 0 var(--sp-4) var(--sp-6);
+  padding: 0 max(var(--sp-4), var(--safe-right)) var(--sp-6) max(var(--sp-4), var(--safe-left));
   min-height: 100%;
 }
 
