@@ -17,7 +17,12 @@ if (parsed.protocol !== 'https:') {
 }
 const WEBAPP_URL = trimmed.replace(/\/+$/, '');
 
-const SUPPORT_GROUP_ID_RAW = (env.TELEGRAM_SUPPORT_GROUP_ID ?? '').trim();
+/** .env иногда с кавычками; compose может не подставить отрицательные id — тогда сработает env_file. */
+function normalizeSupportGroupIdRaw(raw: string | undefined): string {
+  return (raw ?? '').trim().replace(/^['"]|['"]$/g, '');
+}
+
+const SUPPORT_GROUP_ID_RAW = normalizeSupportGroupIdRaw(env.TELEGRAM_SUPPORT_GROUP_ID);
 const SUPPORT_GROUP_ID = SUPPORT_GROUP_ID_RAW ? Number(SUPPORT_GROUP_ID_RAW) : Number.NaN;
 const supportEnabled = Number.isFinite(SUPPORT_GROUP_ID) && SUPPORT_GROUP_ID !== 0;
 if (!supportEnabled && SUPPORT_GROUP_ID_RAW) {

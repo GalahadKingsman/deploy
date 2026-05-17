@@ -1,9 +1,10 @@
 version: '3.9'
 
-# Локальная инфраструктура: Postgres, Redis, MinIO. API обычно запускают через pnpm (читает корневой .env).
-# Полный стек с API и пробросом PAYMENTS_* / TINKOFF_* в контейнер: корневой docker-compose.yml или
-#   docker compose -f docker-compose.prod.yml --env-file .env up -d
-# (те же переменные в services.api.environment — см. docker-compose.prod.yml).
+# Локальная инфраструктура: Postgres, Redis, MinIO. API/bot обычно через pnpm (корневой .env).
+# Полный стек (api + bot + TELEGRAM_SUPPORT_GROUP_ID из .env через env_file):
+#   docker compose --env-file .env up -d --build
+# (корневой docker-compose.yml → docker-compose.prod.yml). Только инфра:
+#   docker compose -f infra/docker-compose.yml --env-file .env up -d
 
 services:
   postgres:
