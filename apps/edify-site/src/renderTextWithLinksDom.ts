@@ -64,3 +64,13 @@ export function setRichTextWithLinks(el: HTMLElement | null, text: string): void
     el.appendChild(document.createTextNode(text.slice(last)));
   }
 }
+
+/** Plain text with autolinked URLs; empty → placeholder (e.g. «—»). */
+export function setRichTextWithLinksOrPlaceholder(
+  el: HTMLElement | null,
+  text: string | null | undefined,
+  placeholder = '—',
+): void {
+  const raw = (text ?? '').trim();
+  setRichTextWithLinks(el, raw || placeholder);
+}

@@ -15,7 +15,7 @@ import { hydrateLandingExpertCourses } from './platform/marketingExpertCoursesPr
 import { hydrateLandingStudentScreens } from './platform/marketingStudentScreensPreview.js';
 import { normalizeRutubeEmbedUrl } from './util/rutubeEmbed.js';
 import { downloadAuthenticatedFile, previewAuthenticatedFile } from './downloadAuthenticatedFile.js';
-import { setRichTextWithLinks } from './renderTextWithLinksDom.js';
+import { setRichTextWithLinks, setRichTextWithLinksOrPlaceholder } from './renderTextWithLinksDom.js';
 import { applyUserAvatarToElement } from './userAvatarEl.js';
 import { resolveInviteCopyUrl } from './inviteLinks.js';
 import { renderExpertCourseInvitesPanel } from './platform/inviteAccessUi.js';
@@ -3206,7 +3206,7 @@ if (platformMount) {
             wrap.className = 's-att-q';
             const pr = document.createElement('div');
             pr.className = 's-att-q__prompt';
-            pr.textContent = q.prompt;
+            setRichTextWithLinks(pr, q.prompt);
             const opts = document.createElement('div');
             opts.className = 's-att-q__opts';
             const sorted = [...q.options].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
@@ -3215,7 +3215,7 @@ if (platformMount) {
               row.className = 's-att-opt';
               if (o.id === q.correctOptionId) row.classList.add('s-att-opt--correct');
               else if (q.chosenOptionId && o.id === q.chosenOptionId) row.classList.add('s-att-opt--wrong');
-              row.textContent = o.label;
+              setRichTextWithLinks(row, o.label);
               opts.appendChild(row);
             }
             wrap.append(pr, opts);
@@ -3259,7 +3259,7 @@ if (platformMount) {
           wrap.className = 's-att-q';
           const pr = document.createElement('div');
           pr.className = 's-att-q__prompt';
-          pr.textContent = q.prompt;
+          setRichTextWithLinks(pr, q.prompt);
           const opts = document.createElement('div');
           opts.className = 's-att-q__opts';
           const gname = `att-${attestationId}-${q.id}`;
@@ -3275,7 +3275,7 @@ if (platformMount) {
               syncSubmit();
             });
             const span = document.createElement('span');
-            span.textContent = o.label;
+            setRichTextWithLinks(span, o.label);
             lab.append(inp, span);
             opts.appendChild(lab);
           }
@@ -5637,8 +5637,8 @@ if (platformMount) {
       const ta = root.querySelector('[data-ep-e-homework-comment]') as HTMLTextAreaElement | null;
       if (nameEl) nameEl.textContent = '—';
       if (metaEl) metaEl.textContent = '—';
-      if (promptEl) promptEl.textContent = text;
-      if (ansEl) ansEl.textContent = '';
+      if (promptEl) setRichTextWithLinksOrPlaceholder(promptEl, text);
+      if (ansEl) setRichTextWithLinks(ansEl, '');
       if (st) {
         st.className = 'tag';
         st.textContent = '—';
@@ -5831,12 +5831,11 @@ if (platformMount) {
         }
         if (promptEl) {
           const p = (d.assignmentPromptMarkdown ?? '').trim();
-          promptEl.textContent = p || 'Формулировка задания не указана.';
+          setRichTextWithLinksOrPlaceholder(promptEl, p, 'Формулировка задания не указана.');
         }
         if (ansEl) {
-          ansEl.innerHTML = '';
           const txt = (d.submission.text ?? '').trim();
-          ansEl.textContent = txt || '—';
+          setRichTextWithLinksOrPlaceholder(ansEl, txt);
         }
 
         if (av) {
@@ -8152,11 +8151,11 @@ if (platformMount) {
       if (!builderSelectedLessonId) {
         if (empty) empty.style.display = '';
         if (titleEl) titleEl.textContent = 'Урок';
-        if (bodyEl) bodyEl.textContent = '';
+        if (bodyEl) setRichTextWithLinks(bodyEl, '');
         if (videoCard) videoCard.style.display = 'none';
         if (sliderCard) sliderCard.style.display = 'none';
         if (sliderHost) sliderHost.replaceChildren();
-        if (hwBody) hwBody.textContent = '';
+        if (hwBody) setRichTextWithLinks(hwBody, '');
         if (hwEmpty) hwEmpty.style.display = '';
         if (hwTag) hwTag.textContent = 'не заполнено';
         setPreviewFiles(root, []);
@@ -8168,7 +8167,7 @@ if (platformMount) {
 
       const title = (titleInp?.value ?? '').trim() || 'Урок';
       if (titleEl) titleEl.textContent = title;
-      if (bodyEl) bodyEl.textContent = (lessonBodyTa?.value ?? '').trim() || '—';
+      setRichTextWithLinksOrPlaceholder(bodyEl, lessonBodyTa?.value ?? '');
 
       const ru = (rutubeInp?.value ?? '').trim();
       const embed = ru ? normalizeRutubeEmbedUrl(ru) : null;
@@ -8245,11 +8244,11 @@ if (platformMount) {
       const hwText = (hwTa?.value ?? '').trim();
       if (!hwText) {
         if (hwEmpty) hwEmpty.style.display = '';
-        if (hwBody) hwBody.textContent = '';
+        if (hwBody) setRichTextWithLinks(hwBody, '');
         if (hwTag) hwTag.textContent = 'не заполнено';
       } else {
         if (hwEmpty) hwEmpty.style.display = 'none';
-        if (hwBody) hwBody.textContent = hwText;
+        if (hwBody) setRichTextWithLinks(hwBody, hwText);
         if (hwTag) hwTag.textContent = 'заполнено';
       }
 
