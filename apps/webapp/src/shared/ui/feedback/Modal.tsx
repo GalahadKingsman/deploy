@@ -47,7 +47,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
         style={{
           background: 'var(--card-grad)',
           backgroundColor: 'var(--card)',
-          border: '1px solid rgba(255,255,255,0.12)',
+          border: '1px solid var(--modal-border)',
           borderRadius: 'var(--r-lg)',
           boxShadow: 'var(--shadow-soft)',
           width: '100%',
@@ -63,7 +63,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
           <div
             style={{
               padding: 'var(--sp-4)',
-              borderBottom: '1px solid rgba(255,255,255,0.10)',
+              borderBottom: '1px solid var(--modal-header-border)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -98,7 +98,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
         style={{
           position: 'fixed',
           inset: 0,
-          background: 'radial-gradient(120% 80% at 50% 10%, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.68) 70%, rgba(0,0,0,0.78) 100%)',
+          background: 'var(--modal-overlay)',
           zIndex: -1,
         }}
       />

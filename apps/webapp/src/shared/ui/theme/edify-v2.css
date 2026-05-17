@@ -253,7 +253,7 @@
   padding: 14px 16px;
   border-radius: var(--r-lg);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 15px;
   font-weight: 600;
   text-decoration: none;
@@ -413,7 +413,7 @@
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #2a3440 0%, #15151a 100%);
+  background: var(--avatar-fallback);
   border: 1px solid var(--hairline);
   flex-shrink: 0;
   overflow: hidden;

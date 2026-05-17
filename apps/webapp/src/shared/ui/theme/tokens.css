@@ -1,28 +1,7 @@
+/* Shared layout tokens (theme-independent) */
 :root {
-  /* Layout */
-  --app-bg-1: #000000;
-  --app-bg-2: #050507;
-  --surface: #000000;
-  --surface-1: #111114;
-  --surface-2: #15151a;
-
-  --chrome-bg: rgba(10, 10, 12, 0.92);
-  --chrome-border: rgba(255, 255, 255, 0.08);
   --topbar-h: 56px;
   --tabs-h: 72px;
-
-  /* Base — accent from product screenshot (голубой CTA / прогресс) */
-  --bg: #000000;
-  --fg: #ffffff;
-  --muted-fg: #8a8a92;
-  --text-secondary: #8a8a92;
-  --text-muted: #5a5a62;
-  --text-dim: #3d3d44;
-  --card: #1c1c1e;
-  --card-2: #15151a;
-  --border: rgba(255, 255, 255, 0.08);
-  --hairline: #1f1f25;
-  --hairline-soft: #18181d;
 
   --accent: #5eb4f5;
   --accent-2: #7cc8fa;
@@ -34,15 +13,8 @@
   --success: #3ddc97;
   --warning: #ffb84d;
 
-  --card-grad: radial-gradient(
-    120% 120% at 0% 0%,
-    rgba(94, 180, 245, 0.08) 0%,
-    rgba(255, 255, 255, 0.02) 55%,
-    rgba(0, 0, 0, 0) 100%
-  );
   --btn-grad: linear-gradient(180deg, #7cc8fa 0%, #5eb4f5 100%);
-  --ring: 0 0 0 3px rgba(94, 180, 245, 0.22);
-  --ring-danger: 0 0 0 3px rgba(239, 83, 80, 0.22);
+  --on-accent: #ffffff;
 
   --r-xs: 4px;
   --r-sm: 6px;
@@ -72,14 +44,6 @@
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
 
-  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.2);
-  --shadow-2: 0 4px 16px rgba(0, 0, 0, 0.3);
-  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.35);
-
-  --glass-bg: rgba(17, 17, 20, 0.88);
-  --glass-blur: blur(20px);
-
-  /* env() = Safari; --tg-* = Telegram WebApp (contentSafeArea под «Закрыть» в fullscreen) */
   --tg-safe-top: 0px;
   --tg-safe-bottom: 0px;
   --tg-safe-left: 0px;
@@ -100,4 +64,173 @@
   --safe-right: calc(
     max(env(safe-area-inset-right, 0px), var(--tg-safe-right)) + var(--tg-content-right)
   );
+}
+
+/* Dark (default) */
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --app-bg-1: #000000;
+  --app-bg-2: #050507;
+  --app-gradient-a: #0d1218;
+  --app-gradient-b: #0a0d14;
+  --surface: #000000;
+  --surface-1: #111114;
+  --surface-2: #15151a;
+
+  --chrome-bg: rgba(10, 10, 12, 0.92);
+  --chrome-border: rgba(255, 255, 255, 0.08);
+
+  --bg: #000000;
+  --fg: #ffffff;
+  --muted-fg: #8a8a92;
+  --text-secondary: #8a8a92;
+  --text-muted: #5a5a62;
+  --text-dim: #3d3d44;
+  --card: #1c1c1e;
+  --card-2: #15151a;
+  --border: rgba(255, 255, 255, 0.08);
+  --hairline: #1f1f25;
+  --hairline-soft: #18181d;
+
+  --elevated-bg: rgba(255, 255, 255, 0.06);
+  --elevated-border: rgba(255, 255, 255, 0.12);
+  --chevron-muted: rgba(255, 255, 255, 0.45);
+  --icon-muted: rgba(255, 255, 255, 0.85);
+  --stars-inactive: rgba(255, 255, 255, 0.22);
+
+  --card-grad: radial-gradient(
+    120% 120% at 0% 0%,
+    rgba(94, 180, 245, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 55%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  --ring: 0 0 0 3px rgba(94, 180, 245, 0.22);
+  --ring-danger: 0 0 0 3px rgba(239, 83, 80, 0.22);
+
+  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-2: 0 4px 16px rgba(0, 0, 0, 0.3);
+  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.35);
+
+  --glass-bg: rgba(17, 17, 20, 0.88);
+  --glass-blur: blur(20px);
+
+  --skeleton-from: rgba(255, 255, 255, 0.04);
+  --skeleton-mid: rgba(255, 255, 255, 0.1);
+  --modal-overlay: rgba(0, 0, 0, 0.78);
+  --modal-border: rgba(255, 255, 255, 0.12);
+  --modal-header-border: rgba(255, 255, 255, 0.1);
+
+  --avatar-fallback: linear-gradient(135deg, #2a3440 0%, #15151a 100%);
+}
+
+/* Light */
+[data-theme='light'] {
+  color-scheme: light;
+
+  --app-bg-1: #f4f6f9;
+  --app-bg-2: #eef1f6;
+  --app-gradient-a: #dce8f5;
+  --app-gradient-b: #e8eef8;
+  --surface: #f4f6f9;
+  --surface-1: #ffffff;
+  --surface-2: #f0f2f6;
+
+  --chrome-bg: rgba(255, 255, 255, 0.92);
+  --chrome-border: rgba(0, 0, 0, 0.08);
+
+  --bg: #f4f6f9;
+  --fg: #12131a;
+  --muted-fg: #5c6070;
+  --text-secondary: #5c6070;
+  --text-muted: #8a8f9c;
+  --text-dim: #a8adb8;
+  --card: #ffffff;
+  --card-2: #f0f2f6;
+  --border: rgba(0, 0, 0, 0.08);
+  --hairline: #e4e7ee;
+  --hairline-soft: #eceff4;
+
+  --elevated-bg: rgba(0, 0, 0, 0.04);
+  --elevated-border: rgba(0, 0, 0, 0.1);
+  --chevron-muted: rgba(0, 0, 0, 0.35);
+  --icon-muted: rgba(0, 0, 0, 0.65);
+  --stars-inactive: rgba(0, 0, 0, 0.15);
+
+  --accent-soft: rgba(94, 180, 245, 0.18);
+  --accent-glow: rgba(94, 180, 245, 0.25);
+  --accent-border: rgba(94, 180, 245, 0.35);
+
+  --card-grad: radial-gradient(
+    120% 120% at 0% 0%,
+    rgba(94, 180, 245, 0.12) 0%,
+    rgba(255, 255, 255, 0.9) 55%,
+    rgba(244, 246, 249, 0) 100%
+  );
+  --ring: 0 0 0 3px rgba(94, 180, 245, 0.28);
+  --ring-danger: 0 0 0 3px rgba(239, 83, 80, 0.2);
+
+  --shadow-1: 0 2px 8px rgba(15, 23, 42, 0.06);
+  --shadow-2: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.1);
+
+  --glass-bg: rgba(255, 255, 255, 0.88);
+  --glass-blur: blur(20px);
+
+  --skeleton-from: rgba(0, 0, 0, 0.04);
+  --skeleton-mid: rgba(0, 0, 0, 0.08);
+  --modal-overlay: rgba(15, 23, 42, 0.45);
+  --modal-border: rgba(0, 0, 0, 0.1);
+  --modal-header-border: rgba(0, 0, 0, 0.08);
+
+  --avatar-fallback: linear-gradient(135deg, #c5d4e8 0%, #eef1f6 100%);
+}
+
+/* Theme toggle (Account) */
+.edify-theme-settings {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--hairline);
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+.edify-theme-settings__text {
+  min-width: 0;
+  text-align: left;
+}
+.edify-theme-segment {
+  display: flex;
+  flex-shrink: 0;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+}
+.edify-theme-segment__btn {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.edify-theme-segment__btn--active {
+  background: var(--card);
+  color: var(--fg);
+  box-shadow: var(--shadow-1);
+}
+.edify-theme-segment__btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }

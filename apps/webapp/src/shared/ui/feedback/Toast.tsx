@@ -57,7 +57,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       background: 'var(--card-grad)',
       backgroundColor: 'var(--card)',
       color: 'var(--fg)',
-      border: '1px solid rgba(255,255,255,0.12)',
+      border: '1px solid var(--modal-border)',
     },
   };
 

@@ -1,3 +1,7 @@
+import { applyThemeToDocument, readStoredTheme } from './shared/theme/theme.js';
+
+applyThemeToDocument(readStoredTheme());
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App.js';

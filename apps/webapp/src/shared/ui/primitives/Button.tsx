@@ -58,24 +58,24 @@ export function Button({
   const variantStyles: Record<'primary' | 'secondary' | 'ghost' | 'danger', React.CSSProperties> = {
     primary: {
       background: 'var(--accent)',
-      color: '#fff',
+      color: 'var(--on-accent)',
       boxShadow: '0 8px 24px var(--accent-glow)',
     },
     secondary: {
-      backgroundColor: 'rgba(255,255,255,0.06)',
+      backgroundColor: 'var(--elevated-bg)',
       color: 'var(--fg)',
-      border: '1px solid rgba(255,255,255,0.12)',
+      border: '1px solid var(--elevated-border)',
       backdropFilter: 'var(--glass-blur)',
       WebkitBackdropFilter: 'var(--glass-blur)',
     },
     ghost: {
       backgroundColor: 'transparent',
       color: 'var(--fg)',
-      border: '1px solid rgba(255,255,255,0.00)',
+      border: '1px solid transparent',
     },
     danger: {
       backgroundColor: 'var(--danger)',
-      color: '#fff',
+      color: 'var(--on-accent)',
     },
   };
 

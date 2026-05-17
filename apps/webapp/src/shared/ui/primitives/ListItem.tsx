@@ -28,8 +28,8 @@ export function ListItem({
     alignItems: 'center',
     gap: 'var(--sp-3)',
     padding: 'var(--sp-3) var(--sp-4)',
-    background: 'linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.04) 100%)',
-    border: '1px solid rgba(255,255,255,0.10)',
+    background: 'linear-gradient(180deg, var(--elevated-bg) 0%, var(--surface-2) 100%)',
+    border: '1px solid var(--elevated-border)',
     borderRadius: 'var(--r-md)',
     marginBottom: 'var(--sp-2)',
     cursor: onClick ? 'pointer' : 'default',
@@ -74,11 +74,11 @@ export function ListItem({
       {onClick && (
         <style>{`
           .list-item-interactive:hover {
-            background-color: rgba(255,255,255,0.06) !important;
-            border-color: rgba(124,207,230,0.22) !important;
+            background-color: var(--elevated-bg) !important;
+            border-color: var(--accent-border) !important;
           }
           .list-item-interactive:active {
-            background-color: rgba(255,255,255,0.06) !important;
+            background-color: var(--elevated-bg) !important;
             transform: translateY(1px);
             opacity: 0.9;
           }

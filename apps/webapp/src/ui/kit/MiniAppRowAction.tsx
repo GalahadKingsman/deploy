@@ -33,8 +33,8 @@ const iconShellStyle: React.CSSProperties = {
   width: 40,
   height: 40,
   borderRadius: 12,
-  background: 'rgba(255,255,255,0.06)',
-  border: '1px solid rgba(255,255,255,0.08)',
+  background: 'var(--elevated-bg)',
+  border: '1px solid var(--border)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -45,13 +45,13 @@ const iconShellStyle: React.CSSProperties = {
 function Trailing({ kind }: { kind: 'chevron' | 'plus' }) {
   if (kind === 'plus') {
     return (
-      <span style={{ fontSize: 22, fontWeight: 300, color: 'rgba(255,255,255,0.85)', flexShrink: 0 }} aria-hidden>
+      <span style={{ fontSize: 22, fontWeight: 300, color: 'var(--icon-muted)', flexShrink: 0 }} aria-hidden>
         +
       </span>
     );
   }
   return (
-    <span style={{ fontSize: 20, color: 'rgba(255,255,255,0.45)', flexShrink: 0 }} aria-hidden>
+    <span style={{ fontSize: 20, color: 'var(--chevron-muted)', flexShrink: 0 }} aria-hidden>
       ›
     </span>
   );

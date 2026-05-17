@@ -43,6 +43,8 @@ interface TelegramWebApp {
   contentSafeAreaInset?: { top?: number; bottom?: number; left?: number; right?: number };
   headerColor?: string;
   backgroundColor?: string;
+  setHeaderColor?: (color: string) => void;
+  setBackgroundColor?: (color: string) => void;
   BackButton?: {
     isVisible?: boolean;
     show?: () => void;

@@ -12,7 +12,7 @@ export function Card({ children, className, style, ...props }: CardProps) {
       style={{
         background: 'var(--card-grad)',
         backgroundColor: 'var(--card)',
-        border: '1px solid rgba(255,255,255,0.10)',
+        border: '1px solid var(--elevated-border)',
         borderRadius: 'var(--r-lg)',
         boxShadow: 'var(--shadow-soft)',
         position: 'relative',

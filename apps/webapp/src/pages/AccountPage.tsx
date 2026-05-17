@@ -19,6 +19,7 @@ import { getTelegramDisplayUser, isTelegramMiniApp, type TelegramDisplayUser } f
 import { getAvatarImageSrc } from '../shared/avatar/avatarImageUrl.js';
 import type { ContractsV1 } from '@tracked/shared';
 import { MiniAppRowAction } from '../ui/kit/MiniAppRowAction.js';
+import { ThemeSettingsRow } from '../features/account/ThemeSettingsRow.js';
 import { PageScreen } from '../ui/edify/PageScreen.js';
 
 type DisplayUser = ContractsV1.UserV1 | TelegramDisplayUser | null;
@@ -357,7 +358,7 @@ function StatsRow() {
         }}
         aria-label={`Рейтинг ${v.toFixed(2)} из 5`}
       >
-        <span style={{ color: 'rgba(255,255,255,0.22)' }}>★★★★★</span>
+        <span style={{ color: 'var(--stars-inactive)' }}>★★★★★</span>
         <span
           style={{
             position: 'absolute',
@@ -434,6 +435,7 @@ function ActionsList() {
         <AccountMenuRow title="Admin: experts" subtitle="Эксперты / роли / подписка" onClick={() => navigate('/admin/experts')} />
       ) : null}
       <AccountMenuRow title="Поддержка" subtitle="Помощь и обратная связь" onClick={openSupportLink} />
+      <ThemeSettingsRow />
       <AccountMenuRow title="Язык" subtitle="Русский (RU)" onClick={() => navigate('/settings')} />
     </div>
   );
