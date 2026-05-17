@@ -28,6 +28,9 @@ export function applyUserAvatarToElement(
   el.classList.remove(INITIALS_CLASS);
   const img = document.createElement('img');
   img.alt = '';
+  if (src.startsWith('http://') || src.startsWith('https://')) {
+    img.referrerPolicy = 'no-referrer';
+  }
   img.style.width = '100%';
   img.style.height = '100%';
   img.style.borderRadius = '50%';

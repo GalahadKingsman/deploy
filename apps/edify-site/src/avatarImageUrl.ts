@@ -1,5 +1,18 @@
 import { getApiBaseUrl } from './env.js';
 
+/** API origin for static assets when meta/env missing (аватары живут на API, не на edify.su). */
+function resolveApiOrigin(): string {
+  const api = getApiBaseUrl();
+  if (api) return api.replace(/\/$/, '');
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    const h = window.location.hostname.toLowerCase();
+    if (h === 'edify.su' || h.endsWith('.edify.su')) {
+      return 'https://api.edify.su';
+    }
+  }
+  return '';
+}
+
 /** Parse key from what we store in `users.avatar_url` or legacy shapes. */
 function extractAvatarKey(stored: string): string {
   const v = (stored || '').trim();
@@ -33,13 +46,13 @@ export function getAvatarImageSrc(avatarUrl: string | null | undefined): string 
   if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
 
   const key = extractAvatarKey(raw);
-  const api = getApiBaseUrl();
+  const api = resolveApiOrigin();
   if (key.startsWith('avatars/')) {
     if (api) return `${api}/public/avatar?key=${encodeURIComponent(key)}`;
     return `/public/avatar?key=${encodeURIComponent(key)}`;
   }
   if (raw.startsWith('/')) {
-    if (api) return `${api.replace(/\/$/, '')}${raw}`;
+    if (api) return `${api}${raw}`;
     return raw;
   }
   return raw;
