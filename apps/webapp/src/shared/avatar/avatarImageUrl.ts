@@ -1,8 +1,22 @@
-import { webappEnv } from '../env/env.js';
+import { config } from '../config/flags.js';
 
+/** Как fetchJson: env → meta → api.edify.su на *.edify.su → origin (прокси на app.*). */
 function resolveApiOrigin(): string {
-  const api = (webappEnv.VITE_API_BASE_URL ?? '').trim();
-  return api ? api.replace(/\/$/, '') : '';
+  const fromEnv = (config.API_BASE_URL ?? '').trim();
+  if (fromEnv) return fromEnv.replace(/\/$/, '');
+  if (typeof document !== 'undefined') {
+    const m = document.querySelector('meta[name="edify-api-base"]')?.getAttribute('content');
+    if (typeof m === 'string' && m.trim()) return m.trim().replace(/\/$/, '');
+  }
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    const h = window.location.hostname.toLowerCase();
+    if (h === 'edify.su' || h.endsWith('.edify.su')) {
+      return 'https://api.edify.su';
+    }
+    const origin = window.location.origin?.replace(/\/$/, '');
+    if (origin) return origin;
+  }
+  return '';
 }
 
 function extractAvatarKey(stored: string): string {

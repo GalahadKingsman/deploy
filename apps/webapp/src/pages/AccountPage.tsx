@@ -109,13 +109,24 @@ function UserAvatar({ user }: { user: DisplayUser }) {
   const size = 64;
   const alreadyLoaded = src ? loadedAvatarUrls.has(src) : false;
   const [loaded, setLoaded] = React.useState(alreadyLoaded);
+  const [failed, setFailed] = React.useState(false);
+
+  React.useEffect(() => {
+    setFailed(false);
+    setLoaded(src ? loadedAvatarUrls.has(src) : false);
+  }, [src]);
 
   const handleLoad = React.useCallback(() => {
     setLoaded(true);
     if (src) loadedAvatarUrls.add(src);
   }, [src]);
 
-  if (!src) {
+  const handleError = React.useCallback(() => {
+    setFailed(true);
+    setLoaded(false);
+  }, []);
+
+  if (!src || failed) {
     return <AvatarPlaceholderCircle size={size} />;
   }
 
@@ -133,6 +144,7 @@ function UserAvatar({ user }: { user: DisplayUser }) {
         height={size}
         loading="eager"
         onLoad={handleLoad}
+        onError={handleError}
         style={{
           width: size,
           height: size,

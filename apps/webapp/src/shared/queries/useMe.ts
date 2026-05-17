@@ -1,24 +1,28 @@
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { ContractsV1 } from '@tracked/shared';
 import { fetchJson, ApiClientError } from '../api/index.js';
-import { getUser } from '../auth/userStorage.js';
+import { getUser, setUser } from '../auth/userStorage.js';
 import { me } from './queryKeys.js';
 
 /**
  * Hook to fetch current user
  * GET /me
- * Uses user from sessionStorage (saved after POST /auth/telegram) as initialData so name/avatar show immediately in Mini App.
+ * Имя из sessionStorage (после POST /auth/telegram) — placeholder; /me всегда запрашиваем,
+ * чтобы подтянуть avatar_url с S3 (синк на бэке) и не залипать на null 10 минут.
  */
 export function useMe() {
   return useQuery<ContractsV1.GetMeResponseV1, Error>({
     queryKey: me(),
     queryFn: async ({ signal }) => {
-      return fetchJson<ContractsV1.GetMeResponseV1>({
+      const data = await fetchJson<ContractsV1.GetMeResponseV1>({
         path: '/me',
         signal,
       });
+      if (data.user) setUser(data.user);
+      return data;
     },
-    initialData: () => {
+    placeholderData: (previousData) => {
+      if (previousData) return previousData;
       const user = getUser();
       return user ? { user } : undefined;
     },
@@ -29,9 +33,8 @@ export function useMe() {
       }
       return failureCount < 3;
     },
-    staleTime: 10 * 60 * 1000, // 10 min — не помечаем как устаревшие при переходах
-    gcTime: 30 * 60 * 1000, // 30 min — держим в кэше полчаса
-    refetchOnMount: false, // не перезапрашивать при возврате на страницу
-    placeholderData: keepPreviousData, // при refetch показывать старые данные
+    staleTime: 60_000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: true,
   });
 }
