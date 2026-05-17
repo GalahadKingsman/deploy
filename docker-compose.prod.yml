@@ -84,6 +84,7 @@ services:
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
       JWT_ACCESS_TTL_SECONDS: ${JWT_ACCESS_TTL_SECONDS:-900}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_SUPPORT_GROUP_ID: ${TELEGRAM_SUPPORT_GROUP_ID:-}
       BOT_INTERNAL_TOKEN: ${BOT_INTERNAL_TOKEN:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       # Сброс пароля по почте (из .env в контейнер)
@@ -138,9 +139,12 @@ services:
     environment:
       NODE_ENV: production
       BOT_TOKEN: ${BOT_TOKEN}
+      # Должен совпадать с BOT_TOKEN (API проверяет x-telegram-bot-token по TELEGRAM_BOT_TOKEN).
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-${BOT_TOKEN}}
       BOT_API_BASE_URL: ${BOT_API_BASE_URL:-http://api:3001}
       BOT_INTERNAL_TOKEN: ${BOT_INTERNAL_TOKEN:-}
       TELEGRAM_WEBAPP_URL: ${TELEGRAM_WEBAPP_URL:-https://app.edify.su}
+      TELEGRAM_SUPPORT_GROUP_ID: ${TELEGRAM_SUPPORT_GROUP_ID:-}
     depends_on:
       api:
         condition: service_started

@@ -25,9 +25,19 @@ if (!supportEnabled && SUPPORT_GROUP_ID_RAW) {
 }
 if (!supportEnabled) {
   console.warn('TELEGRAM_SUPPORT_GROUP_ID is not set — "Чат с поддержкой" disabled');
+} else {
+  console.info(`Support relay enabled (group id ${SUPPORT_GROUP_ID})`);
 }
 
-const bot = new Bot(env.BOT_TOKEN);
+const botToken = (env.BOT_TOKEN ?? '').trim();
+const apiBotToken = (env.TELEGRAM_BOT_TOKEN ?? env.BOT_TOKEN ?? '').trim();
+if (apiBotToken && botToken && apiBotToken !== botToken) {
+  console.warn(
+    'BOT_TOKEN and TELEGRAM_BOT_TOKEN differ — API calls from bot may get 403; set both to the same prod token.',
+  );
+}
+
+const bot = new Bot(botToken);
 
 // Ensure long polling works even if a webhook was previously configured for this bot token.
 // If webhook is set, Telegram will NOT deliver updates via getUpdates (polling), and the bot will appear "silent".
