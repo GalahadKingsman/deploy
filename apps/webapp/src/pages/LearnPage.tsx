@@ -123,8 +123,6 @@ export function LearnPage() {
 
   return (
     <PageScreen>
-      <div className="edify-brand" aria-hidden="true" />
-
       <div className="edify-greeting">
         <div className="edify-eyebrow">STUDENT</div>
         <h1 className="edify-h edify-h--lg" style={{ marginBottom: 6 }}>

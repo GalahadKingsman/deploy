@@ -51,6 +51,10 @@ interface TelegramWebApp {
   BiometricManager?: unknown;
   ready?: () => void;
   expand?: () => void;
+  /** Bot API 7.7+ — убирает шапку Telegram, true fullscreen */
+  requestFullscreen?: () => void;
+  exitFullscreen?: () => void;
+  isFullscreen?: boolean;
   close?: () => void;
   enableClosingConfirmation?: () => void;
   disableClosingConfirmation?: () => void;
@@ -84,6 +88,33 @@ declare global {
 export function isTelegramMiniApp(): boolean {
   if (typeof window === 'undefined') return false;
   return Boolean(window.Telegram?.WebApp);
+}
+
+/**
+ * Развернуть Mini App на максимальную высоту (убирает «половинный» bottom sheet при открытии из Menu Button).
+ * BotFather задаёт только URL кнопки; режим окна — через Web App API.
+ */
+export function applyTelegramWebAppLayout(): void {
+  if (typeof window === 'undefined') return;
+  const tg = window.Telegram?.WebApp;
+  if (!tg) return;
+  try {
+    tg.ready?.();
+  } catch {
+    /* ignore */
+  }
+  try {
+    tg.expand?.();
+  } catch {
+    /* ignore */
+  }
+  try {
+    if (typeof tg.requestFullscreen === 'function' && !tg.isFullscreen) {
+      tg.requestFullscreen();
+    }
+  } catch {
+    /* старые клиенты без fullscreen API */
+  }
 }
 
 /** Open external HTTPS URL (payment redirect). Uses `Telegram.WebApp.openLink` inside Mini App when available. */
@@ -137,11 +168,7 @@ export function waitForTelegramWebApp(maxMs: number = 2500): Promise<boolean> {
   return new Promise((resolve) => {
     const check = () => {
       if (window.Telegram?.WebApp) {
-        try {
-          window.Telegram.WebApp.ready?.();
-        } catch {
-          // ignore
-        }
+        applyTelegramWebAppLayout();
         resolve(true);
         return;
       }

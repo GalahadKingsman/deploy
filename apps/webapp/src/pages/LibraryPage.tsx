@@ -226,7 +226,6 @@ export function LibraryPage() {
   // Default state
   return (
     <PageScreen>
-      <div className="edify-brand" aria-hidden="true" />
       <div className="edify-greeting" style={{ marginBottom: 'var(--sp-5)' }}>
         <div className="edify-eyebrow">LIBRARY</div>
         <h1 className="edify-h edify-h--lg">Каталог курсов</h1>

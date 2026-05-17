@@ -7,7 +7,11 @@ import './shared/ui/theme/edify-v2.css';
 import { startMocking } from './shared/mocks/startMocking.js';
 import { bootstrapAuth } from './shared/auth/bootstrapAuth.js';
 import { getAccessToken, clearAccessToken } from './shared/auth/tokenStorage.js';
-import { waitForTelegramWebApp, waitForTelegramInitData } from './shared/auth/telegram.js';
+import {
+  applyTelegramWebAppLayout,
+  waitForTelegramWebApp,
+  waitForTelegramInitData,
+} from './shared/auth/telegram.js';
 import { tryFinishSiteMarketingLogin } from './shared/auth/siteMarketingBridge.js';
 import { tryFinishTelegramLink } from './shared/auth/siteTelegramLinkBridge.js';
 import { setReferral } from './shared/referrals/referralStorage.js';
@@ -77,6 +81,9 @@ function BootstrapErrorScreen({ message }: { message: string }) {
 }
 
 async function bootstrap() {
+  // Сразу после загрузки SDK (до async bootstrap) — иначе Menu Button открывает «половинное» окно.
+  applyTelegramWebAppLayout();
+
   // Capture referral code from URL (public entrypoint)
   try {
     const url = new URL(window.location.href);
@@ -148,6 +155,9 @@ function renderApp(children: React.ReactNode, diagnostic: AuthDiagnostic | null)
     </React.StrictMode>,
   );
 }
+
+// Первый кадр: SDK уже в index.html — разворачиваем до React bootstrap.
+applyTelegramWebAppLayout();
 
 // Mount root once and show loading immediately (no black screen)
 const rootEl = document.getElementById('root');
