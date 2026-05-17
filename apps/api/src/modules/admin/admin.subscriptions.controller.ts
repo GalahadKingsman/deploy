@@ -54,9 +54,9 @@ export class AdminSubscriptionsController {
   ) {}
 
   @Post(':expertId/subscription/grant-days')
-  @RequirePlatformRole('owner')
+  @RequirePlatformRole('admin')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Grant N days to expert subscription (owner only)' })
+  @ApiOperation({ summary: 'Grant N days to expert subscription (admin+)' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -112,9 +112,9 @@ export class AdminSubscriptionsController {
   }
 
   @Post(':expertId/subscription/expire')
-  @RequirePlatformRole('owner')
+  @RequirePlatformRole('admin')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Expire expert subscription now (owner only)' })
+  @ApiOperation({ summary: 'Expire expert subscription now (admin+)' })
   @ApiResponse({ status: 200, description: 'Subscription expired' })
   @ApiResponse({ status: 403, description: 'FORBIDDEN_PLATFORM_ROLE' })
   @ApiResponse({ status: 404, description: 'EXPERT_NOT_FOUND' })

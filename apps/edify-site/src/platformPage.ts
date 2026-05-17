@@ -8714,12 +8714,12 @@ if (platformMount) {
       if (form) form.style.display = '';
 
       const ownerOnly = root.querySelector('[data-ep-admin-owner-only]') as HTMLElement | null;
-      if (ownerOnly) ownerOnly.style.display = isOwner ? 'none' : '';
+      if (ownerOnly) ownerOnly.style.display = 'none';
 
       const grant = root.querySelector('[data-ep-admin-sub-grant]') as HTMLButtonElement | null;
       const expire = root.querySelector('[data-ep-admin-sub-expire]') as HTMLButtonElement | null;
-      if (grant) grant.disabled = !isOwner;
-      if (expire) expire.disabled = !isOwner;
+      if (grant) grant.disabled = false;
+      if (expire) expire.disabled = false;
 
       const platformCard = root.querySelector('[data-ep-admin-platform-set]')?.closest('.card') as HTMLElement | null;
       if (platformCard) platformCard.style.display = isOwner ? '' : 'none';
@@ -10891,18 +10891,30 @@ if (platformMount) {
         void (async () => {
           const token = getAccessToken();
           if (!token) return;
+          const role = (currentPlatformRole ?? '').trim();
+          if (role !== 'admin' && role !== 'owner') {
+            window.alert('Нужна роль платформы admin или owner. Сейчас: ' + (role || 'user') + '.');
+            return;
+          }
           const expertInp = shell.shadowRoot.querySelector('[data-ep-admin-sub-expert-id]') as HTMLInputElement | null;
           const daysInp = shell.shadowRoot.querySelector('[data-ep-admin-sub-days]') as HTMLInputElement | null;
+          const grantBtn = shell.shadowRoot.querySelector('[data-ep-admin-sub-grant]') as HTMLButtonElement | null;
           const expertId = (expertInp?.value ?? '').trim();
           const daysRaw = (daysInp?.value ?? '').trim();
           const days = Number(daysRaw);
           if (!expertId) return window.alert('Введите Expert ID.');
-          if (!Number.isFinite(days) || !Number.isInteger(days) || days < 1) return window.alert('Введите корректное число дней.');
+          if (!Number.isFinite(days) || !Number.isInteger(days) || days < 1 || days > 3650) {
+            return window.alert('Введите целое число дней от 1 до 3650.');
+          }
+          if (grantBtn) grantBtn.disabled = true;
           try {
             await postJson(`/admin/experts/${encodeURIComponent(expertId)}/subscription/grant-days`, { days }, token);
-            window.alert('Дни подписки выданы.');
-          } catch {
-            window.alert('Не удалось выдать дни. Доступно только owner.');
+            window.alert('Подписка активирована на ' + days + ' дн.');
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Не удалось выдать дни';
+            window.alert(msg);
+          } finally {
+            if (grantBtn) grantBtn.disabled = false;
           }
         })();
         return;
@@ -10912,6 +10924,11 @@ if (platformMount) {
         void (async () => {
           const token = getAccessToken();
           if (!token) return;
+          const role = (currentPlatformRole ?? '').trim();
+          if (role !== 'admin' && role !== 'owner') {
+            window.alert('Нужна роль платформы admin или owner. Сейчас: ' + (role || 'user') + '.');
+            return;
+          }
           const expertInp = shell.shadowRoot.querySelector('[data-ep-admin-sub-expert-id]') as HTMLInputElement | null;
           const expertId = (expertInp?.value ?? '').trim();
           if (!expertId) return window.alert('Введите Expert ID.');
@@ -10919,8 +10936,9 @@ if (platformMount) {
           try {
             await postJson(`/admin/experts/${encodeURIComponent(expertId)}/subscription/expire`, {}, token);
             window.alert('Подписка сделана истёкшей.');
-          } catch {
-            window.alert('Не удалось. Доступно только owner.');
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Не удалось';
+            window.alert(msg);
           }
         })();
         return;

@@ -425,7 +425,7 @@ export function AdminExpertsPage() {
         <CardHeader>
           <CardTitle>3) Подписка эксперта</CardTitle>
           <CardDescription>
-            grant-days включает `status=active` и выставляет `current_period_end`. Требуется platformRole=owner.
+            grant-days включает `status=active` и выставляет `current_period_end`. Требуется platformRole=admin или owner.
           </CardDescription>
         </CardHeader>
         <CardContent style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
@@ -444,7 +444,7 @@ export function AdminExpertsPage() {
           />
           <Button
             variant="primary"
-            disabled={!isOwner || grantDays.isPending || !effectiveExpertId}
+            disabled={!isAdmin || grantDays.isPending || !effectiveExpertId}
             onClick={async () => {
               const days = Number(subDays);
               try {
@@ -463,7 +463,7 @@ export function AdminExpertsPage() {
           </Button>
           <Button
             variant="danger"
-            disabled={!isOwner || expireNow.isPending || !effectiveExpertId}
+            disabled={!isAdmin || expireNow.isPending || !effectiveExpertId}
             onClick={async () => {
               try {
                 await expireNow.mutateAsync({ expertId: effectiveExpertId });
@@ -479,11 +479,6 @@ export function AdminExpertsPage() {
           >
             Expire now
           </Button>
-          {!isOwner && (
-            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted-fg)' }}>
-              У тебя сейчас роль `{platformRole ?? 'unknown'}` — grant/expire доступно только owner.
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>

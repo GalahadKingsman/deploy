@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Foundation Subscriptions Admin Test: grant-days / expire (owner-only), audit
+ * Foundation Subscriptions Admin Test: grant-days / expire (admin+), audit
  * Story 5.2: Admin endpoints grant N days / expire for expert_subscriptions (free stub)
  *
  * Skips if DATABASE_URL unset. In CI (.github/workflows/ci.yml) DATABASE_URL is set.
@@ -62,7 +62,7 @@ test.after(async () => {
   await stopApi();
 });
 
-test('admin (platform_role=admin) → grant-days → 403 FORBIDDEN_PLATFORM_ROLE', async (t) => {
+test('admin (platform_role=admin) → grant-days → 200', async (t) => {
   if (!dbUrl) {
     t.skip('DATABASE_URL unset');
     return;
@@ -109,14 +109,17 @@ test('admin (platform_role=admin) → grant-days → 403 FORBIDDEN_PLATFORM_ROLE
     body: JSON.stringify({ days: 30 }),
   });
 
+  const body = await res.json();
   await pool.end();
 
-  if (res.status !== 403) {
-    throw new Error(`Expected 403, got ${res.status}`);
+  if (res.status !== 200) {
+    throw new Error(`Expected 200, got ${res.status}: ${JSON.stringify(body)}`);
   }
-  const body = await res.json();
-  if (body.code !== 'FORBIDDEN_PLATFORM_ROLE') {
-    throw new Error(`Expected code FORBIDDEN_PLATFORM_ROLE, got ${body.code}`);
+  if (!isValidExpertSubscriptionV1(body)) {
+    throw new Error('Invalid ExpertSubscriptionV1 response');
+  }
+  if (body.status !== 'active') {
+    throw new Error(`Expected status active, got ${body.status}`);
   }
 });
 
