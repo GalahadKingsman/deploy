@@ -120,7 +120,7 @@ export class UsersRepository {
         username = EXCLUDED.username,
         first_name = EXCLUDED.first_name,
         last_name = EXCLUDED.last_name,
-        avatar_url = EXCLUDED.avatar_url,
+        avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url),
         updated_at = EXCLUDED.updated_at
       RETURNING *
     `;

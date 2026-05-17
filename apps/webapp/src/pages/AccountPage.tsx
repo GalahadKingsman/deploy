@@ -16,6 +16,7 @@ import { useMyReferralStats } from '../shared/queries/useMyReferralStats.js';
 import { deriveExpertCtaState } from '../features/account/expertCtaState.js';
 import { BecomeExpertCard } from '../features/account/BecomeExpertCard.js';
 import { getTelegramDisplayUser, isTelegramMiniApp, type TelegramDisplayUser } from '../shared/auth/telegram.js';
+import { getAvatarImageSrc } from '../shared/avatar/avatarImageUrl.js';
 import type { ContractsV1 } from '@tracked/shared';
 import { MiniAppRowAction } from '../ui/kit/MiniAppRowAction.js';
 import { PageScreen } from '../ui/edify/PageScreen.js';
@@ -104,7 +105,7 @@ const loadedAvatarUrls = new Set<string>();
 
 // Avatar: image from URL (with placeholder until loaded) or placeholder only
 function UserAvatar({ user }: { user: DisplayUser }) {
-  const src = user?.avatarUrl ?? null;
+  const src = getAvatarImageSrc(user?.avatarUrl ?? null) || null;
   const size = 64;
   const alreadyLoaded = src ? loadedAvatarUrls.has(src) : false;
   const [loaded, setLoaded] = React.useState(alreadyLoaded);

@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { sanitizeAvatarUrlForStorage } from './telegram-avatar-url.js';
 
 /**
  * Telegram initData validation result
@@ -145,7 +146,7 @@ export function validateTelegramInitData(
     username: user.username,
     firstName: user.first_name,
     lastName: user.last_name,
-    avatarUrl: user.photo_url ?? null,
+    avatarUrl: sanitizeAvatarUrlForStorage(user.photo_url ?? null),
     authDate,
   };
 }

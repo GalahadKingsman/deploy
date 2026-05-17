@@ -23,6 +23,7 @@ import { PayoutRequestsRepository } from '../../payments/payout-requests.reposit
 import { S3StorageService } from '../../storage/s3-storage.service.js';
 import { SubmissionsRepository } from '../../submissions/submissions.repository.js';
 import { TelegramAvatarSyncService } from '../../auth/telegram/telegram-avatar-sync.service.js';
+import { isTelegramUserpicCdnUrl } from '../../auth/telegram/telegram-avatar-url.js';
 import { ReferralWithdrawalService } from '../../payments/referral-withdrawal.service.js';
 import { ErrorCodes } from '@tracked/shared';
 import { validateTelegramInitData, TelegramInitDataValidationError } from '../../auth/telegram/telegram-init-data.js';
@@ -89,27 +90,24 @@ export class MeController {
     const user = await this.usersRepository.bumpStreakOnVisit(userId);
     await this.usersRepository.touchLastPlatformVisit(userId);
 
-    // Best-effort: sync avatar from Telegram once per 24h if current avatar points to Telegram CDN
+    // Best-effort: переносим аватар с t.me/userpic (не грузится в браузере) в S3 через Bot API.
     try {
       const meta = await this.usersRepository.getAvatarSyncMeta(userId);
       const tgId = (meta.telegramUserId ?? '').trim();
       const rawAvatar = (meta.avatarUrl ?? '').trim();
       const last = meta.avatarSyncedAt ? new Date(meta.avatarSyncedAt).getTime() : 0;
-      // If Telegram is blocked from server network, sync can fail; retry periodically but not on every /me.
-      const stale = !last || Date.now() - last > 60 * 60 * 1000;
-      const looksLikeTelegramCdn = /^https?:\/\/t\.me\/i\/userpic\//i.test(rawAvatar);
-      if (stale && tgId && looksLikeTelegramCdn) {
+      const hasStoredAvatar = Boolean(rawAvatar) && !isTelegramUserpicCdnUrl(rawAvatar);
+      const retryMs = 5 * 60 * 1000;
+      const shouldSync = Boolean(tgId && !hasStoredAvatar && (!last || Date.now() - last > retryMs));
+      if (shouldSync) {
         const up = await this.telegramAvatarSync.syncAvatarToS3({ telegramUserId: tgId, userId });
         if (up?.key) {
           const publicPath = `/public/avatar?key=${encodeURIComponent(up.key)}`;
           await this.usersRepository.updateAvatarUrl(userId, publicPath);
           await this.usersRepository.touchAvatarSyncedAt(userId);
-          // keep local variable up-to-date for response below
           (user as any).avatarUrl = publicPath;
-        } else {
-          // avoid retry storm if Telegram is temporarily unavailable
-          await this.usersRepository.touchAvatarSyncedAt(userId);
         }
+        // При ошибке не touchAvatarSyncedAt — иначе час без повтора, а в UI битая ссылка t.me.
       }
     } catch {
       // ignore avatar sync errors (do not break /me)

@@ -1,6 +1,7 @@
 /**
  * Telegram WebApp utilities
  */
+import { isBrokenTelegramUserpicUrl } from '../avatar/avatarImageUrl.js';
 
 /**
  * User-like object for display only (from API UserV1 or from initDataUnsafe.user)
@@ -195,7 +196,7 @@ export function getTelegramDisplayUser(): TelegramDisplayUser | null {
       firstName: u.first_name,
       lastName: u.last_name,
       username: u.username,
-      avatarUrl: u.photo_url ?? null,
+      avatarUrl: isBrokenTelegramUserpicUrl(u.photo_url) ? null : (u.photo_url ?? null),
       telegramId: u.id != null ? String(u.id) : undefined,
     };
   } catch {

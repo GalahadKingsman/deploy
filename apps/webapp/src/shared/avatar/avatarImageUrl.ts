@@ -1,19 +1,10 @@
-import { getApiBaseUrl } from './env.js';
+import { webappEnv } from '../env/env.js';
 
-/** API origin for static assets when meta/env missing (аватары живут на API, не на edify.su). */
 function resolveApiOrigin(): string {
-  const api = getApiBaseUrl();
-  if (api) return api.replace(/\/$/, '');
-  if (typeof window !== 'undefined' && window.location?.hostname) {
-    const h = window.location.hostname.toLowerCase();
-    if (h === 'edify.su' || h.endsWith('.edify.su')) {
-      return 'https://api.edify.su';
-    }
-  }
-  return '';
+  const api = (webappEnv.VITE_API_BASE_URL ?? '').trim();
+  return api ? api.replace(/\/$/, '') : '';
 }
 
-/** Parse key from what we store in `users.avatar_url` or legacy shapes. */
 function extractAvatarKey(stored: string): string {
   const v = (stored || '').trim();
   if (!v) return '';
@@ -25,21 +16,9 @@ function extractAvatarKey(stored: string): string {
       return '';
     }
   }
-  if (v.startsWith('/files?')) {
-    try {
-      return (new URL(v, 'https://x.local').searchParams.get('key') || '').trim();
-    } catch {
-      return '';
-    }
-  }
   return '';
 }
 
-/**
- * Public URL for `<img src>`. `POST /me/avatar` stores `/public/avatar?key=...` (no JWT).
- * Prefer this over `/files/signed` for display — signed endpoint required DB for all keys before a fix.
- */
-/** Прямые ссылки t.me/userpic в `<img>` в браузере почти всегда падают (hotlink / CORS). */
 export function isBrokenTelegramUserpicUrl(url: string | null | undefined): boolean {
   const raw = typeof url === 'string' ? url.trim() : '';
   return /^https?:\/\/t\.me\/i\/userpic\//i.test(raw);
@@ -50,7 +29,6 @@ export function getAvatarImageSrc(avatarUrl: string | null | undefined): string 
   const raw = String(avatarUrl).trim();
   if (!raw) return '';
   if (isBrokenTelegramUserpicUrl(raw)) return '';
-  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
 
   const key = extractAvatarKey(raw);
   const api = resolveApiOrigin();
@@ -58,6 +36,7 @@ export function getAvatarImageSrc(avatarUrl: string | null | undefined): string 
     if (api) return `${api}/public/avatar?key=${encodeURIComponent(key)}`;
     return `/public/avatar?key=${encodeURIComponent(key)}`;
   }
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
   if (raw.startsWith('/')) {
     if (api) return `${api}${raw}`;
     return raw;
